@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# start the splay daemon
+start() {
+	/home/unineple_splay/splayd_planetlab/run.sh
+}
+
+# stops the splay daemon
+stop() {
+	killall splayd
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        echo "unsupported"
+        ;;
+  restart|reload|condrestart)
+        stop
+        start
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|reload|status}"
+        exit 1
+esac
+
+exit 0

@@ -1,0 +1,15 @@
+--[ Splay churn generator ]--
+
+Author: Etienne Riviere - University of Neuchâtel
+License: GPLv3 (see COPYRIGHT in this package)
+URL: http://www.splay-project.org/
+
+
+Other contributions:
+
+--[ TreeTop ]--
+
+Author: Nathan Sobo 
+License: MIT
+URL: http://treetop.rubyforge.org/
+

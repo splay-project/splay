@@ -1,0 +1,358 @@
+Splay churn generator
+Copyright 2009 Etienne Riviere (University of Neuchâtel, Switzerland)
+http://www.splay-project.org
+
+comments and suggestions: info@splay-project.org
+
+DOCUMENTATION
+=============
+
+The Splay churn generator is a DSL interpreter for generating leave/join
+traces of nodes in a large-scale system. These traces are directly usable
+within the Splay controller to direct an experiment with on/off commands
+remotely for all nodes. The generation can range from very simple massive
+failure scenarios to more complex ones, where constant churn is applied along
+with discrete evolutions in the number of peers in the system.
+
+Installation:
+-------------
+
+You need:
+- ruby 1.8+ and rubygems
+	on Ubuntu/Debian-> sudo apt-get install ruby rubygems
+	on MacOSX using MacPorts-> sudo port install ruby rb-rubygems
+	  (note to Mac Users: if you use MacPorts you really need to install
+	   rubygems before emerging the treetop gem or it won't be seen by
+	   you MacPort ruby. Alternatively if you do not use MacPort, MacOSX 
+	   already contains ruby and rubygems)
+- treetop (http://treetop.rubyforge.org/), usually installed by using:
+	sudo gem install treetop
+(Ubuntu: you may have to install the 'hoe' gem as well: sudo gem install hoe)
+
+Usage:
+------
+
+Usage: ./churn_gen.rb 
+	[-i/--input inputfile]: specifies input churn script file
+	[-o/--output]: specifies output churn trace file
+	[-s/--scheduled]: (optional) specifies output scheduled and disambiguated 
+				      script file
+	[-n/--no-churn-overlap]: (optional) churn overlap is not allowed during a 
+							 common period (latest action wins)
+	[-h/--help]: prints this help and exits
+	[-v/--verbose]: verbose mode
+	-- at your own risk: --
+	[-d/--warn-na]: impossible deletes considered as warnings
+	[-w/--warning]: warning are not considered as errors and the list of
+		action self-repairs and disambiguate when possible (at your own risk)
+
+
+Output:
+-------
+
+The main output file is specified by the -o option. It is a trace that
+contains one line per peer, each line being the on/off times (in seconds) of
+that peer. The first time is always an "on" command. Peers that have an even
+number of times on their line remain alive at the end of the trace. The format
+is directly usable by the Splay controller (submit_job_trace.rb, or Web
+interface).
+
+Example:
+
+50
+0 100 120 200
+0 130 150
+
+-> peer 1 is online from 50s to infinity,
+-> peer 2 is online at the beginning and goes offline at 100s, then comes back
+   online between 2 minutes and 3 minutes and 20 seconds
+-> peer 3 is online between the beginning and 2 minutes and 10 seconds, and 
+   comes back online forever after 2 minutes and 30 seconds.
+
+The description of the processed list of actions (disambiguated) can be output
+for information with the -s option. It can be parsed directly as an input and
+gives the exact same results.
+
+Input:
+------
+
+The important file is the churn description script. It contains a set of
+lines, each describing the evolution of the set of peers during some time
+period or at a particular date. Each action is composed of a timing, the
+action type and parameters, and additional churn actions. Example:
+
+from 10 seconds to 20 seconds add 300 churn 10%
+\            (a)            / \ (b) / \  (c)  /
+
+(a) timing
+(b) action
+(c) additional churn (or 'noise')
+
+Timing:
+-------
+
+Timings can be either an instant (spontaneous action, e.g. add 300 nodes 1
+hour after the beginning of the experiment) or a time period (e.g. remove 100
+peers gradually between 2 hours and 5 hours).
+
+Instant: at T
+Period: from T to T
+
+T is the time type. The time can be an expression.
+I is some positive or null integer. 
+U is the time unit and can be one of :
+	- s / second / seconds / S / Second / Seconds
+	- m / minute / minutes / M / Minute / Minutes
+	- h / hour / hours / H / Hour / Hours
+	- d / day / days / D / Day / Days
+
+T: T op T | (integer expression) U
+
+any integer expression can be used before the time unit: 
+	(10*60-4) Seconds
+	(4*24) Hours = 4*d
+	
+T time expression can be combined by using operators:
+
+op: + | and | , (all equivalent)
+  : -
+
+Example:
+	3h,34m and 10s
+	4*d-(2-1) hours
+
+Examples of complete timings:
+	at 3 minutes and 2 seconds
+	from 2 hours, 1 second to 3 hours
+	
+Quantities:
+-----------
+
+Quantities are used as parameters to actions and additional churn. They are
+integer expressions. These expressions have to be positive. Two types:
+- absolute: (100*4-2), 3000
+- relative: (50-2)%, 20%
+The % indicates a relative value. This value will be translated to an absolute
+one at the time of the action (i.e., add 20% means: add 20% to the current
+system size at the time of the action). Quantities will be noted as Q and Q%
+for absolute and relative, respectively.
+
+Actions:
+--------
+
+Some actions are only usable with instant timing:
+
+- set replacement ratio to Q% 
+	(synonyms: set repratio to Q% , set rep.ratio to Q%, "to" is optional)
+  -> see associated paragraph
+
+- set maximum population to Q
+	(synonyms max for maximum, pop for population, "to" is optional)
+  -> see associated paragraph
+
+- stop
+    (synonym: end)
+  All peers will stop at this time and no action can be made after this point.
+  If several stop commands exist, the earliest has priority. If no stop   
+  command is given, peers that are alive at the latest time remain alive 
+  forever.
+
+Some actions are usable with both instant and period timing:
+
+- join {Q | Q%}
+	(synonyms: add , increase , inc)
+  Add alive peers to the pool. New peers can be either peers that were alive 
+  in the past and that were shut down (reboot) or can be peers that join the
+  network for the first time (see paragraph on replacement ratio for details).
+  The creation of peers is evenly distributed on the given time period.
+
+- leave {Q | Q%}
+	(synonyms: remove, decrease, dec)
+  Remove alive peers from the pool. Removals are evenly distributed in the
+  period. 
+
+- const 
+	(synonyms: keep)
+  Keep the population stable (only as a support for additional churn)
+
+Additional churn:
+-----------------
+
+Join, leave and const actions can have an optional additional churn. Churn is
+defined as a number of random join and leaves during the period. The same
+number of join and leaves are added but each can concern any node. The join
+and leaves are added (roughly) proportionally to the population of the peers
+at each period.
+
+E.g., the commands:
+
+from 0s to 100s inc 120
+from 50s to 150s const churn 50%
+
+The mean population during the period 50s-150s is (90+120)/2=105 peers. Thus,
+50% of this 105 peers will be replaced during the 50s to 150s period, i.e. 52
+joins and leaves will be distributed randomly in the period. The random choice
+is not totally uniform and will be biased by the population at that moment
+(using a 10 seconds granularity). i.e., the above is in fact equivalent to:
+
+from 0s to 100s inc 120
+from 50s to 60s const churn 5%
+from 60s to 70s const churn 5%
+...
+from 140s to 150s const churn 5%
+
+additional churn can be expressed either as a simple Q% (replacement of peers
+over the total period) or as a Q% per time period:
+
+churn: Q%
+	 : Q% ( / | per | each ) T
+
+examples:
+from 50s to 150s const churn 50%
+from 50s to 150s const churn 5% per 10s
+are equivalent.
+
+In the case where two periods are given conflicting additional churn, the
+default behavior is to sum up the two churn rates (i.e. both generates leaves
+and joins separately, within the same period).
+
+If the -n option is set, overlapping and conflicting churn requests for a
+given time period are not allowed, and conflicts are resolved as follows. the
+latest has priority and the previous is cut accordingly. This is done before
+cutting the period in small pieces to take the node evolution into account.
+For instance,
+
+from 100s to 200s const churn 100%
+from 150s to 250s const churn 25%
+
+is transformed into:
+
+from 100 seconds to 150 seconds constant churn 50%
+from 150 seconds to 250 seconds constant churn 25%
+
+Replacement ratio:
+------------------
+
+The replacement ratio impacts the overall population and the reuse of peers
+that will be used in the trace, by setting the probability that a peer that
+was previously switched on then off be switched on again for a peer addition
+event, if such a peer exist. If no such peer exist, a new peer is always
+created.
+
+If the replacement ratio is 100%, then all peers can have one single online
+period and will never come back online. If the ratio is 20%, when switching on
+a peer (either as an explicit add action or as a churn peer replacement
+event), there is a 0.2 probability that a fresh peer is chosen for this. If
+the ratio is 0%, peers are created only when there is no other peer available
+that were switched off before.
+
+The replacement ratio can be changed during the overall period of the trace,
+e.g. a 100% for only creations during the first two hours, and then 0% for
+maximizing reuse of existing peers for the remaining of the trace.
+
+examples:
+at 0s set repratio to (100*(0.5*0.5))%
+at 1 hour, 2 minutes and 30 seconds set replacement ratio to 50%
+
+Maximum population:
+-------------------
+
+The optional maximum population is a fool's barrier that help to make sure the
+trace does not go beyond the size of the testbed for which it is meant for
+(note that another possibility is simply to take a random subset of the lines
+of the trace to keep similar statistical properties). As for the replacement
+ratio, this size can change during the period of the trace. There is no
+maximum size in the period that precedes such an explicit set (i.e. the
+maximum size is infinity by default)
+
+examples:
+at 0s set maximum population to 2*100
+at 1h set max pop 1000
+
+When a new peer has to be created (given the replacement ratio policy) but the
+number of already created peer is already reached, the generator tries to use
+an offline already-existing peer instead, if such a peer exists.
+
+Exceeding the maximum size when the replacement ratio indicates to create a
+new peer and when there are no offline peers that can be switched on again
+stops the generation and generates an error.
+
+Examples of correct specifications:
+-----------------------------------
+
+at 0s set replacement ratio 50%
+at 0s set max pop 2000
+from 0 second to 2 minutes and 30 seconds increase 100
+from 3m,10s to 1h,20m,30s keep churn 100% per 30m
+at 2 hours, 30 minutes and 20 seconds decrease 50
+at ((3*30)+6) minutes increase 100
+from 0s to 10m increase 10 churn 10%
+at 2 days stop
+
+Failures/Impossibilities:
+-------------------------
+
+Generation of the trace will stop in the following situations:
+- a leave event while there is no peer available
+	-> this can be made non fatal by using the --warn-na option
+- any warning (please send a bug report)
+	-> this can be made non fatal by using the --warning option (but the
+	   behavior of the program is likely to be the wrong one -- but some 
+	   errors are automatically corrected when possible, see code)
+- the maximum size of the set of peers is not sufficient for the required 
+  actions
+
+Priorities and weaving of actions:
+----------------------------------
+
+Actions are ordered by time (starting time for period actions), and then by
+action type. With the same action type (or class), instant actions have
+priority on period actions with the same start time. Period actions that are
+overlapping are split in as many smaller periods as required to disambiguate:
+
+from 0s to 100s inc 100
+from 50s to 150s dec 50
+
+is transformed into:
+
+from 0s to 50s inc 50
+from 50s to 100s inc 50
+from 50s to 100s dec 25
+from 100s to 150s dec 25
+
+Actions that occur at the same time have the following priorities (first in
+the list are scheduled first in the evaluation):
+- set replacement ratio / set maximum population
+- increase
+- decrease
+- constant
+
+Additional churn to an increase or decrease action is always transformed into
+a constant + additional churn action:
+
+at 0s add 1000
+from 50s to 100s add 1000 churn 50%
+at 50s add 1000
+
+is transformed into (schedule order):
+
+at 0s add 1000
+at 50s add 1000
+from 50s to 100s add 1000
+from 50s to 60s const churn 5%
+from 60s to 70s const churn 5%
+...
+from 90s to 100s const churn 5%
+
+The churn will thus be on the 1000+1000+(1000/2) peers on average between 50s
+and 100s, with more events in the end of the period, and not on the
+1000+(1000/2) peers on average that one may have guessed by reading the
+unscheduled original input.
+
+Upcoming additions/TODO list
+----------------------------
+
+- possibility to bias the selection of peers to reach a given distribution of
+  uptime. (e.g. Weibull or Powerlaw)
+- document the -m, -a and -c options
+

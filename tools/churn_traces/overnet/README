@@ -1,0 +1,38 @@
+Churn Generator (from overnet traces)
+
+Usage : 
+
+javac ChurnGen.java
+java -Xmx2000m ChurnGen [--help] [-h/-m/-s int] [-f string] [-n int]
+        --help          Display this help
+        -h/-m/-s        Add hours/minutes/seconds to total time
+        -f              Set input file
+        -n              Set number of nodes
+        --simulation    Type of output is a single file (default)
+        --separate      Type of output is separate files
+
+-> first version generates files in directory "results" 
+
+Format of the output :
+
+SEPARATE FILES
+file name is node_i.churn where i is the number of the node
+file contains a set of (time \t action) pairs
+time is in seconds, action is U for up or D for down
+
+SINGLE FILE
+first line for a node is: node i ; where i is the number of the node starting from 0
+then a set of (time \t action) pairs
+time is in seconds, action is U for up or D for down
+a node entry finishes by 0 F line
+
+Examples:
+java -Xmx2000m  ChurnGen -n 1000 -f total.dat --startnum 1 --simulation -h 2 -m 40 -s 20
+
+reference paper:
+
+@inproceedings{Bhagwan2003Understanding-Availa,
+	Author = {Ranjita Bhagwan and Stefan Savage and Geoffrey M. Voelker},
+	Booktitle = {Proceedings of the 2nd International Workshop on Peer-to-Peer Systems (IPTPS'03)},
+	Title = {Understanding Availability},
+	Year = {2003}}
