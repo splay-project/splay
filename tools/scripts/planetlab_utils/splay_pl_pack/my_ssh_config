@@ -1,0 +1,29 @@
+Host *
+#   ForwardAgent no
+#   ForwardX11 no
+#   ForwardX11Trusted yes
+#   RhostsRSAAuthentication no
+#   RSAAuthentication yes
+#   PasswordAuthentication yes
+#   HostbasedAuthentication no
+#   BatchMode no
+#   CheckHostIP yes
+#   AddressFamily any
+#   ConnectTimeout 0
+#   StrictHostKeyChecking ask
+#   IdentityFile ~/.ssh/identity
+#   IdentityFile ~/.ssh/id_rsa
+#   IdentityFile ~/.ssh/id_dsa
+#   Port 22
+#   Protocol 2,1
+#   Cipher 3des
+#   Ciphers aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour,aes192-cbc,aes256-cbc
+#   EscapeChar ~
+#   Tunnel no
+#   TunnelDevice any:any
+#   PermitLocalCommand no
+    SendEnv LANG LC_*
+
+	UserKnownHostsFile my_known_hosts
+	HashKnownHosts no
+	StrictHostKeyChecking no

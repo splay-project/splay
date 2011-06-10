@@ -1,0 +1,29 @@
+
+>>> Splayd v.0.95 <<<
+
+http://www.splay-project.org
+Splayd is licensed under GPL v3, see COPYING
+
+>> NAME: NAME
+>> KEY: KEY
+>> Running on 32bits Linux (little endian)
+>> Log directory: /home/unine_splay/leo/splayd/logs/jobs
+
+>> Job settings (max 16):
+    Max memory: 12 Mo
+    Max disk: 1024 Mo
+    Max ports: 3 port(s)
+    Bandwith: send 64 ko/s receive 64 ko/s
+    FS directory: /home/unine_splay/leo/splayd/jobs_fs
+
+>> Total:
+    Max memory: 192 Mo
+    Max disk: 16384 Mo
+    Max ports: 48 in range: 27000-32000
+    Bandwith: send 1024 ko/s receive 1024 ko/s
+
+>> WARNING: You are not in production mode.
+>> WARNING: jobs_log must be set to false.
+
+C daemon: splayd.lua:881: attempt to concatenate field 'port' (a nil value)
+End of splayd (C deamon)

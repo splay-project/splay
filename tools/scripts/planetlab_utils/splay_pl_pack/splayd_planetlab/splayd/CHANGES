@@ -1,0 +1,63 @@
+splayd 0.92 => splayd 0.93:
+---------------------------
+
+	Changes (backward compatible):
+		- Use events.run() instead of events.loop()
+
+	Changes (maybe NOT backward compatible):
+		- (u)rpc.ping() return
+			if ok: time
+			if not ok: nil, "reason"
+			If you check specifically for the 'true' or 'false' return values,
+			this is not backward compatible.
+
+	Bugs/Improvements:
+		- Amount of received data in restricted socket was wrong (regression)
+		- Amout of sent data was false when socket was closed (lusocket bug)
+
+
+splayd 0.91 => splayd 0.92:
+---------------------------
+
+	Additions:
+		- misc.assert_function(), misc.assert_object()
+		- misc.convert_base(input, b1, b2) => string
+		- misc.shuffle(a)
+		- bits.size(), bits.count(), bits.init()
+		- splay.bits documented
+
+	Changes (backward compatible):
+		- net.udp_helper() swap parameters.
+		- net.server() additionnal parameter to not close the socket.
+		- rpc.a_call() => rpc.acall()
+	
+	Bugs/Improvements:
+		- ip detection has been corrected in socket_events and restricted_sockets
+
+
+splayd 0.887 => splayd 0.91:
+----------------------------
+
+	Additions:
+		- misc.equal()
+		- misc.merge()
+		- exceptions mechanism: misc.try() and misc.throw()
+		- rpc.ecall()
+
+	Changes (backward compatible):
+		- added misc.merge(), deprecated misc.table_concat()
+		- net.server(handler, port) => port, handler
+		- events.periodic(handler, timeout) => timeout, handler
+		- fire() can have multiple arguments, wait() will get them all
+
+	Changes (NOT backward compatible):
+		- llenc receive_one() => receive(), receive() => receive_array()
+		- removing misc.random_pick_one()
+
+	Bugs/Improvements:
+		- scheduler
+		- socket events
+		- better random initialization for jobs
+		- added into sandbox: splay.misc_core
+		- secure locks: unlock them if a thread die (on error)
+		- Integration of coxpcall (replace pcall and xpcall in base)

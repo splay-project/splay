@@ -1,0 +1,13 @@
+PlanetLab deployment scripts - instructions
+Etienne Riviere, September 5th 2010. Original scripts by Lorenzo Leonini 2009.
+
+------
+
+install.sh appelle host_install.sh qui appelle (a distance) host_install.sh sur la machine distante
+
+------
+
+TODOs
+-> install several machines in parallel instead of one by one
+-> setup automatic restart of the daemons
+-> on the splay2.unineuchatel set up a daily mail about the # of active splayds (or better have a graphical representation)
