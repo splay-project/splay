@@ -1,0 +1,185 @@
+splayd 1.0.6:
+	- major performance improvements in splay.benc module (function encode completely rewritten)
+	- minor performance improvement in splay.misc module, function split (made simpler and faster) 
+-----------------------------
+splayd 1.0.5:
+	- fix in async_dns: improve compatibility with LuaSocket's dns calls
+-----------------------------
+splayd 1.0.4:
+ 	- fix bug when using async_dns inside controller
+-----------------------------
+splayd 1.0.3:
+	- allow splay.async_dns inside sandbox, modifications in jobd.lua
+-----------------------------
+splayd 1.0.2:
+	- bug fix in splay.urpc: missing require 'tonumber' used for sanity check
+	  	 in timeout values before sending an rpc call
+-----------------------------
+splayd 1.0.1:
+        - bug fix in splay.urpc and splay.net when a specific IP port is used
+  		  to start the server
+-----------------------------
+splayd 1.0:
+        - async DNS resolution with new module splay.async_dns
+        - some bug fixes and todo's done.
+-----------------------------
+splayd 0.962 => splayd 0.9621:
+-----------------------------
+
+	- Corrections in manual. The reference manual is online only (rev516)
+	- Corrections in INSTALL.macosx
+	- sandboxed functions are replaced by empty stubs (rev489).
+		 When calling a sandboxed function, the following is executed instead:
+		 function foo() 
+			log:print("Function foo() is sandboxed -- usage not allowed. Aborting.")
+			events.sleep(10)
+			os.exit()
+		  end
+	- Changes in Makefile,Makefile.macosx and install.sh : the native modules are 
+	  compiled directly with their final names
+
+
+splayd 0.961 => splayd 0.962:
+-----------------------------
+
+	Changes (NOT backward compatible):
+		- misc.random_pick(a, x) return an array if x == 1 but one element if
+			not x (=> x = 1 but not returning an array). The documentation was not
+			clear about this point and if x = 1 an array was not returned.
+
+
+splayd 0.96 => splayd 0.961:
+----------------------------
+
+	Bugs/Improvements:
+		- misc.random_pick(a, x) bug when #a == 1
+		- utils.generate_job()
+
+
+splayd 0.95 => splayd 0.96:
+---------------------------
+
+	Additions:
+		- net.server(port, {receive, send, init, final})
+		- net.client(node, {rec, send, init, final})
+		- events.kill(threads*)
+
+	Bugs/Improvements:
+		- Some minor bugs fixed in net and restricted_sockets.
+
+
+splayd 0.94 => splayd 0.95:
+---------------------------
+
+	Additions:
+		- events.kill(thread)
+		- events.status(thread)
+		- utils.args()
+
+	Changes (backward compatible):
+		- events.thread() and events.periodic() return no more coroutine object but
+			thread reference. This references can be used in events.kill(),
+			events.dead() or events.status().
+
+	Bugs/Improvements:
+		- BSD (MacOSX), TCP fix.
+		- Bug in net.server() that affects rpc and rpcq, using more and more memory.
+		- RPCQ speed improvements.
+	
+
+splayd 0.93 => splayd 0.94:
+---------------------------
+
+	Addition of documentation for MacOSx (INSTALL.macosx)
+
+	Changes (NOT backward compatible):
+		- events.stats() => events.infos()
+
+	Changes (backward compatible):
+		- net.server(port, handler, max, no_close)
+			=> net.server(port, handler, max)
+			Async protocols must keep their handler until they have finished, see
+			documentation for details.
+
+	Additions:
+		- RPC queue or 'rpcq'. A new RPC mechanism keeping connections opened
+			if possible.
+		- urpc support multiple servers.
+		- (u)rpc(q).stop_server()
+		- (u)rpc(q).mode variable, to check into  your application what mode you
+			are using.
+		- "nodelay" option for splay.rpc and splay.rpcq
+		- "max" option (rpc.max = x), set the max number of outgoing
+			RPCs at the same time
+		- restricted_sockets added in documentation
+
+	Bugs/Improvements:
+		- Lots of RPC improvements
+		- rpc.server() called net.server() with wrong noclose arg
+		- urpc speedup
+
+
+splayd 0.92 => splayd 0.93:
+---------------------------
+
+	Changes (backward compatible):
+		- Use events.run() instead of events.loop()
+
+	Changes (maybe NOT backward compatible):
+		- (u)rpc.ping() return
+			if ok: time
+			if not ok: nil, "reason"
+			If you check specifically for the 'true' or 'false' return values,
+			this is not backward compatible.
+
+	Bugs/Improvements:
+		- Amount of received data in restricted socket was wrong (regression)
+		- Amout of sent data was false when socket was closed (lusocket bug)
+
+
+splayd 0.91 => splayd 0.92:
+---------------------------
+
+	Additions:
+		- misc.assert_function(), misc.assert_object()
+		- misc.convert_base(input, b1, b2) => string
+		- misc.shuffle(a)
+		- bits.size(), bits.count(), bits.init()
+		- splay.bits documented
+
+	Changes (backward compatible):
+		- net.udp_helper() swap parameters.
+		- net.server() additionnal parameter to not close the socket.
+		- rpc.a_call() => rpc.acall()
+	
+	Bugs/Improvements:
+		- ip detection has been corrected in socket_events and restricted_sockets
+
+
+splayd 0.887 => splayd 0.91:
+----------------------------
+
+	Additions:
+		- misc.equal()
+		- misc.merge()
+		- exceptions mechanism: misc.try() and misc.throw()
+		- rpc.ecall()
+
+	Changes (backward compatible):
+		- added misc.merge(), deprecated misc.table_concat()
+		- net.server(handler, port) => port, handler
+		- events.periodic(handler, timeout) => timeout, handler
+		- fire() can have multiple arguments, wait() will get them all
+
+	Changes (NOT backward compatible):
+		- llenc receive_one() => receive(), receive() => receive_array()
+		- removing misc.random_pick_one()
+		- misc.random_pick(a, x), if x == 1 => single el, if not => array
+
+	Bugs/Improvements:
+		- scheduler
+		- socket events
+		- better random initialization for jobs
+		- added into sandbox: splay.misc_core
+		- secure locks: unlock them if a thread die (on error)
+		- Integration of coxpcall (replace pcall and xpcall in base)

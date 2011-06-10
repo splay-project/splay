@@ -1,0 +1,30 @@
+v0.4
+
+- new CLI with POSIX style
+- methods:
+	- splay_submit_job
+	- splay_kill_job
+	- splay_list_hosts
+	- splay_get_logs
+	- splay_list_jobs
+	- splay_list_available_splayds
+
+v0.3
+- still no authentication
+- methods:
+	- submit_job
+	- kill_job
+	- list_hosts
+	- get_local_log
+	- add_splayd
+
+v0.2
+- methods that mimic the controller commands are created as empty functions
+
+v0.1
+- basic server-client that handle three models of RPC calls:
+	- command1, which does not require answer
+	- command2, which requires answer
+	- command3, which requires answer and is handled by other server, thus using the server as proxy
+- command2 and command3 are the same from the perspective of the client
+- multitasking (every request is a different coroutine) exists from the beginning

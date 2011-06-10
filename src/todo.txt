@@ -1,0 +1,171 @@
+**********
+Bugs:
+**********
+
+- Bug seen with splayweb 1.0:
+
+[2011-02-21 21:45:25] ERROR NoMethodError: private method `gsub!' called for #<Class:0xb67ea2a0>
+        /usr/lib/ruby/1.8/webrick/htmlutils.rb:16:in `escape'
+        /usr/lib/ruby/1.8/webrick/httpresponse.rb:232:in `set_error'
+        /var/lib/gems/1.8/gems/rails-2.1.0/lib/webrick_server.rb:103:in `handle_file'
+        /var/lib/gems/1.8/gems/rails-2.1.0/lib/webrick_server.rb:75:in `service'
+        /usr/lib/ruby/1.8/webrick/httpserver.rb:104:in `service'
+        /usr/lib/ruby/1.8/webrick/httpserver.rb:65:in `run'
+        /usr/lib/ruby/1.8/webrick/server.rb:173:in `start_thread'
+        /usr/lib/ruby/1.8/webrick/server.rb:162:in `start'
+        /usr/lib/ruby/1.8/webrick/server.rb:162:in `start_thread'
+        /usr/lib/ruby/1.8/webrick/server.rb:95:in `start'
+        /usr/lib/ruby/1.8/webrick/server.rb:92:in `each'
+        /usr/lib/ruby/1.8/webrick/server.rb:92:in `start'
+        /usr/lib/ruby/1.8/webrick/server.rb:23:in `start'
+        /usr/lib/ruby/1.8/webrick/server.rb:82:in `start'
+        /var/lib/gems/1.8/gems/rails-2.1.0/lib/webrick_server.rb:62:in `dispatch'
+        /var/lib/gems/1.8/gems/rails-2.1.0/lib/commands/servers/webrick.rb:66
+        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `gem_original_require'
+        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `require'
+        /var/lib/gems/1.8/gems/activesupport-2.1.0/lib/active_support/dependencies.rb:509:in `require'
+        /var/lib/gems/1.8/gems/activesupport-2.1.0/lib/active_support/dependencies.rb:354:in `new_constants_in'
+        /var/lib/gems/1.8/gems/activesupport-2.1.0/lib/active_support/dependencies.rb:509:in `require'
+        /var/lib/gems/1.8/gems/rails-2.1.0/lib/commands/server.rb:39
+        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `gem_original_require'
+        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `require'
+        script/server:3
+
+Apparently this is a known-bug in WEBrick (and not the splayweb itself): http://www.ruby-forum.com/topic/206225
+The new webserver Mongrel solves the bug. To use Mongrel in SplayWeb:
+
+sudo gem install mongrel
+sudo ruby script/server mongrel -p 80
+
+- Bug seen with controller v0_854 on splay2.unineuchatel.log:
+
+E, [10:43:06 #682] ERROR -- : OpenSSL::SSL::SSLError: 
+/usr/lib/ruby/1.8/openssl/ssl.rb:122:in `accept'
+/usr/lib/ruby/1.8/openssl/ssl.rb:122:in `accept'
+./lib/splayd.rb:75:in `main'
+./lib/splayd.rb:74:in `loop'
+./lib/splayd.rb:74:in `main'
+./lib/splayd.rb:37:in `run'
+./lib/splayd.rb:36:in `initialize'
+./lib/splayd.rb:36:in `new'
+./lib/splayd.rb:36:in `run'
+controller_fork.rb:64
+controller_fork.rb:61:in `fork'
+controller_fork.rb:61
+controller_fork.rb:60:in `each'
+controller_fork.rb:60
+I, [10:43:07 #686]  INFO -- : 686 (server3.planetlab.iit-tech.net, 192.42.83.250): Log port: 11108
+I, [10:43:07 #686]  INFO -- : 686 (server3.planetlab.iit-tech.net, 192.42.83.250): Auth OK
+I, [10:43:07 #682]  INFO -- : 997 (planetlab3.di.unito.it, 130.192.157.138): Log port: 11109
+I, [10:43:07 #682]  INFO -- : 997 (planetlab3.di.unito.it, 130.192.157.138): Auth OK
+I, [10:43:07 #680]  INFO -- : 643 (planetlab2.utdallas.edu, 129.110.125.52): Log port: 11105
+I, [10:43:07 #680]  INFO -- : 643 (planetlab2.utdallas.edu, 129.110.125.52): Auth OK
+I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Log port: 11106
+I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Auth OK
+I, [10:43:11 #679]  INFO -- : 9
+
+- Bug with controller v.0_854: some of the nodes reported strange ports during the submission of a job:
+    ..
+    403 host_4_26 10.0.2.4 0 - 0
+    ..
+    1700 host_23_62 10.0.2.23 0 - 0
+    1961 host_2_77 10.0.2.2 0 - 0
+
+
+- Bug with controller 1.0.1:
+
+E, [17:37:20 #5059] ERROR -- : NoMethodError: undefined method `length' for nil:NilClass
+./lib/logd.rb:176:in `run'
+./lib/logd.rb:166:in `loop'
+./lib/logd.rb:166:in `run'
+./lib/logd.rb:118:in `initialize'
+./lib/logd.rb:118:in `new'
+./lib/logd.rb:118:in `run'
+./lib/logd.rb:72:in `main'
+./lib/logd.rb:59:in `loop'
+./lib/logd.rb:59:in `main'
+./lib/logd.rb:34:in `run'
+./lib/logd.rb:33:in `initialize'
+./lib/logd.rb:33:in `new'
+./lib/logd.rb:33:in `run'
+
+It was because in line 176 of logd.rb, sometimes msg was = nil, the error was fixed by introducing a "if msg then" to prevent
+it. FIXED
+
+
+	
+**********	
+Feature requests/new features:
+**********
+- improve error reporting of splay.rpc module. Calling a remote function declared as local
+  reports the error "invalid function name..". But, the name IS valid, but what it is 
+  invalid is the attempt to use it. Is this by-design? 
+  I don't know how to be sure to report a better error..
+  Maybe the debug module can help ? 
+
+An example of code to reproduce this error (simplified, from splay.misc.call)
+
+function visible()
+	print"i am visible"
+end
+local function invisible()
+	print"i am invisible"
+end
+procedure={"visible","invisible"}
+local f, err = loadstring("return "..procedure[1], "call")
+f=f()()
+local f, err = loadstring("return "..procedure[2], "call")
+print(type(f), err)
+f=f()()
+
+- feature request: add a white list mechanism on Splay libraries so that a
+  controller can instruct a splayd which IP addresses are ok to use and no
+  other. This is particularly interesting to allow un-restricted access to
+  PlanetLab deployments to students or visitors: they can not do a DDOS to a
+  third-party web site.
+
+- Check churn trace generator
+
+- Extend splayd RPC module to take into account ModelNet like topologies, at
+  least for latencies between pairs of nodes and for dropped packets
+
+- handle properly more than one events.run function (common when using stacks of protocols): 
+  their content should be merged somehow; currently only the last one 
+  encountered is executed. This
+  problem surfaces also using a simple local deployment (splay as lib) and
+  it's not related to the multi-file support itself.
+
+
+- Implement a json-based interface and re-implement the command line interface and the splayweb to use it (using user/password).
+	==> ASSIGNED TO JOSE
+- (complementary to the previous one) Check all command line commands to see if they are:
+	- properly documented (with a -h option)
+	- checking all inputs to avoid any ruby error message
+	- document them on the website
+	- Add a command to the controller to report the current number of available/busy splayds, etc (as it is done in the splayweb)
+		-> should be done by José as part of the command API
+		
+- Write a developer's guide to make programs more 'splay friendly': better explain which Lua features can be used, how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
+
+- The controller command ./list_hosts.rb report only the IPs of the hosts assigned to a job. In the case of a cluster deployment with several splayds per machines, this report is useless. The list should be enriched at least with the name of the splayd, and the port range known by the controller.
+	JOSE: DONE
+
+- in controller, check if the size of the actions table can be significantly reduce (why do we keep all splayd actions all the time?)
+
+- add an option to the job creation panel / command to print or not print the header in the logs (useful for demos and when one needs to visually process a log)
+
+-  If a submitted job can't be executed for the lack of resources, it is discarded.
+   It would be nice to be able to schedule a job so that it's executed as soon as the required resources 
+   become available. 
+   This might be as simple as having a queue with all the submitted jobs, and once a job finishes, 
+   the controller checks if the given job can now be executed because some resources are freed (ie: at the moment
+   of the submissions, there were 100 splayds available and 900 taken by another job, whereas the 
+   job being scheduled    requires a total of 200). 
+   This would facilitate the submission of multiple jobs one after the other without periodically
+   checking whether the job has completed. The mechanism could be complexified by providing priorities to jobs.
+   An option in the submission ('queue=yes|no') could indicate that job can be enqueued to future submission.
+
+- Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
+
+- When a job is submitted with a trace, after the trace is completed the job doesn't change its status to ENDED, it continues as RUNNING. The job should finish.
+

@@ -1,0 +1,43 @@
+<%= link_to 'New job', :action => 'new' %> |
+<%= link_to 'New job from file', :action => 'new_from_file' %>
+
+<h1>Your jobs</h1>
+(<%= link_to 'Refresh', :action => 'list' %>)
+
+<table id="table_list_jobs">
+	<tr>
+		<th class="id">ID</th>
+		<% if current_user.admin == 1 %>
+		<th class="user">User</th>
+		<% end %>
+		<th class="created_at">Date</th>
+		<th class="nb_splayds">Splayds</th>
+		<th class="status">Status</th>
+		<th class="name">Name</th>
+		<th class="logs">Logs</th>
+		<th class="kill">Kill</th>
+		<th class="show">Details</th>
+	</tr>
+	<% for job in @jobs.reverse %>
+	<tr>
+		<td class="id"><%= job.id %></td>
+		<% if current_user.admin == 1 %>
+		<td class="user"><%= job.user.login %></td>
+		<% end %>
+		<td class="created_at"><%= job.created_at %></td>
+		<td class="nb_splayds"><%= job.nb_splayds %></td>
+		<td class="status"><%= job.status %></td>
+		<td class="name"><%= job.name %></td>
+		<td class="logs"><a href="/logs/<%= job.ref %>.txt">Logs</a></td>
+		<td class="kill">
+			<% if job.status=='RUNNING' %>
+			<%= link_to 'KILL', :action => 'kill', :id => job %>
+			<% end %>
+		</td>
+		<td class="show"><%= link_to 'Details', :action => 'show', :id => job %></td>
+	</tr>
+	<% end %>
+</table>
+
+<br />
+
