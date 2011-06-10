@@ -1,0 +1,174 @@
+REQUIREMENTS
+------------
+
+To compile:
+
+- Lua 5.1 (dev) (http://www.lua.org)
+- OpenSSL (dev) (for luacrypto)
+- classic tools to compile C applications.
+
+To run (see bottom for hints installing them):
+
+- Lua 5.1
+- LuaSocket 2.x shared library
+	(http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/)
+- LuaSec 0.2+ shared library (http://www.inf.puc-rio.br/~brunoos/luasec/)
+
+Notes:
+
+	OpenSSL, Lua, and LuaSocket are often found in packages available for most
+	Linux/Unix distributions. Install both binary and dev packages.
+
+	libcrypto can be in the openssl-devel (or openssl-dev or libssl-dev) package.
+
+Ubuntu/Debian packages:
+
+	build-essential
+	lua5.1
+	liblua5.1-0
+	liblua5.1-0-dev
+	liblua5.1-socket2
+	liblua5.1-socket-dev
+	libssl-dev
+	libssl0.9.8
+	(+ install LuaSec: edit Makefile, make linux, make install)
+
+
+INSTALLATION
+------------
+
+1 Install dependencies (see REQUIREMENTS)
+
+
+2	Compile splayd:
+
+	Edit Makefile, set the correct paths for Lua, OpenSSL, ...
+
+	Tips:
+		Ubuntu/Debian:
+			nothing to do
+		Fedora:
+			only change -llua5.1 to -llua-5.1
+
+	$ make clean all
+
+
+3	Install lua modules, lua C modules and splayd in the correct location.
+	
+	Edit install.sh, set LUA paths.
+
+	$ ./install.sh
+
+
+4	Edit settings.lua
+
+
+5	Run splayd:
+
+		$ ./splayd
+
+	Or in daemon mode:
+
+		$ ./splayd -d
+
+	Redirect to a log file if needed.
+
+
+You can too run splayd directly from Lua, but you need to set
+'production = false' in 'splayd.lua' to have security checks relaxed. Then you
+can call it with useful parameters for local testing:
+
+	$ lua splayd.lua [<key> [<ctl_ip> [<ctl_port> [<start_port> [<end_port>]]]]]
+
+Note:
+
+	Maximum number of open files should be set >= than
+	number_of_jobs * (job_max_file_descriptors + job.max_sockets)
+	For example, for 32 jobs, with 64 files and 64 socket => 4096:
+	ulimit -n 4096
+
+
+SECURITY
+--------
+
+Splayd has been designed to protect the host that runs it, but for additional
+security we recommend:
+
+- Set your limits in settings.lua
+- Run splayd with 'production = true' (default).
+- Create a dedicated user for splayd.
+- Use 'trickle' or any QoS tool to enforce real time bandwith limitations.
+- Use 'nice' to limit CPU priority.
+
+
+NOTES
+-----
+
+After installation, to execute splayd, you will need IN THE SAME DIRECTORY:
+- splayd
+- splayd.lua
+- jobd
+- jobd.lua
+- settings.lua
+
+When splayd runs, it will automatically create logs/, jobs/ and jobs_fs/
+directories, so you need write access (path can eventually be changed editting
+splayd.lua).
+
+Lua use two directories to load modules in form of shared libraries (*.so) and
+in Lua (*.lua).
+
+LUA_PATH for Lua libraries.
+LUA_CPATH for C (shared) libraries.
+
+The function require() will try to load a library with the given name either in
+Lua and then in C. If the name of the librarie contain a dot: "like.that", Lua
+will search in:
+
+$LUA_PATH/like/that.lua
+
+and then in:
+
+$LUA_CPATH/like/that.so
+
+
+Lua 5.1 shared librarie
+-----------------------
+
+In case that you have not the Lua 5.1 (and devel) in form of package, you
+need to build the shared librarie yourself.
+
+1) Compile lua "normally"
+2) Go in the src/ dir
+3) Type that:
+
+	rm lua.o luac.o
+	gcc -O -fpic -shared -o liblua5.1.so *.o -lm -ldl
+
+	If you get this error (on 64 bits systems):
+
+		/usr/bin/ld: lapi.o: relocation R_X86_64_32 against `luaO_nilobject_' can
+		not be used when making a shared object; recompile with -fPIC
+
+	Edit Makefile (in src/ dir) and add -fpic:
+
+		CFLAGS= -O2 -Wall -fpic $(MYCFLAGS)
+
+	And recompile Lua before trying again.
+
+Then you will use LD_LIBRARY_PATH=path to indicate where to found the .so
+Choose a directory to contain lua libs and lua C libs.
+We choose /lualibs
+
+Put into you ~/.bashrc
+
+	LUA_PATH=/lualibs/lib/?.lua
+	LUA_CPATH=/lualibs/clib/?.so
+
+	export LUA_PATH LUA_CPATH
+
+Prepare dir for lua:
+
+	mkdir /lualibs
+	mkdir /lualibs/lib
+	mkdir /lualibs/clib

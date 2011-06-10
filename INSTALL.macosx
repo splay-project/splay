@@ -1,0 +1,553 @@
+INSTALL contains instructions for installing on Linux.
+
+==============================================================================
+                          SPLAY -- MAC OS X TUTORIAL
+==============================================================================
+
+  This document describes the installation of the Splay framework on a Mac OS
+  X operated computer, and includes more details than the INSTALL factual
+  documents that are found in the tarballs of the Splay distribution.
+
+  For more information on Splay, visit http://www.splay-project.org
+
+  Comments, questions and suggestions are welcome: info@splay-project.org
+
+  This document is composed of four parts: 
+
+1. Common requirements
+2. Complete installation tutorial using MacPorts (recommended)
+3. Complete installation tutorial using Fink (requires to build many things 
+   manually)
+4. Quick installation using MacPorts (only commands -- no explanations)
+
+  Disclaimers:
+
+- this tutorial was tested using Intel Macs only. Since it is based on source
+  distributions of software, it should not pose problems on PPC-based Macs 
+  though.
+- it was tested using Mac OS 10.5 and Mac OS 10.6. It should probably work 	
+  under 10.4 without troubles.
+- this tutorial assumes the usage of the MacPorts or Fink package systems:
+  MacPorts is the recommended option if you don't already have one of the two.
+- this tutorial assumes that you do not change the default paths of Fink,
+  MacPorts, Ruby, and others.
+
+History:
+- Etienne Riviere, January 2010. 
+  Test on Mac OS 10.6
+  Made MacPorts the default option.
+  Separated MacPorts and Fink tutorials.
+- Pierre Riteau, June 2009. 
+  Update to cover installation with MacPorts.
+- Etienne Riviere, March 2009. 
+  First version.
+
+==============================================================================
+                             COMMON REQUIREMENTS
+==============================================================================
+
+A. Install Apple developer tools
+
+  If not already done, you will/may need the Apple dev. tools to build 
+  some of the applications. Get it from: http://developer.apple.com
+
+B. (Optional) Install syntax highlighting for you favorite text editor
+
+  You may want to install Lua text coloring (and language-specific functions):
+
+	  - TextMate (http://macromates.com/):
+	    (close TextMate)
+		cd
+		mkdir -p Library/Application\ Support/TextMate/Bundles
+		cd Library/Application\ Support/TextMate/Bundles
+		svn co http://svn.textmate.org/trunk/Bundles/Lua.tmbundle
+
+	  - Emacs
+		follow instructions at http://lua-mode.luaforge.net/
+
+	  - Vim
+		syntax highlighting included by default in recent versions, but
+		http://www.vim.org/scripts/script.php?script_id=1763 
+		proposes more features and tools for Lua in vim.
+
+	  - Others
+	    follow instructions at http://lua-users.org/wiki/LuaEditorSupport
+
+==============================================================================
+                  INSTALLATION USING MACPORTS (RECOMMENDED)
+==============================================================================
+
+A. Install MacPorts
+
+  Go to http://www.macports.org/
+  Download the latest version of MacPorts, install it, and update it:
+
+	sudo port selfupdate ; sudo port update outdated
+	
+==============================================================================
+                      MACPORTS -- INSTALLING LUA SUPPORT
+==============================================================================
+
+A. Install the required packages:
+
+	sudo port install lua openssl97 lua-luasocket lua-luasec
+	
+B. Set up the LUA PATH
+
+  When one includes some library within LUA, LUA looks first for a LUA-based 
+  library and then for a C-based library. The former is looked for in the 
+  LUA_PATH and the latter is in the LUA_CPATH.
+
+  We will consider /Users/you/ as being the current user home dir, and that
+  /Users/you/local/ is where she or he usually put the non-system-wide unix
+  hierarchy. 
+
+  Create the two directories, that will be used for storing the Splayd
+  libraries (one can use the system-wide paths but this is not recommended
+  as you may want to easily update these libraries with newer versions):
+	mkdir /Users/you/local/lualibs/
+	mkdir /Users/you/local/lualibs/lib
+	mkdir /Users/you/local/lualibs/clib
+
+  Setup your path as an environment variable. 
+  Edit the file ~/.bashrc (if it does not exist, create it) and add:
+
+  LUA_PATH="/Users/you/local/lualibs/lib/?.lua;/opt/local/share/lua/5.1/?.lua"
+  LUA_CPATH="/Users/you/local/lualibs/clib/?.so;/opt/local/lib/lua/5.1/?.so"
+  export LUA_PATH LUA_CPATH
+
+Don't forget to restart bash to take into account the new paths.
+
+==============================================================================
+                 MACPORTS -- BUILDING AND RUNNING THE SPLAYD
+==============================================================================
+
+Get the latest version of the splayd archive on http://www.splay-project.org
+Here, the instructions refer to version 0.93 but Mac-enabled version have 
+strictly higher version numbers, and contain the file Makefile.macosx
+  
+  Unpack:
+	tar xvzf splayd_0.93.tar.gz 
+	cd splayd_0.93
+	
+  Use the MacOS makefile
+	mv Makefile Makefile.old
+	mv Makefile.macosx Makefile
+	
+  Edit Makefile and set:
+
+   Directories (they are already set for MacPorts' defaults):
+	INCLUDE= -I/opt/local/lib/openssl97/include/ -I/opt/local/include/
+	LIBS= -L/opt/local/lib -llua -lm
+	OPENSSL_LIBS= -L/opt/local/lib/openssl97/lib/ -lcrypto -lssl
+   
+  Edit install.sh and set:
+	L_PATH="/Users/you/local/lualibs/lib/"
+	L_CPATH="/Users/you/local/lualibs/clib/"
+  (adapt to your homedir)
+
+  Build and install it:
+	make
+	./install.sh
+  (for the latter, no need to use sudo if your LUA_PATH and LUA_CPATH are
+   in your homedir folder hierarchy)
+
+  Prepare for running - edit settings.lua and:
+	- set splayd.settings.name to something (e.g. the machine DNS name)
+	- set additional restrictions for the jobs that will be running on 
+	  this splayd (if required)
+	- remove the lines at the end to finish the setup.
+	
+  Try the splay daemon (it will obviously fail to connect to a controller 
+  but should display the following:)
+	>> NAME: testname
+	>> KEY: local
+	>> Running on 32bits Darwin (little endian)
+
+==============================================================================
+                PART 4 -- BUILDING AND RUNNING THE CONTROLLER
+==============================================================================
+
+The controller does not require compilation, but requires a MySql database. If
+you already have one, just skip step A and ask the administrator to create a
+database and a user for you. If you use Mac OS server, MySQL is already
+installed on your machine.
+
+A. Install and run MySQL
+
+ Install mysql:
+	sudo port install mysql5-server mysql5
+	
+ Enable auto-launch on session start:	
+	sudo launchctl load -w /Library/LaunchDaemons/org.macports.mysql5.plist
+	
+ Proceed with initial setup:
+	sudo -u _mysql mysql_install_db5
+	sudo /opt/local/lib/mysql5/bin/mysql_secure_installation
+
+ Change the root password
+	mysqladmin -u root password NEWPASSWORD
+
+ Add "alias mysql='mysql5'" to .bashrc
+  		
+B. Create a database for the controller
+
+  Run 'mysql -u root -p' and enter your password. Then type:
+	create database splay;
+	GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'localhost'
+	IDENTIFIED BY 'splay' WITH GRANT OPTION;
+	quit;
+	
+C. Install the support for mysql and DataBase abstraction in Ruby
+
+ Install the support for openssl in ruby
+	sudo gem install openssl-nonblock
+	
+ Install ruby/SQL wrappers
+	sudo port install rb-mysql 
+	sudo port install rb-dbi +dbd_mysql
+		
+D. Download and initialize the controller
+
+  Get the latest controller from http://www.splay-project.org
+	tar xvfz controller-xxx.tar.gz
+	cd controller-xxx
+	
+  Edit the database information: edit lib/db_config.rb and edit:
+	class DBConfig
+		SQL_TYPE = "Mysql"
+		SQL_DB = "splay"
+		SQL_HOST = "localhost"
+		SQL_USER = "splay"
+		SQL_PASS = "splay"
+	end
+  (adapt to your database name and user name as chosen during step B
+   there is nothing to change if you used the values from this tutorial)
+
+  Initialize the database
+	ruby init_db.rb
+	
+  Launch the controller
+	ruby controller.rb
+	(use controller_fork if you plan to support 100+ splayd)
+	
+  Launch a splayd and observe the output of the controller. For running 
+  multiple splayd on the same machine, one has to set production to false
+  (see INSTALL in the splayd folder). Nonetheless, local runs are supposed
+  to be made outside of Splay.
+
+==============================================================================
+                               MACPORTS -- END
+==============================================================================
+
+
+
+==============================================================================
+                 INSTALLATION USING FINK (MACPORTS IS EASIER)
+==============================================================================
+
+We assume you already have Fink installed and running and you don't want to
+switch to MacPorts. If not, we recommend you use the MacPorts tutorial above.
+
+A. Configure Fink
+
+Go to http://www.finkproject.org/
+Download the latest version of fink and install it.
+Allow the usage of the 'unstable' branch of Fink (not needed with MacPorts)
+
+	Configure fink:
+	fink configure
+		[enter password]
+		-> accept all choices per default but say "Y" 
+	 	   when it asks about 'unstable' packages.
+	
+	Update it:
+		fink selfupdate ; fink update-all 
+
+==============================================================================
+                        FINK -- INSTALLING LUA SUPPORT
+==============================================================================
+
+A. Install the required packages:
+
+	fink install \
+		lua51 lua51-dev lua51-shlibs \
+		openssl097 openssl097-dev openssl097-shlibs
+
+B. Set up the LUA PATH
+
+  When one includes some library within LUA, LUA looks first for a LUA-based 
+  library and then for a C-based library. The former is looked for in the 
+  LUA_PATH and the latter is in the LUA_CPATH.
+
+  We will consider /Users/you/ as being the current user home dir, and that
+  /Users/you/local/ is where she or he usually put the non-system-wide unix
+  hierarchy. 
+
+  Create the two directories, that will be used for storing the Splayd
+  libraries (one can use the system-wide paths but this is not recommended
+  as you may want to easily update these libraries with newer versions):
+	mkdir /Users/you/local/lualibs/
+	mkdir /Users/you/local/lualibs/lib
+	mkdir /Users/you/local/lualibs/clib
+
+  Setup your path as an environment variable. 
+  Edit the file ~/.bashrc (if it does not exist, create it) and add:
+ 
+  LUA_PATH="/Users/you/local/lualibs/lib/?.lua;/sw/share/lua/5.1/?.lua"
+  LUA_CPATH="/Users/you/local/lualibs/clib/?.so;/sw/lib/lua/5.1/?.so"
+  export LUA_PATH LUA_CPATH
+
+Don't forget to restart bash to take into account the new paths.
+
+C. Since you are using Fink, some libraries have to be compiled and 
+  installed manually (not the case with MacPorts):
+
+ C1: LuaSocket
+   
+    Go to http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/ and 
+    download the latest version (2.0.2+)
+
+	Unpack it:
+     tar xfz luasocket-2.0.2.tar.gz 
+     cd luasocket-2.0.2/
+
+    Edit the configuration file 'config' and change the following:
+
+   	 -> set LUAINC=-I/sw/include
+	 -> set INSTALL_TOP_SHARE=/sw/share/lua/5.1/
+	 -> set INSTALL_TOP_LIB=/sw/lib/lua/5.1/
+	 -> comment "compiler and linker settings for linux"
+	 -> uncomment "compiler and linker settings for mac os x"
+	 -> change LD=export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc
+	    to LD=export MACOSX_DEPLOYMENT_TARGET="10.5"; gcc
+	
+	Build it and install:
+	 make ; sudo make install
+	
+ C2: LuaSec
+
+	Download and unpack it:
+	 wget http://luaforge.net/frs/download.php/3920/luasec-0.3.tar.gz
+	 tar xfz luasec-0.3.tar.gz
+	 cd luasec-0.3/
+	
+	Edit the Makefile and configure it the following way:
+	 LUAPATH=/sw/share/lua/5.1/
+	 CPATH=/sw/lib/lua/5.1/
+	 INCDIR=-I/sw/include 
+	 MACOSX_VERSION=10.5
+	
+	Build it and install:
+	 make macosx ; sudo make install
+
+==============================================================================
+                   FINK -- BUILDING AND RUNNING THE SPLAYD
+==============================================================================
+
+Get the latest version of the splayd archive on http://www.splay-project.org
+Here, the instructions refer to version 0.93 but Mac-enabled version have 
+strictly higher version numbers, and contain the file Makefile.macosx
+  
+  Unpack:
+	tar xvzf splayd_0.93.tar.gz 
+	cd splayd_0.93
+	
+  Use the MacOS makefile
+	mv Makefile Makefile.old
+	mv Makefile.macosx Makefile
+	
+  Edit Makefile and set:
+
+   Directories (they are set for MacPorts' defaults and need to be changed):
+	INCLUDE= -I/sw/include/ -I/sw/include/openssl
+	LIBS= -L/sw/lib -llua -lm
+	OPENSSL_LIBS= -L/sw/lib -lcrypto -lssl
+		
+  Edit install.sh and set:
+	L_PATH="/Users/you/local/lualibs/lib/"
+	L_CPATH="/Users/you/local/lualibs/clib/"
+  (adapt to your homedir)
+
+  Build and install it:
+	make
+	./install.sh
+  (for the latter, no need to use sudo if your LUA_PATH and LUA_CPATH are
+   in your homedir folder hierarchy)
+
+  Prepare for running - edit settings.lua and:
+	- set splayd.settings.name to something (e.g. the machine DNS name)
+	- set additional restrictions for the jobs that will be running on 
+	  this splayd (if required)
+	- remove the lines at the end to finish the setup.
+	
+  Try the splay daemon (it will obviously fail to connect to a controller 
+  but should display the following:)
+	>> NAME: testname
+	>> KEY: local
+	>> Running on 32bits Darwin (little endian)
+
+==============================================================================
+	                FINK -- BUILDING AND RUNNING THE CONTROLLER
+=============================================================================
+
+The controller does not require compilation, but requires a MySql database. If
+you already have one, just skip step A and ask the administrator to create a
+database and a user for you. If you use Mac OS server, MySQL is already
+installed on your machine.
+
+A. Install and run MySQL
+
+  Go to http://dev.mysql.com/ and download the latest version
+  Recommended: install the preference pane and the automatic startup item.
+  You will need to add "/usr/local/mysql/bin" to your PATH. 
+
+  Change the root password:
+	mysqladmin -u root password NEWPASSWORD
+
+B. Create a database for the controller
+
+  Run 'mysql -u root -p' and enter your password. Then type:
+	create database splay;
+	GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'localhost'
+	IDENTIFIED BY 'splay' WITH GRANT OPTION;
+	quit;
+
+C. Install the support for mysql and DataBase abstraction in Ruby
+
+ C1. Install the support for openssl in ruby
+	sudo gem install openssl-nonblock
+
+ C2. Install mysql support in Ruby:
+
+  C2_fink_a. Support for mysql in Ruby:
+	wget http://tmtm.org/downloads/mysql/ruby/mysql-ruby-2.8.1.tar.gz
+	tar zxvf mysql-ruby-2.8.1.tar.gz
+	cd mysql-ruby-2.8.1
+	ruby extconf.rb --with-mysql-config
+	make
+	// test it:
+	ruby test.rb [hostname] [username] [dbpassword]
+	// e.g. : ruby test.rb localhost splay splay
+	sudo make install	
+
+  C2_fink_b. Install Ruby DBI (abstraction layer for databases)
+	get dbi-0.4.1.tar.gz on
+	http://rubyforge.org/frs/?group_id=234&release_id=28765
+	tar xvfz dbi-0.4.1.tar.gz
+	cd dbi-0.4.1/
+	sudo ruby setup.rb all
+
+  C2_fink_c. Install DBI driver for MySQL
+	get dbd-mysql-0.4.2.tar.gz on
+	http://rubyforge.org/frs/?group_id=234&release_id=28765
+	tar xvfz dbd-mysql-0.4.2.tar.gz
+	cd dbd-mysql-0.4.2/
+	sudo ruby setup.rb all
+
+D. Download and initialize the controller
+
+ Get the latest controller from http://www.splay-project.org
+	tar xvfz controller-xxx.tar.gz
+	cd controller-xxx
+
+ Edit the database information: edit lib/db_config.rb and edit:
+	class DBConfig
+		SQL_TYPE = "Mysql"
+		SQL_DB = "splay"
+		SQL_HOST = "localhost"
+		SQL_USER = "splay"
+		SQL_PASS = "splay"
+	end
+  (adapt to your database name and user name as chosen during step B
+   there is nothing to change if you used the values from this tutorial)
+
+ Initialize the database
+	ruby init_db.rb
+
+ Launch the controller
+	ruby controller.rb
+	(use controller_fork if you plan to support 100+ splayd)
+
+ Launch a splayd and observe the output of the controller. For running 
+ multiple splayd on the same machine, one has to set production to false
+ (see INSTALL in the splayd folder). Nonetheless, local runs are supposed
+ to be made outside of Splay.
+
+==============================================================================
+                                 FINK -- END
+==============================================================================
+
+==============================================================================
+                      QUICK INSTALLATION USING MACPORTS
+==============================================================================
+
+We strongly recommend you use the regular tutorial. For convenience, here is
+the list of commands required to build the splayd and to run the controller.
+We assume that MacPorts is installed, as well as Apple's developper tools, and
+that only default paths are used in the system and in MacPorts' installed
+packages, and that you start in the splayd directory.
+
+sudo port selfupdate ; sudo port update outdated
+sudo port install lua openssl97 lua-luasocket lua-luasec
+mkdir $HOME/local/
+mkdir $HOME/local/lualibs/
+mkdir $HOME/local/lualibs/lib
+mkdir $HOME/local/lualibs/clib
+cat >> $HOME/.bashrc << EOF
+LUA_PATH="$HOME/local/lualibs/lib/?.lua;/opt/local/share/lua/5.1/?.lua"
+LUA_CPATH="$HOME/local/lualibs/clib/?.so;/opt/local/lib/lua/5.1/?.so"
+export LUA_PATH LUA_CPATH
+EOF
+source $HOME/.bashrc
+mv Makefile Makefile.old
+mv Makefile.macosx Makefile
+
+  Edit install.sh and set:
+	L_PATH="/Users/you/local/lualibs/lib/"
+	L_CPATH="/Users/you/local/lualibs/clib/"
+  (adapt to your homedir)
+
+make
+./install.sh
+
+  Prepare for running - edit settings.lua and:
+	- set splayd.settings.name to something (e.g. the machine DNS name)
+	- set additional restrictions for the jobs that will be running on 
+	  this splayd (if required)
+	- remove the lines at the end to finish the setup.
+	
+sudo port install mysql5-server mysql5
+sudo launchctl load -w /Library/LaunchDaemons/org.macports.mysql5.plist
+sudo -u _mysql mysql_install_db5
+sudo /opt/local/lib/mysql5/bin/mysql_secure_installation
+mysqladmin -u root password NEWPASSWORD
+cat >> $HOME/.bashrc << EOF
+alias mysql='mysql5'
+EOF
+source $HOME/.bashrc
+mysql -u root -p 
+(enter password)
+create database splay;
+GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'localhost'
+IDENTIFIED BY 'splay' WITH GRANT OPTION;
+quit;
+sudo gem install openssl-nonblock
+sudo port install rb-mysql 
+sudo port install rb-dbi +dbd_mysql
+
+(go to the controller directory)
+
+  Edit the database information: edit lib/db_config.rb and edit:
+	class DBConfig
+		SQL_TYPE = "Mysql"
+		SQL_DB = "splay"
+		SQL_HOST = "localhost"
+		SQL_USER = "splay"
+		SQL_PASS = "splay"
+	end
+	
+ruby init_db.rb
+ruby controller.rb
+
+launch a splayd, it should connect to the controller.

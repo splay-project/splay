@@ -1,0 +1,2722 @@
+<html>
+	<head>
+		<title>SPLAY Manual</title>
+		<style type="text/css">
+body {
+  font-size: 85%;
+  margin: 10px;
+  text-align: center;
+}
+
+.content {
+  text-align: left;
+  line-height: 130%;
+  margin: 0px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Lucida Grande", "Lucida Sans", "Lucida Sans Unicode", sans-serif;
+  margin-top: 1.4em;
+}
+
+pre {
+  background-color: #ddd;
+  font-family: "monospace", sans-serif;
+  font-size: 85%;
+  padding: 10px;
+  margin: 10px;
+}
+
+li {
+  margin-bottom: 0.5em;
+}
+
+table {
+  text-align: left;
+  margin: 0px;
+}
+
+table td {
+  padding: 5px;
+  border-bottom: 1px solid black;
+  font-size: 85%;
+}
+
+table th {
+  font-size: 80%;
+  width: 250px;
+  padding: 5px;
+  vertical-align: top;
+  background-color: #CCCCFF;
+  border-bottom: 1px solid black;
+}
+		</style>
+
+<link type="text/css" rel="stylesheet" href="syntax/syntax.css"></link>
+<script language="javascript" src="syntax/shCore.js"></script>
+<script language="javascript" src="syntax/shBrushLua.js"></script>
+
+<!-- syntax highlighting -->
+
+<script language="javascript">
+window.onload = function () {
+	dp.SyntaxHighlighter.ClipboardSwf = 'syntax/clipboard.swf';
+	dp.SyntaxHighlighter.HighlightAll('code');
+}
+</script>
+
+	</head>
+	<body>
+
+
+<!-- TODO
+
+Debugging with SPLAY
+
+- debugging with Lua
+
+- Testing restricted sockets locally
+
+socket = require"socket.core"
+rs = require"splay.restricted_socket"
+rs.init({max_sockets = 100})
+socket = rs.wrap(socket)
+package.loaded['socket.core'] = socket
+
+if socket.infos then
+  print(socket.infos())
+end
+
+sockets.infos()
+events.infos()
+
+Enabling debug mode or events, socket_events, show examples of outputs.
+Uncomment debug lines in libraries.
+
+
+-------------------------
+
+Simulating TCP and UDP problems
+
+- udp_drop_ratio
+- redefining RPCs
+- trace file
+
+-->
+
+
+
+<!-- TODO log VS print -->
+
+<!-- TODO remember to close() sockets, if not, there will be garbage collected
+but the ressource counter will not be decremented. -->
+
+		<div class="content">
+
+			<div id="floatdiv" style="
+					position:absolute;
+					margin: 0px; padding: 0px;
+					width:230px;height:550px;left:0px;top:0px;
+					background:#EEEEEE;
+					border:0px solid #2266AA;font-size: 90%;">
+						<ul style="margin-bottom: 0.3em;">
+							<li><a href="#introduction">Introduction</a></li>
+							<li><a href="#lua_basics">Lua basics</a></li>
+							<li>
+							<a href="#api">SPLAY API</a>
+
+								<ul>
+									<li><a href="#nodes">Nodes</a></li>
+									<li><a href="#conventions">Conventions</a></li>
+									<li><a href="#base">base</a></li>
+									<li><a href="#events">events</a></li>
+									<li><a href="#rpc">rpc</a></li>
+
+									<li><a href="#net">net</a></li>
+									<li><a href="#log">log</a></li>
+									<li><a href="#misc">misc</a></li>
+									<li><a href="#llenc">llenc</a></li>
+									<li><a href="#json">json</a></li>
+									<li><a href="#benc">benc</a></li>
+
+									<li><a href="#bits">bits</a></li>
+									<li><a href="#utils">utils</a></li>
+									<!-- TODO data_bits -->
+									<li><a href="#restricted_sockets">restricted_sockets</a></li>
+									<li><a href="#restricted_io">restricted_io</a></li>
+								</ul>
+							</li>
+
+							<li><a href="#local_vs_deployment">Deployement</a></li>
+							<li><a href="#luasocket">LuaSocket</a></li>
+							<li><a href="#restrictions">Restrictions</a></li>
+							<li><a href="#extend">Extend SPLAY</a></li>
+							<li><a href="#errors">Errors handling</a></li>
+						</ul>
+
+			</div>
+
+<script type="text/javascript"><!--
+/* Script by: www.jtricks.com
+ * Version: 20071017
+ * Latest version:
+ * www.jtricks.com/javascript/navigation/floating.html
+ */
+var floatingMenuId = 'floatdiv';
+var floatingMenu =
+{
+    targetX: 10,
+    targetY: 10,
+
+
+    hasInner: typeof(window.innerWidth) == 'number',
+    hasElement: typeof(document.documentElement) == 'object'
+        && typeof(document.documentElement.clientWidth) == 'number',
+
+    menu:
+        document.getElementById
+        ? document.getElementById(floatingMenuId)
+        : document.all
+          ? document.all[floatingMenuId]
+          : document.layers[floatingMenuId]
+};
+
+floatingMenu.move = function ()
+{
+    floatingMenu.menu.style.left = floatingMenu.nextX + 'px';
+    floatingMenu.menu.style.top = floatingMenu.nextY + 'px';
+}
+
+floatingMenu.computeShifts = function ()
+{
+    var de = document.documentElement;
+
+    floatingMenu.shiftX =  
+        floatingMenu.hasInner  
+        ? pageXOffset  
+        : floatingMenu.hasElement  
+          ? de.scrollLeft  
+          : document.body.scrollLeft;  
+    if (floatingMenu.targetX < 0)
+    {
+        floatingMenu.shiftX +=
+            floatingMenu.hasElement
+            ? de.clientWidth
+            : document.body.clientWidth;
+    }
+
+    floatingMenu.shiftY = 
+        floatingMenu.hasInner
+        ? pageYOffset
+        : floatingMenu.hasElement
+          ? de.scrollTop
+          : document.body.scrollTop;
+    if (floatingMenu.targetY < 0)
+    {
+        if (floatingMenu.hasElement && floatingMenu.hasInner)
+        {
+            // Handle Opera 8 problems
+            floatingMenu.shiftY +=
+                de.clientHeight > window.innerHeight
+                ? window.innerHeight
+                : de.clientHeight
+        }
+        else
+        {
+            floatingMenu.shiftY +=
+                floatingMenu.hasElement
+                ? de.clientHeight
+                : document.body.clientHeight;
+        }
+    }
+}
+
+floatingMenu.calculateCornerX = function()
+{
+    if (floatingMenu.targetX != 'center')
+        return floatingMenu.shiftX + floatingMenu.targetX;
+
+    var width = parseInt(floatingMenu.menu.offsetWidth);
+
+    var cornerX =
+        floatingMenu.hasElement
+        ? (floatingMenu.hasInner
+           ? pageXOffset
+           : document.documentElement.scrollLeft) + 
+          (document.documentElement.clientWidth - width)/2
+        : document.body.scrollLeft + 
+          (document.body.clientWidth - width)/2;
+    return cornerX;
+};
+
+floatingMenu.calculateCornerY = function()
+{
+    if (floatingMenu.targetY != 'center')
+        return floatingMenu.shiftY + floatingMenu.targetY;
+
+    var height = parseInt(floatingMenu.menu.offsetHeight);
+
+    // Handle Opera 8 problems
+    var clientHeight = 
+        floatingMenu.hasElement && floatingMenu.hasInner
+        && document.documentElement.clientHeight 
+            > window.innerHeight
+        ? window.innerHeight
+        : document.documentElement.clientHeight
+
+    var cornerY =
+        floatingMenu.hasElement
+        ? (floatingMenu.hasInner  
+           ? pageYOffset
+           : document.documentElement.scrollTop) + 
+          (clientHeight - height)/2
+        : document.body.scrollTop + 
+          (document.body.clientHeight - height)/2;
+    return cornerY;
+};
+
+floatingMenu.doFloat = function()
+{
+    var stepX, stepY;
+
+    floatingMenu.computeShifts();
+
+    var cornerX = floatingMenu.calculateCornerX();
+
+    var stepX = (cornerX - floatingMenu.nextX) * .07;
+    if (Math.abs(stepX) < .5)
+    {
+        stepX = cornerX - floatingMenu.nextX;
+    }
+
+    var cornerY = floatingMenu.calculateCornerY();
+
+    var stepY = (cornerY - floatingMenu.nextY) * .07;
+    if (Math.abs(stepY) < .5)
+    {
+        stepY = cornerY - floatingMenu.nextY;
+    }
+
+    if (Math.abs(stepX) > 0 ||
+        Math.abs(stepY) > 0)
+    {
+    	  floatingMenu.nextX = cornerX;
+        floatingMenu.nextY = cornerY;
+        floatingMenu.move();
+			
+    	  //floatingMenu.nextX += stepX;
+        //floatingMenu.nextY += stepY;
+        //floatingMenu.move();
+    }
+
+    setTimeout('floatingMenu.doFloat()', 20);
+};
+
+// addEvent designed by Aaron Moore
+floatingMenu.addEvent = function(element, listener, handler)
+{
+    if(typeof element[listener] != 'function' || 
+       typeof element[listener + '_num'] == 'undefined')
+    {
+        element[listener + '_num'] = 0;
+        if (typeof element[listener] == 'function')
+        {
+            element[listener + 0] = element[listener];
+            element[listener + '_num']++;
+        }
+        element[listener] = function(e)
+        {
+            var r = true;
+            e = (e) ? e : window.event;
+            for(var i = element[listener + '_num'] -1; i >= 0; i--)
+            {
+                if(element[listener + i](e) == false)
+                    r = false;
+            }
+            return r;
+        }
+    }
+
+    //if handler is not already stored, assign it
+    for(var i = 0; i < element[listener + '_num']; i++)
+        if(element[listener + i] == handler)
+            return;
+    element[listener + element[listener + '_num']] = handler;
+    element[listener + '_num']++;
+};
+
+floatingMenu.init = function()
+{
+    floatingMenu.initSecondary();
+    floatingMenu.doFloat();
+};
+
+// Some browsers init scrollbars only after
+// full document load.
+floatingMenu.initSecondary = function()
+{
+    floatingMenu.computeShifts();
+    floatingMenu.nextX = floatingMenu.calculateCornerX();
+    floatingMenu.nextY = floatingMenu.calculateCornerY();
+    floatingMenu.move();
+}
+
+if (document.layers)
+    floatingMenu.addEvent(window, 'onload', floatingMenu.init);
+else
+{
+    floatingMenu.init();
+    floatingMenu.addEvent(window, 'onload',
+        floatingMenu.initSecondary);
+}
+
+//--></script>
+
+
+			<div style="margin-left:255px; width: 705px">
+
+			<div style="color: #999999"><h1>SPLAY manual</h1></div>
+
+			<a name="introduction"></a>
+			<h1>Introduction</h1>
+
+			<p>
+				SPLAY provides a deployment system, an executive environment and 
+				some libraries to easily develop distributed applications. One can use SPLAY
+				applications locally, without
+				using the deployment system but still using SPLAY libraries.
+			</p>
+
+			<p>
+				This manual presents the basics for using SPLAY language and
+				libraries. For any questions, comments or suggestions of improvements,
+				please contact us.
+			</p>
+
+			<p>
+			<ul>
+
+				<li>First, get <a href="http://www.splay-project.org/">the latest
+					SPLAYd</a> and install it (read INSTALL in tarball).</li>
+				<li>SPLAY uses Lua as a base language. Lua is a simple and easy to
+				learn, well documented language. We will introduce Lua syntax in
+				this document, but we recommend you to take a look at
+				<a href="http://www.lua.org/manual/5.1/manual.html#2">Lua manual</a>
+				, particulary these sections:
+				<ul>
+					<li><a href="http://www.lua.org/manual/5.1/manual.html#2">The Language</a></li>
+					<li><a href="http://www.lua.org/manual/5.1/manual.html#5.1">Standard Libraries</a></li>
+
+				</ul>
+				You can also get and print this great
+				<a href="http://lua-users.org/wiki/LuaShortReference">quick sheat</a>.
+				</li>
+				<li>Read <a
+					href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a>
+				documentation if you need to use TCP and UDP socket directly (if not
+				sure, see below for <a href="#rpc">RPCs</a> which are more convenient in most cases).</li>
+
+			</ul>
+			</p>
+
+			<p>
+				<b>This manual has numerous examples. You can
+				test them directly by copy-pasting them in the Lua interpreter or writing them
+				into a file and executing them with command line Lua (according
+				you have SPLAYd libraries installed).
+				</b>
+			</p>
+
+			<!--
+			<p>
+				Lua hasn't threads but a coroutine system. To get a mostly transparent
+				thread system, we added call to the scheduler when waiting on IO
+				network operations.
+			</p>
+			-->
+
+			<a name="lua_basics"></a>
+
+			<h1>Lua basics</h1>
+
+			<p>
+				We strongly recommend users to consult the Lua manual, nonetheless, this
+				part goes over the most important Lua specificities.
+			</p>
+
+			<ul>
+				<li>Single line comment: <b>-- this is a comment</b>
+				<li>Multiple lines comment: <b>--[[ this is a comment ]]</b>
+
+				<li>Lua "natural" numerotation/indexes begins with 1, not 0.</li>
+				<li>Not equal is <b>~=</b></li>
+				<li>Dynamic typing.</li>
+				<li><b>Functions can return more than one value.</b></li>
+				<li>By convention, when there is an error, a function returns <b>nil</b> and "error message".</li>
+				<li>Table is the only complex stucture.</li>
+
+				<li>Functions are first class objects. One can pass on a function to another
+				function as a parameter, or redefine a function.
+				</li>
+				<li><b>If not declared as "local", a variable is global.</b></li>
+				<li><a href="#errors">Error handling.</a></li>
+				<li>Variable number of arguments (advanced topic, see
+				<a href="http://www.lua.org/manual/5.1/manual.html#2.5.9">documentation</a>).</li>
+				<li>Meta-tables (advanced topic, see 
+				<a
+					href="http://www.lua.org/manual/5.1/manual.html#2.8">documentation</a>).</li>
+
+				<li>Upvalues and closures (advanced topic, see documentation).</li>
+			</ul>
+
+			<a name="tables"></a>
+			<h2>Tables</h2>
+
+			<p>
+				In Lua, tables are used both for numerically indexed arrays and
+				hash-indexed maps (and can be a mix of both). 
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {} -- we create a table
+a[1] = "one"
+a["two"] = 2
+
+-- short syntax
+b = {[1] = "one", two = 2}
+</textarea>
+
+			<p>
+				Some functions rely on a numerical indexing and other
+				don't.<br />
+				For example, the size operator (#) counts only the size from index 1
+				(numeric) to n (numeric). If there is a hole (a missing numerical
+				index) in the increment, the size reported will be the size before the hole.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {}
+a[1] = "a"
+a[2] = "b"
+a[3] = "c"
+a[4] = "d"
+print(#a) -- => 4
+
+a[3] = nil
+print(#a) -- => 4
+a[3] = "e"
+print(#a) -- => 4
+
+table.insert(a, "f")
+print(#a) -- => 5
+table.remove(a, 3) -- (re-indexing to avoid a hole)
+print(#a) -- => 4
+</textarea>
+
+			<p>
+
+				Lua functions table.insert(), table.remove().. manipulate
+				numerically indexed tables without creating any holes, so if you only use
+				these functions, you will always have a correct size reported.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {}
+-- a table based FIFO
+table.insert(a, 1)
+table.insert(a, 2)
+table.insert(a, 3)
+print(table.remove(a)) -- => 1
+print(table.remove(a)) -- => 2
+print(table.remove(a)) -- => 3
+</textarea>
+
+			<p>
+				Two syntaxes exist for accessing a table by a key.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {}
+
+a["hello"] = "world"
+-- or
+a.hello = "world"
+</textarea>
+
+			<p>
+
+				Tables can contain everything, including functions.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {}
+
+a.hello = function()
+	print("world")
+end
+
+a.hello() -- => "world"
+</textarea>
+
+			<p>
+				Note that tables can be used to have an Object-oriented programming style. 
+				But one has to recall that Lua is closer to prototype programming than to
+				a classes and objects-based system. When one calls a table function
+				with ":" instead of ".", the first parameter given to the function will
+				be the table itself.
+			</p>
+			<p>
+				For advanced OOP/prototype style programming and heritance, meta-tables are needed
+				(see Lua manual).
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {}
+
+a.c = 1 -- internal counter
+
+a.count = function(self)
+	self.c = self.c + 1
+	return self.c
+end
+
+print(a:count()) -- => 2
+print(a:count()) -- => 3
+</textarea>
+
+			<a name="multiple_return"></a>
+			<h2>Multiple return</h2>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+function test(a, b)
+	return a + b, a * b
+end
+
+print(test(2, 3)) -- => 5, 6
+
+-- table is created from multiple return
+a = {test(a,b)} 
+</textarea>
+
+			<a name="function_first_class_object"></a>
+			<h2>Functions as first class objects</h2>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+function apply(func, a)
+	return func(a)
+end
+
+apply(print, "hello world")
+</textarea>
+
+<!--
+			<h2>One parameter function call</h2>
+
+			<p>
+				When you want to call a function with only one parameter that is a
+				string or a table, you can avoid using parenthesis.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+-- or
+require("splay.base")
+
+print("hello")
+-- or
+print"hello""
+
+print({"array"})
+-- or
+print{"array"}
+</textarea>
+-->
+
+			<a name="api"></a>
+			<h1>SPLAY API</h1>
+
+			<ul>
+				<li><a href="#nodes">Nodes</a></li>
+
+				<li><a href="#conventions">Conventions</a></li>
+				<li><a href="#base">splay.base</a></li>
+				<li><a href="#events">splay.events</a></li>
+				<li><a href="#rpc">splay.rpc</a></li>
+				<li><a href="#net">splay.net</a></li>
+				<li><a href="#log">splay.log</a></li>
+
+				<li><a href="#misc">splay.misc</a></li>
+				<li><a href="#llenc">splay.llenc</a></li>
+				<li><a href="#json">splay.json</a></li>
+				<li><a href="#benc">splay.benc</a></li>
+				<li><a href="#bits">splay.bits</a></li>
+				<li><a href="#utils">splay.utils</a></li>
+
+				<!-- TODO data_bits -->
+				<li><a href="#restricted_sockets">splay.restricted_sockets</a></li>
+				<li><a href="#restricted_io">splay.restricted_io</a></li>
+			</ul>
+
+			<a name="nodes"></a>
+			<h2>Nodes</h2>
+
+			<p>
+				As a convention, a node is a Lua table with (at least) two keys: "ip"
+				and "port".
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+node = {ip = "127.0.0.1", port = 20000}
+</textarea>
+
+			<p>
+				All network-related functions that require an ip and port (sometimes only
+				port) parameters will directly accept a "node" (including
+				LuaSocket when used through SPLAY).
+			</p>
+			<p>
+				Upon deployment, a SPLAY application receives the list of
+				other peers in "node" format. In most applications,
+				ip and port can be completely hidden using this convention.
+			</p>
+
+			<a name="conventions"></a>
+			<h2>Conventions</h2>
+
+			<p>
+				In this documentation, when we will use &lt;ip, port&gt; as function parameters; it
+				means that you can use 'ip' and 'port' as two separate arguments or together as a node. If we
+				use &lt;port&gt;, it means that you can give a single port parameter
+				or a node.
+			</p>
+
+			<p>
+				If a parameter is succeeded by '*', it means that it can be a single
+				object or an array containing many of them.
+			</p>
+
+			<a name="base"></a>
+			<h2>splay.base</h2>
+
+			<p>
+			splay.base contains the minimum to have a SPLAY application. 
+			Each SPLAY application begin with:
+
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+</textarea>
+			</p>
+
+			<p>
+				After requiring splay.base, some global variables will be set:
+				<ul>
+					<li>events (<a href="#events">splay.events</a>)</li>
+					<li>misc (<a href="#misc">splay.misc)</a></li>
+
+					<li>log (<a href="#log">splay.log)</a></li>
+					<li>socket (<a
+							href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">luasocket</a>
+						wrapped with splay extensions)</li>
+				</ul>
+				One can use them directly without having to "require" them again (but it
+				doesn't hurt).
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+print(misc) -- "pointer" to splay.misc
+
+misc2 = require("splay.misc")
+
+print(misc2) -- still a pointer to splay.misc
+
+-- 3 ways of calling the same function
+misc.gen_string(3)
+misc2.gen_string(3)
+splay.misc.gen_string(3)
+
+-- "misc", "log", "socket" and "events" are just predefined "shortcuts"
+</textarea>
+
+			</p>
+
+			<a name="events"></a>
+			<h2>splay.events</h2>
+
+			<p>
+				The event system is the core of the SPLAY runtime environment. It is
+				used by the thread system, network IO.. It basically acts as a global
+				scheduler. Times are expressed in term of seconds but you can use
+				fractions of seconds everywhere.
+			</p>
+
+			<p>
+
+				A SPLAY application finishes only when there is no more threads to execute.
+				All server functions (rpc.server(), net.server(),
+				net.udp_helper(), events.periodic()) contain a thread too. So, when you want that your
+				application terminates, use os.exit().
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>run([func*])</th>
+					<td>
+						Starts the main application loop.<br />
+						<br />
+
+						If one passes an argument to run(), it will be forwarded to events.thread().
+						By convention, the (anonymous) function given to run() will be
+						considered as the "main" function of the application.<br />
+						<br />
+						You can pass the same parameters as thread() function.
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+-- "main"
+events.run(function()
+	print("hello world")
+end)
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th style="width: 100px">thread(func*)</th>
+
+					<td>
+						Adds a new thread. The function given as a parameter will be run as a
+						new thread. For functions with arguments, one needs
+						to wrap it into an anonymous function. This function can also take an
+						array of functions as parameter.<br />
+						<br />
+						This function returns a thread reference (or an array, if
+						multiple functions are provided).
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+function hello()
+	print("world")
+end
+
+function my_print(s)
+	print(s)
+end
+
+events.run(function()
+	events.thread(hello)
+								
+	-- anonymous function
+	events.thread(function() my_print("test") end)
+
+	-- array of functions with one function pointer and one anonymous function
+	events.thread({hello, function() print("SPLAY") end})
+end)
+</textarea>
+
+					</td>
+				</tr>
+				<tr>
+
+					<th style="width: 100px">kill(thread_reference*)</th>
+					<td>
+						Kills a thread. This function can also take an
+						array of thread references as parameter.<br />
+					</td>
+				</tr>
+				<tr>
+					<th>periodic(time, func*[, force])</th>
+
+					<td>
+						Periodically (each "time" seconds) calls function "func". You can
+						also give an array of functions.<br />
+						<br />
+						If a single function is given (not an array) and force is not set
+						(or set to false), the next call will only be done if the previous one has
+						ended. When a call is missed, the retry will be done after a new
+						time period.<br />
+						<br />
+						This function returns a thread reference to the thread that
+						periodically creates new threads.
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+function slow(a)
+	print("slow", a)
+	events.sleep(7)
+end
+
+events.run(function()
+	local t = events.periodic(1, function() print("hello") end)
+	events.periodic(3, function() slow("one") end)
+	events.periodic(3, function() slow("two") end, true)
+	events.sleep(5)
+	events.kill(t)
+end)
+</textarea>
+					</td>
+
+				</tr>
+				<tr>
+					<th>dead(thread_reference)</th>
+					<td>
+						Checks if a thread is dead.
+					</td>
+				</tr>
+				<tr>
+					<th>status(thread_reference)</th>
+
+					<td>
+						Returns a thread status: "normal", "running", "suspended", "dead".
+					</td>
+				</tr>
+				<tr>
+					<th>sleep(time)</th>
+					<td>
+						Sleeps for "time" seconds.
+					</td>
+
+				</tr>
+				<tr>
+					<th>fire(name[, arg]*)</th>
+					<td>
+						Fires a new event called "name" with optional arguments.
+					</td>
+				</tr>
+				<tr>
+					<th>wait(name[, timeout])</th>
+
+					<td>
+						Waits for an event named "name".
+						<br /><br />
+						<ul>
+							<li>If no timeout value:<br />
+								Return value returned by fire (or <b>nil</b> if not).
+								</li>
+								<li>If timeout value:<br />
+								<ul>
+
+									<li>If wait has not timed out:<br />
+									Return true, value(s) returned by fire (or <b>nil</b> if not).
+									</li>
+									<li>If wait has timed out:<br />
+									Return false, "timeout"
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+events.run(function()
+
+	--[[ WITHOUT TIMEOUT PARAMETER ]]--
+
+	-- 1 fire() without parameters
+	
+	events.thread(function() print(events.wait("ev")) end)
+	-- will print nothing (nil)
+	print(events.fire("ev")) -- return: true
+	events.sleep(1)
+
+
+	-- 2 fire() with one parameter
+	
+	events.thread(function() print(events.wait("ev")) end)
+	-- will print: "hello"
+	print(events.fire("ev", "hello")) -- return: true
+	events.sleep(1)
+
+
+	-- 3 Two fires:
+	-- The first with multiple parameters.
+	-- The second one didn't fire, because the slot ("ev") is already used by
+	-- the first call (wait() has still not get it)
+
+	events.thread(function() print(events.wait("ev")) end)
+	-- will print: "hello, world"
+	print(events.fire("ev", "hello", "world")) -- return: true
+	print(events.fire("ev", "no effect")) -- return: false
+	events.sleep(1)
+
+
+	--[[ WITH TIMEOUT PARAMETER ]]--
+	
+	-- 1 fire() without parameters (not timeouted)
+	
+	events.thread(function() print(events.wait("ev", 2)) end)
+	-- will print: "true"
+	events.fire("ev")
+	events.sleep(1)
+	
+
+	-- 1.1 Without parameters (timeouted)
+	
+	events.thread(function() print(events.wait("ev", 0.01)) end)
+	-- will print: "false, timeout"
+	events.sleep(0.1)
+	events.fire("ev")
+	events.sleep(1)
+
+
+	-- 2 fire() with multiple parameters (not timeouted)
+	
+	events.thread(function() print(events.wait("ev", 2)) end)
+	-- will print: "true, hello, world"
+	events.fire("ev", "hello", "world")
+	events.sleep(1)
+
+end)
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th>yield()</th>
+					<td>
+						Lua has no "true" threading support but uses
+						coroutine (cooperative) approach. To support SPLAY threads, we have wrapped
+						network IO calling the events scheduler. Sometimes a function has to do
+						a long computation without doing any IO. In
+						that case, it is recommended to split the work of that
+						function and regulary call yield() to give a chance to other threads
+						to run.<br />
+
+						<br />
+						Always returns true.<br />
+						<br />
+						The following operations will do an implicit yield:
+						<ul>
+							<li>events.sleep()</li>
+							<li>events.wait()</li>
+							<li>Network operations (RPCs, ...)</li>
+
+							<li>Waiting to aquire a lock.</li>
+						</ul>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+-- dangerous thread: infinite loop, never yield,
+-- no IO operations inside the loop
+-- your application will stall
+function hello_bad()
+	local d = c
+	c = c + 1
+	while true do
+		print("world", d)
+	end
+end
+
+c = 1
+function hello_good()
+	local d = c
+	c = c + 1
+	while events.yield() do
+		print("world", d)
+	end
+end
+
+events.run({hello_good, hello_good, hello_good})
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th>lock()</th>
+
+					<td>
+						Returns a new lock object.
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+l = events.lock()
+
+function test()
+	l:lock()
+	print("in")
+	events.sleep(2)
+	l:unlock()
+	print("out")
+end
+
+events.run({test, test, test})
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th>semaphore(size)</th>
+					<td>
+
+						Like a lock, but "size" threads can be granted the right to pass
+						through.
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+l = events.semaphore(2)
+
+function test()
+	l:lock()
+	print("in")
+	events.sleep(2)
+	l:unlock()
+	print("out")
+end
+
+events.run({test, test, test, test, test})
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th>synchronize(func[, timeout])</th>
+					<td>
+						Permits to synchronize the access to some function "func".
+					</td>
+
+				</tr>
+				<tr>
+					<th>stats()</th>
+					<td>
+						Returns a string containing some stats about the scheduler.
+					</td>
+				</tr>
+			</table>
+
+			<h3>Secure locks</h3>
+
+			<p>
+				lock() and semaphore() can take an additionnal 'secure' parameter.
+				By default, its value is 1 (secure). That means if a thread that
+				hold a lock dies on error,
+				the lock(s) it holds are unlocked. Setting the lock with lock(false) or
+				semaphore(x, false), you will have a classic lock that will never be
+				automatically released. Other possible secure value is 2: if a thread holding a
+				lock dies (with or without error), it will release the lock.
+			</p>
+
+			<p>
+				But having a thread dying on error is certainly not an acceptable
+				behavior. It means that	<a href="#errors">error checking or protection</a> is missing when calling some
+				functions. Secure locks avoid some dead locks but they are only leverages for this problem.
+			</p>
+
+			<a name="rpc"></a>
+			<h2>splay.rpc, splay.urpc and splay.rpcq</h2>
+
+			<p>
+			RPC (Remote Procedure Call) allows to easily call a function on a remote
+			host and
+			locally get its result. RPC are often used in SPLAY applications
+			as they permit a
+				very clean, concise and readable code.
+			</p>
+
+			<p>
+			SPLAY provides three types of RPC: using TCP with connections on demand
+			(splay.rpc), using UDP (splay.urpc) and using TCP with persistent connections 
+			(splay.rpcq).
+			</p>
+
+			<p>
+				TCP, you need to choose different ports).
+			</p>
+
+			<p>
+				TCP RPC (splay.rpc) characteristics:
+
+				<ul>
+					<li>Functions can accept arguments of unlimited size and can receive
+					replies of unlimited size.</li>
+					<li>Establishing a connection is slower than UDP.</li>
+
+					<li>Each ongoing RPC uses one socket that is immediatly closed when the RPC
+					finished.</li>
+				</ul>
+			</p>
+
+			<p>
+				UDP RPC (splay.urpc) characteristics:
+				
+				<ul>
+					<li>Parameters and returned values must be smaller than 8kB.</li>
+					<li>No connection establishment =&gt; faster than TCP-based RPC.</li>
+
+					<li>Timeout + retry (configurable) if packet loss.</li>
+					<li>Only 1 socket used for both receiving and sending.</li>
+				</ul>
+			</p>
+
+			<p>
+				TCP RPC queue (splay.rpcq) characteristics (BETA):
+
+				<ul>
+					<li>Functions can accept arguments of unlimited size and can receive
+					replies of unlimited size.</li>
+
+					<li>Establishing a connection is slower than UDP.</li>
+					<li>Keeps connections open if no limits or closes them using LRU.</li>
+					<li>Queue messages and sends them using a window size for less delays.</li>
+					<li>Reconnects if the connection is lost when there are still messages in the queue.</li>
+					<li>Generally use more sockets than splay.rpc.</li>
+				</ul>
+
+			</p>
+
+<!--
+			<h2>splay.rpc and splay.urpc</h2>
+
+			<p>
+			RPC (Remote Procedure Call) allows to easily call a function on a remote
+			host and
+			locally get its result. RPC are often used in SPLAY applications
+			as they permit a
+				very clean, concise and readable code.
+			</p>
+
+			<p>
+				SPLAY provides two types of RPC: using TCP (called RPC) and using UDP
+				(called URPC).
+			</p>
+
+			<p>
+				Both RPC system can be used at the same time (and with same port).
+			</p>
+
+			<p>
+				TCP RPC characteristics:
+
+				<ul>
+					<li>Function can accept arguments of unlimited size and can receive
+					replies of unlimited size.</li>
+					<li>Establishing a connection is slower than UDP.</li>
+					<li>Each ongoing RPC uses one socket (important when running in
+					limited ressources environment).</li>
+				</ul>
+			</p>
+
+			<p>
+				UDP RPC characteristics:
+				
+				<ul>
+					<li>Parameters and returned values must be smaller than 8ko.</li>
+					<li>No connection establishment =&gt; faster than TCP-based RPC.</li>
+					<li>Timeout + retry (configurable) if packet loss.</li>
+					<li>Only 1 socket used for both receiving and sending.</li>
+				</ul>
+			</p>
+-->
+
+			<p>
+				The API is the same for each types of RPC:
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+rpc = require("splay.rpc")
+urpc = require("splay.urpc")
+rpcq = require("splay.rpcq")
+
+me = {ip = "127.0.0.1", port = 45678}
+-- another port for rpcq
+me2 = {ip = "127.0.0.1", port = 45679}
+
+rpc.server(me)
+urpc.server(me)
+rpcq.server(me2)
+
+function call_me(a)
+	return "You called me with "..a
+end
+
+events.run(function()
+		print(rpc.call(me, {"call_me", "rpc"}))
+		print(urpc.call(me, {"call_me", "urpc"}))
+		print(rpcq.call(me2, {"call_me", "rpcq"}))
+		os.exit() -- rpc.server() is still running...
+end)
+</textarea>
+
+			<p>
+				You can not only call functions but also get the value of a variable, a
+				variable in a table.. You can remotely access to the everything except the
+				function pointers.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+rpc = require("splay.rpc")
+
+me = {ip = "127.0.0.1", port = 45678}
+
+var = 5
+var2 = {1, 2}
+var3 = {
+	key = "value",
+	func = function(a)
+		return "func_call "..tostring(a)
+	end
+}
+
+events.run(function()
+	rpc.server(me)
+
+	-- VARIABLES
+
+	print(rpc.call(me, "no_var")) -- return nil
+	print(rpc.call(me, "var"))
+	print(rpc.call(me, "var2"))
+	print(rpc.call(me, "var2[2]"))
+	print(rpc.call(me, "var3['key']"))
+	print(rpc.call(me, "var3.key"))
+
+	-- FUNCTION CALLS
+
+	-- call without parameters
+	print(rpc.call(me, {"var3.func"}))
+	print(rpc.call(me, "var3.func")) -- shortcut if no parameters
+
+	-- call with parameter "hello"
+	print(rpc.call(me, {"var3.func", "hello"}))
+	os.exit() -- rpc.server() is still running...
+end)
+</textarea>
+
+			<p>
+				If one calls a non existing function/variable, the system will
+				consider that the variable exists and it is equal to <b>nil</b>. So, if one
+				was calling a function with parameters, the error will report
+				"calling a variable with parameters".
+			</p>
+
+			<p>
+				When rpc.server() is running, your program will not finish even if the
+				"main" function (events.run()) finishes. That's because the server
+				thread is still running and waiting for RPC calls. You can call
+				os.exit() in order to end it.
+			</p>
+
+			<table cellspacing="0">
+
+				<tr>
+					<th>server(&lt;port&gt; [, max])</th>
+					<td>
+						Runs a new RPC server on port "port". "max" (only for TCP) sockets at the
+						same time (default = unlimited). Return true or <b>nil</b> and error message
+						if there is a problem (like port already binded).
+					</td>
+				</tr>
+				<tr>
+
+					<th>stop_server(&lt;port&gt;)</th>
+					<td>
+						Stops the server on the specified port.
+					</td>
+				</tr>
+				<tr>
+					<th>acall(&lt;ip, port&gt;, func_a, timeout)</th>
+
+					<td>
+						"func_a" is an array that contains <br />
+						(1) the name of the function to be called (the first parameter)<br />
+						(2) parameters for the function	being called (subsequent parameters)<br />
+						To call a function without parameters, it's possible just to provide
+						the function name directly (not inside an array).
+						<br /><br />
+						If the RPC is successful, it returns:<br />
+						true, numerical array with function return values<br />
+						<br />
+						If the RPC has failed, it returns:<br />
+						false, error message<br />
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+rpc = require("splay.rpc")
+
+me = {ip = "127.0.0.1", port = 45678}
+
+function concat(a, b)
+	return a..b
+end
+
+events.run(function()
+	rpc.server(me)
+	local ok, r = rpc.acall(me, {"concat", 'one', 'two'})
+	if ok then
+		print("result", r[1])
+	else
+		print("failed", r) -- r contain error message
+	end
+	os.exit() -- rpc.server() is still running...
+end)
+</textarea>
+
+					</td>
+				</tr>
+				<tr>
+					<th>call(&lt;ip, port&gt;, func_a, timeout)</th>
+					<td>
+
+						Same as acall() but directly returns the function call replies (like
+						if you call a local function). The problem is that it can be
+						difficult or impossible to distinguish between a function replying
+						an error and a transmission problem.<br />
+						<br />
+						Only to use in non faulty environments or if one can easily
+						detect the error with reply.
+					</td>
+				</tr>
+				<tr>
+					<th>ecall(&lt;ip, port&gt;, func_a, timeout)</th>
+
+					<td>
+						Same as acall() but on network errors, throws an exception (error()) that
+						you should catch with pcall() (if you do not, the thread will die).
+					</td>
+				</tr>
+				<tr>
+					<th>ping(&lt;ip, port&gt;[, timeout])</th>
+					<td>
+						RPC level ping.<br />
+
+						(old) Returns true if the ping succeeds, false otherwise.<br />
+						(new) Returns time if the ping succeeds, <b>nil</b> and the reason otherwise.<br />
+
+<textarea name="code" class="lua" cols="60" rows="10">
+-- Computing RTT using RPC ping (SPLAYd version <= 0.92)
+function RTT(node)
+	local t = misc.time()
+	if rpc.ping(node) then
+		return misc.time() - t
+	else
+		return nil, "timeout"
+	end
+end
+
+-- In SPLAYd version > 0.92, ping() behaves exactly like RTT()
+</textarea>
+
+					</td>
+				</tr>
+				<tr>
+					<th>proxy(&lt;ip, port&gt;)</th>
+
+					<td>
+						Creates a new rpc proxy for one host. Calls are expressed still in a 
+						more natural manner. Exception on errors (like for ecall()).<br />
+						<br />
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+rpc = require("splay.rpc")
+
+me = {ip = "127.0.0.1", port = 45678}
+
+function concat(a, b)
+	return a..b
+end
+
+events.run(function()
+	rpc.server(me)
+	local node = rpc.proxy(me)
+	local ok, err = pcall(function()
+		local r = node:concat("one", "two")
+		print("result", r)
+	end)
+	if not ok then print("failed", err) end
+	os.exit() -- rpc.server() is still running...
+end)
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th>mode [variable]</th>
+
+					<td>
+						Informational variable that contain 'rpc', 'urpc' or 'rpcq' depending
+						of the type of RPC used.
+					</td>
+				</tr>
+				<tr>
+					<th>
+						settings = {<br />
+						max = nil (all),<br />
+
+						default_timeout = 60 (urpc = 40),<br />
+						}<br />
+						<!--
+						<br />
+						settings.server_timeout = 60 (TCP)<br />
+						settings.nodelay = nil (TCP)<br />
+						settings.server_nodelay = nil (TCP)<br />
+						settings.try_free = true (UDP)<br />
+						settings.default_timeout = 40 (UDP)<br />
+						settings.retry_number = 2 (UDP)<br />
+						settings.cleaning_after = 120 (UDP)<br />
+						settings.cleaning_interval (UDP)<br />
+						-->
+					</th>
+					<td>
+						max: set the max number of simultaneous outgoing RPCs (default nil =
+						unlimited)<br />
+						default_timeout: set the max RPC total time (60s
+						for rpc and rpcq, 40s for urpc)<br />
+
+					</td>
+				</tr>
+			</table>
+
+			<p>
+				Often RPCs are used as the base mechanism to exchange information
+				between peers. RPC calls generally have a timeout. But calling an RPC
+				can generate another RPC call from the called function and recursively.
+				So, a very important rule is that the called function must reply ASAP
+				(return value) without adding unnecessary delays from another RPC call or
+				a long computation. Generally, that consists of creating a thread that will do
+				the additionnal things when the function returns.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+-- practical example of callback usage
+require("splay.base")
+rpc = require("splay.rpc")
+
+me = {ip = "127.0.0.1", port = 30000}
+
+function callback(node, count)
+	print("result after "..count.." nodes")
+	events.fire("node", node)
+end
+
+function recursive_find(m)
+	-- Creating a new thread, the function will return immediately
+	events.thread(function()
+		if math.random(10) == 1 then
+			-- i'm the destination
+			rpc.call(m.origin, {'callback', me, m.count})
+		else
+			m.count = m.count + 1
+			local next = me -- no budget for more nodes
+			rpc.call(next, {'recursive_find', m})
+		end
+	end)
+end
+
+function find()
+	local m = {origin = me, count = 0}
+	rpc.call(me, {'recursive_find', m})
+	return events.wait("node")
+end
+
+events.run(function()
+	rpc.server(me)
+	local dest = find()
+	print(dest.ip, dest.port)
+	os.exit()
+end)
+</textarea>
+
+			<a name="net"></a>
+
+			<h2>splay.net</h2>
+
+			<p>
+				Collection of methods to ease the usage of TCP and UDP.
+			</p>
+
+			<p>
+			When net.server() or net.udp_helper() are running, your program will
+			not finish even if the
+				"main" function (events.run()) finishes. That's because the server
+				thread is still running and waiting for incomming connections. You can
+				call os.exit() to end it.
+			</p>
+
+			<table cellspacing="0">
+
+				<tr>
+					<th>client(&lt;ip, port&gt;, handlers)</th>
+					<td>
+						Equivalent of server() using multiple handlers but used when we need
+						to connect a peer.
+					</td>
+				</tr>
+				<tr>
+					<th>server(&lt;port&gt;, handlers[, max])</th>
+
+					<td>
+						Start a new TCP server listening on port "port". Each time a new
+						client connects, the function handler will be called with the socket
+						given as parameter. "max" connections (sockets) at the same time
+						(default = unlimited)<br />
+
+<textarea name="code" class="lua" cols="60" rows="10">
+-- SYNCHRONOUS PROTOCOL
+-- a functionnal multi client echo server
+-- test it with "telnet localhost 20000"
+
+require("splay.base")
+net = require("splay.net")
+
+function echo_server(s)
+	local r = s:receive("*l")
+	while r do
+		s:send(r)
+		r = s:receive("*l")
+  end
+end
+
+net.server(20000, echo_server)
+
+events.run()
+</textarea>
+
+						<br />
+						When "func" returns, some cleanups are done (like closing the socket,
+						decrementing the number of connections..). So "func" should NOT
+						return before you are done with the socket. The problem appear for
+						asynchronous protocols where two threads (send and receive) are
+						launched.
+
+<textarea name="code" class="lua" cols="60" rows="10">
+-- ASYNCHRONOUS PROTOCOL
+-- test it with "telnet localhost 20000"
+
+require("splay.base")
+net = require("splay.net")
+
+function send(s)
+	while events.sleep(1) do
+		if not s:send("hello\n") then break end
+	end
+end
+
+function receive(s)
+	s:receive("*l")
+	-- will make send() fail
+	s:close()
+end
+
+function hello_server(s)
+	events.thread(function() send(s) end)
+	events.thread(function() receive(s) end)
+	events.wait("finish_"..tostring(s))
+	print("finished")
+end
+
+events.run(function()
+	net.server(20000, hello_server)
+end)
+</textarea>
+
+						<br />
+
+						<h3>Callback system</h3>
+						Four functions can be defined:
+						<ul>
+							<li>receive</li>
+							<li>send</li>
+							<li>initialize</li>
+							<li>finalize</li>
+
+						</ul>
+						All of them are optionnal. Every callback is called with the socket
+						as first argument, and true for the second argument if we are the
+						initiator of the connection.<br />
+						<br />
+						When the socket is connected, initialize() is called. If it doesn't return
+						'false', send() and receive() threads are launched. If one of them
+						finishes, the other one is killed immediatly. At the end, but before
+						the socket is closed, finalize() is called.<br />
+						<br />
+						The callback table can be indexed by position (1 = receive, 2 =
+						send, 3 = initialize, 4 = finalize) or with hash names:
+						{initialize = init, send = send, receive = receive, finalize = finalize}<br />
+
+<textarea name="code" class="lua" cols="60" rows="10">
+-- ASYNCHRONOUS PROTOCOL
+-- test it with "telnet localhost 20000"
+
+-- Using new callback system
+
+require("splay.base")
+net = require("splay.net")
+
+function send(s)
+	while events.sleep(1) do
+		if not s:send("hello\n") then break end
+	end
+end
+
+function receive(s)
+	s:receive("*l")
+	-- if receive() ends, send() will be killed
+end
+
+events.run(function()
+	net.server(20000, {receive, send})
+end)
+
+</textarea>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+-- ASYNCHRONOUS PROTOCOL
+
+-- A more complete example with all callbacks
+-- and a client
+
+require("splay.base")
+net = require("splay.net")
+
+function send(s)
+  while events.sleep(1) do
+    if not s:send("hello\n") then break end
+  end
+end
+
+function receive(s)
+  s:receive("*l")
+end
+
+function init(s, connect)
+  -- if this function returns false,
+  -- the connection will be closed immediatly
+  local ip, port = s:getpeername()
+  if connect then
+    print("connection to: "..ip..":"..port)
+  else
+    print("connection from: "..ip..":"..port)
+  end
+end
+
+function final(s)
+  local ip, port = s:getpeername()
+  print("closing: "..ip..":"..port)
+end
+
+function c_send(s)
+  events.sleep(10)
+  s:send("bye\n")
+end
+
+function c_receive(s)
+  while true do
+    local m = s:receive("*l")
+    if not m then break end
+    print(m)
+  end
+end
+
+events.run(function()
+  net.server(20000, {receive, send, init, final})
+  net.client({ip = "localhost", port = 20000},
+    {send = c_send, receive = c_receive,
+    finalize = final, initialize = init})
+end)
+</textarea>
+					</td>
+				</tr>
+				<tr>
+					<th>stop_server(&lt;port&gt;)</th>
+					<td>
+
+						Stops the TCP server listening on port "port".
+					</td>
+				</tr>
+
+				<tr>
+					<th>udp_helper(&lt;port&gt;, func)</th>
+					<td>
+						Returns a new "UDP object" and starts a server listening on port
+						"port" and calling the function "func" when we receive an incomming
+						UDP packet.<br />
+
+						<br />
+						If handler value is <b>nil</b>, for each packet, a new event is fired with
+						name "udp:<port>".<br />
+						<br />
+						This function permits the reuse of the UDP socket that is used for the server.
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+net = require("splay.net")
+
+function print_server(data, ip, port)
+  print(">>>", data, ip, port)
+end
+u = net.udp_helper(20000, print_server)
+
+events.run(function()
+  u.s:sendto("hello", "127.0.0.1", 20000)
+  u.s:sendto("world", "127.0.0.1", 20000)
+	os.exit() -- net.udp_helper() is still running...
+end)
+</textarea>
+					</td>
+				</tr>
+			</table>
+
+			<a name="log"></a>
+			<h2>splay.log (and splay.out)</h2>
+
+			<p>
+				Log system permits the logging of messages of different levels through
+				differents outputs. <b>splay.out</b> contains some common outputs like <b>disk</b> and
+				<b>network</b>.
+			</p>
+
+			<p>
+				Levels:
+				<ul>
+
+					<li>(1) debug</li>
+					<li>(2) notice</li>
+					<li>(3) warning</li>
+					<li>(4) error</li>
+					<li>(5) print</li>
+				</ul>
+
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>global_level (variable)</th>
+					<td>
+						Permits to set the log of the default log instance 'log'.
+					</td>
+				</tr>
+
+				<tr>
+					<th>new([level [, prefix]])</th>
+					<td>
+						Creates a new log object that will log with level 'level' and
+						append a 'prefix' before output. Default level: 3 (warning).
+					</td>
+				</tr>
+				<tr>
+					<th>log_object.level [variable]</th>
+
+					<td>
+						From 1 (debug) to 5 (print), permits to choose the minimum log
+						level.
+					</td>
+				</tr>
+				<tr>
+					<th>
+						log:debug(msg)<br />
+						log:notice(msg)<br />
+
+						log:warn(msg)<br />
+						log:error(msg)<br />
+						log:print(msg)
+					</th>
+					<td>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+events.run(function()
+
+	-- standard log
+	log:debug("debug") -- will not be displayed
+	log:print("print")
+	log.global_level = 1
+	log:debug("debug again")
+
+	-- log object
+	local l_o = log.new(2, "[my_log]") -- default level set to 'notice'
+	l_o:debug("debug") -- will not be displayed
+	l_o.level = 1
+	l_o:debug("debug again")
+end)
+</textarea>
+					</td>
+				</tr>
+
+				<tr>
+					<th>out.print()</th>
+					<td>
+						Returns a function that will take a parameter and print it to the
+						standard output (+flush). By default, this function is used by the log
+						system.
+					</td>
+				</tr>
+				<tr>
+					<th>out.file(file_name)</th>
+
+					<td>
+						Returns a function that will take a parameter and append it to a
+						file.
+					</td>
+				</tr>
+				<tr>
+					<th>out.network(ip, port)</th>
+					<td>
+						Returns a function that will take a parameter and sends it throught
+						the TCP socket opened with <b>ip<b/> and <b>port</b>.
+					</td>
+
+				</tr>
+			</table>
+			
+			<p>
+				Log system has been designed to permit a complete and easy customization.
+				So every function can be overridden to obtain a custom behavior. Example below
+				shows how to redirect logs.
+			</p>
+			
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+out = require("splay.out")
+
+events.run(function()
+
+	l_o = log.new(2, "[mylog]")
+
+	l_o:info("test") -- => [mylog] test
+
+	-- we customize write to append current thread name and time
+	-- the 3 dots (...) are an Lua construct for variable arguments
+	l_o.write = function(level, ...)
+		-- Still call the global_write to add the level 'labels'
+		return log.global_write(
+				level, coroutine.running(), string.format("%.4f", misc.time()), ...)
+	end
+
+	l_o:info("test") -- => [mylog] N: thread: 0x8b784d8  1233181778.3707  test
+
+	-- we override the out function to log to a file
+	l_o.out = out.file("my_log.txt")
+	l_o:info("test")
+
+	-- launch: nc -l -p 20000
+	-- we override the out function to do network logging
+	l_o.out = out.network("localhost", 20000)
+	l_o:info("test")
+end)
+</textarea>
+
+			<p>
+				Most SPLAY libraries contain an integrated log object (with default
+				level set to warning). This object is called "l_o". So you can customize
+				it (change the level, outputs, ...) or completely replace it.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+rpc = require("splay.rpc")
+
+rpc.l_o.level = 2
+</textarea>
+
+			<a name="misc"></a>
+			<h2>splay.misc</h2>
+
+			<p>
+				Container for various functions.
+			</p>
+
+			<table cellspacing="0">
+
+				<tr>
+					<th>dup(e)</th>
+					<td>
+						Recursively duplicates an element (generally a table).<br />
+						<br />
+
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {s = "hello"}
+b = a
+b.s = "world"
+print(a.s) -- => "world"
+
+a = {s = "hello"}
+b = misc.dup(a)
+b.s = "world"
+print(a.s) -- => "hello"
+</textarea>
+					</td>
+
+				</tr>
+				<tr>
+					<th>equal(o1, o2)</th>
+					<td>
+						Compares two "objects" (resursively).
+					</td>
+				</tr>
+				<tr>
+					<th>split(s, sep)</th>
+
+					<td>
+						Splits a string 's' with 'sep'. Returns a table.
+					</td>
+				</tr>
+				<tr>
+					<th>size(t)</th>
+					<td>
+						Returns the size of a table, counts all elements (see isize() for example).
+					</td>
+
+				</tr>
+				<tr>
+					<th>isize(t)</th>
+					<td>
+						Returns the size of a table watching only the highest numerical
+						index.
+<textarea name="code" class="lua" cols="60" rows="10">
+a = {"a", "b", "c"}
+
+print(#a) -- => 3
+-- a = {1 = "a", 2 = "b", 3 = "c"}
+
+a[2] = nil
+
+print(#a) -- => 1
+-- a = {1 = "a", 3 = "c"}
+-- but # count only numerical indexes without holes (nil is a hole)
+
+print(misc.isize(a) -- => 3
+-- because isize search the biggest numerical index
+
+print(misc.size(a) -- => 2
+-- count all elements (nil are not elements)
+
+a["key"] = "val"
+a["key2"] = "val2"
+-- a = {1 = "a", 3 = "c", key = "val", key2 = "val2"}
+
+print(#a) -- => 1
+print(misc.isize(a) -- => 3
+print(misc.size(a) -- => 4
+</textarea>
+					</td>
+				</tr>
+
+				<tr>
+					<th>random_pick(t[, n])</th>
+					<td>
+						Picks randomly 'n' elements from a table 't'. If 'n' is not given,
+						picks only one element and returns it. If 'n' is given, return an array
+						of picked elements (without repetitions).
+					</td>
+				</tr>
+				<tr>
+					<th>shuffle(a)</th>
+
+					<td>
+						Returns a new array containing the same elements as "a" but randomly
+						shuffled.
+					</td>
+				</tr>
+				<tr>
+					<th>time()</th>
+					<td>
+						Return unixtime (with milliseconds precision).
+					</td>
+
+				</tr>
+				<tr>
+					<th>between_c(i, a, b)</th>
+					<td>
+						Circular between. Return <b>true</b> if 'i' is between 'a' and 'b'.
+						Useful for DHT overlay.
+					</td>
+				</tr>
+				<tr>
+					<th>gen_string(mult[, string])</th>
+
+					<td>
+						Generates a string resulting of 'mult' times 'string'
+						concatenations. If you don't give a 'string' parameter, this
+						function will generate a string of length 'mult' (containing only
+						'a's).
+					</td>
+				</tr>
+				<tr>
+				<tr>
+					<th>merge(t1, t2[, t3, .., tn])</th>
+					<td>
+						 Tries to merge n tables (2 by 2 from left).
+						 If they are both arrays, it concatenates elements from the first, then
+						 from the second. If one or more are mixed or hashed; it does a key based merge and gives the 
+						 priority to the first one if there are collisions.
+						 Return a new table.
+					</td>
+
+				</tr>
+				<tr>
+					<th>hash_ascii_to_byte(s)</th>
+					<td>
+						Transforms a hexadecimal ASCII string in bytes (2 times shorter).
+					</td>
+				</tr>
+				<tr>
+					<th>assert_object(object)</th>
+
+					<td>
+						Returns a new object that calls assert() on all function calls on
+						the wrapped object.
+					</td>
+				</tr>
+				<tr>
+					<th>assert_function(func)</th>
+					<td>
+						Returns a new function that calls assert() before calling "func".
+					</td>
+
+				</tr>
+				<tr>
+					<th>convert_base(input, b1, b2)</th>
+					<td>
+						Converts "input" (string or number) in base "b1" (default 10) to base
+						"b2" (default 16). Return a string. Base accepted: 2 to 26.
+					</td>
+				</tr>
+				<tr>
+					<th>table_concat(t1, t2)</th>
+
+					<td>
+						<b>(DEPRECATED, see merge)</b><br />
+						Concatenates two tables into one.
+					</td>
+				</tr>
+			</table>
+
+			<a name="llenc"></a>
+			<h2>splay.llenc</h2>
+
+			<p>
+				Block encoding for network transfers.
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>wrap(socket)</th>
+					<td>
+						After wrapping, the socket can send and receive full blocks
+						of any kind of data.
+					</td>
+
+				</tr>
+				<tr>
+					<th>socket:send(block)</th>
+					<td>
+						Sends a block (can be a numerical array of blocks, in that case multiple
+						send will be done).
+					</td>
+				</tr>
+				<tr>
+					<th>socket:receive(max_length)</th>
+
+					<td>
+						Receives a block or <b>nil</b>; "error" if too long.
+					</td>
+				</tr>
+				<tr>
+					<th>socket:receive_array(number, max_length)</th>
+					<td>
+						Same as receive() but waits "number" blocks and replies with a
+						table containing them.
+					</td>
+
+				</tr>
+			</table>
+
+			<a name="json"></a>
+			<h2>splay.json</h2>
+
+			<p>
+				Data encoding for network transfers.
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>wrap(socket)</th>
+					<td>
+						After wrapping, the socket can send and receive any kind of Lua
+						data (that can be serialized).
+					</td>
+				</tr>
+				<tr>
+					<th>socket:send(data)</th>
+
+					<td>
+						Sends a Lua data structure.
+					</td>
+				</tr>
+				<tr>
+					<th>socket:receive()</th>
+					<td>
+						Receives a Lua data structure or <b>nil</b>, error.
+					</td>
+
+				</tr>
+			</table>
+
+			<!-- TODO link to the base JSON lib -->
+
+			<a name="benc"></a>
+			<h2>splay.benc</h2>
+
+			<p>
+				Bittorrent encoding library. Extended to encode all Lua data but still
+				compatible. This encoding is very fast and used by RPCs.
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>wrap(socket)</th>
+					<td>
+						After wrapping, the socket can send and receive any kind of Lua
+						data (that can be serialized). That wrapper will use LLenc wrapper
+						too.
+					</td>
+				</tr>
+				<tr>
+
+					<th>socket:send(block)</th>
+					<td>
+						Sends a Lua data structure.
+					</td>
+				</tr>
+				<tr>
+					<th>socket:receive()</th>
+					<td>
+
+						Receives a Lua data structure or <b>nil</b>, error.
+					</td>
+				</tr>
+				<tr>
+					<th>endcode(data)</th>
+					<td>
+						Encodes data with bencoding.
+					</td>
+				</tr>
+
+				<tr>
+					<th>decode(data)</th>
+					<td>
+						Decodes bencoded data.
+					</td>
+				</tr>
+			</table>
+
+			<a name="bits"></a>
+
+			<h2>splay.bits</h2>
+
+			<p>
+				Bits representation as a high level structure (table) with conversions
+				(from and) to binary strings. The table contain true and false to
+				represent 1 and 0.
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>init(bits, size)</th>
+
+					<td>
+						Initializes a bit table of size "size". All values are false (0).
+					</td>
+				</tr>
+				<tr>
+					<th>ascii_to_bits(s[, max_length])</th>
+					<td>
+						Converts a binary string (8bits/char) to a bit table.
+					</td>
+
+				</tr>
+				<tr>
+					<th>bits_to_ascii(bits)</th>
+					<td>
+						Returns a binary string (8bits/char) from a bit table.
+					</td>
+				</tr>
+				<tr>
+					<th>show_bits(bits)</th>
+
+					<td>
+						Returns a human string representation of the bit table (or a binary
+						string): "00110000 11001111...".
+					</td>
+				</tr>
+				<tr>
+					<th>size(bits)</th>
+					<td>
+						Returns the size of the bit table (or a binary string).
+					</td>
+
+				</tr>
+				<tr>
+					<th>count(bits)</th>
+					<td>
+						Returns the number of '1's in the bit table (or a binary string).
+					</td>
+				</tr>
+				<tr>
+					<th>is_set(bits, bit)</th>
+
+					<td>
+						Returns if bit number "bit" is set. The first parameter can be a bit
+						table or a binary string.
+					</td>
+				</tr>
+			</table>
+
+			<a name="utils"></a>
+			<h2>splay.utils</h2>
+
+			<p>
+
+				Collection of methods for local testing.
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>generate_job(position, [nb_nodes, [first_port, [list_size,
+						[random]]]])</th>
+					<td>
+						Generates a fake job variable for local testing.<br />
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+if not job then
+	-- can NOT be required in SPLAY deployments !
+	local utils = require("splay.utils")
+	if #arg < 2 then
+		print("lua "..arg[0].." my_position nb_nodes")
+		os.exit()
+	else
+		local pos, total = tonumber(arg[1]), tonumber(arg[2])
+		job = utils.generate_job(pos, total, 20001)
+	end
+end
+
+-- now you can use "job" as in real deployment
+
+</textarea>
+
+Then makes a file "run.sh" with that content:<br />
+
+<textarea cols="60" rows="12">
+#!/bin/sh
+
+max=50
+
+killall lua
+sleep 1
+
+for n in `seq $max`; do
+	rm $n.log > /dev/null 2>&1
+	lua your_app.lua $n $max > $n.log 2>&1 &
+done
+</textarea>
+<br />
+
+And makes it executable (chmod 755 run.sh). Now you can use it to run your local
+SPLAY application (./run.sh).
+					</td>
+				</tr>
+			</table>
+
+<!--
+			<h2>Bits</h2>
+
+			bits.lua:function ascii_to_bits(s, max_length)
+			bits.lua:function bits_to_ascii(bits)
+			bits.lua:function show_bits(bits)
+			bits.lua:function is_set(d, bit)
+			bits.lua:function set(d, bit)
+-->
+
+			<a name="restricted_sockets"></a>
+			<h2>splay.restricted_sockets</h2>
+
+			<p>
+				When deploying a SPLAY application, it will be sandboxed. Restricted
+				socket is the network sandbox. While keeping LuaSocket compatibility,
+				it provides additional functions.
+			</p>
+
+			<p>
+				These additionnal functions are only available when sockets are
+				restricted (when using SPLAY deployment). This can be used to monitor
+				real usage of the protocols, or to adapt the live behavior of the
+				application.
+			</p>
+
+			<table cellspacing="0">
+				<tr>
+					<th>socket.infos()</th>
+					<td>
+						Returns a (human readable) string describing state of the limitations and
+						the current usage. To get numerical values use limits() and stats().
+					</td>
+				</tr>
+				<tr>
+
+					<th>socket.limits()</th>
+					<td>
+						Returns max_send, max_receive, max_sockets, start_port, end_port,
+						local_ip
+					</td>
+				</tr>
+				<tr>
+					<th>socket.stats()</th>
+					<td>
+
+						Returns total_sent, total_received, total_tcp_sockets,
+						total_udp_sockets
+					</td>
+				</tr>
+			</table>
+
+			<a name="restricted_io"></a>
+			<h2>splay.restricted_io</h2>
+
+			<p>
+				When deploying a SPLAY application, it will be sandboxed. This
+				section will describe how sandboxing is done for the Lua IO library,
+				particulary file system accesses.
+			</p>
+
+			<p>
+				Like restricted_socket wraps LuaSocket, restricted_io wraps
+				original IO functions behind a security layer that applies
+				additionnal restrictions.
+			</p>
+
+			<p>
+				First, the library need to be initialized via the init() function. With
+				that function, we will exactly set the restrictions we need and
+				particulary give a path to the folder that will represent the root of the
+				virtual restricted file system.
+			</p>
+
+			<p>
+				When you open a file in RIO (Restricted IO), the file path will be
+				mapped to a flat file using a MD5 hash. So all your virtual files will
+				appear in the same directory with hash names. Then, additionnal
+				restrictions will be applied like:
+
+				<ul>
+
+					<li>number of file descriptors</li>
+					<li>maximum number of files</li>
+					<li>maximum disk space</li>
+				</ul>
+
+				Total disk space used can be a little more than the total disk space
+				because the file system generally allocates blocks to store data. So, in the
+				worst case, true size on disk will be: block_size * max_files + max_size.
+			</p>
+
+			<table cellspacing="0">
+
+				<tr>
+					<th>init(settings)</th>
+					<td>
+						RIO will not work correctly if it is not initialized, so if you want to
+						use it locally to test it, call this function first.<br />
+						<br />
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+-- Force restricted_io for local tests 
+io = require("splay.restricted_io")
+
+-- All parameters except directory are optional
+io.init({
+	directory = "tmpfs", -- mandatory
+	no_std = true, -- disable stdin, stdout and stderr
+	keep_popen = false, -- disable dangerous popen() function
+	max_file_descriptors = 128,
+	max_size = 128 * 1024 * 1024, -- total file system size
+	max_files = 1024,
+	clean = true -- delete all files in the directory
+})
+
+-- use IO as usual
+</textarea>
+						
+					</td>
+				</tr>
+
+				<tr>
+					<th>All Lua IO functions</th>
+					<td>
+						<a href="http://www.lua.org/manual/5.1/manual.html#5.7">Lua IO
+							API</a></td>
+				</tr>
+			</table>
+
+			<a name="local_vs_deployment"></a>
+
+			<h1>Local execution VS Deployement over a testbed</h1>
+
+			<p>
+				This section describes how to code applications that will run both locally and in the deployment execution environment 
+				without modifications.
+			</p>
+
+			<p>
+				The first important information relates to: if and how the application
+				is running under a deployment.
+				If it is
+				deployed, a new
+				environment variable is available: "job". "job" is a table and contains:
+				<ul>
+					<li><b>job.me</b> node actually running the instance of the application</li>
+
+					<li><b>job.position</b> node absolute position in the job list</li>
+					<li><b>job.nodes</b> list of nodes<br />
+					job.me == job.nodes[job.position]
+					only if type of list is "head" (not "random") and if list size &gt;=
+					job.position</li>
+					<li><b>job.list_type</b> type of the list: "head" or "random"</li>
+
+				</ul>
+			</p>
+
+			<p>
+			For more informations about what a "node" is, consult
+			<a href="#nodes">API section</a>.
+			</p>
+
+			<p>
+			Just by checking the presence of the "job" variable, an instance of the
+				application can know if it
+				runs locally or under deployment. 
+				In the former case, one has probably launched
+				application directly within the Lua interpreter. In that case, one can use
+				additionnal command line arguments.
+			</p>
+
+			<p>
+				You can specialize the behavior of your application using the job
+				informations too. For example, if the job instance receives a "head" 
+				type list, the rendez-vous node can be the first one in the list. If 
+				the list type is "random", the rendez-vous node can be an external hard coded
+				node.
+			</p>
+
+			<p>
+				Given this information, it's very practical to have only one source
+				code used for all the tests in every possible deployment (and
+				local) parameters.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+
+if job then -- SPLAY deployment
+	me = job.me
+else -- local
+	if arg[1] and arg[2] then
+		me = {ip = arg[1], port = tonumber(arg[2])}
+	else
+		print(arg[0].." <ip> <port>")
+		os.exit()
+	end
+end
+
+...
+</textarea>
+
+			<p>
+
+				Also see <a href="#utils">splay.utils.generate_job()</a> to 
+				auto generate a fake
+				"job" variable for local testing.
+			</p>
+
+			<a name="luasocket"></a>
+			<h1>LuaSocket</h1>
+
+			<p>
+				As previously said, we have kept the whole LuaSocket API unchanged adding
+				our restrictions and events layers. But we have extended the syntax to
+				accept nodes where possible.
+			</p>
+
+			<p>
+				You should visit the LuaSocket homepage for more informations.
+			</p>
+
+			<a name="restrictions"></a>
+			<h1>Restrictions</h1>
+
+			<p>
+				When you deploy your SPLAY applications, they are run in a sandbox.
+			<p>
+
+			<p>
+				Here is the full list of removed functions:
+
+				<ul>
+					<li>load()</li>
+					<li>loadfile()</li>
+					<li>dofile()</li>
+					<li>os.execute()</li>
+
+					<li>os.getenv()</li>
+					<li>os.setlocale()</li>
+					<li>io.popen()</li>
+					<li>debug.*</li>
+				</ul>
+
+				They are disabled because they could introduce a security issue or
+				permit getting information about the host running SPLAYd.
+			</p>
+
+			<p>
+				All other Lua functions (and libraries) are available. Most
+				IO functions have been wrapped to work in a secure virtual file system
+				but the API is exactly the same.
+			</p>
+
+			<p>
+				If you really need to use one of these functions locally, you can test 
+				existence of the function as usual (or test if the 'job' variable is
+				set) before calling it.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+if loadfile then
+	loadfile("filename")
+end
+</textarea>
+
+			<p>
+
+				One must care to close() the socket after using it, because it 
+				decreases the ressource counter (without doing that,
+				the ressource will be freed by the garbage collector but the ressource
+				counter will not be decreased).
+			</p>
+
+			<a name="extend"></a>
+			<h1>Extend SPLAY</h1>
+
+			<p>
+				SPLAY can be extended both by Lua modules (libraries) and/or C modules.
+			</p>
+			<p>
+
+				The additionnal module is be loaded as usual (see Lua documentation).
+				Before using deployment, you need to edit
+				jobd.Lua and add the name of the module in the sandbox white list.
+			</p>
+			<p>
+				Within official SPLAYd, we only include modules that do not present any
+				security/ressources issues.
+			</p>
+
+
+			<a name="errors"></a>
+			<h1>Errors handling in Lua/SPLAY</h1>
+
+			<p>
+
+				In Lua, a convention for most functions is to return the result when there
+				are no errors and to return <b>nil</b>, "error message" if something goes wrong.
+				SPLAY follows this convention too.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+function division(a, b)
+	if b == 0 then
+		return nil, "0 division"
+	else
+		return a / b
+	end
+end
+
+print(division(5, 0))
+</textarea>
+
+			<p>
+				But Lua has another mechanism with the functions
+				<a href="http://www.lua.org/manual/5.1/manual.html#pdf-error">error()</a>
+				and
+				<a href="http://www.lua.org/manual/5.1/manual.html#pdf-pcall">pcall()</a>.
+				Protect call permits execution of a function in a "protected"
+				environment and "catches" errors raised by error().
+			</p>
+
+			<p>
+				If there are no
+				errors, pcall() returns true and return of the called function. If there is
+				an error, pcall() returns false and error description.
+			</p>
+			<p>
+				If you don't "catch" an error, the thread that has raised it will die.
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+function division(a, b)
+	if b == 0 then
+		error("0 division")
+	end
+	return a / b
+end
+
+print(pcall(function() division(5, 0) end))
+</textarea>
+
+			<p>
+				LuaSocket provides a different way to define "protected
+				functions" and to define a finalizer code if a problem occurs. You can
+				read
+				<a href="http://lua-users.org/wiki/FinalizedExceptions">this article</a>
+
+				to understand how it works. If you want to use it, you can simply do:
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+protect, try, newtry = socket.protect, socket.try, socket.newtry
+</textarea>
+
+			<p>
+				In SPLAY, we have defined another way, more similar to the classical
+				exception mechanism. You will use a try() function that takes the
+				function to execute as the first parameter, and then an array of "catch"
+				functions that will be executed if an exception was throw().
+			</p>
+
+<textarea name="code" class="lua" cols="60" rows="10">
+require("splay.base")
+try, throw = misc.try, misc.throw
+
+try(function()
+	try(function()
+			print("start of my function")
+			--throw("div_by_0")
+			throw("runtime", "division by 0")
+			print("end of my function")
+		end,
+		{
+			div_by_0 = function(value)
+				print("Division by 0")
+			end
+		}
+	)
+	end,
+	{
+		runtime = function(value)
+			print("*runtime*", value)
+		end,
+		another_exception = function()
+			print("not used")
+		end
+	}
+)
+</textarea>
+
+</textarea>
+
+			</div>
+		</div>
+	</body>
+</html>
+
