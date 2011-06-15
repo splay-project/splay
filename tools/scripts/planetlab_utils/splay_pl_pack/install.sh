@@ -6,13 +6,6 @@ if [[ $1 == "" ]]; then
 	echo "${0} <node file>"
 	exit
 fi
-type="standard"
-
-if [[ $type != "standard" ]]; then
-	echo "install type not recognized"
-	exit
-fi
-echo "Install type: ${type}"
 
 rm -fr logs
 mkdir logs
@@ -23,7 +16,7 @@ touch my_known_hosts
 
 for h in `cat $1`; do
 	echo "Installing on: $h"
-	./host_install.sh $h $type > logs/$h.log 2>&1 &
+	./host_install.sh $h > logs/$h.log 2>&1 &
 	sleep 1
 done
 

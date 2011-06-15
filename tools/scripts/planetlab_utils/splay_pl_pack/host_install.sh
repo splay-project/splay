@@ -10,19 +10,14 @@ fi
 
 h=$1
 
-type="standard"
-
 url="http://splay2.unineuchatel.ch/"
 script="local_install.sh"
 
 # $RANDOM to protect against proxy/cache
+script_t="local_install.sh?$RANDOM"
+slice="unineple_splay"
 
-if [[ $type == "standard" ]]; then
-	script_t="local_install.sh?$RANDOM"
-	slice="unineple_splay"
-fi
-
-echo "Install type: ${type} on ${1} (${slice})"
+echo "Install on ${1} (${slice})"
 
 ssh -o StrictHostKeyChecking=no -i ./planetlab-key ${slice}@$h "rm -f ${script}; wget ${url}${script_t}; mv ${script_t} ${script}; chmod 755 ${script}; ./${script}"
 

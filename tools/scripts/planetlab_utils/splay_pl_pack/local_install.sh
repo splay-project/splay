@@ -27,7 +27,6 @@ fi
 echo "CLEAN"
 rm -rf splayd_planetlab/
 rm splayd_planetlab.tar.*
-rm -rf leo/
 
 echo "SPLAYD"
 rd=$RANDOM
@@ -38,7 +37,6 @@ if [[ $? != 0 ]]; then
 	sleep 5
 	echo "SPLAYD AGAIN"
 	rm splayd_planetlab.tar.gz
-	#wget "http://splay3.unineuchatel.ch/files/splayd_planetlab.tar.gz?${rd}"
 	wget "http://splay2.unineuchatel.ch/splayd_planetlab.tar.gz?${rd}"
 	mv splayd_planetlab.tar.gz?${rd} splayd_planetlab.tar.gz
 	tar xpvf splayd_planetlab.tar.gz
@@ -53,16 +51,6 @@ let "port = 11000 + $RANDOM % 10"
 sed -i -e "s/PORT/$port/" -e "s/CONTROLLER/$controller/" $settings
 #sed -i s/print/--print/ $settings
 #sed -i s/os.exit/--os.exit/ $settings
-
-#echo "BOOT"
-#
-##if ! grep "run.sh" /etc/rc.local > /dev/null ; then
-#echo "echo '#!/bin/sh' > /etc/rc.local" > local
-#echo "echo 'touch /var/lock/subsys/local' >> /etc/rc.local" >> local
-#echo "echo 'su -l $user -c /home/$user/splayd_planetlab/run.sh'  >> /etc/rc.local" >> local
-#sudo bash local
-#rm local
-##fi
 
 echo "RUN"
 cd /home/${user}/splayd_planetlab
