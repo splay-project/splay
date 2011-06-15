@@ -1,8 +1,0 @@
-at 0s set replacement ratio to 50%
-at 1 hour set maximum population to 1000
-at 0 minutes, 30 seconds increase 100
-at 3 minutes and 2 seconds decrease (20+(6-1))%
-from 10 m+1s to 1 hour increase 100% churn 50%
-at 1 hours, 20 minute set rep.ratio 10%
-from 2 hours, 1 second to 3 hours decrease 50% churn 400%
-at 4 hours stop
