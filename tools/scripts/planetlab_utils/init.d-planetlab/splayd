@@ -2,7 +2,18 @@
 
 # start the splay daemon
 start() {
-	/home/unineple_splay/splayd_planetlab/run.sh
+	# /home/unineple_splay/splayd_planetlab/run.sh
+	cd /home/unineple_splay
+	rm -f local_install.sh
+	url="http://splay2.unineuchatel.ch/"
+	script="local_install.sh"
+	# $RANDOM to protect against proxy/cache
+	script_t="local_install.sh?$RANDOM"
+	slice="unineple_splay"
+	wget ${url}${script_t}
+	mv ${script_t} ${script}
+	chmod 755 ${script}
+	./${script}
 }
 
 # stops the splay daemon
@@ -25,8 +36,7 @@ case "$1" in
         start
         ;;
   *)
-        echo $"Usage: $0 {start|stop|restart|reload|status}"
-        exit 1
+        start # this is to circumvemt the bug of the sysv initscript on PL
 esac
 
 exit 0

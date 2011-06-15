@@ -65,7 +65,7 @@ This is discouraged, as it introduces the single element in the Splay Runtime
 that rely on blocking sockets. This option is offered as emergency solution
 in case of errors.
 --]]
-local use_async_dns=false
+local use_async_dns=true
 
 function wrap(socket, err)
 
