@@ -5,7 +5,7 @@ import sys
 import urllib
 
 if len(sys.argv) != 4:
-	print "Usage: ./add_nodes_to_slice.py pl_username pl_pwd pl_slice_name"
+	print "Usage: ./get_nodes_in_slice.py pl_username pl_pwd pl_slice_name"
 	sys.exit(2)
 
 api_server = xmlrpclib.ServerProxy('https://www.planet-lab.eu/PLCAPI/')
@@ -27,3 +27,4 @@ f=open(slice_name+'_nodes.txt','w')
 for node in slice_nodes:
     print >>f,node['hostname']
 f.close()
+print "Nodes list written in file: "+slice_name+'_nodes.txt'
