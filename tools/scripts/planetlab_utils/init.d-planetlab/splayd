@@ -2,18 +2,22 @@
 
 # start the splay daemon
 start() {
-	# /home/unineple_splay/splayd_planetlab/run.sh
+	# logging
+	log_out="/home/unineple_splay/init_out"	
+	err_out="/home/unineple_splay/err_out"
+	echo "" > $log_out
+	echo "" > $err_out
 	cd /home/unineple_splay
-	rm -f local_install.sh
+	rm -f local_install.sh >> $log_out 2>> $err_out
 	url="http://splay2.unineuchatel.ch/"
 	script="local_install.sh"
 	# $RANDOM to protect against proxy/cache
 	script_t="local_install.sh?$RANDOM"
 	slice="unineple_splay"
-	wget ${url}${script_t}
-	mv ${script_t} ${script}
-	chmod 755 ${script}
-	./${script}
+	wget ${url}${script_t} >> $log_out 2>> $err_out
+	mv ${script_t} ${script} >> $log_out 2>> $err_out
+	chmod 755 ${script} >> $log_out 2>> $err_out
+	./${script} >> $log_out 2>> $err_out
 }
 
 # stops the splay daemon
