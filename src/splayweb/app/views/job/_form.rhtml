@@ -1,0 +1,380 @@
+<% if SplayController::localization %>
+<script src="http://maps.google.com/maps?file=api&amp;v=2&amp;key=<%= SplayController::google_key %>" type="text/javascript"></script>
+
+<script type="text/javascript">
+//<![CDATA[
+
+	// http://brennan.offwhite.net/maps/icons/
+	if (GBrowserIsCompatible()) {
+		$(document).ready(function() {
+				
+			//GLog.write("start");
+			var center;
+			var circle;
+			var geocoder = new GClientGeocoder() 
+
+			var map = new GMap2(document.getElementById("map_canvas"));
+			map.setCenter(new GLatLng(46.99984008366778, 6.949866414070129), 2);
+			map.addControl(new GLargeMapControl());
+			map.addControl(new GMapTypeControl());
+			//map.enableScrollWheelZoom();
+			map.addControl(new GScaleControl()) ;
+			//map.addControl(new GOverviewMapControl()) ;
+
+			var icon = new GIcon();
+			//icon.image = "http://labs.google.com/ridefinder/images/mm_20_red.png";
+			//icon.shadow = "http://labs.google.com/ridefinder/images/mm_20_shadow.png";
+			//icon.iconSize = new GSize(12, 20);
+			//icon.shadowSize = new GSize(22, 20);
+			//icon.iconAnchor = new GPoint(6, 20);
+			icon.image = "<%= image_path "map/num/iconb.png" %>";
+			icon.iconSize = new GSize(20, 34);
+			icon.iconAnchor = new GPoint(10, 34);
+
+			var markerOptions = {icon: icon, draggable: true,  title: "Job center"};
+
+			function set_fields(point) {
+				$('#job_latitude').val(point.y);
+				$('#job_longitude').val(point.x);
+			}
+
+			function set_marker(point) {
+				if(center == null) {
+					center = new GMarker(point, markerOptions);
+					map.addOverlay(center);
+					circle = createCircle(point, parseFloat($('#job_distance').val()));
+					map.addOverlay(circle);
+					GEvent.addListener(center, 'dragend', function() {
+							set_fields(this.getPoint());
+							set_marker(this.getPoint());
+							});
+				} else {
+					center.setLatLng(point);
+					if (circle != null) {
+						map.removeOverlay(circle);
+						circle = null;
+					}
+					circle = createCircle(point, $('#job_distance').val());
+					map.addOverlay(circle);
+				}
+			}
+
+			var baseIcon = new GIcon();
+			baseIcon.iconSize = new GSize(12, 20);
+			baseIcon.iconAnchor = new GPoint(6, 20);
+			
+			var resetIcon = new GIcon(baseIcon);
+			resetIcon.image = "http://labs.google.com/ridefinder/images/mm_20_red.png";
+			var availableIcon = new GIcon(baseIcon);
+			availableIcon.image = "http://labs.google.com/ridefinder/images/mm_20_green.png";
+			var unavailableIcon = new GIcon(baseIcon);
+			unavailableIcon.image = "http://labs.google.com/ridefinder/images/mm_20_orange.png";
+			var registeredIcon = new GIcon(baseIcon);
+			registeredIcon.image = "http://labs.google.com/ridefinder/images/mm_20_blue.png";
+			var undefIcon = new GIcon(baseIcon);
+			undefIcon.image = "http://labs.google.com/ridefinder/images/mm_20_white.png";
+
+			var resetOptions = {icon: resetIcon,  title: "RESET"};
+			var availableOptions = {icon: availableIcon,  title: "AVAILABLE"};
+			var unavailableOptions = {icon: unavailableIcon,  title: "UNAVAILABLE"};
+			var registeredOptions = {icon: registeredIcon,  title: "REGISTERED"};
+			var undefOptions = {icon: undefIcon,  title: "MULTIPLE STATUS"};
+
+			function s_m(type, lat, lng) {
+				var ll = new GLatLng(lat, lng);
+				var gm;
+				if (type == "AVAILABLE") {
+					gm = new GMarker(ll, availableOptions);
+				} else if (type == "UNAVAILABLE") {
+					gm = new GMarker(ll, unavailableOptions);
+				} else if (type == "RESET") {
+					gm = new GMarker(ll, resetOptions);
+				} else if (type == "REGISTERED") {
+					gm = new GMarker(ll, registeredOptions);
+				} else {
+					gm = new GMarker(ll, undefOptions);
+				}
+				map.addOverlay(gm);
+			}
+
+			////////////////////////////////////////////////////////////////////////7///////
+			// http://www.ioncannon.net/gis/32/approximating-a-circle-with-a-polygon/
+			var d2r = Math.PI / 180;	// degrees to radians
+			var r2d = 180 / Math.PI;	// radians to degrees
+			var earthsradius = 6378;	// 6378 is the radius of the earth in km
+
+			function createCircle(p, radius) // radius in km
+			{
+				var lng = parseFloat(p.x);
+				var lat = parseFloat(p.y);
+				//GLog.write("createCircle long: " + lng + " lat: " + lat + " radius: " + radius);
+				var points = 32;
+				// find the radius in lat/lon
+				var rlat = (radius / earthsradius) * r2d;
+				var rlng = rlat / Math.cos(lat * d2r);
+
+				var extp = new Array();
+				for (var i = 0; i < points + 1; i++) // one extra here makes sure we connect the
+				{
+					var theta = Math.PI * (i / (points/2));
+					var ex = lng + (rlng * Math.cos(theta)); // center a + radius x * cos(theta)
+					var ey = lat + (rlat * Math.sin(theta)); // center b + radius y * sin(theta)
+					extp.push(new GPoint(ex, ey));
+				}
+				return new GPolyline(extp, "#000000", 2);
+			}
+			////////////////////////////////////////////////////////////////////////7///////
+
+			GEvent.addListener(map, 'click', function(overlay, point) {     
+				if(!point) { return; }
+				set_fields(point);
+				set_marker(point);
+			});
+
+			// Ajax to find geoposition of the user
+			var cache_ll = null;
+			$("#get_ll").click(function() {
+				if (cache_ll == null) {
+					$.get("/job/long_lat", function(data) {
+						cache_ll = data;
+						var ll = data.split("|")
+						if (ll[0] == "" || ll[1] == "") {
+							alert("Cannot localize you.");
+						} else {
+							$('#job_latitude').val(ll[0]);
+							$('#job_longitude').val(ll[1]);
+							set_marker(new GLatLng(ll[0], ll[1]));
+						}
+					});
+				} else {
+					var ll = cache_ll.split("|")
+					if (ll[0] == "" || ll[1] == "") {
+						alert("Cannot localize you.");
+					} else {
+						$('#job_latitude').val(ll[0]);
+						$('#job_longitude').val(ll[1]);
+						set_marker(new GLatLng(ll[0], ll[1]));
+					}
+				}
+			});
+
+			// Monitor change "as you type" of lat/long and report it on the map
+			$("#job_latitude").keyup(function() {
+					set_marker(new GLatLng(
+							parseFloat($('#job_latitude').val()),
+							parseFloat($('#job_longitude').val())));
+			});
+			$("#job_longitude").keyup(function() {
+					set_marker(new GLatLng(
+							parseFloat($('#job_latitude').val()),
+							parseFloat($('#job_longitude').val())));
+			});
+			$("#job_distance").keyup(function() {
+					set_marker(new GLatLng(
+							parseFloat($('#job_latitude').val()),
+							parseFloat($('#job_longitude').val())));
+			});
+
+
+<% for splayd in @g_splayds -%>
+s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitude'] %>);
+<% end %>
+
+		});
+	}
+
+//]]>
+</script>
+<% end #localization %>
+
+<%= error_messages_for 'job' %>
+
+<!--[form:job]-->
+<table class="smart_table" cellspacing="0">
+<thead>
+<tr>
+  <th class="nobg" style="width: 300px"></th>
+  <th class="top" style="width: 300px">Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+	<th>Name</th>
+	<td><%= text_field 'job', :name, :size => 30 %></td>
+</tr>
+<tr>
+	<th>Description</th>
+	<td><%= text_field 'job', :description, :size => 60 %></td>
+</tr>
+<tr>
+	<th>Number of splayds</th>
+  <td>
+    <%= text_field 'job', :nb_splayds, :size => 4 %>
+		<% if current_user.demo == 1 %>
+		<font color="red"><b>Demo: max 100</b></font>
+		<% end %>
+  </td>
+</tr>
+<tr>
+  <th>Trace (number of lines => number of splayds)</th>
+  <td>
+    <% if current_user.demo == 1 %>
+      <font color="red"><b>Demo: disabled</b></font>
+    <% else %>
+      <%= file_field 'job', 'trace' %>
+    <% end %>
+  </td>
+</tr>
+<tr>
+	<th>Max execution time (seconds)
+	</th>
+  <td>
+    <%= text_field 'job', :max_time, :size => 4 %>
+		<% if current_user.demo == 1 %>
+		<font color="red"><b>Demo: max 300</b></font>
+		<% end %>
+  </td>
+</tr>
+<tr>
+	<th>Splayd's version</th>
+	<td>
+		<% s_v = Splayd.find_by_sql("SELECT DISTINCT version FROM splayds WHERE version IS NOT NULL") %>
+    <%= select 'job', :splayd_version, s_v.collect{|p| [p.version]}.sort.reverse %>
+	</td>
+</tr>
+<tr>
+	<th>Max load</th>
+	<td><%= text_field 'job', :max_load, :size => 4 %></td>
+</tr>
+<tr>
+	<th>Min uptime (seconds)</th>
+	<td><%= text_field 'job', :min_uptime, :size => 5 %></td>
+</tr>
+
+<% if SplayController::localization %>
+  
+<tr>
+	<th>Country/Continent code (2 letters)</th>
+	<td><%= text_field 'job', :localization, :size => 2 %></td>
+</tr>
+<tr>
+	<th>Geolocalization (latitude / longitude / distance (km))</th>
+	<td>
+		<%= text_field 'job', :latitude, :size => 9 %> /
+		<%= text_field 'job', :longitude, :size => 9 %> /
+		<%= text_field 'job', :distance, :size => 9 %>
+		<br />
+	</td>
+</tr>
+<tr>
+	<td colspan="2">
+		<a name="1"></a>
+		<span style="color: black; background-color:yellow">
+      Click on the map to set the center or <a href="#1" id="get_ll">center
+      to your position</a> (and remember to set a distance).
+    </span>
+		<div id="map_canvas" style="width: 820px; height: 540px;"></div>
+	</td>
+</tr>
+
+<% else %>
+
+<tr>
+  <th>Geolocalization</th>
+  <td>
+    Local mode (geolocalization is disabled)
+	</td>
+</tr>
+
+<% end %>
+
+<tr>
+	<th>Max mem (bytes)</th>
+	<td><%= text_field 'job', :max_mem, :size => 10 %></td>
+</tr>
+<tr>
+	<th>Disk max size (bytes)</th>
+	<td><%= text_field 'job', :disk_max_size, :size => 10 %></td>
+</tr>
+<tr>
+	<th>Disk max files</th>
+	<td><%= text_field 'job', :disk_max_files, :size => 4 %></td>
+</tr>
+<tr>
+	<th>Disk max file descriptors</th>
+	<td><%= text_field 'job', :disk_max_file_descriptors, :size => 4 %></td>
+</tr>
+<tr>
+	<th>Network max send (bytes)</th>
+	<td><%= text_field 'job', :network_max_send, :size => 10 %></td>
+</tr>
+<tr>
+	<th>Network max receive (bytes)</th>
+	<td><%= text_field 'job', :network_max_receive, :size => 10 %></td>
+</tr>
+<tr>
+	<th>Max number of sockets</th>
+	<td><%= text_field 'job', :network_max_sockets, :size => 4 %></td>
+</tr>
+<tr>
+	<th>Number of ports to bind</th>
+	<td><%= text_field 'job', :network_nb_ports, :size => 2 %></td>
+</tr>
+<tr>
+	<th>Network send speed (bytes/s)</th>
+	<td><%= text_field 'job', :network_send_speed, :size => 10 %></td>
+</tr>
+<tr>
+	<th>Network receive speed (bytes/s)</th>
+	<td><%= text_field 'job', :network_receive_speed, :size => 10 %></td>
+</tr>
+<tr>
+  <th>UDP drop ratio (% 0 - 1)<br />(0 = no drop - 1 = all packets dropped)</th>
+	<td><%= text_field 'job', :udp_drop_ratio, :size => 4 %></td>
+</tr>
+<%#<tr>%>
+<%#  <th>Host masks (100.100.*|*.edu|...)</th>%>
+<%#  <td><%= text_field 'job', :hostmasks, :size => 10 +|</td>%>
+<%#</tr>%>
+<tr>
+	<th>List type</th>
+  <td>
+		<%= radio_button 'job', :list_type, 'HEAD' %> head
+		<%= radio_button 'job', :list_type, 'RANDOM' %> random
+  </td>
+</tr>
+<tr>
+  <th>Number of splayds in list (0 = all)</th>
+	<td><%= text_field 'job', :list_size, :size => 4 %></td>
+</tr>
+<!--
+<tr bgcolor="#CCCCCC">
+  <th>
+    Architecture<br />
+		<span style="color: black; background-color:yellow">
+    (only used for bytecode jobs)</span>
+  </th>
+	<td>
+		Bits: <%= radio_button 'job', :bits, '32' %> 32
+		<%= radio_button 'job', :bits, '64' %> 64
+		<br />
+		Endianness: <%= radio_button 'job', :endianness, 'little' %> little
+		<%= radio_button 'job', :endianness, 'big' %> big
+	</td>
+</tr>
+-->
+<tr>
+	<td colspan="2">
+		<% if current_user.demo == 1 %>
+		<font color="red"><b>Demo: only this code is authorized:</b></font><br />
+    <pre><%= @job.code %></pre>
+    <% else %>
+		<%= text_area 'job', :code, :cols => 110, :rows => 30 %></p>
+		<% end %>
+	</td>
+</tr>
+</tbody>
+</table>
+
+<!--[eoform:job]-->
+
