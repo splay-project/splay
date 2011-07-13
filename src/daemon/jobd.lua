@@ -182,6 +182,7 @@ sandbox.protect_env({
 			"splay.net",
 			"splay.misc",
 			"splay.misc_core",
+			"splay.distdb",
 			"splay.out",
 			"splay.queue",
 			"splay.rpc",
