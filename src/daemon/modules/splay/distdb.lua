@@ -66,25 +66,20 @@ end
 
 --function get_master: looks for the master of a given ID
 local function get_master(id)
-	local closest = neighborhood[1]
-	--calculates the distance between the node and the ID
-	local old_distance = bighex_circular_distance(id, closest.id)
-	--for all other neighbors
-	for i = 2, #neighborhood do
-		--calculates the distance
-		local distance = bighex_circular_distance(id, neighborhood[i].id)
-		--compares both distances
-		local compare = bighex_compare(old_distance, distance)
-		--if distance is smaller or distance is equal and the id of the closest node is
-		-- higher, replace closest with current neighbor
-		--TODO new rule says "take all keys between you and the next" look if this fits
-		if ((compare == 1) or ((compare == 0) and (bighex_compare(closest.id, neighborhood[i].id) == 1))) then
-			closest = neighborhood[i]
-			old_distance = distance
+	--TODO AQUI ME QUEDE
+	--the master is initialized as equal to the last node
+	local master = neighborhood[#neighborhood]
+	--for all the neighbors
+	for i,v in ipairs(neighborhood) do
+		--compares the id with the id of the node
+		local compare = bighex_compare(v.id, id)
+		--if id is bigger
+		if (compare == 1) and (i ~= 1) then
+			master = v
 		end
 	end
 	--returns the closest node
-	return closest
+	return master
 end
 
 --function print_me: prints the IP address, port, and ID of the node
@@ -124,22 +119,15 @@ function init()
 				id = calculate_id(v)
 			})
 		end
-		--AQUI ME QUEDÉ
+		--sorts the elements of the table by their ids
+		table.sort(neighborhood, function(a,b) return a.id<b.id end)
 		--server listens through the rpc port + 1
 		local http_server_port = n.port+1
 		--puts the server on listen
 		net.server(http_server_port, handle_http_message)
 
--- 		print("PRINTING IO")
--- 		for i,v in pairs(io) do
--- 			print(i, type(v))
--- 		end
--- 		print("PRINTING DB")
--- 		for i,v in pairs(db) do
--- 			print(i, type(v))
--- 		end
-		--splaydb.open("dist-db","hash", db.OWRITER + db.OCREATE) VERSION WITH FLAGS
-		db.open("db"..n.id,"hash")
+		--initializes db_table
+		db_table = {}
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
