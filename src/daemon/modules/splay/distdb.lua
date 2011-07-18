@@ -48,6 +48,8 @@ local tonumber = tonumber
 local tostring = tostring
 local unpack = unpack
 
+local base = _G
+
 module("splay.distdb")
 
 _COPYRIGHT   = "Copyright 2011 José Valerio (University of Neuchâtel)"
@@ -66,19 +68,19 @@ end
 
 --function get_master: looks for the master of a given ID
 local function get_master(id)
-	--TODO AQUI ME QUEDE
 	--the master is initialized as equal to the last node
 	local master = neighborhood[#neighborhood]
-	--for all the neighbors
-	for i,v in ipairs(neighborhood) do
+	--for all the neighbors but the first one
+	for i=2,#neighborhood do
 		--compares the id with the id of the node
-		local compare = bighex_compare(v.id, id)
+		local compare = bighex_compare(neighborhood[i].id, id)
 		--if id is bigger
-		if (compare == 1) and (i ~= 1) then
-			master = v
+		if (compare == 1) then
+			master = neighborhood[i-1]
+			break
 		end
 	end
-	--returns the closest node
+	--returns the master
 	return master
 end
 
@@ -103,6 +105,7 @@ function init()
 		--TODO start pinging processes
 		--TODO the rest of init
 		--takes IP address and port from job.me
+		print(type(_G)) --TODO I NEED TO MAKE _G AND JOB WORK
 		n = {ip=job.me.ip, port=job.me.port}
 		--initializes the randomseed with the port
 		--math.randomseed(n.port) CHECK I think i dont need this anymore
