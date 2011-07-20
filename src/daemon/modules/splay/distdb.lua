@@ -47,6 +47,7 @@ local type = type
 local tonumber = tonumber
 local tostring = tostring
 local unpack = unpack
+local log = log
 
 local base = _G
 
@@ -98,14 +99,13 @@ end
 
 
 
-function init()
+function init(job)
 	if not init_done then
 		init_done = true
 		--TODO add node to the db network
 		--TODO start pinging processes
 		--TODO the rest of init
 		--takes IP address and port from job.me
-		print(type(_G)) --TODO I NEED TO MAKE _G AND JOB WORK
 		n = {ip=job.me.ip, port=job.me.port}
 		--initializes the randomseed with the port
 		--math.randomseed(n.port) CHECK I think i dont need this anymore

@@ -28,7 +28,7 @@ require"splay.base"
 distdb = require"splay.distdb"
 
 events.loop(function()
-	distdb.init()
+	distdb.init(job)
 	--[[
 	distdb.put("3", 6)
 	distdb.put("hello", "10")
