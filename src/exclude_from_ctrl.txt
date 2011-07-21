@@ -4,3 +4,4 @@ todo.txt
 GeoLiteCity.dat
 geoip.so
 splay-controller-template.gemspec
+GOOGLE_MAP_KEY.txt
