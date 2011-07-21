@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-## Splay Controller ### v1.0.6 ###
+## Splay Controller ### v1.0.7 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
 ## 
