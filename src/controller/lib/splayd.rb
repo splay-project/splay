@@ -560,11 +560,11 @@ class Splayd
 				end
 				loc = Localization.get(@row['ip'])
 				$log.info("#{@id} #{@row['ip']} #{hostname} " +
-						"#{loc.country_code.downcase} #{loc.city}")
+						"#{loc.country_code2.downcase} #{loc.city_name}")
 				$db.do "UPDATE splayds SET
 						hostname='#{hostname}',
-						country='#{loc.country_code.downcase}',
-						city='#{loc.city}',
+						country='#{loc.country_code2.downcase}',
+						city='#{loc.city_name}',
 						latitude='#{loc.latitude}',
 						longitude='#{loc.longitude}'
 						WHERE id='#{@id}'"
