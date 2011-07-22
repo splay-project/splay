@@ -1,7 +1,7 @@
 package = "splayd"
 version = "##VERSION##"
 source = {
-	url="http://www.splay-project.org/splay/release/splayd_##VERSION##.tar.gz"
+	url="http://www.splay-project.org/splay/release/splayd_##VERSION_URL##.tar.gz"
 }
 description = {
    summary = "SPLAY Deamon and Libraries.",
