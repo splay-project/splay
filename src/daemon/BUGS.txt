@@ -1,0 +1,10 @@
+Seen on planetlab deployment, ple01.fc.univie.ac.at,  25/07/2011:
+Command: PING
+Command: PING
+Command: LOADAVG
+Disconnected: splayd.lua:541: attempt to index a nil value
+Trying to re-connect to the Controller in average 180 seconds (23 this time).
+C daemon: splayd.lua:892: Too many open files in system
+End of splayd (C deamon)
+--------
+
