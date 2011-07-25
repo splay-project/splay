@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 #rev 670 has the complete 'leo/' dir, in case something goes wrong we can recover it
 
-#cp ../../../../src/daemon/*.lua splayd_planetlab/splayd/
+cp ../../../../src/daemon/splayd.lua splayd_planetlab/splayd/
+cp ../../../../src/daemon/jobd.lua splayd_planetlab/splayd/
+cp ../../../../src/daemon/logd.lua splayd_planetlab/splayd/
+cp ../../../../src/daemon/settings_pl.lua splayd_planetlab/splayd/settings.lua
+
 cp ../../../../src/daemon/modules/*.lua splayd_planetlab/splayd/modules/
 cp ../../../../src/daemon/modules/splay/*.lua splayd_planetlab/splayd/modules/splay/
 

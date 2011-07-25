@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.1 ###
+       Splay ### v1.0.5 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
