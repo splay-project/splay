@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.1 ###
+       Splay ### v1.0.5 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -28,7 +28,7 @@ SETTINGS section near the end of this file.
 ]]
 
 _COPYRIGHT = "Copyright 2006 - 2011"
-_SPLAYD_VERSION = 1.0
+_SPLAYD_VERSION = 1.0.5
 
 require"table"
 require"math"
@@ -538,9 +538,13 @@ end
 function loadavg(so)
 	assert(so:send("OK"))
 	if splayd.status.os == "Linux" then
-		local f = string.gmatch(io.open("/proc/loadavg"):read(), "%d+.%d+")
-		assert(so:send(f().." "..f().." "..f()))
-	elseif splayd.status.os == "Darwin" then
+		local p_avg=assert(io.open("/proc/loadavg","r"))
+		if p_avg then
+			local f = string.gmatch(p_avg:read(), "%d+.%d+")
+			assert(so:send(f().." "..f().." "..f()))
+		else
+			assert(so:send("-1 -1 -1")) --status error?
+ 	elseif splayd.status.os == "Darwin" then
 		local lf=io.popen("sysctl -n vm.loadavg"):read():match("%d+.%d+ %d+.%d+ %d+.%d+")
 		assert(so:send(lf))
 	end

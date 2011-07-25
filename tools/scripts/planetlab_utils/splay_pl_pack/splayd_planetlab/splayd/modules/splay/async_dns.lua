@@ -1,3 +1,26 @@
+--[[
+       Splay ### v1.0.5 ###
+       Copyright 2006-2011
+       http://www.splay-project.org
+]]
+
+--[[
+This file is part of Splay.
+
+Splay is free software: you can redistribute it and/or modify 
+it under the terms of the GNU General Public License as published 
+by the Free Software Foundation, either version 3 of the License, 
+or (at your option) any later version.
+
+Splay is distributed in the hope that it will be useful,but 
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Splayd. If not, see <http://www.gnu.org/licenses/>.
+]]
+
 -- Original  code from lua@ztact.com
 -- Modified by Prosody IM http://hg.prosody.im/trunk/raw-file/tip/net/dns.lua
 
@@ -19,9 +42,7 @@ local log = require"splay.log"
 
 module('splay.async_dns')
 
-_COPYRIGHT = "Copyright 2006 - 2011"
 _DESCRIPTION = "A pure-Lua DNS protocol implementation"
-_VERSION     = 1.0
 
 l_o = log.new(3, "[".._NAME.."]")
 
@@ -742,6 +763,8 @@ function resolver:encode_q(qname, qtype, qclass)
 	self.active[id][question] = o;
 	return packet	
 end
+
+
 
 -- module api ------------------------------------------------------ module api
 
