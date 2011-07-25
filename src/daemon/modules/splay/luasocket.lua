@@ -50,6 +50,7 @@ local log = require"splay.log"
 local error = error
 local pairs = pairs
 local print = print
+local assert= assert
 module("splay.luasocket")
 
 _COPYRIGHT   = "Copyright 2006 - 2011"
@@ -152,7 +153,7 @@ function wrap(socket, err)
 			else
 				local sock,err = socket.udp()
 				if not sock then return nil, err end
-				sock:setsockname('*', 0)
+				--assert(sock:setsockname('*', 0)==1) --0 has problem under sandbox restrictions..
 				sock:settimeout(15)
 				local m=nil
 				for i=1,misc.size(async_dns.dns_servers) do
