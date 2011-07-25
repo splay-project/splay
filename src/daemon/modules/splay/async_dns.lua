@@ -42,9 +42,7 @@ local log = require"splay.log"
 
 module('splay.async_dns')
 
-_COPYRIGHT = "Copyright 2006 - 2011"
 _DESCRIPTION = "A pure-Lua DNS protocol implementation"
-_VERSION     = 1.0
 
 l_o = log.new(3, "[".._NAME.."]")
 
@@ -765,6 +763,8 @@ function resolver:encode_q(qname, qtype, qclass)
 	self.active[id][question] = o;
 	return packet	
 end
+
+
 
 -- module api ------------------------------------------------------ module api
 
