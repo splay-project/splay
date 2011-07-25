@@ -6,5 +6,8 @@ Disconnected: splayd.lua:541: attempt to index a nil value
 Trying to re-connect to the Controller in average 180 seconds (23 this time).
 C daemon: splayd.lua:892: Too many open files in system
 End of splayd (C deamon)
+
+Line 541 is:
+local f = string.gmatch(io.open("/proc/loadavg"):read(), "%d+.%d+")
 --------
 
