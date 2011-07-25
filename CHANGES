@@ -1,3 +1,8 @@
+splayd 1.07:
+	- fix bug in splayd.lua:loadavg() : if read access to /proc/loadavg fails
+	 the splayd disconnected with error:
+	 >Disconnected: splayd.lua:541: attempt to index a nil value
+-----------------------------
 splayd 1.0.6:
 	- major performance improvements in splay.benc module (function encode completely rewritten)
 	- minor performance improvement in splay.misc module, function split (made simpler and faster) 
