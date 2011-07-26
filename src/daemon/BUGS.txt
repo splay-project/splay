@@ -9,5 +9,9 @@ End of splayd (C deamon)
 
 Line 541 is:
 local f = string.gmatch(io.open("/proc/loadavg"):read(), "%d+.%d+")
+
+Trying to execute out of the splayd:
+$cat /proc/loadavg
+0.21 0.17 0.15 1/589 28127
 --------
 
