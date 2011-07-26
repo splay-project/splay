@@ -7,14 +7,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -71,7 +71,7 @@ function gen_string(times, s)
 		times = s
 		s = tmp
 	end
-	
+
 	s = s or "a"
 
 	if times == 0 then return "" end
@@ -435,7 +435,7 @@ end
 	return and array if OK or nil, err if not OK
 ]]
 function call(procedure)
-	
+
 	local f, err = loadstring("return "..procedure[1], "call")
 	if not f then
 		return nil, err
@@ -490,6 +490,122 @@ function try(f, ecatch)
 		end
 	end
 end
+
+-------------------------------------------------------------------------------
+-- Functions that handle strings of hexadecimal characters
+-------------------------------------------------------------------------------
+
+-- function bighex_compare: compares two strings of hexadecimal characters (strings must have the same length)
+function bighex_compare(a,b)
+	--compares the strings character by character
+	for i=1,#a do
+		--converts the character in a base10-number
+		local c = tonumber(string.sub(a,i,i),16)
+		local d = tonumber(string.sub(b,i,i),16)
+		--if character from string a > character from string b
+		if c>d then
+			return 1
+		elseif c<d then
+			return -1
+		end
+	end
+	--if all characters were equal return 0:
+	return 0
+--return values
+-- +1: a>b, 0: a=b, -1: a<b
+end
+
+
+-- function bighex_common_digits: returns the number of common most-significant digits between
+-- two strings of hexadecimal characters (strings must have the same length)
+function bighex_common_digits(a,b)
+	--compares the strings character by character:
+	for i=1,#a do
+		--extracts the character:
+		local c = string.sub(a,i,i)
+		local d = string.sub(b,i,i)
+		--if the characters are different:
+		if c~=d then
+			--returns the value of i minus 1 (because the last common character was in the last iteration, not in this one)
+			return i-1
+		end
+	end
+	--if all where equal, returns the length of the strings:
+	return #a
+end
+
+
+-- function bighex_distance: returns the unsigned difference between two hexa-strings (must have the same length), also as hexa-string
+-- of same length as a and b,and a boolean that indicates the sign.
+function bighex_distance(a,b)
+	-- string ret accumulates the resulting string:
+	local ret = ""
+	-- f indicates if the last substraction was negative; starts as false:
+	local f	= false
+	-- for all the characters of a and b:
+	local a_size=#a
+	for i=1,#a do
+		--converts the characters to base10:
+		--note: takes the less-significant characters first
+		local c = tonumber(string.sub(a,a_size-i+1,a_size-i+1),16)
+		local d = tonumber(string.sub(b,a_size-i+1,a_size-i+1),16)
+		--substracts the characters:
+		local e = c-d
+		--if the substraction of last iteration had a negative result:
+		if f then
+			--substracts 1 from the actual result:
+			e = e-1
+		end
+		--if the result is negative:
+		if e<0 then
+			--f is true (to be taken into account on the next iteration):
+			f = true
+			--adds 16 to the result:
+			e = 16+e
+		else
+			--f is false (to be taken into account on the next iteration):
+			f = false
+		end
+		--concatenates the result in string "ret":
+		ret = string.format("%x",e)..ret
+	end
+	--returns the string and sign
+	return ret,f
+end
+
+-- function bighex_signed_distance: returns the signed difference between two hexa-strings (must have the same length), also as hexa-string
+-- of same length as a and b, and a boolean that indicates the sign.
+function bighex_signed_distance(a,b)
+
+	local ret,f = bighex_distance(a,b)
+
+	--if f was true in the last substraction (meaning that a<b):
+	if f then
+		--constructs the string "10000...000" with length of a + 1:
+		local g = "1"..string.rep("0",#a)
+		--and substracts ret (the result of this substraction is the hexadecimal opposite of ret:
+		ret = string.sub(bighex_distance(g,"0"..ret),2)
+	end
+	--returns ret and f:
+	return ret, f
+end
+
+
+-- function bighex_circular_distance: returns the minimum difference between two hexa-strings (must have the same length), also as hexa-string
+-- considering a and b as part of a ring (FFF...FF + 000..01 = 000...00)
+function bighex_circular_distance(a,b)
+	--calculates unsigned distance in both directions:
+	local dist_CW = bighex_distance(a,b)
+	local dist_CCW = bighex_distance(b,a)
+	--takes the minimum between them:
+	if bighex_compare(dist_CW, dist_CCW) == 1 then
+		return dist_CCW
+	else
+		return dist_CW
+	end
+end
+
+
 
 -------------------------------------------------------------------------------
 -- Simple set implementation based on LuaSocket's tinyirc.lua example

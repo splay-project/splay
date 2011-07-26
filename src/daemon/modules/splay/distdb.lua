@@ -32,6 +32,8 @@ local rpc	= require"splay.rpc"
 local net	= require"splay.net"
 -- for enconding/decoding the bucket
 local enc	= require"splay.benc"
+-- for handling hexa strings
+local misc	= require"splay.misc" --TODO look if the use of splay.misc fits here
 
 --TODO CHECK which ones are going to be used
 local assert = assert
@@ -58,6 +60,7 @@ _DESCRIPTION = "Distributed DB functions."
 _VERSION     = "0.99.0"
 
 local db_table = {}
+local n_replicas = 0
 
 local init_done = false
 
@@ -68,36 +71,50 @@ local function calculate_id(node)
 end
 
 --function get_master: looks for the master of a given ID
-local function get_master(id)
+function get_master(id) --TODO MAKE IT LOCAL
 	--the master is initialized as equal to the last node
 	local master = neighborhood[#neighborhood]
 	--for all the neighbors but the first one
-	for i=2,#neighborhood do
+	for i=1,#neighborhood-1 do
 		--compares the id with the id of the node
-		local compare = bighex_compare(neighborhood[i].id, id)
+		local compare = misc.bighex_compare(neighborhood[i].id, id)
 		--if id is bigger
 		if (compare == 1) then
-			master = neighborhood[i-1]
+			--if i is not 1
+			if i > 1 then
+				--the master is node i-1
+				master = neighborhood[i-1]
+			end
+			--get out of the loop
 			break
 		end
 	end
+	--prints the master ID
+	--log:print("master --> "..master.id)
 	--returns the master
 	return master
 end
 
 --function print_me: prints the IP address, port, and ID of the node
-function print_me()
-	log:print("ME",n.ip, n.port, n.id)
+local function print_me()
+	log:print("ME",n.ip, n.port, n.id, n.position)
 end
 
 --function print_node: prints the IP address, port, and ID of a given node
-function print_node(node)
+local function print_node(node)
 	log:print(node.ip, node.port, node.id)
 end
 
 --=========== FROM DIST-DB.LUA END
 
-
+--function print_node: prints the IP address, port, and ID of a given node
+local function get_position()
+	for i=1,#neighborhood do
+		if neighborhood[i].id == n.id then
+			return i
+		end
+	end
+end
 
 function init(job)
 	if not init_done then
@@ -124,6 +141,9 @@ function init(job)
 		end
 		--sorts the elements of the table by their ids
 		table.sort(neighborhood, function(a,b) return a.id<b.id end)
+
+		n.position = get_position()
+
 		--server listens through the rpc port + 1
 		local http_server_port = n.port+1
 		--puts the server on listen
@@ -131,30 +151,45 @@ function init(job)
 
 		--initializes db_table
 		db_table = {}
+		--initializes the variable holding the number of replicas
+		n_replicas = 3 --TODO this should be configurable
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
 
 		--PRINTING STUFF
 		--prints a initialization message
-		print("HTTP server - Started on port "..http_server_port)
+		log:print("HTTP server - Started on port "..http_server_port)
 		print_me()
+		log:print()
 		for _,v in ipairs(neighborhood) do
 			print_node(v)
-		end
-		for _,v in ipairs(neighborhood) do
-			log:print("\t"..(tonumber(v.port)+1)..",")
 		end
 	end
 end
 
 function put(key, value)
 		--TODO the content of this function
-	return version
+		local master = get_master(key)
+		if master.id ~= n.id then
+			return false, "wrong master"
+		end
+		local master_id = n.position
+		for i=1,n_replicas do
+			--log:print("ID TO CALL "..(master_id+i))
+			--log:print("ID TO CALL - size"..(master_id+i-#neighborhood))
+			if master_id+i<=#neighborhood then
+				events.thread(function() rpc.call(neighborhood[master_id+i], {"distdb.put_local", key, value}) end)
+			else
+				events.thread(function() rpc.call(neighborhood[master_id+i-#neighborhood], {"distdb.put_local", key, value}) end)
+			end
+		end
+	return true
 end
 
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
-local function put_local(key, value)
+function put_local(key, value)
+	--TODO how to check if the source node is valid?
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		return false, "wrong key type"
@@ -172,9 +207,8 @@ local function put_local(key, value)
 		db_table[key].version=db_table[key].version + 1
 		--TODO handle enabled and versions
 	end
-	db_table[key] = value
+	log:print("im "..n.id.." writing key: "..key..", value: "..value..", version: "..db_table[key].version..", enabled: ", db_table[key].enabled)
 	return true, version
-	--print("key: "..key..", value: "..value)
 end
 
 local function get_local(key)

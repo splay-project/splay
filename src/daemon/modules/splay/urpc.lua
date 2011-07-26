@@ -7,14 +7,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -238,7 +238,7 @@ local function sender(s)
 
 		for key, data in pairs(messages) do
 			if data.next_try <= now then
-			
+
 				--l_o:debug("try", data.nb_try, data.key)
 
 				-- add to the send queue
@@ -308,16 +308,16 @@ function server(port)
 		if port.ip then ip=port.ip end
 		port = port.port
 	end
-	
+
 	--verify conflicts with default_server's port
-	local default_to_restart=false	
+	local default_to_restart=false
 	if  port==server_port then
 		server_run=false
 		default_to_restart=true
 		sockets[server_port]:close()
 		sockets[server_port]=nil
 	end
-	
+
 	local s, err = socket.udp()
 	if not s then
 		l_o:warn("udp():"..err)
@@ -325,9 +325,9 @@ function server(port)
 	end
 
 	l_o:notice("URPC server bound on port "..port)
-	
+
 	local r, err = s:setsockname(ip, port)
-	
+
 	if not r then
 		l_o:warn("setsockname("..port.."): "..err)
 		return nil, err
@@ -335,10 +335,10 @@ function server(port)
 
 	sockets[port] = s -- to be able to close it later
 	events.thread(function() receiver(s) end)
-	
+
 	--if the default server was stopped due to port conflict, restart it
 	if default_to_restart then default_server() end
-	
+
 	return true
 end
 
@@ -375,7 +375,102 @@ local function do_call(ip, port, typ, call, timeout)
 	end
 
 	timeout = timeout or settings.default_timeout
-	
+
+	if (timeout and settings.cleaning_after and
+			timeout > settings.cleaning_after * 0.9) or
+			(not timeout and settings.cleaning_after) then
+		l_o:warn("do_call adjusted timeout", timeout)
+		timeout = settings.cleaning_after * 0.9
+	end
+
+	local datac = {key = get_key()}
+	if typ == "ping" then
+		datac.type = "ping"
+	else
+		datac.type = "call"
+		datac.call = call
+	end
+
+	local edatac = enc.encode(datac)
+	local l = #edatac
+	if l > 8192 then
+		l_o:warn("RPC UDP too big to be sent: "..l)
+		return nil, "call length ("..l..")"
+	end
+
+	local data = {
+		enc = edatac,
+		key = datac.key,
+		type = datac.type,
+		next_try = misc.time(),
+		nb_try = 0,
+		ip = ip,
+		port = port,
+		timeout = timeout,
+	}
+
+	datac = nil
+
+	local start_time = misc.time()
+
+	if call_s then
+		if not call_s:lock(timeout) then
+			return false, "local timeout"
+		end
+		-- update timeout
+		if timeout then
+			timeout = timeout - (misc.time() - start_time)
+			-- normally not possible here since lock() don't returns on timeout
+			if timeout <= 0 then
+				return false, "local timeout"
+			end
+		end
+	end
+
+	number = number + 1
+
+	-- we store our new message in the send queue
+	messages[data.key] = data
+
+	-- wake up sender thread
+	events.fire("urpc:sender")
+
+	local ok, reply
+	if timeout then
+		ok, reply = events.wait("urpc:"..data.key, timeout)
+	else
+		ok = true
+		reply = events.wait("urpc:"..data.key, timeout)
+	end
+
+	if call_s then call_s:unlock() end
+
+	if not ok then
+		return false, "timeout"
+	elseif reply.error then
+		return false, reply.error
+	elseif reply.type == "ping" then
+		return true, {true}
+	else
+		return true, reply.call
+	end
+end
+
+-- return: true|false, array of responses
+local function do_call_async(ip, port, typ, call)
+
+	-- If no server runs, we need a default server (binded on a port choosen by
+	-- the system to be able to receive replies for our rpcs)
+	if not server_run then default_server() end
+
+	if settings.max and not call_s then
+		call_s = events.semaphore(settings.max)
+	end
+
+	--timeout = timeout or settings.default_timeout
+
+	--AQUI ME QUEDE
+
 	if (timeout and settings.cleaning_after and
 			timeout > settings.cleaning_after * 0.9) or
 			(not timeout and settings.cleaning_after) then
@@ -473,12 +568,12 @@ function acall(ip, port, call, timeout)
 			ip = ip.ip
 		end
 	end
-	
+
 	if timeout ~=nil and tonumber(timeout)==nil then
 		l_o:warn("invalid timeout value: ",timeout)
 		return false, "invalid timeout value: "..timeout
 	end
-	
+
 	if type(call) ~= "table" then
 		call = {call}
 	end
@@ -542,14 +637,14 @@ function proxy(ip, port)
 		p.port = port
 		p.ip = ip
 	end
-	
+
 	p.timeout = settings.default_timeout
 	p.ping = function(self)
 		return ping(self, self.timeout)
 	end
 
 	setmetatable(p,
-		{__index = function(t, func) 
+		{__index = function(t, func)
 			-- if __index is called, timeout == nil
 			if func == "timeout" then return nil end
 			return function(self, ...)
@@ -558,3 +653,4 @@ function proxy(ip, port)
 		end})
 	return p
 end
+
