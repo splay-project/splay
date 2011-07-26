@@ -28,7 +28,7 @@ SETTINGS section near the end of this file.
 ]]
 
 _COPYRIGHT = "Copyright 2006 - 2011"
-_SPLAYD_VERSION = 1.0.5
+_SPLAYD_VERSION = 1.05
 
 require"table"
 require"math"
@@ -544,6 +544,7 @@ function loadavg(so)
 			assert(so:send(f().." "..f().." "..f()))
 		else
 			assert(so:send("-1 -1 -1")) --status error?
+		end
  	elseif splayd.status.os == "Darwin" then
 		local lf=io.popen("sysctl -n vm.loadavg"):read():match("%d+.%d+ %d+.%d+ %d+.%d+")
 		assert(so:send(lf))

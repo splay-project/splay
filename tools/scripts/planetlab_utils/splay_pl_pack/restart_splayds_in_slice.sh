@@ -7,6 +7,9 @@ fi
 
 h=$1
 
+mkdir -p logs/
+rm -rf logs/*
+
 slice="unineple_splay"
 
 echo "Restarting SPLAY deamons in slice ${slice}"
