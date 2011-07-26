@@ -580,11 +580,11 @@ function resolver:adddefaultnameservers()    -- - - - -  adddefaultnameservers
 			end
 		end
 	else
-		l_o:warn("Can't read /etc/resolve.conf (sandboxed directory)")
+		l_o:debug("Can't read /etc/resolve.conf (sandboxed directory)")
 		--print("[splay.async_dns] W: Can't read /etc/resolve.conf, fall back on Google DNS.")
 	end
 	if not self.server or #self.server == 0 then
-			l_o:warn("Fallback on Google DNS servers (8.8.8.8/8.8.4.4)")
+		l_o:debug("Fallback on Google DNS servers (8.8.8.8/8.8.4.4)")
 		-- google dns: 8.8.8.8 or 8.8.4.4 much faster 
 		-- open dns 208.67.222.222 208.67.220.220
 		self:addnameserver("8.8.8.8")
