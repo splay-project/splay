@@ -34,6 +34,9 @@ local net	= require"splay.net"
 local enc	= require"splay.benc"
 -- for handling hexa strings
 local misc	= require"splay.misc" --TODO look if the use of splay.misc fits here
+-- for handling threads
+local events	= require"splay.events" --TODO look if the use of splay.misc fits here
+
 
 --TODO CHECK which ones are going to be used
 local assert = assert
@@ -60,7 +63,10 @@ _DESCRIPTION = "Distributed DB functions."
 _VERSION     = "0.99.0"
 
 local db_table = {}
-local n_replicas = 0
+local locked_keys = {}
+local n_replicas = 0 --TODO maybe this should match with settings
+local some_timeout = 15
+local neighborhood = {}
 
 local init_done = false
 
@@ -168,6 +174,11 @@ function init(job)
 	end
 end
 
+function stop()
+	net.stop_server(n.port+1)
+	rpc.stop_server(n.port)
+end
+
 function put(key, value)
 		--TODO the content of this function
 		local master = get_master(key)
@@ -187,9 +198,48 @@ function put(key, value)
 	return true
 end
 
+function consistent_put(key, value)
+		--TODO the content of this function
+		local master = get_master(key)
+		if master.id ~= n.id then
+			return false, "wrong master"
+		end
+		local master_id = n.position
+		local answers = 0
+		local replica_id = nil
+		local successful = false
+		if not locked_keys[key] then --TODO change this for a queue system
+			locked_keys[key] = true
+			distdb.put_local(key, value)
+			for i=1,n_replicas do
+				--log:print("ID TO CALL "..(master_id+i))
+				--log:print("ID TO CALL - size"..(master_id+i-#neighborhood))
+				if master_id+i<=#neighborhood then
+					replica_id = master_id+i
+				else
+					replica_id = master_id+i-#neighborhood
+				end
+				events.thread(function()
+					local ok, version = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
+					if ok then
+						answers = answers + 1
+						if answers >= n_replicas then
+							events.fire(key)
+						end
+					end
+				end)
+			end
+			successful = events.wait(key, some_timeout) --TODO match this with settings
+			locked_keys[key] = nil
+		end
+	return successful
+end
+
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
 function put_local(key, value)
 	--TODO how to check if the source node is valid?
+	--adding a random waiting time to simulate different response times
+	events.sleep(math.random(100)/10)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		return false, "wrong key type"

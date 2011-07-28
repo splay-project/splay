@@ -179,8 +179,10 @@ local function reply(s, data, ip, port)
 	end
 
 	data.reply = true
+	log:print("im the contrary to "..port..": im in reply")
 	-- For type "ping", nothing more to do
 	if data.type == "call" then
+		log:print("im the contrary to "..port..": im in reply and type is call")
 		if not replied[data.key] then
 			--l_o:debug("call()", data.key)
 			local val = misc.call(data.call)
@@ -210,21 +212,30 @@ local function reply(s, data, ip, port)
 end
 
 local function process_one_msg(s, data, ip, port)
-	local ok, data = pcall(function() return enc.decode(data) end)
-	if ok then
-		if data.reply then -- we have received a reply
-			messages[data.key] = nil
-			if settings.try_free then
-				s:sendto(enc.encode({free = true, key = data.key}), ip, port)
+	local decoded_data = enc.decode(data)
+	for i,v in pairs(decoded_data) do
+		log:print(i,v)
+	end
+	local call_type = decoded_data.type
+	local ok, data = pcall(function() return decoded_data end)
+	log:print("im the contrary to "..port..": im in process_one_msg")
+	if call_type then log:print("call type is "..call_type) end
+	if call_type ~= "call_noack" then
+		if ok then
+			if data.reply then -- we have received a reply
+				messages[data.key] = nil
+				if settings.try_free then
+					s:sendto(enc.encode({free = true, key = data.key}), ip, port)
+				end
+				return events.fire("urpc:"..data.key, data)
+			elseif data.free then -- we have received a free packet
+				replied[data.key] = nil
+			else
+				return reply(s, data, ip, port)
 			end
-			return events.fire("urpc:"..data.key, data)
-		elseif data.free then -- we have received a free packet
-			replied[data.key] = nil
 		else
-			return reply(s, data, ip, port)
+			l_o:warn("corrupted message")
 		end
-	else
-		l_o:warn("corrupted message")
 	end
 end
 
@@ -245,7 +256,9 @@ local function sender(s)
 				q[#q + 1] = misc.dup(data)
 
 				data.nb_try = data.nb_try + 1
-				data.next_try = now + (data.timeout / (settings.retry_number + 1))
+				if data.timeout then
+					data.next_try = now + (data.timeout / (settings.retry_number + 1))
+				end
 
 				if data.nb_try >= settings.retry_number then
 					messages[key] = nil
@@ -288,6 +301,8 @@ local function receiver(s)
 		local data, ip, port = s:receivefrom()
 		if data then
 			events.thread(function()
+				events.sleep(1)
+				log:print("received a message from "..port)
 				process_one_msg(s, data, ip, port)
 			end)
 		else
@@ -340,6 +355,10 @@ function server(port)
 	if default_to_restart then default_server() end
 
 	return true
+end
+
+function show_stats()
+	return {#messages, #replied}
 end
 
 function stop_server(port)
@@ -457,34 +476,14 @@ local function do_call(ip, port, typ, call, timeout)
 end
 
 -- return: true|false, array of responses
-local function do_call_async(ip, port, typ, call)
+local function do_call_noack(ip, port, call)
 
 	-- If no server runs, we need a default server (binded on a port choosen by
 	-- the system to be able to receive replies for our rpcs)
 	if not server_run then default_server() end
-
-	if settings.max and not call_s then
-		call_s = events.semaphore(settings.max)
-	end
-
-	--timeout = timeout or settings.default_timeout
-
-	--AQUI ME QUEDE
-
-	if (timeout and settings.cleaning_after and
-			timeout > settings.cleaning_after * 0.9) or
-			(not timeout and settings.cleaning_after) then
-		l_o:warn("do_call adjusted timeout", timeout)
-		timeout = settings.cleaning_after * 0.9
-	end
-
 	local datac = {key = get_key()}
-	if typ == "ping" then
-		datac.type = "ping"
-	else
-		datac.type = "call"
-		datac.call = call
-	end
+	datac.type = "call_noack"
+	datac.call = call
 
 	local edatac = enc.encode(datac)
 	local l = #edatac
@@ -498,29 +497,14 @@ local function do_call_async(ip, port, typ, call)
 		key = datac.key,
 		type = datac.type,
 		next_try = misc.time(),
-		nb_try = 0,
+		nb_try = settings.retry_number-1,
 		ip = ip,
 		port = port,
-		timeout = timeout,
 	}
 
 	datac = nil
 
 	local start_time = misc.time()
-
-	if call_s then
-		if not call_s:lock(timeout) then
-			return false, "local timeout"
-		end
-		-- update timeout
-		if timeout then
-			timeout = timeout - (misc.time() - start_time)
-			-- normally not possible here since lock() don't returns on timeout
-			if timeout <= 0 then
-				return false, "local timeout"
-			end
-		end
-	end
 
 	number = number + 1
 
@@ -530,25 +514,6 @@ local function do_call_async(ip, port, typ, call)
 	-- wake up sender thread
 	events.fire("urpc:sender")
 
-	local ok, reply
-	if timeout then
-		ok, reply = events.wait("urpc:"..data.key, timeout)
-	else
-		ok = true
-		reply = events.wait("urpc:"..data.key, timeout)
-	end
-
-	if call_s then call_s:unlock() end
-
-	if not ok then
-		return false, "timeout"
-	elseif reply.error then
-		return false, reply.error
-	elseif reply.type == "ping" then
-		return true, {true}
-	else
-		return true, reply.call
-	end
 end
 
 --------------------[[ HIGH LEVEL FUNCTIONS ]]--------------------
@@ -603,6 +568,28 @@ function call(ip, port, func, timeout)
 		return nil, r
 	end
 end
+
+function acall_noack(ip, port, call)
+
+	-- support for a node array with ip and port
+	if type(ip) == "table" then
+		if not ip.ip or not ip.port then
+			l_o:warn("parameter array without ip or port")
+			return false, "parameter array without ip or port"
+		else
+			call = port
+			port = ip.port
+			ip = ip.ip
+		end
+	end
+
+	if type(call) ~= "table" then
+		call = {call}
+	end
+
+	return do_call_noack(ip, port, "call", call)
+end
+
 
 -- RPC ping
 function ping(ip, port, timeout)

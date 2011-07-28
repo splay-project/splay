@@ -27,36 +27,73 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 require"splay.base"
 distdb = require"splay.distdb"
 local crypto = require"crypto"
-local rpc = require"splay.rpc"
+local urpc = require"splay.urpc"
+--local rpc = require"splay.rpc"
+local counter = 5
+
+
+urpc.server(job.me.port)
+
+function print_hello()
+	log:print("I'm "..job.me.ip..":"..job.me.port)
+	counter = counter + 1
+	return "counter is equal "..counter
+end
 
 events.loop(function()
-	math.randomseed(os.time())
-	distdb.init(job)
+	math.randomseed(3)
+	--distdb.init(job)
 	--[[
+	--TESTING PUT AND GET
 	distdb.put("3", 6)
 	distdb.put("hello", "10")
 	a = distdb.get("3")
 	b = distdb.get("hello")
-	print(a,b)]]
+	print(a,b)
+	--]]
+	--TESTING NEIGHBORHOOD CONSTRUCTION
 	if job.position == 1 then
+		local key = crypto.evp.digest("sha1",math.random(100000))
 		for i=1,10 do
-			local key = crypto.evp.digest("sha1",math.random(100000))
-			local re_key = crypto.evp.digest("sha1",math.random(100000))
 			log:print("Key is "..key)
 			local master = distdb.get_master(key)
 			log:print("Master is "..master.id)
+				--[[
 				if math.random(5) == 1 then
 					master = distdb.get_master(re_key)
 					log:print("Master changed to "..master.id)
 				end
+				--]]
 			log:print()
 			local answer = rpc.call(master, {"distdb.put", key, 1})
 			log:print("")
 			log:print("put successfully done? ", answer)
 			log:print("")
-			events.sleep(5)
+			events.sleep(20)
 		end
 	end
+	--]]
+	--[[
+	--TESTING ONE WAY URPC
+	local statss = urpc.show_stats()
+	log:print(job.position..", messages:"..statss[1])
+	log:print(job.position..", replied:"..statss[2])
+	if job.position == 1 then
+		events.sleep(3)
+		log:print("number of nodes: "..#job.nodes)
+		local node_to_ask = math.random(#job.nodes)
+		log:print("asking node "..node_to_ask)
+		urpc.call(job.nodes[node_to_ask], "print_hello")
+		events.sleep(5)
+		log:print("=====")
+		urpc.acall_noack(job.nodes[node_to_ask], "print_hello")
+	end
+	events.sleep(20)
+	statss = urpc.show_stats()
+	log:print(job.position..", messages:"..statss[1])
+	log:print(job.position..", replied:"..statss[2])
+	os.exit()
+	--]]
 end)
 
 -- now, you can watch the logs of your job and enjoy ;-)
