@@ -27,12 +27,12 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 require"splay.base"
 distdb = require"splay.distdb"
 local crypto = require"crypto"
-local urpc = require"splay.urpc"
---local rpc = require"splay.rpc"
+--local urpc = require"splay.urpc"
+local rpc = require"splay.rpc"
 local counter = 5
 
 
-urpc.server(job.me.port)
+rpc.server(job.me.port)
 
 function print_hello()
 	log:print("I'm "..job.me.ip..":"..job.me.port)
@@ -42,7 +42,7 @@ end
 
 events.loop(function()
 	math.randomseed(3)
-	--distdb.init(job)
+	distdb.init(job)
 	--[[
 	--TESTING PUT AND GET
 	distdb.put("3", 6)
@@ -52,6 +52,7 @@ events.loop(function()
 	print(a,b)
 	--]]
 	--TESTING NEIGHBORHOOD CONSTRUCTION
+	events.sleep(4)
 	if job.position == 1 then
 		local key = crypto.evp.digest("sha1",math.random(100000))
 		for i=1,10 do
@@ -65,7 +66,7 @@ events.loop(function()
 				end
 				--]]
 			log:print()
-			local answer = rpc.call(master, {"distdb.put", key, 1})
+			local answer = rpc.call(master, {"distdb.consistent_put", key, 1})
 			log:print("")
 			log:print("put successfully done? ", answer)
 			log:print("")

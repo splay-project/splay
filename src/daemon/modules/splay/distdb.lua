@@ -210,7 +210,7 @@ function consistent_put(key, value)
 		local successful = false
 		if not locked_keys[key] then --TODO change this for a queue system
 			locked_keys[key] = true
-			distdb.put_local(key, value)
+			put_local(key, value)
 			for i=1,n_replicas do
 				--log:print("ID TO CALL "..(master_id+i))
 				--log:print("ID TO CALL - size"..(master_id+i-#neighborhood))
@@ -219,6 +219,7 @@ function consistent_put(key, value)
 				else
 					replica_id = master_id+i-#neighborhood
 				end
+				--PROBLEM WITH I AND THREAD
 				events.thread(function()
 					local ok, version = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
 					if ok then
