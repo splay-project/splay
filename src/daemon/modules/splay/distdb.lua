@@ -199,32 +199,66 @@ function put(key, value)
 end
 
 function consistent_put(key, value)
-		--TODO the content of this function
 		local master = get_master(key)
 		if master.id ~= n.id then
 			return false, "wrong master"
 		end
 		local master_id = n.position
 		local answers = 0
-		local replica_id = nil
 		local successful = false
 		if not locked_keys[key] then --TODO change this for a queue system
 			locked_keys[key] = true
 			put_local(key, value)
 			for i=1,n_replicas do
-				--log:print("ID TO CALL "..(master_id+i))
-				--log:print("ID TO CALL - size"..(master_id+i-#neighborhood))
-				if master_id+i<=#neighborhood then
-					replica_id = master_id+i
-				else
-					replica_id = master_id+i-#neighborhood
-				end
-				--PROBLEM WITH I AND THREAD
 				events.thread(function()
+					local replica_id = nil
+					if master_id+i<=#neighborhood then
+						replica_id = master_id+i
+					else
+						replica_id = master_id+i-#neighborhood
+					end
+					--log:print("i: "..i)
+					--log:print("replica id: "..replica_id)
 					local ok, version = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
 					if ok then
 						answers = answers + 1
 						if answers >= n_replicas then
+							events.fire(key)
+						end
+					end
+				end)
+			end
+			successful = events.wait(key, some_timeout) --TODO match this with settings
+			locked_keys[key] = nil
+		end
+	return successful
+end
+
+function evtl_consistent_put(key, value)
+		local master = get_master(key)
+		if master.id ~= n.id then
+			return false, "wrong master"
+		end
+		local master_id = n.position
+		local answers = 0
+		local successful = false
+		if not locked_keys[key] then --TODO change this for a queue system
+			locked_keys[key] = true
+			put_local(key, value)
+			for i=1,n_replicas do
+				events.thread(function()
+					local replica_id = nil
+					if master_id+i<=#neighborhood then
+						replica_id = master_id+i
+					else
+						replica_id = master_id+i-#neighborhood
+					end
+					--log:print("i: "..i)
+					--log:print("replica id: "..replica_id)
+					local ok, version = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
+					if ok then
+						answers = answers + 1
+						if answers >= min_replicas_write then
 							events.fire(key)
 						end
 					end

@@ -41,7 +41,7 @@ function print_hello()
 end
 
 events.loop(function()
-	math.randomseed(3)
+	math.randomseed(job.me.port)
 	distdb.init(job)
 	--[[
 	--TESTING PUT AND GET
