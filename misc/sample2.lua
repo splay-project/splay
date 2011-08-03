@@ -55,20 +55,74 @@ events.loop(function()
 	events.sleep(4)
 	if job.position == 1 then
 		local key = crypto.evp.digest("sha1",math.random(100000))
-		for i=1,10 do
+		for i=1,5 do
 			log:print("Key is "..key)
+			--[[ TESTING CONSISTENT PUT
 			local master = distdb.get_master(key)
 			log:print("Master is "..master.id)
-				--[[
+
 				if math.random(5) == 1 then
-					master = distdb.get_master(re_key)
+					local new_master_id = math.random(#neighborhood)
+					master = neighborhood[new_master_id]
 					log:print("Master changed to "..master.id)
 				end
-				--]]
+
 			log:print()
 			local answer = rpc.call(master, {"distdb.consistent_put", key, 1})
 			log:print("")
 			log:print("put successfully done? ", answer)
+			log:print("")
+			--]]
+			local responsibles = distdb.get_responsibles(key)
+			local chosen_node_id = math.random(#responsibles)
+			log:print("choosing responsible n. "..chosen_node_id)
+			local chosen_node = responsibles[chosen_node_id]
+			log:print("Chosen node is "..chosen_node.id)
+				if math.random(5) == 1 then
+					local new_node_id = math.random(#job.nodes)
+					chosen_node = job.nodes[new_node_id]
+					log:print("Chosen node changed")
+				end
+			log:print()
+			local answer = rpc.call(chosen_node, {"distdb.evtl_consistent_put", key, i*10})
+			log:print("")
+			log:print("put successfully done? ", answer)
+			log:print("")
+			events.sleep(20)
+		end
+
+		for i=1,5 do
+			log:print("Key is "..key)
+			--[[ TESTING CONSISTENT PUT
+			local master = distdb.get_master(key)
+			log:print("Master is "..master.id)
+
+				if math.random(5) == 1 then
+					local new_master_id = math.random(#neighborhood)
+					master = neighborhood[new_master_id]
+					log:print("Master changed to "..master.id)
+				end
+
+			log:print()
+			local answer = rpc.call(master, {"distdb.consistent_put", key, 1})
+			log:print("")
+			log:print("put successfully done? ", answer)
+			log:print("")
+			--]]
+			local responsibles = distdb.get_responsibles(key)
+			local chosen_node_id = math.random(#responsibles)
+			log:print("choosing responsible n. "..chosen_node_id)
+			local chosen_node = responsibles[chosen_node_id]
+			log:print("Chosen node is "..chosen_node.id)
+				if math.random(5) == 1 then
+					local new_node_id = math.random(#job.nodes)
+					chosen_node = job.nodes[new_node_id]
+					log:print("Chosen node changed")
+				end
+			log:print()
+			local answer = rpc.call(chosen_node, {"distdb.evtl_consistent_get", key})
+			log:print("")
+			log:print("get successfully done? ", answer)
 			log:print("")
 			events.sleep(20)
 		end

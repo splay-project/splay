@@ -65,6 +65,8 @@ _VERSION     = "0.99.0"
 local db_table = {}
 local locked_keys = {}
 local n_replicas = 0 --TODO maybe this should match with settings
+local min_replicas_write = 0 --TODO maybe this should match with settings
+local min_replicas_read = 0 --TODO maybe this should match with settings
 local some_timeout = 15
 local neighborhood = {}
 
@@ -79,7 +81,8 @@ end
 --function get_master: looks for the master of a given ID
 function get_master(id) --TODO MAKE IT LOCAL
 	--the master is initialized as equal to the last node
-	local master = neighborhood[#neighborhood]
+	local masters_pos = #neighborhood
+	local master = neighborhood[masters_pos]
 	--for all the neighbors but the first one
 	for i=1,#neighborhood-1 do
 		--compares the id with the id of the node
@@ -88,8 +91,9 @@ function get_master(id) --TODO MAKE IT LOCAL
 		if (compare == 1) then
 			--if i is not 1
 			if i > 1 then
+				masters_pos = i-1
 				--the master is node i-1
-				master = neighborhood[i-1]
+				master = neighborhood[masters_pos]
 			end
 			--get out of the loop
 			break
@@ -98,7 +102,24 @@ function get_master(id) --TODO MAKE IT LOCAL
 	--prints the master ID
 	--log:print("master --> "..master.id)
 	--returns the master
-	return master
+	return master, masters_pos
+end
+
+--function get_responsibles: looks for the nodes that are responsible of a given ID
+function get_responsibles(id) --TODO MAKE IT LOCAL
+
+	local master, masters_pos = get_master(id)
+
+	local responsibles = {master}
+
+	for i=1,n_replicas do
+		if masters_pos + i <= #neighborhood then
+			table.insert(responsibles, neighborhood[masters_pos + i])
+		else
+			table.insert(responsibles, neighborhood[masters_pos + i - #neighborhood])
+		end
+	end
+	return responsibles, masters_pos
 end
 
 --function print_me: prints the IP address, port, and ID of the node
@@ -158,7 +179,9 @@ function init(job)
 		--initializes db_table
 		db_table = {}
 		--initializes the variable holding the number of replicas
-		n_replicas = 3 --TODO this should be configurable
+		n_replicas = 5 --TODO this should be configurable
+		min_replicas_write = 3 --TODO this should be configurable
+		min_replicas_read = 3 --TODO this should be configurable
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
@@ -199,63 +222,61 @@ function put(key, value)
 end
 
 function consistent_put(key, value)
-		local master = get_master(key)
-		if master.id ~= n.id then
-			return false, "wrong master"
-		end
-		local master_id = n.position
-		local answers = 0
-		local successful = false
-		if not locked_keys[key] then --TODO change this for a queue system
-			locked_keys[key] = true
-			put_local(key, value)
-			for i=1,n_replicas do
-				events.thread(function()
-					local replica_id = nil
-					if master_id+i<=#neighborhood then
-						replica_id = master_id+i
-					else
-						replica_id = master_id+i-#neighborhood
+	local master = get_master(key) --TODO maybe optimize this by changing to master, masters_pos
+	if master.id ~= n.id then
+		return false, "wrong master"
+	end
+	local master_id = n.position
+	local answers = 0
+	local successful = false
+	if not locked_keys[key] then --TODO change this for a queue system
+		locked_keys[key] = true
+		events.thread(function() put_local(key, value) end)
+		for i=1,n_replicas do
+			events.thread(function()
+				local replica_id = nil
+				if master_id+i<=#neighborhood then
+					replica_id = master_id+i
+				else
+					replica_id = master_id+i-#neighborhood
+				end
+				--log:print("i: "..i)
+				--log:print("replica id: "..replica_id)
+				local ok = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
+				if ok then
+					answers = answers + 1
+					if answers >= n_replicas then
+						events.fire(key)
 					end
-					--log:print("i: "..i)
-					--log:print("replica id: "..replica_id)
-					local ok, version = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
-					if ok then
-						answers = answers + 1
-						if answers >= n_replicas then
-							events.fire(key)
-						end
-					end
-				end)
-			end
-			successful = events.wait(key, some_timeout) --TODO match this with settings
-			locked_keys[key] = nil
+				end
+			end)
 		end
+		successful = events.wait(key, some_timeout) --TODO match this with settings
+		locked_keys[key] = nil
+	end
 	return successful
 end
 
 function evtl_consistent_put(key, value)
-		local master = get_master(key)
-		if master.id ~= n.id then
-			return false, "wrong master"
+	local not_responsible = true
+	local responsibles = get_responsibles(key)
+	for i,v in ipairs(responsibles) do
+		if v.id == n.id then
+			not_responsible = false
 		end
-		local master_id = n.position
-		local answers = 0
-		local successful = false
-		if not locked_keys[key] then --TODO change this for a queue system
-			locked_keys[key] = true
-			put_local(key, value)
-			for i=1,n_replicas do
+	end
+	if not_responsible then
+		return false, "wrong node"
+	end
+	local answers = 0
+	local successful = false
+	if not locked_keys[key] then --TODO change this for a queue system
+		locked_keys[key] = true
+		events.thread(function() put_local(key, value, n) end)
+		for i,v in ipairs(responsibles) do
+			if v.id ~= n.id then
 				events.thread(function()
-					local replica_id = nil
-					if master_id+i<=#neighborhood then
-						replica_id = master_id+i
-					else
-						replica_id = master_id+i-#neighborhood
-					end
-					--log:print("i: "..i)
-					--log:print("replica id: "..replica_id)
-					local ok, version = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
+					local ok = rpc.call(v, {"distdb.put_local", key, value, n})
 					if ok then
 						answers = answers + 1
 						if answers >= min_replicas_write then
@@ -264,15 +285,75 @@ function evtl_consistent_put(key, value)
 					end
 				end)
 			end
-			successful = events.wait(key, some_timeout) --TODO match this with settings
-			locked_keys[key] = nil
 		end
+		successful = events.wait(key, some_timeout) --TODO match this with settings
+		locked_keys[key] = nil
+	end
 	return successful
 end
 
+function consistent_get(key)
+	return get_local(key)
+end
+
+function evtl_consistent_get(key)
+	local value = nil
+	local not_responsible = true
+	local responsibles = get_responsibles(key)
+	for i,v in ipairs(responsibles) do
+		if v.id == n.id then
+			not_responsible = false
+		end
+	end
+	if not_responsible then
+		return false, "wrong node"
+	end
+	local answers = 0
+	local answer_data = {}
+	local latest_vector_clock = {}
+	local successful = false
+	if not locked_keys[key] then --TODO change this for a queue system
+		locked_keys[key] = true
+		for i,v in ipairs(responsibles) do
+			events.thread(function()
+				if v.id == n.id then
+					answer_data[v.id] = get_local(key)
+				else
+					answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
+				end
+				if answer_data[v.id] then
+					log:print("received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
+					for i2,v2 in pairs(answer_data[v.id].vector_clock) do
+						log:print("",i2,v2)
+					end
+					answers = answers + 1
+					if answers >= min_replicas_read then
+						events.fire(key)
+					end
+				end
+			end)
+		end
+		successful = events.wait(key, some_timeout) --TODO match this with settings
+		for i,v in pairs(answer_data) do
+			for i2,v2 in pairs(v.vector_clock) do
+				if not latest_vector_clock[i2] then
+					--TODO finish it
+				end
+			end
+		end
+		locked_keys[key] = nil
+	end
+	return value
+end
+
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
-function put_local(key, value)
+function put_local(key, value, src_write)
 	--TODO how to check if the source node is valid?
+	--adding a random failure to simulate failed local transactions
+	if math.random(10) == 1 then
+		log:print("im "..n.id.." NOT writing key: "..key)
+		return false, "404"
+	end
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/10)
 	--if key is not a string, dont accept the transaction
@@ -283,20 +364,39 @@ function put_local(key, value)
 	if type(value) ~= "string" and type(value) ~= "number" then
 		return false, "wrong value type"
 	end
-	--if the k,v pair doesnt exist, create it with version=1, enabled=true
+
+	if not src_write then
+		src_write = {id="version"} --for compatibility with consistent_put
+	end
+
+	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
 	if not db_table[key] then
-		db_table[key] = {value=value, version=1, enabled=true}
+		db_table[key] = {value=value, enabled=true, vector_clock={}}
+		db_table[key].vector_clock[src_write.id] = 1
 	else
 	--else, replace the value and increase the version
 		db_table[key].value=value
-		db_table[key].version=db_table[key].version + 1
+		if db_table[key].vector_clock[src_write.id] then
+			db_table[key].vector_clock[src_write.id] = db_table[key].vector_clock[src_write.id] + 1
+		else
+			db_table[key].vector_clock[src_write.id] = 1
+		end
 		--TODO handle enabled and versions
 	end
-	log:print("im "..n.id.." writing key: "..key..", value: "..value..", version: "..db_table[key].version..", enabled: ", db_table[key].enabled)
-	return true, version
+	log:print("im "..n.id.." writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
+	for i,v in pairs(db_table[key].vector_clock) do
+		log:print("",i,v)
+	end
+	return true
 end
 
-local function get_local(key)
+function get_local(key)
+	--adding a random failure to simulate failed local transactions
+	if math.random(10) == 1 then
+		return nil
+	end
+	--adding a random waiting time to simulate different response times
+	events.sleep(math.random(100)/10)
 	return db_table[key]
 end
 
