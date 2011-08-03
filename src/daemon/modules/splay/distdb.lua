@@ -334,11 +334,77 @@ function evtl_consistent_get(key)
 			end)
 		end
 		successful = events.wait(key, some_timeout) --TODO match this with settings
-		for i,v in pairs(answer_data) do
-			for i2,v2 in pairs(v.vector_clock) do
-				if not latest_vector_clock[i2] then
-					--TODO finish it
+		local conflict = true
+		while conflict do
+			conflict = false
+			local comparison_table = {}
+			for i,v in pairs(answer_data) do
+				comparison_table[i] = {}
+				for i2,v2 in pairs(answer_data) do
+					comparison_table[i][i2] = 0
+					if i2 ~= i then
+						log:print("comparing "..i.." and "..i2)
+						local do_comparison = false
+						if not comparison_table[i2] then
+							do_comparison = true
+						elseif not comparison_table[i2][i] then
+							do_comparison = true
+						end
+						if do_comparison then
+							local merged_vector = {}
+							--log:print("first "..i)
+							for i3,v3 in pairs(v.vector_clock) do
+								merged_vector[i3] = {value=v3, max=1}
+								--log:print(i3, v3)
+							end
+							--log:print("then "..i2)
+							for i4,v4 in pairs(v2.vector_clock) do
+								--log:print(i4, v4)
+								if merged_vector[i4] then
+									if v4 > merged_vector[i4].value then
+										merged_vector[i4] = {value=v4, max=2}
+									elseif v4 == merged_vector[i4].value then
+										merged_vector[i4].max = 0
+									end
+								else
+									merged_vector[i4] = {value=v4, max=1}
+								end
+							end
+							for i5,v5 in pairs(merged_vector) do
+								--log:print(i5, v5.value, v5.max)
+								if v5.max == 1 then
+									if comparison_table[i][i2] == 0 then
+										comparison_table[i][i2] = 1
+									elseif comparison_table[i][i2] == 2 then
+										comparison_table[i][i2] = 3
+									end
+								elseif v5.max == 2 then
+									if comparison_table[i][i2] == 0 then
+										comparison_table[i][i2] = 2
+									elseif comparison_table[i][i2] == 1 then
+										comparison_table[i][i2] = 3
+									end
+								end
+							end
+							log:print("comparison_table: "..comparison_table[i][i2])
+						end
+					end
 				end
+			end
+			for i,v in pairs(comparison_table) do
+				for i2,v2 in pairs(v) do
+					if v2 == 1 then
+						answer_data[i2] = nil
+						log:print("deleting answer from "..i2.." because "..i.." is fresher")
+					elseif v2 == 2 then
+						answer_data[i] = nil
+						log:print("deleting answer from "..i.." because "..i2.." is fresher")
+					end
+				end
+			end
+			log:print("remaining answers")
+			for i,v in pairs(answer_data) do
+				log:print(i, v.value)
 			end
 		end
 		locked_keys[key] = nil
@@ -355,7 +421,7 @@ function put_local(key, value, src_write)
 		return false, "404"
 	end
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/10)
+	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		return false, "wrong key type"

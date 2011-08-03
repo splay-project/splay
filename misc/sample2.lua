@@ -55,7 +55,7 @@ events.loop(function()
 	events.sleep(4)
 	if job.position == 1 then
 		local key = crypto.evp.digest("sha1",math.random(100000))
-		for i=1,5 do
+		for i=1,10 do
 			log:print("Key is "..key)
 			--[[ TESTING CONSISTENT PUT
 			local master = distdb.get_master(key)
@@ -78,20 +78,22 @@ events.loop(function()
 			log:print("choosing responsible n. "..chosen_node_id)
 			local chosen_node = responsibles[chosen_node_id]
 			log:print("Chosen node is "..chosen_node.id)
+				--[[TESTING WRONG NODE
 				if math.random(5) == 1 then
 					local new_node_id = math.random(#job.nodes)
 					chosen_node = job.nodes[new_node_id]
 					log:print("Chosen node changed")
 				end
+				]]--
 			log:print()
 			local answer = rpc.call(chosen_node, {"distdb.evtl_consistent_put", key, i*10})
 			log:print("")
 			log:print("put successfully done? ", answer)
 			log:print("")
-			events.sleep(20)
+			events.sleep(3)
 		end
 
-		for i=1,5 do
+		for i=1,1 do
 			log:print("Key is "..key)
 			--[[ TESTING CONSISTENT PUT
 			local master = distdb.get_master(key)
@@ -114,11 +116,13 @@ events.loop(function()
 			log:print("choosing responsible n. "..chosen_node_id)
 			local chosen_node = responsibles[chosen_node_id]
 			log:print("Chosen node is "..chosen_node.id)
+				--[[TESTING WRONG NODE
 				if math.random(5) == 1 then
 					local new_node_id = math.random(#job.nodes)
 					chosen_node = job.nodes[new_node_id]
 					log:print("Chosen node changed")
 				end
+				]]--
 			log:print()
 			local answer = rpc.call(chosen_node, {"distdb.evtl_consistent_get", key})
 			log:print("")
