@@ -193,7 +193,7 @@ function handle_get(type_of_transaction, key)
 end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
-function handle_put(type_of_transaction, key, value)
+function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
 	log:print(n.port..": handling a PUT for key: "..key..", value: "..value)
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
