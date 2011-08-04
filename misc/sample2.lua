@@ -153,6 +153,10 @@ events.loop(function()
 	log:print(job.position..", replied:"..statss[2])
 	os.exit()
 	--]]
+	log:print("closing in 60s")
+	events.sleep(60)
+	distdb.stop()
+	os.exit()
 end)
 
 -- now, you can watch the logs of your job and enjoy ;-)

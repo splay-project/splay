@@ -112,7 +112,7 @@ function get_responsibles(id) --TODO MAKE IT LOCAL
 
 	local responsibles = {master}
 
-	for i=1,n_replicas do
+	for i=1,n_replicas - 1 do
 		if masters_pos + i <= #neighborhood then
 			table.insert(responsibles, neighborhood[masters_pos + i])
 		else
@@ -179,9 +179,9 @@ function init(job)
 		--initializes db_table
 		db_table = {}
 		--initializes the variable holding the number of replicas
-		n_replicas = 5 --TODO this should be configurable
-		min_replicas_write = 3 --TODO this should be configurable
-		min_replicas_read = 3 --TODO this should be configurable
+		n_replicas = 7 --TODO this should be configurable
+		min_replicas_write = 2 --TODO this should be configurable
+		min_replicas_read = 2 --TODO this should be configurable
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
@@ -202,25 +202,6 @@ function stop()
 	rpc.stop_server(n.port)
 end
 
-function put(key, value)
-		--TODO the content of this function
-		local master = get_master(key)
-		if master.id ~= n.id then
-			return false, "wrong master"
-		end
-		local master_id = n.position
-		for i=1,n_replicas do
-			--log:print("ID TO CALL "..(master_id+i))
-			--log:print("ID TO CALL - size"..(master_id+i-#neighborhood))
-			if master_id+i<=#neighborhood then
-				events.thread(function() rpc.call(neighborhood[master_id+i], {"distdb.put_local", key, value}) end)
-			else
-				events.thread(function() rpc.call(neighborhood[master_id+i-#neighborhood], {"distdb.put_local", key, value}) end)
-			end
-		end
-	return true
-end
-
 function consistent_put(key, value)
 	local master = get_master(key) --TODO maybe optimize this by changing to master, masters_pos
 	if master.id ~= n.id then
@@ -231,14 +212,23 @@ function consistent_put(key, value)
 	local successful = false
 	if not locked_keys[key] then --TODO change this for a queue system
 		locked_keys[key] = true
-		events.thread(function() put_local(key, value) end)
-		for i=1,n_replicas do
+		events.thread(function()
+			local ok = put_local(key, value)
+			if ok then
+				answers = answers + 1
+				if answers >= n_replicas then
+					events.fire(key)
+				end
+			end
+			
+		end)
+		for i = 1, n_replicas - 1 do
 			events.thread(function()
 				local replica_id = nil
-				if master_id+i<=#neighborhood then
-					replica_id = master_id+i
+				if master_id + i <= #neighborhood then
+					replica_id = master_id + i
 				else
-					replica_id = master_id+i-#neighborhood
+					replica_id = master_id + i - #neighborhood
 				end
 				--log:print("i: "..i)
 				--log:print("replica id: "..replica_id)
@@ -251,7 +241,7 @@ function consistent_put(key, value)
 				end
 			end)
 		end
-		successful = events.wait(key, some_timeout) --TODO match this with settings
+		successful = events.wait(key, some_timeout) --TODO match this with settings --TODO 2 watch out with node failures, how to handle???
 		locked_keys[key] = nil
 	end
 	return successful
@@ -272,7 +262,15 @@ function evtl_consistent_put(key, value)
 	local successful = false
 	if not locked_keys[key] then --TODO change this for a queue system
 		locked_keys[key] = true
-		events.thread(function() put_local(key, value, n) end)
+		events.thread(function()
+			local ok = put_local(key, value, n)
+			if ok then
+				answers = answers + 1
+				if answers >= min_replicas_write then
+					events.fire(key)
+				end
+			end
+		end)
 		for i,v in ipairs(responsibles) do
 			if v.id ~= n.id then
 				events.thread(function()
@@ -293,11 +291,20 @@ function evtl_consistent_put(key, value)
 end
 
 function consistent_get(key)
+	local not_responsible = true
+	local responsibles = get_responsibles(key)
+	for i,v in ipairs(responsibles) do
+		if v.id == n.id then
+			not_responsible = false
+		end
+	end
+	if not_responsible then
+		return false, "wrong node"
+	end
 	return get_local(key)
 end
 
 function evtl_consistent_get(key)
-	local value = nil
 	local not_responsible = true
 	local responsibles = get_responsibles(key)
 	for i,v in ipairs(responsibles) do
@@ -310,113 +317,110 @@ function evtl_consistent_get(key)
 	end
 	local answers = 0
 	local answer_data = {}
+	local return_data = {}
 	local latest_vector_clock = {}
 	local successful = false
-	if not locked_keys[key] then --TODO change this for a queue system
-		locked_keys[key] = true
-		for i,v in ipairs(responsibles) do
-			events.thread(function()
-				if v.id == n.id then
-					answer_data[v.id] = get_local(key)
-				else
-					answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
+	for i,v in ipairs(responsibles) do
+		events.thread(function()
+			if v.id == n.id then
+				answer_data[v.id] = get_local(key)
+			else
+				answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
+			end
+			if answer_data[v.id] then
+				log:print("received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
+				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
+					log:print("",i2,v2)
 				end
-				if answer_data[v.id] then
-					log:print("received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
-					for i2,v2 in pairs(answer_data[v.id].vector_clock) do
-						log:print("",i2,v2)
-					end
-					answers = answers + 1
-					if answers >= min_replicas_read then
-						events.fire(key)
-					end
-				end
-			end)
-		end
-		successful = events.wait(key, some_timeout) --TODO match this with settings
-		local conflict = true
-		while conflict do
-			conflict = false
-			local comparison_table = {}
-			for i,v in pairs(answer_data) do
-				comparison_table[i] = {}
-				for i2,v2 in pairs(answer_data) do
-					comparison_table[i][i2] = 0
-					if i2 ~= i then
-						log:print("comparing "..i.." and "..i2)
-						local do_comparison = false
-						if not comparison_table[i2] then
-							do_comparison = true
-						elseif not comparison_table[i2][i] then
-							do_comparison = true
-						end
-						if do_comparison then
-							local merged_vector = {}
-							--log:print("first "..i)
-							for i3,v3 in pairs(v.vector_clock) do
-								merged_vector[i3] = {value=v3, max=1}
-								--log:print(i3, v3)
-							end
-							--log:print("then "..i2)
-							for i4,v4 in pairs(v2.vector_clock) do
-								--log:print(i4, v4)
-								if merged_vector[i4] then
-									if v4 > merged_vector[i4].value then
-										merged_vector[i4] = {value=v4, max=2}
-									elseif v4 == merged_vector[i4].value then
-										merged_vector[i4].max = 0
-									end
-								else
-									merged_vector[i4] = {value=v4, max=1}
-								end
-							end
-							for i5,v5 in pairs(merged_vector) do
-								--log:print(i5, v5.value, v5.max)
-								if v5.max == 1 then
-									if comparison_table[i][i2] == 0 then
-										comparison_table[i][i2] = 1
-									elseif comparison_table[i][i2] == 2 then
-										comparison_table[i][i2] = 3
-									end
-								elseif v5.max == 2 then
-									if comparison_table[i][i2] == 0 then
-										comparison_table[i][i2] = 2
-									elseif comparison_table[i][i2] == 1 then
-										comparison_table[i][i2] = 3
-									end
-								end
-							end
-							log:print("comparison_table: "..comparison_table[i][i2])
-						end
-					end
+				answers = answers + 1
+				if answers >= min_replicas_read then
+					events.fire(key)
 				end
 			end
-			for i,v in pairs(comparison_table) do
-				for i2,v2 in pairs(v) do
-					if v2 == 1 then
-						answer_data[i2] = nil
-						log:print("deleting answer from "..i2.." because "..i.." is fresher")
-					elseif v2 == 2 then
-						answer_data[i] = nil
-						log:print("deleting answer from "..i.." because "..i2.." is fresher")
-					end
-				end
-			end
-			log:print("remaining answers")
-			for i,v in pairs(answer_data) do
-				log:print(i, v.value)
-			end
-		end
-		locked_keys[key] = nil
+		end)
 	end
-	return value
+	successful = events.wait(key, some_timeout) --TODO match this with settings
+	if not successful then
+		return false, "timeout"
+	end
+	local comparison_table = {}
+	for i,v in pairs(answer_data) do
+		comparison_table[i] = {}
+		for i2,v2 in pairs(answer_data) do
+			comparison_table[i][i2] = 0
+			if i2 ~= i then
+				log:print("comparing "..i.." and "..i2)
+				local do_comparison = false
+				if not comparison_table[i2] then
+					do_comparison = true
+				elseif not comparison_table[i2][i] then
+					do_comparison = true
+				end
+				if do_comparison then
+					local merged_vector = {}
+					--log:print("first "..i)
+					for i3,v3 in pairs(v.vector_clock) do
+						merged_vector[i3] = {value=v3, max=1}
+						--log:print(i3, v3)
+					end
+					--log:print("then "..i2)
+					for i4,v4 in pairs(v2.vector_clock) do
+						--log:print(i4, v4)
+						if merged_vector[i4] then
+							if v4 > merged_vector[i4].value then
+								merged_vector[i4] = {value=v4, max=2}
+							elseif v4 == merged_vector[i4].value then
+								merged_vector[i4].max = 0
+							end
+						else
+							merged_vector[i4] = {value=v4, max=1}
+						end
+					end
+					for i5,v5 in pairs(merged_vector) do
+						--log:print(i5, v5.value, v5.max)
+						if v5.max == 1 then
+							if comparison_table[i][i2] == 0 then
+								comparison_table[i][i2] = 1
+							elseif comparison_table[i][i2] == 2 then
+								comparison_table[i][i2] = 3
+							end
+						elseif v5.max == 2 then
+							if comparison_table[i][i2] == 0 then
+								comparison_table[i][i2] = 2
+							elseif comparison_table[i][i2] == 1 then
+								comparison_table[i][i2] = 3
+							end
+						end
+					end
+				end
+				log:print("comparison_table: "..comparison_table[i][i2])
+			end
+		end
+	end
+	for i,v in pairs(comparison_table) do
+		for i2,v2 in pairs(v) do
+			if v2 == 1 then
+				answer_data[i2] = nil
+				log:print("deleting answer from "..i2.." because "..i.." is fresher")
+			elseif v2 == 2 then
+				answer_data[i] = nil
+				log:print("deleting answer from "..i.." because "..i2.." is fresher")
+			end
+		end
+	end
+	log:print("remaining answers")
+	for i,v in pairs(answer_data) do
+		log:print(i, v.value)
+		table.insert(return_data, v)
+	end
+	return true, return_data
 end
 
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
 function put_local(key, value, src_write)
 	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
-	if math.random(10) == 1 then
+	if math.random(5) == 1 then
 		log:print("im "..n.id.." NOT writing key: "..key)
 		return false, "404"
 	end
@@ -462,7 +466,7 @@ function get_local(key)
 		return nil
 	end
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/10)
+	events.sleep(math.random(100)/100)
 	return db_table[key]
 end
 
