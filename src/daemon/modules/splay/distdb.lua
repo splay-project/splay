@@ -81,7 +81,7 @@ local function calculate_id(node)
 end
 
 --function get_master: looks for the master of a given ID
-function get_master(id) --TODO MAKE IT LOCAL
+local function get_master(id)
 	--the master is initialized as equal to the last node
 	local masters_pos = #neighborhood
 	local master = neighborhood[masters_pos]
@@ -105,6 +105,23 @@ function get_master(id) --TODO MAKE IT LOCAL
 	--log:print("master --> "..master.id)
 	--returns the master
 	return master, masters_pos
+end
+
+--function get_responsibles: looks for the nodes that are responsible of a given ID
+local function get_responsibles(id)
+
+	local master, masters_pos = get_master(id)
+
+	local responsibles = {master}
+
+	for i=1,n_replicas - 1 do
+		if masters_pos + i <= #neighborhood then
+			table.insert(responsibles, neighborhood[masters_pos + i])
+		else
+			table.insert(responsibles, neighborhood[masters_pos + i - #neighborhood])
+		end
+	end
+	return responsibles, masters_pos
 end
 
 --function print_me: prints the IP address, port, and ID of the node
@@ -161,7 +178,7 @@ end
 --function handle_get_bucket: handles a GET BUCKET request as the Coordinator of the Access Key ID
 function handle_get(type_of_transaction, key)
 	log:print(n.port.." handling a GET for key: "..key)
-	local responsibles = distdb.get_responsibles(key)
+	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
 	--log:print(n.port..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
@@ -171,18 +188,14 @@ function handle_get(type_of_transaction, key)
 	else
 		function_to_call = "distdb.evtl_consistent_get"
 	end
-	local answer = rpc.call(chosen_node, {function_to_call, key, value})
-	if answer then
-		return json.encode(answer)
-	else
-		return nil
-	end
+	local ok, answer = rpc.call(chosen_node, {function_to_call, key, value})
+	return ok, answer
 end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value)
-	log:print(n.port..": handling a PUT for key: "..key)
-	local responsibles = distdb.get_responsibles(key)
+	log:print(n.port..": handling a PUT for key: "..key..", value: "..value)
+	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
 	--log:print(n.port..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
@@ -201,7 +214,7 @@ function handle_put(type_of_transaction, key, value)
 	else
 		function_to_call = "distdb.evtl_consistent_put"
 	end
-	local answer = rpc.call(chosen_node, {function_to_call, key})
+	local answer = rpc.call(chosen_node, {function_to_call, key, value})
 	return answer
 end
 
@@ -228,15 +241,19 @@ function handle_http_message(socket)
 	local type_of_transaction = headers["Type"] or headers["type"]
 	log:print(n.port..": http request parsed, a "..method.." request will be forwarded")
 	log:print(n.port..": key: "..key..", value:", value)
-	local answer = forward_request[method](type_of_transaction, key, tonumber(value))
+	local ok, answer = forward_request[method](type_of_transaction, key, tonumber(value))
 
 	local http_response_body = nil
 	local http_response_code = nil
 	local http_response_content_type = nil
-	if answer then
+	log:print(n.port..": answer is a "..type(answer))
+	if ok then
+		if answer then
+			http_response_body = json.encode(answer)
+		end
 		http_response_code = "200 OK"
 		http_response_content_type = "text/plain"
-		http_response_body = answer
+
 	else
 		http_response_code = "409 Conflict"
 	end
@@ -260,23 +277,6 @@ end
 
 
 --=========== FROM DIST-DB.LUA END
-
---function get_responsibles: looks for the nodes that are responsible of a given ID
-function get_responsibles(id) --TODO MAKE IT LOCAL
-
-	local master, masters_pos = get_master(id)
-
-	local responsibles = {master}
-
-	for i=1,n_replicas - 1 do
-		if masters_pos + i <= #neighborhood then
-			table.insert(responsibles, neighborhood[masters_pos + i])
-		else
-			table.insert(responsibles, neighborhood[masters_pos + i - #neighborhood])
-		end
-	end
-	return responsibles, masters_pos
-end
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function get_position()
@@ -335,9 +335,12 @@ function init(job)
 		log:print(n.port..": HTTP server - Started on port "..http_server_port)
 		print_me()
 		log:print()
+		local for_ports_lua = "for ports.lua "
 		for _,v in ipairs(neighborhood) do
 			print_node(v)
+			for_ports_lua = for_ports_lua..", "..(v.port+1)
 		end
+		log:print(n.port..": "..for_ports_lua)
 	end
 end
 
@@ -572,10 +575,12 @@ function put_local(key, value, src_write)
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
+		log:print(n.port..": NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
+		log:print(n.port..": NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
 
