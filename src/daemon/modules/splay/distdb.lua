@@ -35,7 +35,9 @@ local enc	= require"splay.benc"
 -- for handling hexa strings
 local misc	= require"splay.misc" --TODO look if the use of splay.misc fits here
 -- for handling threads
-local events	= require"splay.events" --TODO look if the use of splay.misc fits here
+local events	= require"splay.events" --TODO look if the use of splay.events fits here
+-- for encoding/decoding the GET answer
+local json	= require"json" --TODO look if the use of json fits here
 
 
 --TODO CHECK which ones are going to be used
@@ -105,6 +107,160 @@ function get_master(id) --TODO MAKE IT LOCAL
 	return master, masters_pos
 end
 
+--function print_me: prints the IP address, port, and ID of the node
+local function print_me()
+	log:print("ME",n.ip, n.port, n.id, n.position)
+end
+
+--function print_node: prints the IP address, port, and ID of a given node
+local function print_node(node)
+	log:print(node.ip, node.port, node.id)
+end
+
+--function parse_http_request: parses the payload of the HTTP request
+function parse_http_request(socket)
+	--print("\n\nHEADER\n\n")
+	local first_line = socket:receive("*l")
+	local first_line_analyzer = {}
+	for piece in string.gmatch(first_line, "[^ ]+") do
+		table.insert(first_line_analyzer, piece)
+	end
+	local method = first_line_analyzer[1]
+	local resource = first_line_analyzer[2]
+	local http_version = first_line_analyzer[3]
+	local headers = {}
+	while true do
+		local data = socket:receive("*l")
+		if ( #data < 1 ) then
+			break
+		end
+		--print("data = "..data)
+		local header_separator = string.find(data, ":")
+		local header_k = string.sub(data, 1, header_separator-1)
+		local header_v = string.sub(data, header_separator+2)
+		--print(header_k, header_v)
+		headers[header_k] = header_v
+	end
+
+	--local body = socket:receive(1) -- Receive 1 byte from the socket's buffer
+	--print("\n\nBODY\n\n")
+	-- initializes the request body read from client as empty string
+	local bytes_left = tonumber(headers["content-length"] or headers["Content-Length"])
+	local body = nil
+	if bytes_left then
+		--print("body length = "..bytes_left)
+		body = socket:receive(bytes_left)
+		--print("body = "..body)
+	end
+
+	return method, resource, http_version, headers, body
+end
+
+--REQUEST HANDLING FUNCTIONS
+
+--function handle_get_bucket: handles a GET BUCKET request as the Coordinator of the Access Key ID
+function handle_get(type_of_transaction, key)
+	log:print(n.port.." handling a GET for key: "..key)
+	local responsibles = distdb.get_responsibles(key)
+	local chosen_node_id = math.random(#responsibles)
+	--log:print(n.port..": choosing responsible n. "..chosen_node_id)
+	local chosen_node = responsibles[chosen_node_id]
+	local function_to_call = nil
+	if type_of_transaction == "consistent" then
+		function_to_call = "distdb.consistent_get"
+	else
+		function_to_call = "distdb.evtl_consistent_get"
+	end
+	local answer = rpc.call(chosen_node, {function_to_call, key, value})
+	if answer then
+		return json.encode(answer)
+	else
+		return nil
+	end
+end
+
+--function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
+function handle_put(type_of_transaction, key, value)
+	log:print(n.port..": handling a PUT for key: "..key)
+	local responsibles = distdb.get_responsibles(key)
+	local chosen_node_id = math.random(#responsibles)
+	--log:print(n.port..": choosing responsible n. "..chosen_node_id)
+	local chosen_node = responsibles[chosen_node_id]
+	--log:print(n.port..": Chosen node is "..chosen_node.id)
+	--[[TESTING WRONG NODE
+	if math.random(5) == 1 then
+		local new_node_id = math.random(#job.nodes)
+		chosen_node = job.nodes[new_node_id]
+		log:print(n.port..": Chosen node changed")
+	end
+	]]--
+	--log:print()
+	local function_to_call = nil
+	if type_of_transaction == "consistent" then
+		function_to_call = "distdb.consistent_put"
+	else
+		function_to_call = "distdb.evtl_consistent_put"
+	end
+	local answer = rpc.call(chosen_node, {function_to_call, key})
+	return answer
+end
+
+
+--TABLE OF FORWARDING FUNCTIONS
+
+local forward_request = {
+	["GET"] = handle_get,
+	["PUT"] = handle_put,
+	}
+
+
+--FRONT-END FUNCTIONS
+
+--function handle_http_message: handles the incoming messages (HTTP requests)
+function handle_http_message(socket)
+	local client_ip, client_port = socket:getpeername()
+	local method, resource, http_version, headers, body = parse_http_request(socket)
+	local key = string.sub(resource, 2)
+	log:print(n.port..": resource is "..resource)
+	log:print(n.port..": requesting for "..key)
+
+	local value = body
+	local type_of_transaction = headers["Type"] or headers["type"]
+	log:print(n.port..": http request parsed, a "..method.." request will be forwarded")
+	log:print(n.port..": key: "..key..", value:", value)
+	local answer = forward_request[method](type_of_transaction, key, tonumber(value))
+
+	local http_response_body = nil
+	local http_response_code = nil
+	local http_response_content_type = nil
+	if answer then
+		http_response_code = "200 OK"
+		http_response_content_type = "text/plain"
+		http_response_body = answer
+	else
+		http_response_code = "409 Conflict"
+	end
+
+	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
+	if http_response_body then
+		http_response = http_response..
+			"Content-Length: "..#http_response_body.."\r\n"..
+			"Content-Type: "..http_response_content_type.."\r\n\r\n"..http_response_body
+	else
+		http_response = http_response.."\r\n"
+	end
+
+	socket:send(http_response)
+-- 	if string.sub(header,1,8) == "OPTIONS" then
+-- 		return handle_options_method(socket)
+-- 	else
+-- 		handle_post_method(socket,jsonmsg)
+-- 	end
+end
+
+
+--=========== FROM DIST-DB.LUA END
+
 --function get_responsibles: looks for the nodes that are responsible of a given ID
 function get_responsibles(id) --TODO MAKE IT LOCAL
 
@@ -121,18 +277,6 @@ function get_responsibles(id) --TODO MAKE IT LOCAL
 	end
 	return responsibles, masters_pos
 end
-
---function print_me: prints the IP address, port, and ID of the node
-local function print_me()
-	log:print("ME",n.ip, n.port, n.id, n.position)
-end
-
---function print_node: prints the IP address, port, and ID of a given node
-local function print_node(node)
-	log:print(node.ip, node.port, node.id)
-end
-
---=========== FROM DIST-DB.LUA END
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function get_position()
@@ -152,7 +296,7 @@ function init(job)
 		--takes IP address and port from job.me
 		n = {ip=job.me.ip, port=job.me.port}
 		--initializes the randomseed with the port
-		--math.randomseed(n.port) CHECK I think i dont need this anymore
+		math.randomseed(n.port)
 		--calculates the ID by hashing the IP address and port
 		n.id = calculate_id(job.me)
 		--initializes the neighborhood as an empty table
@@ -179,16 +323,16 @@ function init(job)
 		--initializes db_table
 		db_table = {}
 		--initializes the variable holding the number of replicas
-		n_replicas = 7 --TODO this should be configurable
-		min_replicas_write = 2 --TODO this should be configurable
-		min_replicas_read = 2 --TODO this should be configurable
+		n_replicas = 10 --TODO this should be configurable
+		min_replicas_write = 3 --TODO this should be configurable
+		min_replicas_read = 3 --TODO this should be configurable
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
 
 		--PRINTING STUFF
 		--prints a initialization message
-		log:print("HTTP server - Started on port "..http_server_port)
+		log:print(n.port..": HTTP server - Started on port "..http_server_port)
 		print_me()
 		log:print()
 		for _,v in ipairs(neighborhood) do
@@ -220,7 +364,7 @@ function consistent_put(key, value)
 					events.fire(key)
 				end
 			end
-			
+
 		end)
 		for i = 1, n_replicas - 1 do
 			events.thread(function()
@@ -328,9 +472,9 @@ function evtl_consistent_get(key)
 				answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
 			end
 			if answer_data[v.id] then
-				log:print("received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
+				log:print(n.port..": received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
-					log:print("",i2,v2)
+					log:print(n.port..":",i2,v2)
 				end
 				answers = answers + 1
 				if answers >= min_replicas_read then
@@ -349,7 +493,7 @@ function evtl_consistent_get(key)
 		for i2,v2 in pairs(answer_data) do
 			comparison_table[i][i2] = 0
 			if i2 ~= i then
-				log:print("comparing "..i.." and "..i2)
+				--log:print("comparing "..i.." and "..i2)
 				local do_comparison = false
 				if not comparison_table[i2] then
 					do_comparison = true
@@ -393,7 +537,7 @@ function evtl_consistent_get(key)
 						end
 					end
 				end
-				log:print("comparison_table: "..comparison_table[i][i2])
+				--log:print("comparison_table: "..comparison_table[i][i2])
 			end
 		end
 	end
@@ -401,16 +545,16 @@ function evtl_consistent_get(key)
 		for i2,v2 in pairs(v) do
 			if v2 == 1 then
 				answer_data[i2] = nil
-				log:print("deleting answer from "..i2.." because "..i.." is fresher")
+				--log:print("deleting answer from "..i2.." because "..i.." is fresher")
 			elseif v2 == 2 then
 				answer_data[i] = nil
-				log:print("deleting answer from "..i.." because "..i2.." is fresher")
+				--log:print("deleting answer from "..i.." because "..i2.." is fresher")
 			end
 		end
 	end
-	log:print("remaining answers")
+	log:print(n.port..": remaining answers")
 	for i,v in pairs(answer_data) do
-		log:print(i, v.value)
+		log:print(n.port..":", i, v.value)
 		table.insert(return_data, v)
 	end
 	return true, return_data
@@ -421,7 +565,7 @@ function put_local(key, value, src_write)
 	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
-		log:print("im "..n.id.." NOT writing key: "..key)
+		log:print(n.port..": NOT writing key: "..key)
 		return false, "404"
 	end
 	--adding a random waiting time to simulate different response times
@@ -453,9 +597,9 @@ function put_local(key, value, src_write)
 		end
 		--TODO handle enabled and versions
 	end
-	log:print("im "..n.id.." writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
+	log:print(n.port..": writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
 	for i,v in pairs(db_table[key].vector_clock) do
-		log:print("",i,v)
+		log:print(n.port..":",i,v)
 	end
 	return true
 end
