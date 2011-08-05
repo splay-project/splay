@@ -448,7 +448,7 @@ function consistent_get(key)
 	if not_responsible then
 		return false, "wrong node"
 	end
-	return get_local(key)
+	return true, get_local(key) --TODO maybe it is better to enclose this on a table to make it output-compatible with eventually-consistent get
 end
 
 function evtl_consistent_get(key)
@@ -470,7 +470,7 @@ function evtl_consistent_get(key)
 	for i,v in ipairs(responsibles) do
 		events.thread(function()
 			if v.id == n.id then
-				answer_data[v.id] = get_local(key)
+				answer_data[v.id] = get_local(key) --TODO deal with attemps of writing a previous version
 			else
 				answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
 			end
