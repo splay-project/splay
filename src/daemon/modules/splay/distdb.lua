@@ -71,6 +71,10 @@ local min_replicas_write = 0 --TODO maybe this should match with settings
 local min_replicas_read = 0 --TODO maybe this should match with settings
 local some_timeout = 15
 local neighborhood = {}
+local anti_entropy_period = 10
+local neighbor_to_ping_pos = nil
+local neighbor_to_ping = nil --TODO maybe this can be improved by pinging both ways <- and ->, not only ->
+local ping_thread = nil
 
 local init_done = false
 
@@ -114,7 +118,13 @@ local function get_responsibles(id)
 
 	local responsibles = {master}
 
-	for i=1,n_replicas - 1 do
+	local n_responsibles = n_replicas
+
+	if n_replicas > #neighborhood then
+		n_responsibles = #neighborhood
+	end
+
+	for i=1,n_responsibles - 1 do
 		if masters_pos + i <= #neighborhood then
 			table.insert(responsibles, neighborhood[masters_pos + i])
 		else
@@ -133,6 +143,55 @@ end
 local function print_node(node)
 	log:print(node.ip, node.port, node.id)
 end
+
+local function ping_others()
+	if #neighborhood == 1 then
+		return false
+	end
+
+	if n.position + 1 <= neighborhood then
+		neighbor_to_ping_pos = n.position + 1
+	else
+		neighbor_to_ping_pos = 1
+	end
+
+	neighbor_to_ping = neighborhood[neighbor_to_ping_pos]
+
+	ping_thread = events.periodic(5, function()
+		local ok = rpc.ping(neighbor_to_ping)
+		if not ok then
+			log:print(n.port..": i lost neighbor "..neighbor_to_ping.id)
+			gossip_changes("remove", neighbor_to_ping)
+			table.remove(neighborhood, neighbor_to_ping_pos)
+				if #neighborhood == 1 then
+				neighbor_to_ping = nil
+				neighbor_to_ping_pos = nil
+				events.kill(ping_thread)
+			else
+				if n.position + 1 <= #neighborhood then
+					neighbor_to_ping_pos = n.position + 1
+				else
+					neighbor_to_ping_pos = 1
+				end
+				neighbor_to_ping = neighborhood[neighbor_to_ping_pos]
+			end
+		end
+	end)
+	return true
+end
+
+local function gossip_changes(message, neighbor_about)
+	local neighbor_to_gossip_pos = nil
+	while true then
+		neighbor_to_gossip_pos = math.random(#neighborhood)
+		if neighborhood[neighbor_to_gossip_pos].id ~= neighbor_about.id then
+			break
+		end
+	end
+	--AQUI ME QUEDÉ
+
+end
+
 
 --function parse_http_request: parses the payload of the HTTP request
 function parse_http_request(socket)
@@ -363,7 +422,7 @@ function consistent_put(key, value)
 			local ok = put_local(key, value)
 			if ok then
 				answers = answers + 1
-				if answers >= n_replicas then
+				if answers >= n_replicas then --TODO adapt this to n_responsibles
 					events.fire(key)
 				end
 			end
@@ -407,6 +466,9 @@ function evtl_consistent_put(key, value)
 	end
 	local answers = 0
 	local successful = false
+
+	--TODO consider min replicas and neighborhood
+
 	if not locked_keys[key] then --TODO change this for a queue system
 		locked_keys[key] = true
 		events.thread(function()
@@ -600,7 +662,8 @@ function put_local(key, value, src_write)
 		else
 			db_table[key].vector_clock[src_write.id] = 1
 		end
-		--TODO handle enabled and versions
+		--TODO handle enabled
+		--TODO add timestamps
 	end
 	log:print(n.port..": writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
 	for i,v in pairs(db_table[key].vector_clock) do
