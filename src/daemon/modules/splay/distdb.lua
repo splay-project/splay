@@ -144,20 +144,94 @@ local function print_node(node)
 	log:print(node.ip, node.port, node.id)
 end
 
+local function is_a_neighbor(node)
+	for i,v in ipairs(neighborhood) do
+		if node.id == v.id then
+			return true
+		end
+	end
+	return false
+end
+
+function receive_gossip(nodes_who_know, message, neighbor_about)
+--TODO this gossiping technique may not work for 2 failures in 1 period
+	if message == "add" then
+		if is_a_neighbor(neighbor_about) then
+			return nil
+		end
+		table.add(neighborhood, neighbor_to_ping_pos)
+		log:print(n.port..": adding node "..neighbor_about.id.." to my list")
+	elseif message == "remove" then
+		if not is_a_neighbor(neighbor_about) then
+			return nil
+		end
+		table.remove(neighborhood, neighbor_to_ping_pos)
+		log:print(n.port..": removing node "..neighbor_about.id.." to my list")
+	end
+
+	local neighbors_to_gossip = {}
+
+	for i=1,5 do
+		local neighbor_to_gossip_pos = nil
+
+		while true do
+			neighbor_to_gossip_pos = math.random(#neighborhood)
+			local neighbor_to_gossip = neighborhood[neighbor_to_gossip_pos]
+			local chosen_knows = false
+			for i2,v2 in ipairs(nodes_who_know) do
+				if v2.id == neighbor_to_gossip.id then
+
+				end
+			end
+			if neighbor_to_gossip.id ~= neighbor_about.id and neighbor_to_gossip.id ~= n.id then
+
+			end
+		end
+
+		events.sleep(math.random(100)/20)
+
+		events.thread(function()
+			log:print(n.port..": gossiping to "..neighbor_to_gossip.id..", message: "..message..", about: "..neighbor_about.id)
+			rpc.call(neighbor_to_gossip, {"distdb.receive_gossip", n, message, neighbor_about})
+		end)
+	end
+
+end
+
+local function gossip_changes(message, neighbor_about)
+	local neighbor_to_gossip_pos = nil
+	local neighbor_to_gossip = nil
+	while true do
+		neighbor_to_gossip_pos = math.random(#neighborhood)
+		neighbor_to_gossip = neighborhood[neighbor_to_gossip_pos]
+		if neighbor_to_gossip.id ~= neighbor_about.id and neighbor_to_gossip.id ~= n.id then
+			break
+		end
+	end
+
+	log:print(n.port..": gossiping to "..neighbor_to_gossip.id)
+
+	events.thread(function()
+		log:print(n.port..": gossiping to "..neighbor_to_gossip.id..", message: "..message..", about: "..neighbor_about.id)
+		rpc.call(neighbor_to_gossip, {"distdb.receive_gossip", n, message, neighbor_about})
+	end)
+end
+
 local function ping_others()
 	if #neighborhood == 1 then
 		return false
 	end
 
-	if n.position + 1 <= neighborhood then
+	if n.position + 1 <= #neighborhood then
 		neighbor_to_ping_pos = n.position + 1
 	else
 		neighbor_to_ping_pos = 1
 	end
 
 	neighbor_to_ping = neighborhood[neighbor_to_ping_pos]
-
+	events.sleep(math.random(100)/20)
 	ping_thread = events.periodic(5, function()
+		log:print(n.port..": pinging "..neighbor_to_ping.id)
 		local ok = rpc.ping(neighbor_to_ping)
 		if not ok then
 			log:print(n.port..": i lost neighbor "..neighbor_to_ping.id)
@@ -179,19 +253,6 @@ local function ping_others()
 	end)
 	return true
 end
-
-local function gossip_changes(message, neighbor_about)
-	local neighbor_to_gossip_pos = nil
-	while true then
-		neighbor_to_gossip_pos = math.random(#neighborhood)
-		if neighborhood[neighbor_to_gossip_pos].id ~= neighbor_about.id then
-			break
-		end
-	end
-	--AQUI ME QUEDÉ
-
-end
-
 
 --function parse_http_request: parses the payload of the HTTP request
 function parse_http_request(socket)
@@ -400,6 +461,7 @@ function init(job)
 			for_ports_lua = for_ports_lua..", "..(v.port+1)
 		end
 		log:print(n.port..": "..for_ports_lua)
+		ping_others()
 	end
 end
 
