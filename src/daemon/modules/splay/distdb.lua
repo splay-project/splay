@@ -71,12 +71,22 @@ local min_replicas_write = 0 --TODO maybe this should match with settings
 local min_replicas_read = 0 --TODO maybe this should match with settings
 local some_timeout = 15
 local neighborhood = {}
-local anti_entropy_period = 10
-local neighbor_to_ping_pos = nil
-local neighbor_to_ping = nil --TODO maybe this can be improved by pinging both ways <- and ->, not only ->
+local next_node = nil
+local last_node = nil
 local ping_thread = nil
 
 local init_done = false
+
+--function print_node: prints the IP address, port, and ID of a given node
+local function get_position()
+	for i=1,#neighborhood do
+		if neighborhood[i].id == n.id then
+			return i
+		end
+	end
+end
+
+
 
 --=========== FROM DIST-DB.LUA BEGINNING
 --function calculate_id: calculates the node ID from ID and port
@@ -144,114 +154,117 @@ local function print_node(node)
 	log:print(node.ip, node.port, node.id)
 end
 
-local function is_a_neighbor(node)
+function print_all()
+	print_me()
+	log:print()
+	local for_ports_lua = "for ports.lua "
+	for _,v in ipairs(neighborhood) do
+		print_node(v)
+		for_ports_lua = for_ports_lua..", "..(v.port+1)
+	end
+	log:print(n.port..": "..for_ports_lua)
+
+end
+
+local function neighbor_position(node)
 	for i,v in ipairs(neighborhood) do
 		if node.id == v.id then
-			return true
+			return i
 		end
 	end
 	return false
 end
 
-function receive_gossip(nodes_who_know, message, neighbor_about)
+function add_node_to_neighborhood(node)
+	table.insert(neighborhood, node)
+	table.sort(neighborhood, function(a,b) return a.id<b.id end)
+	n.position = get_position()
+	if n.position == 1 then
+		next_node = neighborhood[2]
+		last_node = neighborhood[#neighborhood]
+	elseif n.position == #neighborhood then
+		next_node = neighborhood[1]
+		last_node = neighborhood[#neighborhood - 1]
+	else
+		next_node = neighborhood[n.position + 1]
+		last_node = neighborhood[n.position - 1]
+	end
+	log:print(n.port..": adding node "..node.id.." to my list")
+
+end
+
+function remove_node_from_neighborhood(node_pos)
+	local node = neighborhood[node_pos]
+	table.remove(neighborhood, node_pos)
+	n.position = get_position()
+	if #neighborhood == 1 then
+		next_node = nil
+		last_node = nil
+	elseif n.position == 1 then
+		next_node = neighborhood[2]
+		last_node = neighborhood[#neighborhood]
+	elseif n.position == #neighborhood then
+		next_node = neighborhood[1]
+		last_node = neighborhood[#neighborhood - 1]
+	else
+		next_node = neighborhood[n.position + 1]
+		last_node = neighborhood[n.position - 1]
+	end
+	log:print(n.port..": removing node "..node.id.." of my list")
+end
+
+function receive_gossip(message, neighbor_about)
 --TODO this gossiping technique may not work for 2 failures in 1 period
 	if message == "add" then
-		if is_a_neighbor(neighbor_about) then
+		if neighbor_position(neighbor_about) then
 			return nil
 		end
-		table.add(neighborhood, neighbor_to_ping_pos)
-		log:print(n.port..": adding node "..neighbor_about.id.." to my list")
+		add_node_to_neighborhood(neighbor_about)
 	elseif message == "remove" then
-		if not is_a_neighbor(neighbor_about) then
+		local neighbor_about_pos = neighbor_position(neighbor_about)
+		if not neighbor_about_pos then
 			return nil
 		end
-		table.remove(neighborhood, neighbor_to_ping_pos)
-		log:print(n.port..": removing node "..neighbor_about.id.." to my list")
+		remove_node_from_neighborhood(neighbor_about_pos)
 	end
 
-	local neighbors_to_gossip = {}
+	events.sleep(math.random(100)/20)
 
-	for i=1,5 do
-		local neighbor_to_gossip_pos = nil
-
-		while true do
-			neighbor_to_gossip_pos = math.random(#neighborhood)
-			local neighbor_to_gossip = neighborhood[neighbor_to_gossip_pos]
-			local chosen_knows = false
-			for i2,v2 in ipairs(nodes_who_know) do
-				if v2.id == neighbor_to_gossip.id then
-
-				end
-			end
-			if neighbor_to_gossip.id ~= neighbor_about.id and neighbor_to_gossip.id ~= n.id then
-
-			end
-		end
-
-		events.sleep(math.random(100)/20)
-
-		events.thread(function()
-			log:print(n.port..": gossiping to "..neighbor_to_gossip.id..", message: "..message..", about: "..neighbor_about.id)
-			rpc.call(neighbor_to_gossip, {"distdb.receive_gossip", n, message, neighbor_about})
-		end)
-	end
+	events.thread(function()
+		log:print(n.port..": gossiping to "..last_node.id..", message: "..message..", about: "..neighbor_about.id)
+		rpc.call(last_node, {"distdb.receive_gossip", message, neighbor_about})
+	end)
 
 end
 
 local function gossip_changes(message, neighbor_about)
-	local neighbor_to_gossip_pos = nil
-	local neighbor_to_gossip = nil
-	while true do
-		neighbor_to_gossip_pos = math.random(#neighborhood)
-		neighbor_to_gossip = neighborhood[neighbor_to_gossip_pos]
-		if neighbor_to_gossip.id ~= neighbor_about.id and neighbor_to_gossip.id ~= n.id then
-			break
-		end
-	end
-
-	log:print(n.port..": gossiping to "..neighbor_to_gossip.id)
 
 	events.thread(function()
-		log:print(n.port..": gossiping to "..neighbor_to_gossip.id..", message: "..message..", about: "..neighbor_about.id)
-		rpc.call(neighbor_to_gossip, {"distdb.receive_gossip", n, message, neighbor_about})
+		log:print(n.port..": gossiping to "..last_node.id..", message: "..message..", about: "..neighbor_about.id)
+		rpc.call(last_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 end
 
 local function ping_others()
-	if #neighborhood == 1 then
-		return false
-	end
-
-	if n.position + 1 <= #neighborhood then
-		neighbor_to_ping_pos = n.position + 1
-	else
-		neighbor_to_ping_pos = 1
-	end
-
-	neighbor_to_ping = neighborhood[neighbor_to_ping_pos]
-	events.sleep(math.random(100)/20)
-	ping_thread = events.periodic(5, function()
-		log:print(n.port..": pinging "..neighbor_to_ping.id)
-		local ok = rpc.ping(neighbor_to_ping)
+	if next_node then
+		log:print(n.port..": pinging "..next_node.id)
+		local ok = rpc.ping(next_node)
 		if not ok then
-			log:print(n.port..": i lost neighbor "..neighbor_to_ping.id)
-			gossip_changes("remove", neighbor_to_ping)
-			table.remove(neighborhood, neighbor_to_ping_pos)
-				if #neighborhood == 1 then
-				neighbor_to_ping = nil
-				neighbor_to_ping_pos = nil
-				events.kill(ping_thread)
-			else
-				if n.position + 1 <= #neighborhood then
-					neighbor_to_ping_pos = n.position + 1
-				else
-					neighbor_to_ping_pos = 1
-				end
-				neighbor_to_ping = neighborhood[neighbor_to_ping_pos]
-			end
+			log:print(n.port..": i lost neighbor "..next_node.id)
+			local node_about = {id = next_node.id}
+			remove_node_from_neighborhood(next_node)
+			gossip_changes("remove", node_about)
 		end
-	end)
-	return true
+	end
+end
+
+function add_me(node_to_add)
+	if neighbor_position(node_to_add) then
+		return nil
+	end
+	add_node_to_neighborhood(node_to_add)
+	gossip_changes("add", node_to_add)
+	return neighborhood
 end
 
 --function parse_http_request: parses the payload of the HTTP request
@@ -398,15 +411,6 @@ end
 
 --=========== FROM DIST-DB.LUA END
 
---function print_node: prints the IP address, port, and ID of a given node
-local function get_position()
-	for i=1,#neighborhood do
-		if neighborhood[i].id == n.id then
-			return i
-		end
-	end
-end
-
 function init(job)
 	if not init_done then
 		init_done = true
@@ -419,21 +423,7 @@ function init(job)
 		math.randomseed(n.port)
 		--calculates the ID by hashing the IP address and port
 		n.id = calculate_id(job.me)
-		--initializes the neighborhood as an empty table
-		neighborhood = {}
-		--for all nodes on job.nodes TODO take care of CHURNING
-		for _,v in ipairs(job.nodes) do
-			--copies IP address, port and calculates the ID from them
-			table.insert(neighborhood, {
-				ip = v.ip,
-				port = v.port,
-				id = calculate_id(v)
-			})
-		end
-		--sorts the elements of the table by their ids
-		table.sort(neighborhood, function(a,b) return a.id<b.id end)
 
-		n.position = get_position()
 
 		--server listens through the rpc port + 1
 		local http_server_port = n.port+1
@@ -450,18 +440,25 @@ function init(job)
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
 
+
+		--initializes the neighborhood as an empty table
+		if job.position == 1 then
+			neighborhood = {n}
+		else
+			neighborhood = rpc.call(job.nodes[1], {"distdb.add_me", n})
+		end
+
+		n.position = get_position()
+
+
+
 		--PRINTING STUFF
 		--prints a initialization message
 		log:print(n.port..": HTTP server - Started on port "..http_server_port)
-		print_me()
-		log:print()
-		local for_ports_lua = "for ports.lua "
-		for _,v in ipairs(neighborhood) do
-			print_node(v)
-			for_ports_lua = for_ports_lua..", "..(v.port+1)
-		end
-		log:print(n.port..": "..for_ports_lua)
-		ping_others()
+
+		print_all()
+
+		ping_thread = events.periodic(5, ping_others)
 	end
 end
 

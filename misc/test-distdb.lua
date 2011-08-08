@@ -9,9 +9,14 @@ local counter = 5
 
 
 events.loop(function()
+
+	events.sleep(2*job.position + math.random(100)/100)
+
 	distdb.init(job)
+
+
 	if job.position == 10 then
-		events.sleep(15)
+		events.sleep(60)
 		log:print(job.me.port..": im goin DOOOOWN!!!")
 		os.exit()
 	end
