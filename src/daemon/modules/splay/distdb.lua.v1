@@ -163,16 +163,14 @@ local function get_previous_node(node)
 	end
 end
 
---AQUI ME QUEDE
-
 --function get_master: looks for the master of a given key
 local function get_master(key)
 	--the master is initialized as equal to the last node
-	local masters_pos = 1
+	local master_pos = 1
 	local master = neighborhood[1]
 	--if the neighborhood is only one node, this is the master
 	if #neighborhood == 1 then
-		return master, masters_pos
+		return master, master_pos
 	end
 	--for all the neighbors but the first one
 	for i = 2, #neighborhood do
@@ -180,7 +178,7 @@ local function get_master(key)
 		local compare = misc.bighex_compare(neighborhood[i].id, key)
 		--if node ID is bigger
 		if (compare == 1) then
-			masters_pos = i
+			master_pos = i
 			--the master is node i
 			master = neighborhood[i]
 			--get out of the loop
@@ -190,40 +188,47 @@ local function get_master(key)
 	--prints the master ID
 	--log:print("master --> "..master.id)
 	--returns the master
-	return master, masters_pos
+	return master, master_pos
 end
 
 --function get_responsibles: looks for the nodes that are responsible of a given key
 local function get_responsibles(key)
 	--gets the master of the key
-	local master, masters_pos = get_master(key)
+	local master, master_pos = get_master(key)
 	--the first responsible is the master
 	local responsibles = {master}
-
+	--the number of responsibles is in principle = number of replicas
 	local n_responsibles = n_replicas
-
+	--if the size of the neighborhood is less than that, n_responsibles = size of neighborhood
 	if n_replicas > #neighborhood then
 		n_responsibles = #neighborhood
 	end
-
-	for i=1,n_responsibles - 1 do
-		if masters_pos + i <= #neighborhood then
-			table.insert(responsibles, neighborhood[masters_pos + i])
+	--repeat n_responsibles - 1 times:
+	for i = 1, (n_responsibles - 1) do
+		--if master_pos + i is less or equal to the size of neighborhood
+		if master_pos + i <= #neighborhood then
+			--insert the node with this position
+			table.insert(responsibles, neighborhood[master_pos + i])
+		--else
 		else
-			table.insert(responsibles, neighborhood[masters_pos + i - #neighborhood])
+			--insert the node with position = master_pos + i - #neighborhood (closing the ring)
+			table.insert(responsibles, neighborhood[master_pos + i - #neighborhood])
 		end
 	end
-	return responsibles, masters_pos
+	--return the list of responsible nodes and the position of the master node
+	return responsibles, master_pos
 end
 
---function print_me: prints the IP address, port, and ID of the node
+--AQUI ME QUEDE
+
+--function print_me: prints the IP address, port, ID and position of the node
 local function print_me()
-	log:print("ME",n.ip, n.port, n.id, n.position)
+	log:print("ME", n.ip..":"..n.port, "ID:", n.id, "position: ", n.position)
 end
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function print_node(node)
-	log:print(node.ip, node.port, node.id)
+	log:print(n.port(node.ip, node.port, node.id)
 end
 
 function print_all()
@@ -540,7 +545,7 @@ function stop()
 end
 
 function consistent_put(key, value)
-	local master = get_master(key) --TODO maybe optimize this by changing to master, masters_pos
+	local master = get_master(key) --TODO maybe optimize this by changing to master, master_pos
 	if master.id ~= n.id then
 		return false, "wrong master"
 	end
