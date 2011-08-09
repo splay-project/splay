@@ -21,6 +21,8 @@ You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+--REQUIRED LIBRARIES
+
 local table = require"table"
 local math = require"math"
 local string = require"string"
@@ -40,77 +42,147 @@ local events	= require"splay.events" --TODO look if the use of splay.events fits
 local json	= require"json" --TODO look if the use of json fits here
 
 
+--REQUIRED FUNCTIONS AND OBJECTS
+
 --TODO CHECK which ones are going to be used
-local assert = assert
-local error = error
+local assert = assert --could be used
+local error = error --could be used
 local ipairs = ipairs
-local loadstring = loadstring
 local next = next
 local pairs = pairs
 local pcall = pcall
-local print = print
-local setmetatable = setmetatable
 local type = type
 local tonumber = tonumber
 local tostring = tostring
-local unpack = unpack
 local log = log
-
 local base = _G
 
+
+--naming the module
 module("splay.distdb")
 
+--authoring info
 _COPYRIGHT   = "Copyright 2011 José Valerio (University of Neuchâtel)"
 _DESCRIPTION = "Distributed DB functions."
 _VERSION     = "0.99.0"
 
-local db_table = {}
-local locked_keys = {}
-local n_replicas = 0 --TODO maybe this should match with settings
-local min_replicas_write = 0 --TODO maybe this should match with settings
-local min_replicas_read = 0 --TODO maybe this should match with settings
-local some_timeout = 15
-local neighborhood = {}
-local next_node = nil
-local last_node = nil
-local ping_thread = nil
 
+--LOCAL VARIABLES
+
+--db_table holds all records that are locally handled by the node
+local db_table = {}
+--locked_keys contains all the keys that are being modified, thus are locked
+local locked_keys = {}
+--n_replicas is the number of nodes that store a k,v record
+local n_replicas = 0 --TODO maybe this should match with some distdb settings object
+--min_replicas_write is the minimum number of nodes that must write a k,v to be considered
+--successful (only for eventually consistent put)
+local min_replicas_write = 0 --TODO maybe this should match with some distdb settings object
+--min_replicas_write is the minimum number of nodes that must read k,v to have
+--quorum (only for eventually consistent get)
+local min_replicas_read = 0 --TODO maybe this should match with some distdb settings object
+--rpc_timeout is the time in seconds that a node waits for an answer from another node on any rpc call
+local rpc_timeout = 15
+--neighborhood is a table containing tables that contains the ip address, port and ID of all other nodes
+local neighborhood = {}
+--next_node is a table containing the ip addr, port and ID of the smallest node with bigger ID (next on the ring)
+local next_node = nil
+--previous_node is a table containing the ip addr, port and ID of the biggest node with smaller ID (previous on the ring)
+local previous_node = nil
+--init_done is a flag to avoid double initialization
 local init_done = false
 
---function print_node: prints the IP address, port, and ID of a given node
-local function get_position()
-	for i=1,#neighborhood do
+
+--LOCAL FUNCTIONS
+
+--function get_position returns the position of the node on the ring
+local function get_position(node)
+	--if no node is specified
+	if not node then
+		--checks the ID of the node itself
+		node = {id = n.id}
+	--for all neighbors
+	for i = 1, #neighborhood do
+		--if ID is the same as node.id
 		if neighborhood[i].id == n.id then
+			--return the index
 			return i
 		end
 	end
 end
 
-
-
---=========== FROM DIST-DB.LUA BEGINNING
---function calculate_id: calculates the node ID from ID and port
+--function calculate_id: calculates the node ID from its ip address and port
 local function calculate_id(node)
-	return crypto.evp.digest("sha1",node.ip..node.port)
+	--if no node is specified
+	if not node then
+		--calculates the ID from the ip addr and port of the node itself
+		node = {ip = n.ip, port = n.port}
+	--returns a SHA1 hash of the concatenation of ip addr + port
+	return crypto.evp.digest("sha1", node.ip..node.port)
 end
 
---function get_master: looks for the master of a given ID
-local function get_master(id)
+--function get_next_node returns the node in the ring after the specified node
+local function get_next_node(node)
+	--if neighborhood is a list of only 1 node
+	if #neighborhood == 1 then
+		--return nil
+		return nil
+	end
+	--gets the position with the function get_position; if no node is specified, get_position
+	--will return the position of the node itself
+	local node_pos = get_position(node)
+	--if the node is the last on the neighborhood list
+	if node_pos == #neighborhood then
+		--return the first node and position=1
+		return neighborhood[1], 1
+	--else
+	else
+		--return the node whose position = node_pos + 1
+		return neighborhood[node_pos + 1], (node_pos + 1)
+	end
+end
+
+--function get_previous_node returns the node in the ring before the specified node
+local function get_previous_node(node)
+	--if neighborhood is a list of only 1 node
+	if #neighborhood == 1 then
+		--return nil
+		return nil
+	end
+	--gets the position with the function get_position; if no node is specified, get_position
+	--will return the position of the node itself
+	local node_pos = get_position(node)
+	--if the node is the first on the neighborhood list
+	if node_pos == 1 then
+		--return the last node
+		return neighborhood[#neighborhood], #neighborhood
+	--else
+	else
+		--return the node whose position = node_pos - 1
+		return neighborhood[node_pos - 1], (node_pos - 1)
+	end
+end
+
+--AQUI ME QUEDE
+
+--function get_master: looks for the master of a given key
+local function get_master(key)
 	--the master is initialized as equal to the last node
-	local masters_pos = #neighborhood
-	local master = neighborhood[masters_pos]
+	local masters_pos = 1
+	local master = neighborhood[1]
+	--if the neighborhood is only one node, this is the master
+	if #neighborhood == 1 then
+		return master, masters_pos
+	end
 	--for all the neighbors but the first one
-	for i=1,#neighborhood-1 do
-		--compares the id with the id of the node
-		local compare = misc.bighex_compare(neighborhood[i].id, id)
-		--if id is bigger
+	for i = 2, #neighborhood do
+		--compares the key with the id of the node
+		local compare = misc.bighex_compare(neighborhood[i].id, key)
+		--if node ID is bigger
 		if (compare == 1) then
-			--if i is not 1
-			if i > 1 then
-				masters_pos = i-1
-				--the master is node i-1
-				master = neighborhood[masters_pos]
-			end
+			masters_pos = i
+			--the master is node i
+			master = neighborhood[i]
 			--get out of the loop
 			break
 		end
@@ -121,11 +193,11 @@ local function get_master(id)
 	return master, masters_pos
 end
 
---function get_responsibles: looks for the nodes that are responsible of a given ID
-local function get_responsibles(id)
-
-	local master, masters_pos = get_master(id)
-
+--function get_responsibles: looks for the nodes that are responsible of a given key
+local function get_responsibles(key)
+	--gets the master of the key
+	local master, masters_pos = get_master(key)
+	--the first responsible is the master
 	local responsibles = {master}
 
 	local n_responsibles = n_replicas
@@ -181,13 +253,13 @@ function add_node_to_neighborhood(node)
 	n.position = get_position()
 	if n.position == 1 then
 		next_node = neighborhood[2]
-		last_node = neighborhood[#neighborhood]
+		previous_node = neighborhood[#neighborhood]
 	elseif n.position == #neighborhood then
 		next_node = neighborhood[1]
-		last_node = neighborhood[#neighborhood - 1]
+		previous_node = neighborhood[#neighborhood - 1]
 	else
 		next_node = neighborhood[n.position + 1]
-		last_node = neighborhood[n.position - 1]
+		previous_node = neighborhood[n.position - 1]
 	end
 	log:print(n.port..": adding node "..node.id.." to my list")
 
@@ -199,16 +271,16 @@ function remove_node_from_neighborhood(node_pos)
 	n.position = get_position()
 	if #neighborhood == 1 then
 		next_node = nil
-		last_node = nil
+		previous_node = nil
 	elseif n.position == 1 then
 		next_node = neighborhood[2]
-		last_node = neighborhood[#neighborhood]
+		previous_node = neighborhood[#neighborhood]
 	elseif n.position == #neighborhood then
 		next_node = neighborhood[1]
-		last_node = neighborhood[#neighborhood - 1]
+		previous_node = neighborhood[#neighborhood - 1]
 	else
 		next_node = neighborhood[n.position + 1]
-		last_node = neighborhood[n.position - 1]
+		previous_node = neighborhood[n.position - 1]
 	end
 	log:print(n.port..": removing node "..node.id.." of my list")
 end
@@ -231,8 +303,8 @@ function receive_gossip(message, neighbor_about)
 	events.sleep(math.random(100)/20)
 
 	events.thread(function()
-		log:print(n.port..": gossiping to "..last_node.id..", message: "..message..", about: "..neighbor_about.id)
-		rpc.call(last_node, {"distdb.receive_gossip", message, neighbor_about})
+		log:print(n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
 end
@@ -240,8 +312,8 @@ end
 local function gossip_changes(message, neighbor_about)
 
 	events.thread(function()
-		log:print(n.port..": gossiping to "..last_node.id..", message: "..message..", about: "..neighbor_about.id)
-		rpc.call(last_node, {"distdb.receive_gossip", message, neighbor_about})
+		log:print(n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 end
 
@@ -458,7 +530,7 @@ function init(job)
 
 		print_all()
 
-		ping_thread = events.periodic(5, ping_others)
+		events.periodic(5, ping_others)
 	end
 end
 
@@ -506,7 +578,7 @@ function consistent_put(key, value)
 				end
 			end)
 		end
-		successful = events.wait(key, some_timeout) --TODO match this with settings --TODO 2 watch out with node failures, how to handle???
+		successful = events.wait(key, rpc_timeout) --TODO match this with settings --TODO 2 watch out with node failures, how to handle???
 		locked_keys[key] = nil
 	end
 	return successful
@@ -552,7 +624,7 @@ function evtl_consistent_put(key, value)
 				end)
 			end
 		end
-		successful = events.wait(key, some_timeout) --TODO match this with settings
+		successful = events.wait(key, rpc_timeout) --TODO match this with settings
 		locked_keys[key] = nil
 	end
 	return successful
@@ -607,7 +679,7 @@ function evtl_consistent_get(key)
 			end
 		end)
 	end
-	successful = events.wait(key, some_timeout) --TODO match this with settings
+	successful = events.wait(key, rpc_timeout) --TODO match this with settings
 	if not successful then
 		return false, "timeout"
 	end
