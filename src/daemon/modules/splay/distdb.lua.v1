@@ -44,7 +44,6 @@ local json	= require"json" --TODO look if the use of json fits here
 
 --REQUIRED FUNCTIONS AND OBJECTS
 
---TODO CHECK which ones are going to be used
 local assert = assert --could be used
 local error = error --could be used
 local ipairs = ipairs
@@ -221,16 +220,17 @@ end
 
 --AQUI ME QUEDE
 
---function print_me: prints the IP address, port, ID and position of the node
+--function print_me: prints the ID and position of the node
 local function print_me()
-	log:print("ME", n.ip..":"..n.port, "ID:", n.id, "position: ", n.position)
+	log:print(n.ip..":"..n.port..": ME! ID: ", n.id, "position: ", n.position)
 end
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function print_node(node)
-	log:print(n.port(node.ip, node.port, node.id)
+	log:print(n.ip..":"..n.port..": neighbor, ", node.ip, node.port, node.id)
 end
 
+--function print_all: prints the node itself and its neighbors
 function print_all()
 	print_me()
 	log:print()
@@ -239,76 +239,74 @@ function print_all()
 		print_node(v)
 		for_ports_lua = for_ports_lua..", "..(v.port+1)
 	end
-	log:print(n.port..": "..for_ports_lua)
+	log:print(n.ip..":"..n.port..": "..for_ports_lua)
 
 end
 
-local function neighbor_position(node)
-	for i,v in ipairs(neighborhood) do
-		if node.id == v.id then
-			return i
-		end
-	end
-	return false
-end
-
+--function add_node_to_neighborhood: adds a node to the neighborhood table, re-sorts and updates n.position
 function add_node_to_neighborhood(node)
+	--if node is nil don't do anything
+	if not node then
+		return nil
+	end
+	--insert the node
 	table.insert(neighborhood, node)
+	--sort the neighborhood table
 	table.sort(neighborhood, function(a,b) return a.id<b.id end)
+	--updates the node's position
 	n.position = get_position()
-	if n.position == 1 then
-		next_node = neighborhood[2]
-		previous_node = neighborhood[#neighborhood]
-	elseif n.position == #neighborhood then
-		next_node = neighborhood[1]
-		previous_node = neighborhood[#neighborhood - 1]
-	else
-		next_node = neighborhood[n.position + 1]
-		previous_node = neighborhood[n.position - 1]
-	end
-	log:print(n.port..": adding node "..node.id.." to my list")
+	--updates the "pointer" to the next node
+	next_node = get_next_node()
+	--updates the "pointer" to the previous node
+	previous_node = get_previous_node()
+	--logs	
+	log:print(n.ip..":"..n.port..": adding node "..node.id.." to my list")
 
 end
 
+--function remove_node_from_neighborhood: removes a node from the neighborhood table, re-sorts and updates n.position
 function remove_node_from_neighborhood(node_pos)
+	--gets the node from the table before removal
 	local node = neighborhood[node_pos]
+	--removes it from it
 	table.remove(neighborhood, node_pos)
+	--recalculates n.position
 	n.position = get_position()
-	if #neighborhood == 1 then
-		next_node = nil
-		previous_node = nil
-	elseif n.position == 1 then
-		next_node = neighborhood[2]
-		previous_node = neighborhood[#neighborhood]
-	elseif n.position == #neighborhood then
-		next_node = neighborhood[1]
-		previous_node = neighborhood[#neighborhood - 1]
-	else
-		next_node = neighborhood[n.position + 1]
-		previous_node = neighborhood[n.position - 1]
-	end
-	log:print(n.port..": removing node "..node.id.." of my list")
+	--updates the "pointer" to the next node
+	next_node = get_next_node()
+	--updates the "pointer" to the previous node
+	previous_node = get_previous_node()
+	--logs
+	log:print(n.ip..":"..n.port..": removing node "..node.id.." of my list")
 end
 
+--function receive_gossip: updates the table if necessary and forwards the gossip
 function receive_gossip(message, neighbor_about)
---TODO this gossiping technique may not work for 2 failures in 1 period
+	--TODO this gossiping technique may not work for 2 failures in 1 period
+	--if the message is an "add"
 	if message == "add" then
-		if neighbor_position(neighbor_about) then
+		--if get_position returns something, it means the node is already in the list, so it returns
+		if get_position(neighbor_about) then
 			return nil
 		end
+		--if not, add the node to the neighborhood table
 		add_node_to_neighborhood(neighbor_about)
+	--if the message is a "remove"
 	elseif message == "remove" then
-		local neighbor_about_pos = neighbor_position(neighbor_about)
+		--gets the position from the arguments of the function
+		local neighbor_about_pos = get_position(neighbor_about)
+		--if the node does not exist, it returns
 		if not neighbor_about_pos then
 			return nil
 		end
+		--else, it removes it from the neighbordhood table
 		remove_node_from_neighborhood(neighbor_about_pos)
 	end
-
+	--sleeps for a random time between 0 and 5sec
 	events.sleep(math.random(100)/20)
-
+--AQUI ME QUEDE
 	events.thread(function()
-		log:print(n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+		log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
 		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
@@ -317,17 +315,17 @@ end
 local function gossip_changes(message, neighbor_about)
 
 	events.thread(function()
-		log:print(n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+		log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
 		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 end
 
 local function ping_others()
 	if next_node then
-		log:print(n.port..": pinging "..next_node.id)
+		log:print(n.ip..":"..n.port..": pinging "..next_node.id)
 		local ok = rpc.ping(next_node)
 		if not ok then --TODO should be after several tries
-			log:print(n.port..": i lost neighbor "..next_node.id)
+			log:print(n.ip..":"..n.port..": i lost neighbor "..next_node.id)
 			local node_about = {id = next_node.id}
 			remove_node_from_neighborhood(next_node)
 			gossip_changes("remove", node_about)
@@ -387,10 +385,10 @@ end
 
 --function handle_get_bucket: handles a GET BUCKET request as the Coordinator of the Access Key ID
 function handle_get(type_of_transaction, key)
-	log:print(n.port.." handling a GET for key: "..key)
+	log:print(n.ip..":"..n.port.." handling a GET for key: "..key)
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
-	--log:print(n.port..": choosing responsible n. "..chosen_node_id)
+	--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
 	local function_to_call = nil
 	if type_of_transaction == "consistent" then
@@ -404,17 +402,17 @@ end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
-	log:print(n.port..": handling a PUT for key: "..key..", value: "..value)
+	log:print(n.ip..":"..n.port..": handling a PUT for key: "..key..", value: "..value)
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
-	--log:print(n.port..": choosing responsible n. "..chosen_node_id)
+	--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
-	--log:print(n.port..": Chosen node is "..chosen_node.id)
+	--log:print(n.ip..":"..n.port..": Chosen node is "..chosen_node.id)
 	--[[TESTING WRONG NODE
 	if math.random(5) == 1 then
 		local new_node_id = math.random(#job.nodes)
 		chosen_node = job.nodes[new_node_id]
-		log:print(n.port..": Chosen node changed")
+		log:print(n.ip..":"..n.port..": Chosen node changed")
 	end
 	]]--
 	--log:print()
@@ -444,19 +442,19 @@ function handle_http_message(socket)
 	local client_ip, client_port = socket:getpeername()
 	local method, resource, http_version, headers, body = parse_http_request(socket)
 	local key = string.sub(resource, 2)
-	log:print(n.port..": resource is "..resource)
-	log:print(n.port..": requesting for "..key)
+	log:print(n.ip..":"..n.port..": resource is "..resource)
+	log:print(n.ip..":"..n.port..": requesting for "..key)
 
 	local value = body
 	local type_of_transaction = headers["Type"] or headers["type"]
-	log:print(n.port..": http request parsed, a "..method.." request will be forwarded")
-	log:print(n.port..": key: "..key..", value:", value)
+	log:print(n.ip..":"..n.port..": http request parsed, a "..method.." request will be forwarded")
+	log:print(n.ip..":"..n.port..": key: "..key..", value:", value)
 	local ok, answer = forward_request[method](type_of_transaction, key, tonumber(value))
 
 	local http_response_body = nil
 	local http_response_code = nil
 	local http_response_content_type = nil
-	log:print(n.port..": answer is a "..type(answer))
+	log:print(n.ip..":"..n.port..": answer is a "..type(answer))
 	if ok then
 		if answer then
 			http_response_body = json.encode(answer)
@@ -531,7 +529,7 @@ function init(job)
 
 		--PRINTING STUFF
 		--prints a initialization message
-		log:print(n.port..": HTTP server - Started on port "..http_server_port)
+		log:print(n.ip..":"..n.port..": HTTP server - Started on port "..http_server_port)
 
 		print_all()
 
@@ -673,9 +671,9 @@ function evtl_consistent_get(key)
 				answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
 			end
 			if answer_data[v.id] then
-				log:print(n.port..": received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
+				log:print(n.ip..":"..n.port..": received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
-					log:print(n.port..":",i2,v2)
+					log:print(n.ip..":"..n.port..":",i2,v2)
 				end
 				answers = answers + 1
 				if answers >= min_replicas_read then
@@ -753,9 +751,9 @@ function evtl_consistent_get(key)
 			end
 		end
 	end
-	log:print(n.port..": remaining answers")
+	log:print(n.ip..":"..n.port..": remaining answers")
 	for i,v in pairs(answer_data) do
-		log:print(n.port..":", i, v.value)
+		log:print(n.ip..":"..n.port..":", i, v.value)
 		table.insert(return_data, v)
 	end
 	return true, return_data
@@ -766,19 +764,19 @@ function put_local(key, value, src_write)
 	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
-		log:print(n.port..": NOT writing key: "..key)
+		log:print(n.ip..":"..n.port..": NOT writing key: "..key)
 		return false, "404"
 	end
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(n.port..": NOT writing key, wrong key type")
+		log:print(n.ip..":"..n.port..": NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
-		log:print(n.port..": NOT writing key, wrong value type")
+		log:print(n.ip..":"..n.port..": NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
 
@@ -801,9 +799,9 @@ function put_local(key, value, src_write)
 		--TODO handle enabled
 		--TODO add timestamps
 	end
-	log:print(n.port..": writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
+	log:print(n.ip..":"..n.port..": writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
 	for i,v in pairs(db_table[key].vector_clock) do
-		log:print(n.port..":",i,v)
+		log:print(n.ip..":"..n.port..":",i,v)
 	end
 	return true
 end
