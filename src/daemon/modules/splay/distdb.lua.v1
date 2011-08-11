@@ -218,8 +218,6 @@ local function get_responsibles(key)
 	return responsibles, master_pos
 end
 
---AQUI ME QUEDE
-
 --function print_me: prints the ID and position of the node
 local function print_me()
 	log:print(n.ip..":"..n.port..": ME! ID: ", n.id, "position: ", n.position)
@@ -302,9 +300,10 @@ function receive_gossip(message, neighbor_about)
 		--else, it removes it from the neighbordhood table
 		remove_node_from_neighborhood(neighbor_about_pos)
 	end
-	--sleeps for a random time between 0 and 5sec
+	--sleep for a random time between 0 and 5sec
 	events.sleep(math.random(100)/20)
---AQUI ME QUEDE
+
+	--forward the gossip to the previous node
 	events.thread(function()
 		log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
 		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
@@ -312,48 +311,68 @@ function receive_gossip(message, neighbor_about)
 
 end
 
+--function gossip_changes: starts a event-based gossip to announce a node adding or removal
 local function gossip_changes(message, neighbor_about)
-
+	--create the gossip to the previous node
 	events.thread(function()
 		log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
 		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 end
 
+--function ping_others: periodic function that pings the next node on the ring
 local function ping_others()
+	--if there is a next_node (it could be the case of a 1-node ring, where the node will not ping anyone)
 	if next_node then
+		--logs
 		log:print(n.ip..":"..n.port..": pinging "..next_node.id)
-		local ok = rpc.ping(next_node)
-		if not ok then --TODO should be after several tries
+		--pings, and if the response is not ok
+		if not rpc.ping(next_node) then --TODO should be after several tries
+			--logs that it lost a neighbor
 			log:print(n.ip..":"..n.port..": i lost neighbor "..next_node.id)
+			--creates an object node_about to insert it into the message to be gossipped
 			local node_about = {id = next_node.id}
+			--removes the node from its table
 			remove_node_from_neighborhood(next_node)
+			--gossips the removal
 			gossip_changes("remove", node_about)
 		end
 	end
 end
 
+--function add_me: called by a new node to the RDV node (job.nodes[1]) to retrieve the neighborhood table and make him gossip the adding
 function add_me(node_to_add)
+	--if the node is already in the ring, leave
 	if neighbor_position(node_to_add) then
 		return nil
 	end
+	--add the node to its own table
 	add_node_to_neighborhood(node_to_add)
+	--create a gossip to announce the adding
 	gossip_changes("add", node_to_add)
+	--return the neighborhood table as answer to the new node
 	return neighborhood
 end
 
 --function parse_http_request: parses the payload of the HTTP request
 function parse_http_request(socket)
 	--print("\n\nHEADER\n\n")
+	--retrieves the first line, in order to get the method
 	local first_line = socket:receive("*l")
+	--initializes an auxiliary variable
 	local first_line_analyzer = {}
+	--for every "word" separated by spaces on the first line, add the word to the aux variable
 	for piece in string.gmatch(first_line, "[^ ]+") do
 		table.insert(first_line_analyzer, piece)
 	end
+	--the method is the first word
 	local method = first_line_analyzer[1]
+	--the resource is the second word
 	local resource = first_line_analyzer[2]
+	--the HTTP version is the third
 	local http_version = first_line_analyzer[3]
 	local headers = {}
+	--extract the headers line by line
 	while true do
 		local data = socket:receive("*l")
 		if ( #data < 1 ) then
@@ -369,15 +388,18 @@ function parse_http_request(socket)
 
 	--local body = socket:receive(1) -- Receive 1 byte from the socket's buffer
 	--print("\n\nBODY\n\n")
-	-- initializes the request body read from client as empty string
+	--takes the number of bytes for the body from the header "content-length"
 	local bytes_left = tonumber(headers["content-length"] or headers["Content-Length"])
+	-- initializes the request body read from client as empty string
 	local body = nil
+	--if there are bytes left
 	if bytes_left then
 		--print("body length = "..bytes_left)
+		--retrieve the body
 		body = socket:receive(bytes_left)
 		--print("body = "..body)
 	end
-
+	--returns all the parsed elements
 	return method, resource, http_version, headers, body
 end
 
@@ -483,22 +505,18 @@ function handle_http_message(socket)
 -- 	end
 end
 
-
---=========== FROM DIST-DB.LUA END
-
+--function init: initialization of the node
 function init(job)
+	--if init has not been previously called
 	if not init_done then
+		--make the init_done flag true
 		init_done = true
-		--TODO add node to the db network
-		--TODO start pinging processes
-		--TODO the rest of init
 		--takes IP address and port from job.me
 		n = {ip=job.me.ip, port=job.me.port}
 		--initializes the randomseed with the port
 		math.randomseed(n.port)
 		--calculates the ID by hashing the IP address and port
 		n.id = calculate_id(job.me)
-
 
 		--server listens through the rpc port + 1
 		local http_server_port = n.port+1
@@ -515,17 +533,18 @@ function init(job)
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
 
-
-		--initializes the neighborhood as an empty table
+		--if it is the RDV node
 		if job.position == 1 then
+			--neighborhood is only itself
 			neighborhood = {n}
+		--else
 		else
+			--ask the RDV node for the neighborhood table
 			neighborhood = rpc.call(job.nodes[1], {"distdb.add_me", n})
 		end
 
+		--gets the position from the neighborhood table
 		n.position = get_position()
-
-
 
 		--PRINTING STUFF
 		--prints a initialization message
@@ -533,57 +552,79 @@ function init(job)
 
 		print_all()
 
+		--starts a 5 second periodic pinging to the next node of the ring
 		events.periodic(5, ping_others)
 	end
 end
 
+--function stop: stops both servers (RPC and HTTP)
 function stop()
 	net.stop_server(n.port+1)
 	rpc.stop_server(n.port)
 end
 
+--function consistent_put: puts a k,v and waits until all replicas assure they have a copy
 function consistent_put(key, value)
-	local master = get_master(key) --TODO maybe optimize this by changing to master, master_pos
-	if master.id ~= n.id then
+	--gets the master of this key
+	local master, master_pos = get_master(key)
+	--if the node is not the master
+	if master_pos ~= n.position then
+		--return with error message
 		return false, "wrong master"
 	end
-	local master_id = n.position
+	--initialize the answers as 0
 	local answers = 0
+	--initialize successful as false
 	local successful = false
-	if not locked_keys[key] then --TODO change this for a queue system
+	--if the key is not being modified right now
+	if not locked_keys[key] then
+		--lock the key during the put
 		locked_keys[key] = true
+		--put the key locally
 		events.thread(function()
-			local ok = put_local(key, value)
-			if ok then
+			--if the "put" action is successful
+			if put_local(key, value) then
+				--increment answers
 				answers = answers + 1
+				--if answers reaches the number of replicas
 				if answers >= n_replicas then --TODO adapt this to n_responsibles
+					--trigger the unlocking of the key (see below. events.wait)
 					events.fire(key)
 				end
 			end
 
 		end)
+		--for the next n - 1 nodes (the other replicas)
 		for i = 1, n_replicas - 1 do
 			events.thread(function()
 				local replica_id = nil
-				if master_id + i <= #neighborhood then
-					replica_id = master_id + i
+				--the replica position in the table is master_pos + i if it is not bigger as the size of the table neighborhood
+				if master_pos + i <= #neighborhood then
+					replica_id = master_pos + i
+				--if it is, then it takes the first nodes (e.g. neighborhood size=10 => neighbors: 8, 9, 10, 1, 2...)
 				else
-					replica_id = master_id + i - #neighborhood
+					replica_id = master_pos + i - #neighborhood
 				end
 				--log:print("i: "..i)
 				--log:print("replica id: "..replica_id)
-				local ok = rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value})
-				if ok then
+				--puts the key remotely on the replica, if the put is successful
+				if rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value}) then
+					--answers gets incremented
 					answers = answers + 1
+					--if answers reaches the number of replicas
 					if answers >= n_replicas then
+						--trigger the unlocking of the key
 						events.fire(key)
 					end
 				end
 			end)
 		end
+		--waits until all replicas answer, or until the rpc_timeout is depleted
 		successful = events.wait(key, rpc_timeout) --TODO match this with settings --TODO 2 watch out with node failures, how to handle???
+		--unlocks the key
 		locked_keys[key] = nil
 	end
+	--returns successful
 	return successful
 end
 
