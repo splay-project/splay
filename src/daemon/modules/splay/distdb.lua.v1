@@ -628,24 +628,36 @@ function consistent_put(key, value)
 	return successful
 end
 
+--function consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
 function evtl_consistent_put(key, value)
+	--initializes boolean not_responsible
 	local not_responsible = true
+	--gets all responsibles for the key
 	local responsibles = get_responsibles(key)
+	--for all responsibles
 	for i,v in ipairs(responsibles) do
+		--if the ID of the node matches, make not_responsible false
 		if v.id == n.id then
 			not_responsible = false
+			break
 		end
 	end
+	--if the node is not responsible, return with an error message
 	if not_responsible then
 		return false, "wrong node"
 	end
+	--initialize the answers as 0
 	local answers = 0
+	--initialize successful as false
 	local successful = false
-
+	
 	--TODO consider min replicas and neighborhood
 
-	if not locked_keys[key] then --TODO change this for a queue system
+	--if the key is not being modified right now
+	if not locked_keys[key] then
+		--lock the key during the put
 		locked_keys[key] = true
+		--put the key locally
 		events.thread(function()
 			local ok = put_local(key, value, n)
 			if ok then
@@ -689,6 +701,7 @@ function consistent_get(key)
 end
 
 function evtl_consistent_get(key)
+
 	local not_responsible = true
 	local responsibles = get_responsibles(key)
 	for i,v in ipairs(responsibles) do
