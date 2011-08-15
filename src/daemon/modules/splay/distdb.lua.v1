@@ -100,10 +100,11 @@ local function get_position(node)
 	if not node then
 		--checks the ID of the node itself
 		node = {id = n.id}
+	end
 	--for all neighbors
 	for i = 1, #neighborhood do
 		--if ID is the same as node.id
-		if neighborhood[i].id == n.id then
+		if neighborhood[i].id == node.id then
 			--return the index
 			return i
 		end
@@ -116,6 +117,7 @@ local function calculate_id(node)
 	if not node then
 		--calculates the ID from the ip addr and port of the node itself
 		node = {ip = n.ip, port = n.port}
+	end
 	--returns a SHA1 hash of the concatenation of ip addr + port
 	return crypto.evp.digest("sha1", node.ip..node.port)
 end
@@ -300,8 +302,8 @@ function receive_gossip(message, neighbor_about)
 		--else, it removes it from the neighbordhood table
 		remove_node_from_neighborhood(neighbor_about_pos)
 	end
-	--sleep for a random time between 0 and 5sec
-	events.sleep(math.random(100)/20)
+	--sleep for a random time between 0 and 2sec
+	--events.sleep(math.random(100)/50)
 
 	--forward the gossip to the previous node
 	events.thread(function()
@@ -343,7 +345,7 @@ end
 --function add_me: called by a new node to the RDV node (job.nodes[1]) to retrieve the neighborhood table and make him gossip the adding
 function add_me(node_to_add)
 	--if the node is already in the ring, leave
-	if neighbor_position(node_to_add) then
+	if get_position(node_to_add) then
 		return nil
 	end
 	--add the node to its own table
