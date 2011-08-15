@@ -257,7 +257,7 @@ function add_node_to_neighborhood(node)
 	next_node = get_next_node()
 	--updates the "pointer" to the previous node
 	previous_node = get_previous_node()
-	--logs	
+	--logs
 	log:print(n.ip..":"..n.port..": adding node "..node.id.." to my list")
 
 end
@@ -461,48 +461,70 @@ local forward_request = {
 
 --function handle_http_message: handles the incoming messages (HTTP requests)
 function handle_http_message(socket)
+	--gets the client IP address and port from the socket
 	local client_ip, client_port = socket:getpeername()
+	--parses the HTTP message and extracts the HTTP method, the requested resource, etc.
 	local method, resource, http_version, headers, body = parse_http_request(socket)
+	--the resource has the format /key
 	local key = string.sub(resource, 2)
-	log:print(n.ip..":"..n.port..": resource is "..resource)
-	log:print(n.ip..":"..n.port..": requesting for "..key)
+	--logs
+	--log:print(n.ip..":"..n.port..": resource is "..resource)
+	--log:print(n.ip..":"..n.port..": requesting for "..key)
 
+	--the value is the body if it exists
 	local value = body
+	--the header Type tells if the transaction is strongly consistent or eventually consistent
 	local type_of_transaction = headers["Type"] or headers["type"]
+	--logs
 	log:print(n.ip..":"..n.port..": http request parsed, a "..method.." request will be forwarded")
 	log:print(n.ip..":"..n.port..": key: "..key..", value:", value)
+	--forwards the request to a node that is responsible for this key
 	local ok, answer = forward_request[method](type_of_transaction, key, tonumber(value))
 
+	--initializes the response body, code and content type as nil
 	local http_response_body = nil
 	local http_response_code = nil
 	local http_response_content_type = nil
-	log:print(n.ip..":"..n.port..": answer is a "..type(answer))
+	--if the call was OK
 	if ok then
+		--if answer exists
 		if answer then
+			--encode the response in JSON for HTTP transmision
 			http_response_body = json.encode(answer)
 		end
+		--response code is 200 OK
 		http_response_code = "200 OK"
+		--the content is text
 		http_response_content_type = "text/plain"
-
+	--if the call was not OK
 	else
+		--send 409 Conflict (can be more specific)
 		http_response_code = "409 Conflict"
 	end
 
+	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
+	--if there is a response body
 	if http_response_body then
+		--concatenate headers "Content-Length" and "Content-Type" describing the body
 		http_response = http_response..
 			"Content-Length: "..#http_response_body.."\r\n"..
 			"Content-Type: "..http_response_content_type.."\r\n\r\n"..http_response_body
+	--else
 	else
+		--close the HTTP message
 		http_response = http_response.."\r\n"
 	end
 
+	--send the HTTP response
 	socket:send(http_response)
--- 	if string.sub(header,1,8) == "OPTIONS" then
--- 		return handle_options_method(socket)
--- 	else
--- 		handle_post_method(socket,jsonmsg)
--- 	end
+	--[[
+	if string.sub(header,1,8) == "OPTIONS" then
+		return handle_options_method(socket)
+	else
+		handle_post_method(socket,jsonmsg)
+	end
+	--]]
 end
 
 --function init: initialization of the node
@@ -596,6 +618,7 @@ function consistent_put(key, value)
 		end)
 		--for the next n - 1 nodes (the other replicas)
 		for i = 1, n_replicas - 1 do
+			--execute in parallel
 			events.thread(function()
 				local replica_id = nil
 				--the replica position in the table is master_pos + i if it is not bigger as the size of the table neighborhood
@@ -624,11 +647,11 @@ function consistent_put(key, value)
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	--returns successful
+	--returns the value of the variable successful
 	return successful
 end
 
---function consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
+--function evtl_consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
 function evtl_consistent_put(key, value)
 	--initializes boolean not_responsible
 	local not_responsible = true
@@ -650,110 +673,157 @@ function evtl_consistent_put(key, value)
 	local answers = 0
 	--initialize successful as false
 	local successful = false
-	
+
 	--TODO consider min replicas and neighborhood
 
 	--if the key is not being modified right now
 	if not locked_keys[key] then
 		--lock the key during the put
 		locked_keys[key] = true
-		--put the key locally
+		--put the key locally TODO maybe this can change to a sequential approach; first node itself
+		--checks the version and writes the k,v, then it writes to others
 		events.thread(function()
-			local ok = put_local(key, value, n)
-			if ok then
+			--if the "put" action is successful
+			if put_local(key, value, n) then
+				--increment answers
 				answers = answers + 1
+				--if answers reaches the minimum number of replicas that must write
 				if answers >= min_replicas_write then
+					--trigger the unlocking of the key
 					events.fire(key)
 				end
 			end
 		end)
+		--for all responsibles
 		for i,v in ipairs(responsibles) do
+			--if node ID is not the same as the node itself (avoids RPC calling itself)
 			if v.id ~= n.id then
+				--execute in parallel
 				events.thread(function()
-					local ok = rpc.call(v, {"distdb.put_local", key, value, n})
-					if ok then
+					--puts the key remotely on the others responsibles, if the put is successful
+					if rpc.call(v, {"distdb.put_local", key, value, n}) then
+						--increment answers
 						answers = answers + 1
+						--if answers reaches the minimum number of replicas that must write
 						if answers >= min_replicas_write then
+							--trigger the unlocking of the key
 							events.fire(key)
 						end
 					end
 				end)
 			end
 		end
+		--waits until min_write replicas answer, or until the rpc_timeout is depleted
 		successful = events.wait(key, rpc_timeout) --TODO match this with settings
+		--unlocks the key
 		locked_keys[key] = nil
 	end
+	--returns the value of the variable successful
 	return successful
 end
 
+--function consistent_get: returns the value of a certain key; reads the value only from the node itself (matches with
+--the behavior of consisten_put, where all replicas write always all values)
 function consistent_get(key)
-	local not_responsible = true
+	--gets the responsibles of the key
 	local responsibles = get_responsibles(key)
+	--for all responsibles
 	for i,v in ipairs(responsibles) do
+		--if the node ID is the same as the ID of the node itself
 		if v.id == n.id then
-			not_responsible = false
+			--returns the value of the key
+			return true, get_local(key) --TODO maybe it is better to enclose this on a table to make it output-compatible with eventually-consistent get
 		end
 	end
-	if not_responsible then
-		return false, "wrong node"
-	end
-	return true, get_local(key) --TODO maybe it is better to enclose this on a table to make it output-compatible with eventually-consistent get
+	--if none of the responsible matched IDs with the node itself, return false with an error message
+	return false, "wrong node"
 end
 
+--function consistent_get: returns the value of a certain key; reads the value from a minimum of replicas
 function evtl_consistent_get(key)
-
+	--initializes not_responsible as false
 	local not_responsible = true
+	--gets the responsibles of the key
 	local responsibles = get_responsibles(key)
+	--for all responsibles
 	for i,v in ipairs(responsibles) do
+		--if the node ID is the same as the ID of the node itself
 		if v.id == n.id then
+			--not_responsible is false
 			not_responsible = false
+			--breaks the for loop
+			break
 		end
 	end
+	--if the node is not one of the responsibles
 	if not_responsible then
+		--returns false with an error message
 		return false, "wrong node"
 	end
+	--initializes variables
 	local answers = 0
 	local answer_data = {}
 	local return_data = {}
 	local latest_vector_clock = {}
 	local successful = false
+	--for all the responsibles
 	for i,v in ipairs(responsibles) do
+		--execute in parallel
 		events.thread(function()
+			--if the ID is the same as the node itself
 			if v.id == n.id then
+				--gets the value locally
 				answer_data[v.id] = get_local(key) --TODO deal with attemps of writing a previous version
+			--if it is not the same ID as the node
 			else
+				--gets the value remotely with an RPC call
 				answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
 			end
+			--if there is an answer
 			if answer_data[v.id] then
+				--logs
 				log:print(n.ip..":"..n.port..": received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
+				--prints the vector clock
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
 					log:print(n.ip..":"..n.port..":",i2,v2)
 				end
+				--increments answers
 				answers = answers + 1
+				--if answers reaches the minimum number of replicas that must read
 				if answers >= min_replicas_read then
+					--trigger the unlocking of the key
 					events.fire(key)
 				end
 			end
 		end)
 	end
+	--waits until min_read replicas answer, or until the rpc_timeout is depleted
 	successful = events.wait(key, rpc_timeout) --TODO match this with settings
+	--if it is not a successful read return false and an error message
 	if not successful then
 		return false, "timeout"
 	end
+	--initializes the comparison table for vector clocks
 	local comparison_table = {}
+	--for all answers
 	for i,v in pairs(answer_data) do
 		comparison_table[i] = {}
+		--again for all answers (compare all against all)
 		for i2,v2 in pairs(answer_data) do
 			comparison_table[i][i2] = 0
+			--if the IDs to be compared are different
 			if i2 ~= i then
 				--log:print("comparing "..i.." and "..i2)
+				--checks whether the comparison was already done
 				local do_comparison = false
 				if not comparison_table[i2] then
 					do_comparison = true
 				elseif not comparison_table[i2][i] then
 					do_comparison = true
 				end
+				--if it comparison was not yet made
 				if do_comparison then
+					--initialize the merged clock vector AQUI ME QUEDÉ
 					local merged_vector = {}
 					--log:print("first "..i)
 					for i3,v3 in pairs(v.vector_clock) do
