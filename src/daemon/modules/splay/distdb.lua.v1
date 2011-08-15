@@ -823,27 +823,37 @@ function evtl_consistent_get(key)
 				end
 				--if it comparison was not yet made
 				if do_comparison then
-					--initialize the merged clock vector AQUI ME QUEDÉ
+					--initialize the merged clock vector
 					local merged_vector = {}
-					--log:print("first "..i)
+					--writes first the first vector to be merged as the winner (max = 1)
 					for i3,v3 in pairs(v.vector_clock) do
 						merged_vector[i3] = {value=v3, max=1}
 						--log:print(i3, v3)
 					end
 					--log:print("then "..i2)
+					--then, for all elements of the second vector
 					for i4,v4 in pairs(v2.vector_clock) do
 						--log:print(i4, v4)
+						--if there is already an element like this in the vector
 						if merged_vector[i4] then
+							--compares both, if the second is bigger, max is 2
 							if v4 > merged_vector[i4].value then
 								merged_vector[i4] = {value=v4, max=2}
+							--if they are equal, max is 0 (draw)
 							elseif v4 == merged_vector[i4].value then
 								merged_vector[i4].max = 0
 							end
+						--if there was no element, it just adds it to the vector with max = 2
 						else
 							merged_vector[i4] = {value=v4, max=1}
 						end
 					end
+					--goes through the whole merged vector
 					for i5,v5 in pairs(merged_vector) do
+						--if all elements are =1, the first is fresher
+						--if all elements are =2, the second is fresher
+						--if all are equal, vectors are equal
+						--if some are 2 and some are 1, nothing can be said (comparison_table=3)
 						--log:print(i5, v5.value, v5.max)
 						if v5.max == 1 then
 							if comparison_table[i][i2] == 0 then
@@ -860,26 +870,34 @@ function evtl_consistent_get(key)
 						end
 					end
 				end
+				--logs
 				--log:print("comparison_table: "..comparison_table[i][i2])
 			end
 		end
 	end
+	--for all comparisons
 	for i,v in pairs(comparison_table) do
 		for i2,v2 in pairs(v) do
+			--if the comparison = 1, deletes the second answer
 			if v2 == 1 then
 				answer_data[i2] = nil
 				--log:print("deleting answer from "..i2.." because "..i.." is fresher")
+			--if the comparison = 2, deletes the first answer
 			elseif v2 == 2 then
 				answer_data[i] = nil
 				--log:print("deleting answer from "..i.." because "..i2.." is fresher")
 			end
+			--TODO WHAT IF they are equal? i think im not considering this case
 		end
 	end
+	--logs
 	log:print(n.ip..":"..n.port..": remaining answers")
+	--insert the info in the return data
 	for i,v in pairs(answer_data) do
 		log:print(n.ip..":"..n.port..":", i, v.value)
 		table.insert(return_data, v)
 	end
+	--returns
 	return true, return_data
 end
 
