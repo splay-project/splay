@@ -82,7 +82,7 @@ function send_get(port, type_of_transaction, key)
 		for i3,v3 in pairs(v2.vector_clock) do --NOTE i dont get this 100%, what if the client application wants to fuck up the versions?
 			if not max_vc[i3] then
 				max_vc[i3] = v3
-			elseif max_vc[i3] < v3
+			elseif max_vc[i3] < v3 then
 				max_vc[i3] = v3
 			end
 		end

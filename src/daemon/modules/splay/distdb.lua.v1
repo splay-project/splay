@@ -315,11 +315,13 @@ end
 
 --function gossip_changes: starts a event-based gossip to announce a node adding or removal
 local function gossip_changes(message, neighbor_about)
-	--create the gossip to the previous node
-	events.thread(function()
-		log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
-		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
-	end)
+	if previous_node then
+		--create the gossip to the previous node
+		events.thread(function()
+			log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+			rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
+		end)
+	end
 end
 
 --function ping_others: periodic function that pings the next node on the ring
@@ -327,15 +329,17 @@ local function ping_others()
 	--if there is a next_node (it could be the case of a 1-node ring, where the node will not ping anyone)
 	if next_node then
 		--logs
-		log:print(n.ip..":"..n.port..": pinging "..next_node.id)
+		--log:print(n.ip..":"..n.port..": pinging "..next_node.id)
 		--pings, and if the response is not ok
 		if not rpc.ping(next_node) then --TODO should be after several tries
 			--logs that it lost a neighbor
 			log:print(n.ip..":"..n.port..": i lost neighbor "..next_node.id)
 			--creates an object node_about to insert it into the message to be gossipped
 			local node_about = {id = next_node.id}
+			--calculates the position of the next node
+			local next_node_pos = get_position(next_node)
 			--removes the node from its table
-			remove_node_from_neighborhood(next_node)
+			remove_node_from_neighborhood(next_node_pos)
 			--gossips the removal
 			gossip_changes("remove", node_about)
 		end
@@ -569,6 +573,13 @@ function init(job)
 
 		--gets the position from the neighborhood table
 		n.position = get_position()
+		--calculates the next node
+		next_node = get_next_node()
+		--calculates the previous node
+		previous_node = get_previous_node()
+
+		--create a gossip to announce the adding
+		gossip_changes("add", n)
 
 		--PRINTING STUFF
 		--prints a initialization message
