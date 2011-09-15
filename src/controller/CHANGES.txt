@@ -1,0 +1,22 @@
+-----------------------------
+controller 1.0.7:
+	- store on SVN the google-map key, exclude it from distrib
+	- Fix for new geolocalization lib geoip 1.1.1
+-----------------------------
+controller 1.0.4:
+	- fix bug for never-ending loop on client-side socket closed
+-----------------------------
+controller 1.0.3:
+	- solving user & created_at inconsistency bug between splayweb and splay
+	- adding get-job-code, server side
+-----------------------------
+controller 1.0.2:
+	- bug fixed: NoMethodError method 'length' called for nil:NilClass, when msg = nil
+	- update version in code, used in ctrl logs
+-----------------------------
+controller 1.0.1:
+	- minor improvements to gemspec
+	- commenting and improving controller-api.rb
+-----------------------------
+controller 1.0:
+ 	- stable release
