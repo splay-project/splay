@@ -1,0 +1,13 @@
+49c49,50
+< 			end
+---
+>         			status_queued
+>       end
+66a68,70
+>  	def self.status_queued
+>   	end
+> 
+295c299
+< 		resources_filter = "AND splayds.status='AVAILABLE' AND
+---
+>     resources_filter = "AND (splayds.status='AVAILABLE') AND
