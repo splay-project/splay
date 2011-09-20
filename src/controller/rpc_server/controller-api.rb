@@ -148,7 +148,7 @@ class Ctrl_api
 	end
 
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id)
+	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict)
 	 	#initializes the return variable
 		ret = Hash.new
 		#checks the validity of the session ID and stores the returning value in the variable user
@@ -181,6 +181,17 @@ class Ctrl_api
 			else
 				name_field = "name='#{name}',"
 			end
+
+                        # scheduled job
+                        if scheduled_at && (scheduled_at > 0) then
+                        	time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
+				options['scheduled_at'] = time_scheduled
+                        end
+
+			# strict job
+                        if strict == "TRUE" then
+				options['strict'] = strict 
+                        end
 			
 			if churn_trace == "" then
 				churn_field = ""
@@ -209,6 +220,13 @@ class Ctrl_api
 				if job['status'] == "NO_RESSOURCES" then
 					ret['ok'] = false
 					ret['error'] = "JOB " + job['id'].to_s + ": " + job['status_msg']
+					return ret
+				end
+                                # queued job behavior
+				if job['status'] == "QUEUED" then
+					ret['ok'] = true
+					ret['job_id'] = job['id']
+					ret['ref'] = ref
 					return ret
 				end
 			end

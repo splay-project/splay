@@ -38,7 +38,7 @@ def drop_db(db)
 	db.do("DROP TABLE IF EXISTS locks")
 end
 
-def init_db(db)
+def init_db(db) 
 	db.do("CREATE TABLE IF NOT EXISTS splayds (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 
@@ -97,7 +97,9 @@ def init_db(db)
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
 			created_at datetime default NULL,
-
+                        scheduled_at datetime default NULL,
+                        strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+			
 			name VARCHAR(255),
 			description VARCHAR(255),
 
@@ -141,7 +143,7 @@ def init_db(db)
 			command VARCHAR(255),
 			command_msg TEXT,
 
-			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED') DEFAULT 'LOCAL',
+			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED') DEFAULT 'LOCAL',
 			status_time INT NOT NULL,
 			status_msg TEXT,
 
