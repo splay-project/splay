@@ -89,7 +89,8 @@ function send_list_jobs(cli_server_url, session_id)
 			ENDED = 0,
 			NO_RESSOURCES = 0,
 			REGISTER_TIMEOUT = 0,
-			KILLED = 0
+			KILLED = 0,
+                        QUEUED = 0	-- raluca: No. jobs that are queued, waiting for resources
 		}
 		--prints the result
 		print("Job List =")
