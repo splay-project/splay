@@ -47,6 +47,9 @@ function add_usage_options()
 	table.insert(usage_options, "-N, --name\t\t\tthe program will ask for a short name of the job")
 	table.insert(usage_options, "-d, --description\t\tthe program will ask for a description of the job")
 	table.insert(usage_options, "-a, --args=\"ARG1 ARG2\"\t\tthe protocol arguments, as given with local runs")
+        table.insert(usage_options, "    --absolute-time \t\tthe job will be submitted at YYYY-MM-DD HH:MM:SS")
+        table.insert(usage_options, "    --relative-time \t\tthe job will be submitted after HH:MM:SS")
+        table.insert(usage_options, "    --strict \t\t\tthe job will be submitted now / at the scheduled time or rejected with NO_RESSOURCES message")
 end
 
 function parse_arguments()
@@ -100,6 +103,44 @@ function parse_arguments()
 		elseif 	arg[i] == "-a" then
 			i = i + 1
 			job_args= arg[i]
+                --if argument is "--absolute-time YYYY-MM-DD HH:MM:SS"
+		elseif arg[i] == "--absolute-time" then
+                        -- get the current time
+                        crt_time = os.time()
+                        -- next argument is YYYY-MM-DD
+			i = i + 1
+                        sch_year = string.sub(arg[i], 1, 4)
+                        sch_month = string.sub(arg[i], 6, 7)
+                        sch_day = string.sub(arg[i], 9, 10)
+                        -- next argument is HH:MM:SS
+                        i = i + 1        
+                        sch_hour = string.sub(arg[i], 1, 2)
+                        sch_min = string.sub(arg[i], 4, 5)
+                        sch_sec = string.sub(arg[i], 7, 8)
+			-- compute scheduled time
+                        scheduled_at = os.time{year=sch_year, month=sch_month, day=sch_day, hour=sch_hour, min=sch_min, sec=sch_sec}
+			-- if YYYY-MM-DD HH:MM:SS is in the past, show a warning message
+                        if scheduled_at < crt_time then
+                          print("WARNING: Cannot schedule a job in the past! ")
+                        end
+			-- if YYYY-MM-DD HH:MM:SS is more than 30 days away, show a warning message
+			if scheduled_at > (crt_time + 2592000) then
+			  print("WARNING: Job was scheduled over 30 days from now. ")
+			end
+                -- if argument is "--relative-time HH:MM:SS"
+                elseif arg[i] == "--relative-time" then
+                        -- get the current time
+                        crt_time = os.time()
+                	-- next argument is HH:MM:SS
+                        i = i + 1
+                        delay_hour = string.sub(arg[i], 1, 2)
+                        delay_min = string.sub(arg[i], 4, 5)
+                        delay_sec = string.sub(arg[i], 7, 8)
+                        delay_time = (delay_hour * 3600) + (delay_min * 60) + delay_sec
+                        scheduled_at = crt_time + delay_time
+                -- if argument is "--strict"
+                elseif arg[i] == "--strict" then
+                	strict = "TRUE"          
 		--if code_filename is not yet filled and the argument has not matched any of the other rules
 		elseif not code_filename then
 			--the code file is the argument
@@ -148,6 +189,11 @@ function submit_job_extra_checks()
 		print("\nThe number of splayds is forced to 1\n")
 	end
 
+       -- if not scheduled
+       if (not scheduled_at) then
+       		scheduled_at = 0
+       end
+
 	--contructs options table from the options string
 	while options_string do
 		local colon_sign = string.find(options_string, ":")
@@ -166,12 +212,12 @@ function submit_job_extra_checks()
 end
 
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
-function send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id)
+function send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict)
 	--prints the arguments
 	print("NAME              = "..name)
 	print("DESCRIPTION       = "..description)
 	print("CODE_FILE         = "..code_filename)
-	
+
 	--initializes the string that holds the churn trace as empty
 	local churn_trace = ""
 	--if a churn trace file is given
@@ -209,6 +255,13 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	print("SESSION_ID        = "..session_id)
 	print("CLI SERVER URL    = "..cli_server_url)
 	
+        if scheduled_at then
+        	print("SCHEDULED_AT	  = "..scheduled_at)
+        end
+
+        if strict then
+		print("STRICT	   	  = "..strict)
+        end
 	
 	--initializes the string that holds the code as empty
 	local code = ""
@@ -243,7 +296,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
-		params = {name, description, code, nb_splayds, churn_trace, options, session_id}
+		params = {name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict}
 	})
 	
 	--prints that it is sending the message
@@ -276,6 +329,8 @@ ask_for_description = false
 ask_for_name = false
 cli_server_url = nil
 session_id = nil
+scheduled_at = nil
+strict = "FALSE"
 
 cli_server_url_from_conf_file = nil
 
@@ -306,4 +361,4 @@ check_session_id()
 submit_job_extra_checks()
 
 --calls send_submit_job
-send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id)
+send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict)
