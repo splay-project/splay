@@ -21,7 +21,7 @@
 
 
 class SplayControllerConfig
-	CTLVersion = 1.02
+	CTLVersion = 1.1
 
 	SQL_TYPE = DBConfig::SQL_TYPE
 	SQL_DB =  DBConfig::SQL_DB
