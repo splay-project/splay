@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 --[[
-       Splay Client Commands ### v1.1 ###
+       Splay Client Commands ### v ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
