@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 
 if [[ $1 == "" ]]; then
 	echo "Usage: ./replace-version-splayd.sh NEW_VERSION"
