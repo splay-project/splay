@@ -1,4 +1,4 @@
-/* Splay ### v1.0.5 ###
+/* Splay ### v1.0.6 ###
  * Copyright 2006-2011
  * http://www.splay-project.org
  */
