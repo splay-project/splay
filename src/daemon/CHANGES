@@ -4,6 +4,7 @@ splayd 1.0.6:
 	 >Disconnected: splayd.lua:541: attempt to index a nil value
 	- major performance improvements in splay.benc module (function encode completely rewritten)
 	- minor performance improvement in splay.misc module, function split (made simpler and faster) 
+	- major improvements in BW consumption for splay.rpcq : removed unused fields
 -----------------------------
 splayd 1.0.5:
 	- fix in async_dns: improve compatibility with LuaSocket's dns calls
