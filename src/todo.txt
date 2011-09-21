@@ -72,27 +72,6 @@ I, [10:43:11 #679]  INFO -- : 9
     1961 host_2_77 10.0.2.2 0 - 0
 
 
-- Bug with controller 1.0.1:
-
-E, [17:37:20 #5059] ERROR -- : NoMethodError: undefined method `length' for nil:NilClass
-./lib/logd.rb:176:in `run'
-./lib/logd.rb:166:in `loop'
-./lib/logd.rb:166:in `run'
-./lib/logd.rb:118:in `initialize'
-./lib/logd.rb:118:in `new'
-./lib/logd.rb:118:in `run'
-./lib/logd.rb:72:in `main'
-./lib/logd.rb:59:in `loop'
-./lib/logd.rb:59:in `main'
-./lib/logd.rb:34:in `run'
-./lib/logd.rb:33:in `initialize'
-./lib/logd.rb:33:in `new'
-./lib/logd.rb:33:in `run'
-
-It was because in line 176 of logd.rb, sometimes msg was = nil, the error was fixed by introducing a "if msg then" to prevent
-it. FIXED
-
-
 	
 **********	
 Feature requests/new features:
