@@ -128,42 +128,19 @@ f=f()()
 
 - Extend splayd RPC module to take into account ModelNet like topologies, at
   least for latencies between pairs of nodes and for dropped packets
+  ==> VALERIO, in progress
 
 - handle properly more than one events.run function (common when using stacks of protocols): 
   their content should be merged somehow; currently only the last one 
   encountered is executed. This
   problem surfaces also using a simple local deployment (splay as lib) and
   it's not related to the multi-file support itself.
-
-
-- Implement a json-based interface and re-implement the command line interface and the splayweb to use it (using user/password).
-	==> ASSIGNED TO JOSE
-- (complementary to the previous one) Check all command line commands to see if they are:
-	- properly documented (with a -h option)
-	- checking all inputs to avoid any ruby error message
-	- document them on the website
-	- Add a command to the controller to report the current number of available/busy splayds, etc (as it is done in the splayweb)
-		-> should be done by José as part of the command API
 		
 - Write a developer's guide to make programs more 'splay friendly': better explain which Lua features can be used, how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
-
-- The controller command ./list_hosts.rb report only the IPs of the hosts assigned to a job. In the case of a cluster deployment with several splayds per machines, this report is useless. The list should be enriched at least with the name of the splayd, and the port range known by the controller.
-	JOSE: DONE
 
 - in controller, check if the size of the actions table can be significantly reduce (why do we keep all splayd actions all the time?)
 
 - add an option to the job creation panel / command to print or not print the header in the logs (useful for demos and when one needs to visually process a log)
-
--  If a submitted job can't be executed for the lack of resources, it is discarded.
-   It would be nice to be able to schedule a job so that it's executed as soon as the required resources 
-   become available. 
-   This might be as simple as having a queue with all the submitted jobs, and once a job finishes, 
-   the controller checks if the given job can now be executed because some resources are freed (ie: at the moment
-   of the submissions, there were 100 splayds available and 900 taken by another job, whereas the 
-   job being scheduled    requires a total of 200). 
-   This would facilitate the submission of multiple jobs one after the other without periodically
-   checking whether the job has completed. The mechanism could be complexified by providing priorities to jobs.
-   An option in the submission ('queue=yes|no') could indicate that job can be enqueued to future submission.
 
 - Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
 
