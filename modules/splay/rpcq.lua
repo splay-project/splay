@@ -162,7 +162,7 @@ local function peer_fail(id)
 	peers[id].s:close()
 	events.fire("rpcq:send_"..id)
 
-	if peers[id].half or all then
+	if peers[id].half then --if peers[id].half or all then
 		peers[id].status = "disconnected"
 		peers[id].half = nil
 		if #messages_sent[id] > 0 then
@@ -184,26 +184,17 @@ local function peer_receive(id)
 	while true do
 		local msg_s, err = s:receive()
 		if not msg_s then break end
-
 		local ok, msg = pcall(function() return enc.decode(msg_s) end)
 		if not ok then
 			l_o:warn("peer_receive corrupted message:", msg_s)
 			break
-		end
-
+		end		
 		p.last = misc.time()
-
-		-- can only be reply....
-		if msg.mode == "reply" then
-
-			table.remove(messages_sent[id], 1)
-
-			events.fire("rpcq:reply_"..msg.number, msg.reply)
-
-			if #messages_sent[id] < settings.window_size then
-				-- ready to send a new message
-				events.fire("rpcq:send_"..id)
-			end
+		table.remove(messages_sent[id], 1)
+		events.fire("rpcq:reply_"..msg.n, msg.reply)
+		if #messages_sent[id] < settings.window_size then
+			-- ready to send a new message
+			events.fire("rpcq:send_"..id)
 		end
 	end
 end
@@ -225,12 +216,15 @@ local function peer_send(id)
 		if #messages[id] > 0 and #messages_sent[id] < settings.window_size then
 			local msg = table.remove(messages[id], 1)
 
-			-- maybe this message is already timeouted !
+			-- maybe this message is already timed-out !
 			if not msg.timeout or
 					(msg.timeout and msg.time >= misc.time() - msg.timeout) then
 				table.insert(messages_sent[id], msg)
 				p.last = misc.time()
-				if not s:send(enc.encode(msg)) then break end
+				local dup=misc.dup(msg)
+				dup.time=nil
+				dup.timeout=nil
+				if not s:send(enc.encode(dup)) then break end
 				p.last = misc.time()
 			end
 		end
@@ -346,29 +340,23 @@ local function rpc_handler(s)
 			l_o:warn("rpc_handler corrupted message:", msg_s)
 			break
 		end
-
-		-- all the messages will be queries...
-		if msg.mode == "query" then
-			
-			msg.mode = "reply"
-
-			if msg.type == "call" then
-				local c, err = misc.call(msg.call)
-				if c then
-					msg.reply = c
-				else
-					l_o:warn("rpc_handler misc.call(): "..err)
-				end
-			elseif msg.type == "ping" then
-				msg.reply = true
-			elseif msg.type == "run" then
-				events.thread(function() misc.run(msg.run) end)
-				msg.reply = true
+        
+		if msg.type == "call" then
+			local c, err = misc.call(msg.call)
+			if c then
+				msg.reply = c
+			else
+				l_o:warn("rpc_handler misc.call(): "..err)
 			end
-
-			msg.call = nil
-			if not s:send(enc.encode(msg)) then break end
+		elseif msg.type == "ping" then
+			msg.reply = true
 		end
+		--these fields are not used at reception
+		msg.call = nil
+		msg.type = nil
+		msg.time = nil
+		msg.timeout = nil
+		if not s:send(enc.encode(msg)) then break end
 	end
 	server_close = server_close + 1
 	--l_o:debug("rpc_handler end")
@@ -399,8 +387,7 @@ local function do_call(ip, port, typ, call, timeout)
 
 	local msg = {
 		type = "ping",
-		mode = "query",
-		number = number,
+		n = number, 
 		time = misc.time(),
 		timeout = timeout
 	}
@@ -415,15 +402,15 @@ local function do_call(ip, port, typ, call, timeout)
 	events.thread(function() connect(id) end)
 
 	-- If the node is just connected, it will not receive this one, but it will
-	-- anyway try to send a message immediatly...
+	-- anyway try to send a message immediately...
 	events.fire("rpcq:send_"..id)
 
 	local ok, reply
 	if timeout then
-		ok, reply = events.wait("rpcq:reply_"..msg.number, timeout)
+		ok, reply = events.wait("rpcq:reply_"..msg.n, timeout) 
 	else
 		ok = true
-		reply = events.wait("rpcq:reply_"..msg.number)
+		reply = events.wait("rpcq:reply_"..msg.n) 
 	end
 	if ok then
 		return true, reply
@@ -462,7 +449,7 @@ function acall(ip, port, call, timeout)
 	return do_call(ip, port, "call", call, timeout)
 end
 -- DEPRECATED
-function a_call(...) return acall(...) end
+--function a_call(...) return acall(...) end
 
 function ecall(ip, port, func, timeout)
 	local ok, r = acall(ip, port, func, timeout)
