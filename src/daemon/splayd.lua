@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.5 ###
+       Splay ### v1.0.6 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -28,7 +28,7 @@ SETTINGS section near the end of this file.
 ]]
 
 _COPYRIGHT = "Copyright 2006 - 2011"
-_SPLAYD_VERSION = 1.05
+_SPLAYD_VERSION = 1.06
 
 require"table"
 require"math"
