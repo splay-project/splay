@@ -30,7 +30,7 @@
 		<td class="name"><%= job.name %></td>
 		<td class="logs"><a href="/logs/<%= job.ref %>.txt">Logs</a></td>
 		<td class="kill">
-			<% if job.status=='RUNNING' %>
+			<% if job.status=='RUNNING' or job.status=='QUEUED' %>
 			<%= link_to 'KILL', :action => 'kill', :id => job %>
 			<% end %>
 		</td>

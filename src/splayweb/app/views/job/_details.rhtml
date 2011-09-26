@@ -16,7 +16,7 @@
     <%= @job.status %>
     <%= if @job.status_msg and
           @job.status_msg != "" then "(#{@job.status_msg})" end %>
-		<% if @job.status=='RUNNING' %>
+		<% if @job.status=='RUNNING' or @job.status=='QUEUED' %>
 		<%= link_to 'KILL', :action => 'kill', :id => @job %>
 		<% end %>
 		</td>
@@ -110,6 +110,10 @@
 		<th>List type</th>
 		<td><%= @job.list_type %></td>
 	</tr>
+        <tr>
+		<th>Job type</th>
+		<td><%= @job.strict %></td>
+	</tr>
 	<tr>
 		<th>List size</th>
 		<td><%= @job.list_size %></td>
@@ -121,5 +125,17 @@
 		<td><pre><%= @job.scheduler_description %></pre></td>
 	</tr>
 	<% end %>
+
+        <tr>
+		<th>Strict</th>
+		<td><%= @job.strict %></td>
+        </tr>
+
+        <% if @job.scheduled_at %>
+	<tr>
+		<th>Scheduled at</th>
+		<td><%= @job.scheduled_at %></td>
+        </tr>
+        <% end %>
   </tbody>
 </table>
