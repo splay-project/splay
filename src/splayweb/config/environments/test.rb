@@ -1,4 +1,4 @@
-## Splayweb ### v1.0.2 ###
+## Splayweb ### v1.1 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
 ## 
