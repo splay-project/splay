@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.1 ###
+       Splay ### v1.0.6 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -87,16 +87,14 @@ function gen_string(times, s)
 end
 
 function split(s, sep)
-	if not sep then sep = " " end
-	local out = {}
-	local start, stop = string.find(s, sep, 1, true)
-	if start then
-		out[#out + 1] = string.sub(s, 1, start - 1)
-		return table_concat(out, split(string.sub(s, stop + 1), sep))
-	else
-		return {s}
-	end
+       local res = {}
+       sep = sep or ' '
+       for v in s:gmatch('[^' .. sep .. ']+') do
+               res[#res + 1] = v
+       end
+       return res
 end
+
 
 --[[ Size of a table with any kind of indexing ]]--
 function size(t)

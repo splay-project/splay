@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.1 ###
+       Splay ### v1.0.6 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -20,7 +20,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
-
+local table = require"table"
 local string = require"string"
 
 local llenc = require"splay.llenc"
@@ -105,9 +105,14 @@ function decode(d)
 	end
 end
 
-function encode(data)
+--[[
+Highly optimized version of encode(): avoid as much as possible
+string concatanation, do it only once at the end of the table
+traversal using fast table.concat.
+A secondary encode_table function supports this traversal.
+]]--
+local function encode_table(data,out)
 	local t = type(data)
-
 	if t == 'table' then -- list(array) or hash
 		local i = 1
 		local list = true
@@ -118,33 +123,54 @@ function encode(data)
 			end
 			i = i + 1
 		end
-		local out = ''
 		if list then
-			out = 'l'
+			out[out.n] = 'l'
+			out.n = out.n + 1
 			for k, v in pairs(data) do
-				out = out..encode(v)
+			 	encode_table(v, out)
 			end
 		else -- hash
-			out = 'd'
+			out[out.n] = 'd'
+			out.n = out.n + 1
 			for k, v in pairs(data) do
-				out = out..encode(k)..encode(v)
+				encode_table(k, out)
+				encode_table(v, out)
 			end
 		end
-		return out..'e'
+		out[out.n] = 'e'
+	    out.n = out.n + 1
 	elseif t == 'string' then
-		return #data..':'..data
+		out[out.n] = tostring(#data); 
+		out.n = out.n + 1
+	    out[out.n] = ":" 
+		out.n = out.n + 1
+		out[out.n] = data 
+		out.n = out.n + 1
 	elseif t == 'number' then
 		-- we need to convert scientific notation to decimal
-		return 'i'..misc.to_dec_string(data)..'e' 
+		out[out.n] = 'i' 
+		out.n = out.n + 1
+		out[out.n] = misc.to_dec_string(data) 
+		out.n = out.n + 1
+		out[out.n] = 'e' 
+		out.n = out.n + 1
 	elseif t == 'nil' then -- extension of benc
-		return 'n'
+		out[out.n] = 'n' 
+		out.n = out.n + 1
 	elseif t == 'boolean' then -- extension of benc
 		if data then
-			return 't'
+			out[out.n] = 't' 
+			out.n = out.n + 1
 		else
-			return 'f'
+			out[out.n] = 'f' 
+			out.n = out.n + 1
 		end
 	end
+end
+function encode(data)
+	local out = { n=1 }
+	encode_table(data, out)
+	return table.concat(out)
 end
 
 function send(socket, data)

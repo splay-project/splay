@@ -1,3 +1,26 @@
+--[[
+       Splay ### v1.0.6 ###
+       Copyright 2006-2011
+       http://www.splay-project.org
+]]
+
+--[[
+This file is part of Splay.
+
+Splay is free software: you can redistribute it and/or modify 
+it under the terms of the GNU General Public License as published 
+by the Free Software Foundation, either version 3 of the License, 
+or (at your option) any later version.
+
+Splay is distributed in the hope that it will be useful,but 
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Splayd. If not, see <http://www.gnu.org/licenses/>.
+]]
+
 -- Original  code from lua@ztact.com
 -- Modified by Prosody IM http://hg.prosody.im/trunk/raw-file/tip/net/dns.lua
 
@@ -19,9 +42,7 @@ local log = require"splay.log"
 
 module('splay.async_dns')
 
-_COPYRIGHT = "Copyright 2006 - 2011"
 _DESCRIPTION = "A pure-Lua DNS protocol implementation"
-_VERSION     = 1.0
 
 l_o = log.new(3, "[".._NAME.."]")
 
@@ -559,11 +580,11 @@ function resolver:adddefaultnameservers()    -- - - - -  adddefaultnameservers
 			end
 		end
 	else
-		l_o:warn("Can't read /etc/resolve.conf (sandboxed directory)")
+		l_o:debug("Can't read /etc/resolve.conf (sandboxed directory)")
 		--print("[splay.async_dns] W: Can't read /etc/resolve.conf, fall back on Google DNS.")
 	end
 	if not self.server or #self.server == 0 then
-			l_o:warn("Fallback on Google DNS servers (8.8.8.8/8.8.4.4)")
+		l_o:debug("Fallback on Google DNS servers (8.8.8.8/8.8.4.4)")
 		-- google dns: 8.8.8.8 or 8.8.4.4 much faster 
 		-- open dns 208.67.222.222 208.67.220.220
 		self:addnameserver("8.8.8.8")
@@ -742,6 +763,8 @@ function resolver:encode_q(qname, qtype, qclass)
 	self.active[id][question] = o;
 	return packet	
 end
+
+
 
 -- module api ------------------------------------------------------ module api
 
