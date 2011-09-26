@@ -144,7 +144,9 @@ class JobController < ApplicationController
 		if params[:job][:distance] == ""
 			params[:job][:distance] = nil
 		end
-		
+
+                # Avoid converting time to UTC in the database
+		sch_time = Time.parse(params[:job][:scheduled_at])
 		# No hostmask ATM
 		params[:job][:hostmasks] = nil
 		params[:job][:script] = ""

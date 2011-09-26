@@ -48,7 +48,7 @@ def parse_ressources(lines)
 		"network_max_sockets", "network_nb_ports", "network_send_speed",
 		"network_receive_speed", "nb_splayds", "factor",
 		"splayd_version", "max_load", "min_uptime", "hostmasks",
-		"max_time", "scheduler", "list_type", "list_size", "keep_files"]
+		"max_time", "scheduler", "list_type", "strict", "scheduled_at", "list_size", "keep_files"]
 
 	lines.each do |line|
 		if not settings
