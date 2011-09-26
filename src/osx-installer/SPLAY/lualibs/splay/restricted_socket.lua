@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.1 ###
+       Splay ### v1.0.6 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -54,12 +54,6 @@ Full luasocket is socket.core + some shortcuts written in lua. In splay, I
 restrict socket.core then I add different wrappers including the original
 luasocket shortcuts.
 
-TODO:
-
-socket.dns is a blocking operation (used in blacklist), need to replace it by
-a non blocking version.
-It might be possible to use this DNS libraty to make it unblocking:
-http://www.conman.org/software/spcdns/ (LGPL)
 ]]
 
 local base = _G
@@ -132,8 +126,7 @@ function init(settings)
 	end
 end
 
--- DNS (or reverse DNS) can be long, cannot be made non blocking and are with a
--- default timeout.
+-- DNS (or reverse DNS) can be long: use use_async_dns=true in luasocket.lua (default)
 local function check_blacklist(target)
 
 	if #blacklist > 0 then
