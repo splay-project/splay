@@ -17,3 +17,4 @@ DONE. controller answers NO RESOURCES
 APIs to consider:
 
 - get_log: check if log file exists.
+DONE
