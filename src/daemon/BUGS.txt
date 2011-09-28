@@ -1,3 +1,17 @@
+events.periodic(some_valid_function,nil)
+
+The nil value is not detected and a weird stacktrace is printed:
+[splay.events] E: thread: 0x1001975f0 DIE (error: ...ode/trunk/splay_topo/daemon/modules/splay/events.lua:632: attempt to compare function with number)
+[splay.events] E: stack traceback:
+	...ode/trunk/splay_topo/daemon/modules/splay/events.lua:632: in function 'sleep'
+	...ode/trunk/splay_topo/daemon/modules/splay/events.lua:506: in function <...ode/trunk/splay_topo/daemon/modules/splay/events.lua:504>
+[splay.events] E: thread: 0x100197c40 DIE (error: ...ode/trunk/splay_topo/daemon/modules/splay/events.lua:632: attempt to compare function with number)
+[splay.events] E: stack traceback:
+	...ode/trunk/splay_topo/daemon/modules/splay/events.lua:632: in function 'sleep'
+	...ode/trunk/splay_topo/daemon/modules/splay/events.lua:506: in function <...ode/trunk/splay_topo/daemon/modules/splay/events.lua:504>
+
+We should return a more clear message, saying explicitely that the argument given to 'periodic' was nil.
+--
 Seen on planetlab deployment, ple01.fc.univie.ac.at,  25/07/2011:
 Command: PING
 Command: PING
