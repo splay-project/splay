@@ -125,3 +125,4 @@ f=f()()
 
 - When a job is submitted with a trace, after the trace is completed the job doesn't change its status to ENDED, it continues as RUNNING. The job should finish.
 
+- Add optiont o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a ndoe in a given position is used for well-known reasons (entrypoit)
