@@ -129,3 +129,7 @@ f=f()()
 
 - Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is shutting down/crashing (perhaps because
   of a churn trace). This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. It requires some modifications to the splay sandbox and core module.
+
+- the CLI client/server should allow to specify the restrictions on the splayds selected for a job. As it is 
+  done on the SplayWeb, where we can specify for example which version of the Splayd we want for the job, the same
+  should be made possible via the CLI options. 
