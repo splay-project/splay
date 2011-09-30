@@ -125,4 +125,7 @@ f=f()()
 
 - When a job is submitted with a trace, after the trace is completed the job doesn't change its status to ENDED, it continues as RUNNING. The job should finish.
 
-- Add optiont o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a ndoe in a given position is used for well-known reasons (entrypoit)
+- Add optiont o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a ndoe in a given position is used for well-known reasons (entrypoint)
+
+- Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is shutting down/crashing (perhaps because
+  of a churn trace). This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. It requires some modifications to the splay sandbox and core module.
