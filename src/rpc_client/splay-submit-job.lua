@@ -79,6 +79,13 @@ function parse_arguments()
 			print("send \"SUBMIT JOB\" command to the SPLAY CLI server; submits a job for execution\n")
 			--prints the usage
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-n"
 		elseif arg[i] == "-n" then
 			i = i + 1
@@ -214,9 +221,9 @@ end
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
 function send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict)
 	--prints the arguments
-	print("NAME              = "..name)
-	print("DESCRIPTION       = "..description)
-	print("CODE_FILE         = "..code_filename)
+	print_line(VERBOSE, "NAME              = "..name)
+	print_line(VERBOSE, "DESCRIPTION       = "..description)
+	print_line(VERBOSE, "CODE_FILE         = "..code_filename)
 
 	--initializes the string that holds the churn trace as empty
 	local churn_trace = ""
@@ -227,7 +234,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		--if the file exists
 		if churn_trace_file then
 			--prints the churn trace filename
-			print("CHURN_TRACE_FILE  = "..churn_trace_filename)
+			print_line(VERBOSE, "CHURN_TRACE_FILE  = "..churn_trace_filename)
 			--flushes the whole file into the string "churn_trace"
 			churn_trace = churn_trace_file:read("*a")
 			--closes the file
@@ -235,32 +242,32 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		--if not
 		else
 			--prints an error message
-			print("CHURN_TRACE_FILE does not exist")
+			print("ERROR: CHURN_TRACE_FILE does not exist")
 			--exists
 			os.exit()
 		end
 		nb_splayds = 0
-		print("NB_SPLAYDS        = (specified in churn trace)")
+		print_line(VERBOSE, "NB_SPLAYDS        = (specified in churn trace)")
 	else
-		print("NB_SPLAYDS        = "..nb_splayds)
+		print_line(VERBOSE, "NB_SPLAYDS        = "..nb_splayds)
 	end
 
-	print("OPTIONS           = ")
+	print_line(VERBOSE, "OPTIONS           = ")
 	for i,v in pairs(options) do
-		print("\t"..i.."\t = "..v)
+		print_line(VERBOSE, "\t"..i.."\t = "..v)
 	end
 	if job_args then
-		print("JOB_ARGS          = "..job_args)
+		print_line(VERBOSE, "JOB_ARGS          = "..job_args)
 	end
-	print("SESSION_ID        = "..session_id)
+	print_line(VERBOSE, "SESSION_ID        = "..session_id)
 	print_cli_server(4)
 
         if scheduled_at then
-        	print("SCHEDULED_AT	  = "..scheduled_at)
+        	print_line(VERBOSE, "SCHEDULED_AT	  = "..scheduled_at)
         end
 
         if strict then
-		print("STRICT	   	  = "..strict)
+		print_line(VERBOSE, "STRICT MODE   	  = "..strict)
         end
 
 	--initializes the string that holds the code as empty
@@ -276,7 +283,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	--if not
 	else
 		--prints an error message
-		print("CODE_FILE does not exist")
+		error("ERROR: CODE_FILE does not exist")
 		--exists
 		os.exit()
 	end
@@ -300,7 +307,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
@@ -308,9 +315,10 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	--if there is a response
 	if check_response(response) then
 		local json_response = json.decode(response)
-		print("Job Submitted:")
-		print("JOB_ID           = "..json_response.result.job_id)
-		print("REF              = "..json_response.result.ref.."\n")
+		print_line(NORMAL, "Job Submitted:")
+		print_line(NORMAL, "JOB_ID           = "..json_response.result.job_id)
+		print_line(VERBOSE, "REF              = "..json_response.result.ref)
+		print_line(NORMAL, "")
 	end
 
 end
@@ -338,9 +346,9 @@ load_config()
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

@@ -1,5 +1,9 @@
 --common variables
 
+--print modes
+QUIET = 1
+NORMAL = 2
+VERBOSE = 3
 --used by splay-new-user, -list-users
 admin_username = nil
 admin_password = nil
@@ -23,6 +27,14 @@ cli_server_as_ip_addr = false
 min_arg_ok = false
 other_mandatory_args = ""
 usage_options = {}
+print_mode = NORMAL
+
+--function print_line:
+function print_line(mode, str_to_print)
+	if print_mode >= mode then
+		print(str_to_print)
+	end
+end
 
 --function load_config: loads the config file
 function load_config()
@@ -56,18 +68,18 @@ function print_cli_server(number_of_spaces)
 		end
 	end
 	if cli_server_taken_from_conf then
-		print("CLI SERVER URL"..spaces_between.."= "..cli_server_url.." (from splay_cli_config.lua)")
+		print_line(VERBOSE, "CLI SERVER URL"..spaces_between.."= "..cli_server_url.." (from splay_cli_config.lua)")
 	else
-		print("CLI SERVER URL"..spaces_between.."= "..cli_server_url)
+		print_line(VERBOSE, "CLI SERVER URL"..spaces_between.."= "..cli_server_url)
 	end
 end
 
 --function print_username: prints the username
 function print_username(username_as_str, username_as_var)
 	if username_taken_from_conf then
-		print(username_as_str.."= "..username_as_var.." (from splay_cli_config.lua)")
+		print_line(VERBOSE, username_as_str.."= "..username_as_var.." (from splay_cli_config.lua)")
 	else
-		print(username_as_str.."= "..username_as_var)
+		print_line(VERBOSE, username_as_str.."= "..username_as_var)
 	end
 end
 
@@ -75,7 +87,7 @@ function check_min_arg()
 	--if min_arg_ok is false (the required arguments were not filled)
 	if not min_arg_ok then
 		--prints an error message
-		print("missing arguments\n")
+		print("ERROR: missing arguments\n")
 		--prints the usage
 		print_usage()
 	end
@@ -102,7 +114,7 @@ function check_cli_server()
 	--if the URL does not start with the string "http://"
 	if not string.match(cli_server_url,"^http://") then
 		--prints an error message
-		print("Invalid URL:"..cli_server_url.."\nA valid URL must have the following syntax: \"http://webserver[:port][/page]\"\nExamples of valid URLs:\n\thttp://127.0.0.1/\n\thttp://some.website.com/json-rpc\n\thttp://10.0.0.1:2222/\n")
+		print("ERROR: Invalid URL:"..cli_server_url.."\nA valid URL must have the following syntax: \"http://webserver[:port][/page]\"\nExamples of valid URLs:\n\thttp://127.0.0.1/\n\thttp://some.website.com/json-rpc\n\thttp://10.0.0.1:2222/\n")
 		--exits
 		os.exit()
 	end
@@ -132,7 +144,7 @@ function check_password(checked_password, password_type)
 		--if a password was specified on the configuration file
 		if (password_type == "Password" or password_type == "Current password" or password_type == "Administrator's password") and password_from_conf_file then
 			--prints a message
-			print(password_type.." taken from the configuration file...\n")
+			print_line(VERBOSE, password_type.." taken from the configuration file...\n")
 			checked_password = password_from_conf_file
 		--if not
 		else
@@ -165,7 +177,7 @@ function check_session_id()
 		session_id_file:close()
 	else
 		--prints an error message
-		print("At the moment, there is no active session for SPLAY CLI server: "..cli_server_url.."\n\nPlease start a session with splay-start-session before attempting a command.\n")
+		print("ERROR: At the moment, there is no active session for SPLAY CLI server: "..cli_server_url.."\n\nPlease start a session with splay-start-session before attempting a command.\n")
 		--exits
 		os.exit()
 	end
@@ -177,14 +189,14 @@ function check_response(response)
 		if json_response.result then
 			if json_response.result.ok == true then
 				--prints the result
-				print("Response from "..cli_server_url..":")
+				print_line(VERBOSE, "Response from "..cli_server_url..":")
 				return true
 			else
 				print("Response from "..cli_server_url..":")
 				if json_response.result.error then
-					print("Error: "..json_response.result.error.."\n")
+					print("ERROR: "..json_response.result.error.."\n")
 				else
-					print("Error\n")
+					print("ERROR\n")
 				end
 			end
 		else
