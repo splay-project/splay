@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -73,7 +73,7 @@ function send_get_log(job_id, cli_server_url, session_id)
 	--prints the arguments
 	print("JOB_ID         = "..job_id)
 	print("SESSION_ID     = "..session_id)
-	print("CLI SERVER URL = "..cli_server_url)
+	print_cli_server()
 
 	--prepares the body of the message
 	local body = json.encode({
@@ -86,7 +86,7 @@ function send_get_log(job_id, cli_server_url, session_id)
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
-	
+
 	if check_response(response) then
 		local json_response = json.decode(response)
 		print("Log from JOB "..job_id.." successfully retrieved")
@@ -95,24 +95,14 @@ function send_get_log(job_id, cli_server_url, session_id)
 		f1:write(json_response.result.log)
 		f1:close()
 	end
-	
+
 end
 
 
 --MAIN FUNCTION:
 --initializes the variables
-job_id = nil
-cli_server_url = nil
-session_id = nil
-
-cli_server_url_from_conf_file = nil
-
-cli_server_as_ip_addr = false
-min_arg_ok = false
-
 command_name = "splay_get_log"
 other_mandatory_args = "JOB_ID "
-usage_options = {}
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
@@ -133,3 +123,4 @@ check_session_id()
 
 --calls send_get_log
 send_get_log(job_id, cli_server_url, session_id)
+

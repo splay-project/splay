@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -94,16 +94,16 @@ function parse_arguments()
 			min_arg_ok = true
 		end
 		i = i + 1
-	end	
+	end
 end
 
 --function send_remove_user: sends a "REMOVE USER" command to the SPLAY CLI server
 function send_remove_user(username, cli_server_url,admin_username, admin_password)
 	--prints the arguments
-	print("ADMIN USERNAME      = "..admin_username)
+	print_username("ADMIN USERNAME      ", admin_username)
 	print("USERNAME TO REMOVE  = "..username)
-	print("CLI SERVER URL      = "..cli_server_url)
-	
+	print_cli_server(6)
+
 	local admin_hashedpassword = sha1(admin_password)
 
 	--prepares the body of the message
@@ -121,7 +121,7 @@ function send_remove_user(username, cli_server_url,admin_username, admin_passwor
 	if check_response(response) then
 		print("User removed\n")
 	end
-	
+
 end
 
 
@@ -134,9 +134,11 @@ cli_server_url = nil
 
 cli_server_url_from_conf_file = nil
 username_from_conf_file = nil
-password_from_conf_file = nil
 
 cli_server_as_ip_addr = false
+cli_server_taken_from_conf = false
+username_taken_from_conf = false
+password_taken_from_conf = false
 min_arg_ok = false
 
 command_name = "splay-change-passwd"
@@ -171,3 +173,4 @@ username = check_username(username, "Username to remove")
 
 --calls send_remove_user
 send_remove_user(username, cli_server_url, admin_username, admin_password)
+

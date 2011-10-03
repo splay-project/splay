@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -99,7 +99,7 @@ function parse_arguments()
 			--Flag ask_for_name is true
 			ask_for_name = true
 		elseif string.find(arg[i], "^--args=") then
-			job_args= string.sub(arg[i], 8)		
+			job_args= string.sub(arg[i], 8)
 		elseif 	arg[i] == "-a" then
 			i = i + 1
 			job_args= arg[i]
@@ -113,7 +113,7 @@ function parse_arguments()
                         sch_month = string.sub(arg[i], 6, 7)
                         sch_day = string.sub(arg[i], 9, 10)
                         -- next argument is HH:MM:SS
-                        i = i + 1        
+                        i = i + 1
                         sch_hour = string.sub(arg[i], 1, 2)
                         sch_min = string.sub(arg[i], 4, 5)
                         sch_sec = string.sub(arg[i], 7, 8)
@@ -140,7 +140,7 @@ function parse_arguments()
                         scheduled_at = crt_time + delay_time
                 -- if argument is "--strict"
                 elseif arg[i] == "--strict" then
-                	strict = "TRUE"          
+                	strict = "TRUE"
 		--if code_filename is not yet filled and the argument has not matched any of the other rules
 		elseif not code_filename then
 			--the code file is the argument
@@ -244,7 +244,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	else
 		print("NB_SPLAYDS        = "..nb_splayds)
 	end
-	
+
 	print("OPTIONS           = ")
 	for i,v in pairs(options) do
 		print("\t"..i.."\t = "..v)
@@ -253,8 +253,8 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		print("JOB_ARGS          = "..job_args)
 	end
 	print("SESSION_ID        = "..session_id)
-	print("CLI SERVER URL    = "..cli_server_url)
-	
+	print_cli_server(4)
+
         if scheduled_at then
         	print("SCHEDULED_AT	  = "..scheduled_at)
         end
@@ -262,7 +262,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
         if strict then
 		print("STRICT	   	  = "..strict)
         end
-	
+
 	--initializes the string that holds the code as empty
 	local code = ""
 	--opens the file that contains the code
@@ -280,7 +280,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		--exists
 		os.exit()
 	end
-	
+
 	--put args in arg{} global table
 	args_code="arg={}\narg[0]= '".. code_filename.."'\n"
 	if job_args then
@@ -291,14 +291,14 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		end
 		code = args_code..code
 	end
-	
-	
+
+
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
 		params = {name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict}
 	})
-	
+
 	--prints that it is sending the message
 	print("\nSending command to "..cli_server_url.."...\n")
 
@@ -317,7 +317,6 @@ end
 
 --MAIN FUNCTION:
 --initializes the variables
-
 code_filename = nil
 churn_trace_filename = nil
 options_string = nil
@@ -327,19 +326,10 @@ description = ""
 name = ""
 ask_for_description = false
 ask_for_name = false
-cli_server_url = nil
-session_id = nil
 scheduled_at = nil
 strict = "FALSE"
-
-cli_server_url_from_conf_file = nil
-
-cli_server_as_ip_addr = false
-min_arg_ok = false
-
 command_name = "splay_submit_job"
 other_mandatory_args = "CODE_FILE "
-usage_options = {}
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
@@ -362,3 +352,4 @@ submit_job_extra_checks()
 
 --calls send_submit_job
 send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict)
+

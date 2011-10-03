@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -87,8 +87,8 @@ end
 --function send_list_users: sends a "LIST USERS" command to the SPLAY CLI server
 function send_list_users(cli_server_url, admin_username, admin_password)
 	--prints the arguments
-	print("ADMIN USERNAME   = "..admin_username)
-	print("CLI SERVER URL   = "..cli_server_url)
+	print_username("ADMIN USERNAME   ", admin_username)
+	print_cli_server(3)
 
 	local admin_hashedpassword = sha1(admin_password)
 
@@ -110,33 +110,21 @@ function send_list_users(cli_server_url, admin_username, admin_password)
 		for _,v in ipairs(json_response.result.user_list) do
 			print("\tid="..v.id..", username="..v.username)
 		end
-		print()	
+		print()
 	end
-	
+
 end
 
 
 --MAIN FUNCTION:
 --initializes the variables
-admin_username = nil
-admin_password = nil
-cli_server_url = nil
-
-cli_server_url_from_conf_file = nil
-username_from_conf_file = nil
-password_from_conf_file = nil
-
-cli_server_as_ip_addr = false
-min_arg_ok = false
-
 command_name = "splay-list-users"
-other_mandatory_args = ""
-usage_options = {}
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
 
 load_config()
+
 --if the CLI server was loaded from the config file
 if cli_server_url_from_conf_file then
 	--minimum arguments are filled
@@ -159,3 +147,4 @@ admin_password = check_password(admin_password, "Administrator's password")
 
 --calls send_list_users
 send_list_users(cli_server_url, admin_username, admin_password)
+

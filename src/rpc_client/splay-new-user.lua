@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -104,19 +104,19 @@ function parse_arguments()
 			min_arg_ok = true
 		end
 		i = i + 1
-	end	
+	end
 end
 
 --function send_new_user: sends a "NEW USER" command to the SPLAY CLI server
 function send_new_user(username, password, cli_server_url,admin_username, admin_password)
 	--prints the arguments
-	print("ADMIN USERNAME = "..admin_username)
+	print_username("ADMIN USERNAME ", admin_username)
 	print("NEW USERNAME   = "..username)
-	print("CLI SERVER URL = "..cli_server_url)
+	print_cli_server()
 
 	local hashed_password = sha1(password)
 	local admin_hashedpassword = sha1(admin_password)
-	
+
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.new_user",
@@ -134,28 +134,13 @@ function send_new_user(username, password, cli_server_url,admin_username, admin_
 		print("User added")
 		print("User ID = "..json_response.result.user_id.."\n")
 	end
-	
+
 end
 
 
 --MAIN FUNCTION:
 --initializes the variables
-username = nil
-password = nil
-admin_username = nil
-admin_password = nil
-cli_server_url = nil
-
-cli_server_url_from_conf_file = nil
-username_from_conf_file = nil
-password_from_conf_file = nil
-
-cli_server_as_ip_addr = false
-min_arg_ok = false
-
 command_name = "splay-change-passwd"
-other_mandatory_args = ""
-usage_options = {}
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
@@ -187,3 +172,4 @@ password = check_password(password, "New user's password")
 
 --calls send_new_user
 send_new_user(username, password, cli_server_url, admin_username, admin_password)
+
