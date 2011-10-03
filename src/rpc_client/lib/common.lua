@@ -1,3 +1,29 @@
+--common variables
+
+--used by splay-new-user, -list-users
+admin_username = nil
+admin_password = nil
+--used by -new-user, -change-password, -start-session
+username = nil
+--used by -new-user, -start-session
+password = nil
+--used by all user/password oriented commands
+username_from_conf_file = nil
+password_from_conf_file = nil
+username_taken_from_conf = false
+--used by all session oriented commands
+session_id = nil
+--used by all job related commands
+job_id = nil
+--used by all commands
+cli_server_url = nil
+cli_server_url_from_conf_file = nil
+cli_server_taken_from_conf = false
+cli_server_as_ip_addr = false
+min_arg_ok = false
+other_mandatory_args = ""
+usage_options = {}
+
 --function load_config: loads the config file
 function load_config()
 	local config_file = loadfile("splay_cli_config.lua")
@@ -21,6 +47,30 @@ function print_usage()
 	os.exit()
 end
 
+--function print_cli_server: prints the CLI server URL
+function print_cli_server(number_of_spaces)
+	local spaces_between = " "
+	if number_of_spaces then
+		for i=2,number_of_spaces do
+			spaces_between = spaces_between.." "
+		end
+	end
+	if cli_server_taken_from_conf then
+		print("CLI SERVER URL"..spaces_between.."= "..cli_server_url.." (from splay_cli_config.lua)")
+	else
+		print("CLI SERVER URL"..spaces_between.."= "..cli_server_url)
+	end
+end
+
+--function print_username: prints the username
+function print_username(username_as_str, username_as_var)
+	if username_taken_from_conf then
+		print(username_as_str.."= "..username_as_var.." (from splay_cli_config.lua)")
+	else
+		print(username_as_str.."= "..username_as_var)
+	end
+end
+
 function check_min_arg()
 	--if min_arg_ok is false (the required arguments were not filled)
 	if not min_arg_ok then
@@ -42,7 +92,9 @@ function check_cli_server()
 	--if no SPLAY CLI was passed as argument
 	else
 		--prints a message
-		print("No SPLAY CLI server URL specified. Using SPLAY CLI server URL from the configuration file...\n")
+		--print("No SPLAY CLI server URL specified. Using SPLAY CLI server URL from the configuration file...\n")
+		--makes cli_server_taken_from_conf true
+		cli_server_taken_from_conf = true
 		--takes the CLI server from the config file
 		cli_server_url = cli_server_url_from_conf_file
 	end
@@ -61,8 +113,8 @@ function check_username(checked_username, username_type)
 	if not checked_username then
 		--if a username was specified on the configuration file
 		if (username_type == "Username" or username_type == "Administrator's username") and username_from_conf_file then
-			--prints a message
-			print(username_type.." taken from the configuration file...\n")
+			--makes username_taken_from_conf true
+			username_taken_from_conf = true
 			checked_username = username_from_conf_file
 		--if not
 		else
@@ -148,3 +200,4 @@ function check_response(response)
 	end
 	return false
 end
+
