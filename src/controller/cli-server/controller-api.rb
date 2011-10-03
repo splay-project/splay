@@ -43,7 +43,7 @@ class Ctrl_api
 			#user_id is taken from the field 'id' from variable user
 			user_id = user['id']
 			#if the user is admin (can see all the jobs) or the job belongs to her
-			if (($db.select_one("SELECT * FROM jobs WHERE id=#{job_id}") and (user['admin'] == 1)) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
+			if ((user['admin'] == 1) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
 				#opens the log file of the requested job
 				log_file = File.open("../logs/"+job_id) 
 				#ok is true
@@ -59,12 +59,8 @@ class Ctrl_api
 			# if not, the following lines are processed
 			#ok is false
 			ret['ok'] = false
-			if user['admin'] == 1 then
-				ret['error'] = "Job does not exist"
-			else
-				#error says that the job doesn't exist
-				ret['error'] = "Job does not exist for this user"
-			end
+			#error says that the job doesn't exist
+			ret['error'] = "Job does not exist for this user"
 			#returns ret
 			return ret
 		end
@@ -106,12 +102,7 @@ class Ctrl_api
 			#ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist
-			if user['admin'] == 1 then
-				ret['error'] = "Job does not exist"
-			else
-				#error says that the job doesn't exist
-				ret['error'] = "Job does not exist for this user"
-			end
+			ret['error'] = "Job does not exist for this user"
 			#returns ret
 			return ret
 		end
@@ -146,12 +137,7 @@ class Ctrl_api
 			#if the user is not admin and the job doesn't belong to her, ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist for the given user (if user is admin, the job doesn't exist at all)
-			if user['admin'] == 1 then
-				ret['error'] = "Job does not exist"
-			else
-				#error says that the job doesn't exist
-				ret['error'] = "Job does not exist for this user"
-			end
+			ret['error'] = "Job does not exist for this user"
 		end
 		#if the session was not valid, ok is false
 		ret['ok'] = false
@@ -162,7 +148,7 @@ class Ctrl_api
 	end
 
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id)
+	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict)
 	 	#initializes the return variable
 		ret = Hash.new
 		#checks the validity of the session ID and stores the returning value in the variable user
@@ -195,6 +181,17 @@ class Ctrl_api
 			else
 				name_field = "name='#{name}',"
 			end
+
+                        # scheduled job
+                        if scheduled_at && (scheduled_at > 0) then
+                        	time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
+				options['scheduled_at'] = time_scheduled
+                        end
+
+			# strict job
+                        if strict == "TRUE" then
+				options['strict'] = strict 
+                        end
 			
 			if churn_trace == "" then
 				churn_field = ""
@@ -223,6 +220,13 @@ class Ctrl_api
 				if job['status'] == "NO_RESSOURCES" then
 					ret['ok'] = false
 					ret['error'] = "JOB " + job['id'].to_s + ": " + job['status_msg']
+					return ret
+				end
+                                # queued job behavior
+				if job['status'] == "QUEUED" then
+					ret['ok'] = true
+					ret['job_id'] = job['id']
+					ret['ref'] = ref
 					return ret
 				end
 			end
@@ -265,7 +269,6 @@ class Ctrl_api
 				ret['host_list'] = host_list
 				ret['status'] = job['status']
 				ret['ref'] = job['ref']
-				ret['name'] = job['name']
 				ret['description'] = job['description']
 				if (user['admin'] == 1) then
 					ret['user_id'] = job['user_id']
@@ -273,12 +276,7 @@ class Ctrl_api
 				return ret
 			end
 			ret['ok'] = false
-			if user['admin'] == 1 then
-				ret['error'] = "Job does not exist"
-			else
-				#error says that the job doesn't exist
-				ret['error'] = "Job does not exist for this user"
-			end
+			ret['error'] = "Job does not exist for this user"
 			return ret
 		end
 		ret['ok'] = false
@@ -425,13 +423,11 @@ class Ctrl_api
 		#initializes the return variable
 		ret = Hash.new
 		user = $db.select_one "SELECT * FROM users WHERE login='#{username}'"
-		if user then
-			hashed_password_from_db = user['crypted_password']
-			if (hashed_currentpassword == hashed_password_from_db) then
-				$db.do("UPDATE users SET crypted_password='#{hashed_newpassword}' WHERE login='#{username}'")
-				ret['ok'] = true
-				return ret
-			end
+		hashed_password_from_db = user['crypted_password']
+		if (hashed_currentpassword == hashed_password_from_db) then
+			$db.do("UPDATE users SET crypted_password='#{hashed_newpassword}' WHERE login='#{username}'")
+			ret['ok'] = true
+			return ret
 		end
 		ret['ok'] = false
 		ret['error'] = "Not authenticated"
@@ -445,14 +441,8 @@ class Ctrl_api
 		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
 		if admin then
 			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
-				user = $db.select_one("SELECT * FROM users WHERE login='#{username}'")
-				if user then
-					$db.do("DELETE FROM users WHERE login='#{username}'")
-					ret['ok'] = true
-					return ret
-				end
-				ret['ok'] = false
-				ret['error'] = "User does not exist"
+				$db.do("DELETE FROM users WHERE login='#{username}'")
+				ret['ok'] = true
 				return ret
 			end
 		end
