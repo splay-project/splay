@@ -107,11 +107,19 @@ int sp_exec(lua_State *L)
 {
 	int i = 0;
 	int num_args = lua_gettop(L);
-	char **a = malloc((num_args + 1) * sizeof(int));
-
+	char **a = malloc((num_args + 1) * sizeof(char*));
+	
 	/* a[0] == command */
 	for (i = 1; i <= num_args; i++) {
-		a[i - 1] =(char *)lua_tostring(L, i);
+		if (lua_type(L, i) == LUA_TSTRING) {
+			a[i - 1] =(char *)lua_tostring(L, i);
+		}
+		else if (lua_type(L, i) == LUA_TNUMBER) {
+			int tmp_integer = lua_tointeger(L, i);
+			char* tmp_string = malloc(20* sizeof(char)); /*FIXME choose a proper size*/
+			sprintf(stmp,"%d",tmp);
+			a[i - 1] = stmp;
+		}
 	}
 	a[num_args] = NULL;
 	if (execv(a[0], a) < 0) {
