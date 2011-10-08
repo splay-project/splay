@@ -113,14 +113,16 @@ int sp_exec(lua_State *L)
 	for (i = 1; i <= num_args; i++) {
 		if (lua_type(L, i) == LUA_TSTRING) {
 			a[i - 1] =(char *)lua_tostring(L, i);
+
 		}
 		else if (lua_type(L, i) == LUA_TNUMBER) {
 			int tmp_integer = lua_tointeger(L, i);
 			char* tmp_string = malloc(20* sizeof(char)); /*FIXME choose a proper size*/
-			sprintf(stmp,"%d",tmp);
-			a[i - 1] = stmp;
+			snprintf(tmp_string,sizeof(tmp_string),"%d",tmp_integer);
+			a[i - 1] = tmp_string;
 		}
 	}
+	
 	a[num_args] = NULL;
 	if (execv(a[0], a) < 0) {
 		lua_pushnil(L);
