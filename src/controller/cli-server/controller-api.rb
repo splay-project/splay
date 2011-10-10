@@ -186,6 +186,17 @@ class Ctrl_api
                         if scheduled_at && (scheduled_at > 0) then
                         	time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
 				options['scheduled_at'] = time_scheduled
+			end
+
+			# strict job
+                        if strict == "TRUE" then
+				options['strict'] = strict 
+                        end
+
+                        # scheduled job
+                        if scheduled_at && (scheduled_at > 0) then
+                        	time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
+				options['scheduled_at'] = time_scheduled
                         end
 
 			# strict job
@@ -209,6 +220,13 @@ class Ctrl_api
 			timeout = 30
 			while timeout > 0
 				sleep(1)
+					return ret
+				end
+				# queued job behavior
+				if job['status'] == "QUEUED" then
+					ret['ok'] = true
+					ret['job_id'] = job['id']
+					ret['ref'] = ref
 				timeout = timeout - 1
 				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
 				if job['status'] == "RUNNING" then
