@@ -1,3 +1,5 @@
+v1.3
+ - support for quite/verbose mode
 v1.2
  - support new features in splay controller 1.1 (job scheduling)
 
