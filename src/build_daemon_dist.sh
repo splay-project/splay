@@ -7,5 +7,5 @@ fi
 mkdir splayd_${VER}
 cp -R daemon/* splayd_${VER}/
 cp AUTHORS splayd_${VER}/
-COPY_EXTENDED_ATTRIBUTES_DISABLE=true COPYFILE_DISABLE=true tar czvf "splayd_${VER}.tar.gz" -X exclude.txt --exclude=.svn splayd_${VER}/
+COPY_EXTENDED_ATTRIBUTES_DISABLE=true COPYFILE_DISABLE=true tar czvf "splayd_${VER}.tar.gz" -X exclude_from_daemondist.txt --exclude=.svn splayd_${VER}/
 rm -rf splayd_${VER}
