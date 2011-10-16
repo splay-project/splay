@@ -44,6 +44,7 @@ local tostring = tostring
 local pairs = pairs
 local print = print
 local loadstring = loadstring
+local assert = assert
 -----------------------------------------------------------------------------
 -- Module declaration
 -----------------------------------------------------------------------------
