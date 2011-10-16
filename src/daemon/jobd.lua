@@ -215,7 +215,7 @@ collectgarbage()
   -----------------------
 
 print(">> Into sandbox !!!")
-print("> Memory: "..gcinfo().." ko")
+print("> Memory: "..collectgarbage("count").." KBytes")
 print("> Checking sandbox...")
 
 -- Mini sandbox check
