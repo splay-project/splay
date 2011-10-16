@@ -32,134 +32,20 @@ class JobdStandard < Jobd
 
 	# LOCAL => REGISTERING|NO RESSOURCES|QUEUED
 	def self.status_local
-
 		@@dlock_jr.get
+
 		c_splayd = nil
 
 		$db.select_all "SELECT * FROM jobs WHERE
 				scheduler='#{@@scheduler}' AND status='LOCAL'" do |job|
+		
+			# Splayds selection
+			c_splayd, occupation, nb_selected_splayds, new_job, do_next = Jobd.status_local_common(job)	
 
-      			# Cache at the first call
-			if not c_splayd
-				c_splayd = {}
-				c_splayd['nb_nodes'] = {}
-				c_splayd['max_number'] = {}
-				
-				# Do not take only AVAILABLE splayds here because new ones can become
-				# AVAILABLE before the next filters.
-				$db.select_all "SELECT id, max_number FROM splayds" do |m|
-					c_splayd['max_number'][m['id']] = m['max_number']
-					c_splayd['nb_nodes'][m['id']] = 0
-				end
-
-				$db.select_all "SELECT splayd_id, COUNT(job_id) as nb_nodes
-						FROM splayd_jobs
-						GROUP BY splayd_id" do |ms|
-					c_splayd['nb_nodes'][ms['splayd_id']] = ms['nb_nodes']
-				end
-			end
-
-			status_msg = ""
-			
-			normal_ok = true
-
-			# To select the splayds that have the lowest percentage of occupation 
-			occupation = {}
-
-			$db.select_all(create_filter_query(job)) do |m|
-
-				if m['network_send_speed'] / c_splayd['max_number'][m['id']] >=
-						job['network_send_speed'] and
-						m['network_receive_speed'] / c_splayd['max_number'][m['id']] >=
-						job['network_receive_speed']
-
-					if c_splayd['nb_nodes'][m['id']] < c_splayd['max_number'][m['id']]
-						occupation[m['id']] =
-								c_splayd['nb_nodes'][m['id']] / c_splayd['max_number'][m['id']].to_f
-					end
-				end
-			end
-
-      			no_resources = false
-
-			# compute the number of splayds with the required characteristics
-			if occupation.size < job['nb_splayds']
-        			nb_total = 0
-        			$db.select_all(create_filter_query(job)) do |m|
-          				nb_total = nb_total + 1
-        			end
-
-				# set flag if not enough splayds are available
-        			if nb_total < job['nb_splayds']
-          				no_resources = true
-        			end
-
-				status_msg += "Not enough splayds found with the requested ressources " +
-						"(only #{occupation.size} instead of #{job['nb_splayds']})"
-
-				normal_ok = false
-			 end
-
-			 ### Mandatory splayds
-			 mandatory_ok = true
-
-			 $db.select_all("SELECT * FROM job_mandatory_splayds
-			  		 WHERE job_id='#{job['id']}'") do |mm|
-
-				m = $db.select_one "SELECT id, ref FROM splayds WHERE
-						id='#{mm['splayd_id']}'
-						#{ressources_filter}
-						#{bytecode_filter}"
-
-				if m
-					if c_splayd['nb_nodes'][m['id']] == c_splayd['max_number'][m['id']]
-						status_msg += "Mandatory splayd: #{m['ref']} " +
-								"has no free slot.\n"
-						mandatory_ok = false
-					end
-					# No bandwith test for mandatory (other than the ressources
-					# filter).
-				else
-					status_msg += "Mandatory splayd: #{m['ref']} " +
-							" has not the requested ressources or is not avaible.\n"
-					mandatory_ok = false
-				end
-			 end
-
-			 # set status to NO_RESOURCES
-			 if not mandatory_ok or (not normal_ok and no_resources)
-				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-			  	next
-			 end
-
-			# queue scheduled jobs
-      			time_now = Time.new().strftime("%Y-%m-%d %T")
-      			if job['scheduled_at'] && job['scheduled_at'].strftime("%Y-%m-%d %T") > time_now
-				set_job_status(job['id'], 'QUEUED', status_msg)
-        			next
-      			end
-      			# end
-
-      			if not normal_ok and not no_resources
-				if job['strict'] == "FALSE"
-        				set_job_status(job['id'], 'QUEUED', status_msg)
-        				next
-				else
-					status_msg = "Cannot be submitted immediately: " + 
-						     "Not enough splayds found with the requested resources " + 
-						     "(only #{occupation.size} instead of #{job['nb_splayds']})"
-					set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-        				next
-				end
-      			end
-
-			# We will send the job !
-
-			new_job = create_job_json(job)
-
-			# We choose more splayds (if possible) than needed, to keep the best ones
-			factor = job['factor'].to_f
-			nb_selected_splayds = (job['nb_splayds'] * factor).ceil
+			# If this job cannot be submitted immediately, jump to the next one
+			if do_next == true
+				next
+			end	
 
 			q_sel = ""
 			q_job = ""
@@ -292,25 +178,7 @@ class JobdStandard < Jobd
 						job_id='#{job['id']}' AND selected='TRUE'")
 
 			else
-				if Time.now.to_i > job['status_time'] + @@register_timeout then
-					# TIMEOUT !
-
-					$db.do "DELETE FROM actions WHERE
-							job_id='#{job['id']}' AND
-							command='REGISTER'"
-
-					# send unregister action
-					# We need to unregister the job on all the splayds.
-					$db.select_all "SELECT * FROM splayd_selections WHERE
-							job_id='#{job['id']}'" do |m_s|
-						# TODO optimization
-						Splayd::add_action m_s['splayd_id'], job['id'], 'FREE', job['ref']
-					end
-
-					$db.do "DELETE FROM splayd_selections WHERE
-							job_id='#{job['id']}'"
-					set_job_status(job['id'], 'REGISTER_TIMEOUT')
-				end
+				Jobd.status_registering_common(job)
 			end
 		end
 	end
@@ -326,128 +194,24 @@ class JobdStandard < Jobd
 		end
 	end
 
-  # QUEUED => REGISTERING | QUEUED | NO_RESSOURCES
-  def self.status_queued
-    @@dlock_jr.get
-    c_splayd = nil
+  	# QUEUED => REGISTERING | QUEUED | NO_RESSOURCES
+  	def self.status_queued
+    		@@dlock_jr.get
 
-    $db.select_all "SELECT * FROM jobs WHERE
-	            scheduler='#{@@scheduler}' AND status='QUEUED' AND (scheduled_at is NULL OR scheduled_at<NOW())" do |job|
+    		c_splayd = nil
 
-      # do as for LOCAL
+    		$db.select_all "SELECT * FROM jobs WHERE
+	            		scheduler='#{@@scheduler}' AND status='QUEUED' AND (scheduled_at is NULL OR scheduled_at<NOW())" do |job|
 
-      # Cache at the first call
-			if not c_splayd
-				c_splayd = {}
-				c_splayd['nb_nodes'] = {}
-				c_splayd['max_number'] = {}
+			
+			# Splayds selection
+			c_splayd, occupation, nb_selected_splayds, new_job, do_next = Jobd.status_queued_common(job)	
 
-				# Do not take only AVAILABLE splayds here because new ones can become
-				# AVAILABLE before the next filters.
-				$db.select_all "SELECT id, max_number FROM splayds" do |m|
-					c_splayd['max_number'][m['id']] = m['max_number']
-					c_splayd['nb_nodes'][m['id']] = 0
-				end
-
-				$db.select_all "SELECT splayd_id, COUNT(job_id) as nb_nodes
-						FROM splayd_jobs
-						GROUP BY splayd_id" do |ms|
-					c_splayd['nb_nodes'][ms['splayd_id']] = ms['nb_nodes']
-				end
-			end
-
-			status_msg = ""
-
-			normal_ok = true
-
-			# To select the splayds that have the lowest percentage of occupation
-			occupation = {}
-
-			$db.select_all(create_filter_query(job)) do |m|
-
-				if m['network_send_speed'] / c_splayd['max_number'][m['id']] >=
-						job['network_send_speed'] and
-						m['network_receive_speed'] / c_splayd['max_number'][m['id']] >=
-						job['network_receive_speed']
-
-					if c_splayd['nb_nodes'][m['id']] < c_splayd['max_number'][m['id']]
-						occupation[m['id']] =
-								c_splayd['nb_nodes'][m['id']] / c_splayd['max_number'][m['id']].to_f
-					end
-
-				end
-			end
-
-      no_resources = false
-
-			if occupation.size < job['nb_splayds']
-        nb_total = 0
-        $db.select_all(create_filter_query(job)) do |m|
-          nb_total = nb_total + 1
-        end
-
-        if nb_total < job['nb_splayds']
-          no_resources = true
-        end
-
-				status_msg += "Not enough splayds found with the requested ressources " +
-						"(only #{occupation.size} instead of #{job['nb_splayds']})"
-
-				normal_ok = false
-			end
-
-			### Mandatory splayds
-			mandatory_ok = true
-
-			$db.select_all("SELECT * FROM job_mandatory_splayds
-					WHERE job_id='#{job['id']}'") do |mm|
-
-				m = $db.select_one "SELECT id, ref FROM splayds WHERE
-						id='#{mm['splayd_id']}'
-						#{ressources_filter}
-						#{bytecode_filter}"
-
-				if m
-					if c_splayd['nb_nodes'][m['id']] == c_splayd['max_number'][m['id']]
-						status_msg += "Mandatory splayd: #{m['ref']} " +
-								"has no free slot.\n"
-						mandatory_ok = false
-					end
-					# No bandwith test for mandatory (other than the ressources
-					# filter).
-				else
-					#status_msg += "Mandatory splayd: #{m['ref']} " +
-					#		" has not the requested ressources or is not avaible.\n"
-					mandatory_ok = false
-				end
-			end
-
-			if not mandatory_ok or (not normal_ok and no_resources)
-				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-			  next
-			end
-
-                        if not normal_ok and not no_resources
-				if job['strict'] == "FALSE"
-        				#set_job_status(job['id'], 'QUEUED', status_msg)
-        				next
-				else
-					status_msg = "Cannot be submitted immediately: " + 
-						     "Not enough splayds found with the requested resources " + 
-						     "(only #{occupation.size} instead of #{job['nb_splayds']})"
-					set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-        				next
-				end
-      			end
-
-			# We will send the job !
-
-			new_job = create_job_json(job)
-
-			# We choose more splayds (if possible) than needed, to keep the best ones
-			factor = job['factor'].to_f
-			nb_selected_splayds = (job['nb_splayds'] * factor).ceil
-
+			# If this job cannot be submitted immediately, jump to the next one
+			if do_next == true
+				next
+			end	
+		
 			q_sel = ""
 			q_job = ""
 			q_act = ""
@@ -490,33 +254,13 @@ class JobdStandard < Jobd
 
 			set_job_status(job['id'], 'REGISTERING')
 
-    end
-    @@dlock_jr.release
-  end
+   		end
+    		@@dlock_jr.release
+  	end
 			
 	def self.kill_job(job, status_msg = '')
-  $log.info("KILLING #{job['id']}")
-		case job['status']
-		# NOTE do nothing for jobs in these states:
-		#when 'KILLED':
-		#when 'ENDED':
-		#when 'NO_RESSOURCES':
-		#when 'REGISTER_TIMEOUT':
-		when 'LOCAL', 'QUEUED':
-			set_job_status(job['id'], 'KILLED')
-		when 'REGISTERING', 'RUNNING':
-			q_act = ""
-			$db.select_all "SELECT * FROM splayd_jobs WHERE
-					job_id='#{job['id']}'" do |m_s|
-				# STOP doesn't remove the job from the splayd
-				q_act = q_act + "('#{m_s['splayd_id']}','#{job['id']}','FREE', '#{job['ref']}'),"
-			end
-			if q_act != ""
-				q_act = q_act[0, q_act.length - 1]
-				$db.do "INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}"
-			end
-			set_job_status(job['id'], 'KILLED', status_msg)
-		end
+  		$log.info("KILLING #{job['id']}")
+		Jobd.status_killed_common(job, status_msg)
 	end
 
 	def self.command
