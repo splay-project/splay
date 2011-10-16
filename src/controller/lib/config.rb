@@ -1,4 +1,4 @@
-## Splay Controller ### v1.1 ###
+## Splay Controller ### v1.1.1 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
 ## 
@@ -21,7 +21,7 @@
 
 
 class SplayControllerConfig
-	CTLVersion = 1.1
+	CTLVersion = 1.11
 
 	SQL_TYPE = DBConfig::SQL_TYPE
 	SQL_DB =  DBConfig::SQL_DB
