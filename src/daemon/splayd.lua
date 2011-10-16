@@ -241,7 +241,11 @@ function free_ended_jobs()
 				if job.die_free then
 					free(ref)
 				else
-					stop(ref)
+					if job_trace_ended[ref] == true then
+						free(ref)
+					else
+						stop(ref)
+					end
 				end
 			end
 		end
@@ -688,6 +692,17 @@ function halt_splayd()
 	running = false
 end
 
+function trace_end(so)
+	local ref = assert(so:receive())
+	
+	job_trace_ended[ref] = true
+	assert(so:send("OK"))
+
+	if splayd.jobs[ref].status == "waiting" then
+		free(ref)
+	end
+end
+
 function server_loop(so)
     while true do
 			splayd.last_connection_time = os.time()
@@ -723,6 +738,8 @@ function server_loop(so)
 				infos(so)
 			elseif msg == "STATUS" then
 				status(so)
+			elseif msg == "TRACE_END" then
+				trace_end(so)
 			elseif msg == "LOADAVG" then
 				loadavg(so)
 			elseif msg == "HALT" then
@@ -984,6 +1001,9 @@ exec_script = false
 -- Will log splayd's output in logs_directoy/splayd.log and, if not in production
 -- mode, log each job's output in logs_directoy/jobs/job.log.
 jobs_log = true -- Log jobs output.
+
+-- if the trace has ended for a trace-job
+job_trace_ended = {}
 
 if production then
 	exec_script = false
