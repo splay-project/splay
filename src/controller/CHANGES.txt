@@ -1,3 +1,6 @@
+controller 1.1:
+	- support for job scheduling
+	- support for job batching 
 -----------------------------
 controller 1.0.7:
 	- store on SVN the google-map key, exclude it from distrib
