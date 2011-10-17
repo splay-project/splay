@@ -1,21 +1,21 @@
 ## Splay Controller ### v1.1.1 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
-## 
-## 
-## 
+##
+##
+##
 ## This file is part of Splay.
-## 
-## Splayd is free software: you can redistribute it and/or modify 
-## it under the terms of the GNU General Public License as published 
-## by the Free Software Foundation, either version 3 of the License, 
+##
+## Splayd is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License,
 ## or (at your option) any later version.
-## 
-## Splayd is distributed in the hope that it will be useful,but 
+##
+## Splayd is distributed in the hope that it will be useful,but
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ## See the GNU General Public License for more details.
-## 
+##
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
@@ -45,7 +45,7 @@ class Ctrl_api
 			#if the user is admin (can see all the jobs) or the job belongs to her
 			if ((user['admin'] == 1) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
 				#opens the log file of the requested job
-				log_file = File.open("../logs/"+job_id) 
+				log_file = File.open("../logs/"+job_id)
 				#ok is true
 				ret['ok'] = true
 				#log is a string containing the log file
@@ -158,9 +158,9 @@ class Ctrl_api
 			ref = OpenSSL::Digest::MD5.hexdigest(rand(1000000).to_s)
 			#user_id is taken from the field 'id' from variable user
 			user_id = user['id']
-			
+
 			time_now = Time.new().strftime("%Y-%m-%d %T")
-			
+
 			if options.class == Array then
 				options = Hash.new
 			end
@@ -169,13 +169,13 @@ class Ctrl_api
 					options['nb_splayds'] = nb_splayds
 				end
 			end
-			
+
 			if description == "" then
 				description_field = ""
 			else
 				description_field = "description='#{description}',"
 			end
-			
+
 			if name == "" then
 				name_field = ""
 			else
@@ -190,7 +190,7 @@ class Ctrl_api
 
 			# strict job
                         if strict == "TRUE" then
-				options['strict'] = strict 
+				options['strict'] = strict
                         end
 
                         # scheduled job
@@ -201,9 +201,9 @@ class Ctrl_api
 
 			# strict job
                         if strict == "TRUE" then
-				options['strict'] = strict 
+				options['strict'] = strict
                         end
-			
+
 			if churn_trace == "" then
 				churn_field = ""
 			else
@@ -220,15 +220,16 @@ class Ctrl_api
 			timeout = 30
 			while timeout > 0
 				sleep(1)
-					return ret
-				end
+				timeout = timeout - 1
+				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
+
 				# queued job behavior
 				if job['status'] == "QUEUED" then
 					ret['ok'] = true
 					ret['job_id'] = job['id']
 					ret['ref'] = ref
-				timeout = timeout - 1
-				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
+					return ret
+				end
 				if job['status'] == "RUNNING" then
 					ret['ok'] = true
 					ret['job_id'] = job['id']
@@ -493,3 +494,4 @@ class Ctrl_api
 		end
 	end
 end
+
