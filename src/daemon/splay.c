@@ -102,7 +102,7 @@ int sp_fork(lua_State *L)
 	lua_pushnumber(L, pid);
 	return 1;
 }
-
+#define MAX_INTEGER_DIGITS 21 //up to 64 bit machines, it works. See you in 2025 
 int sp_exec(lua_State *L)
 {
 	int i = 0;
@@ -117,9 +117,9 @@ int sp_exec(lua_State *L)
 		}
 		else if (lua_type(L, i) == LUA_TNUMBER) {
 			int tmp_integer = lua_tointeger(L, i);
-			char* tmp_string = malloc(20* sizeof(char)); /*FIXME choose a proper size*/
-			snprintf(tmp_string,sizeof(tmp_string),"%d",tmp_integer);
-			a[i - 1] = tmp_string;
+			char* tmp_string = malloc(  MAX_INTEGER_DIGITS  * sizeof(char));
+			sprintf(tmp_string, "%d", tmp_integer);
+			a[i - 1] = tmp_string;		
 		}
 	}
 	
