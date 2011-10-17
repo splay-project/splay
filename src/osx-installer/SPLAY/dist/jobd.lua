@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.6 ###
+       Splay ### v1.0.7 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -215,7 +215,7 @@ collectgarbage()
   -----------------------
 
 print(">> Into sandbox !!!")
-print("> Memory: "..gcinfo().." ko")
+print("> Memory: "..collectgarbage("count").." KBytes")
 print("> Checking sandbox...")
 
 -- Mini sandbox check
