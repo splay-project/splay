@@ -31,7 +31,8 @@
 # see how easily you would be able to run multiple splayd/jobs on multiple
 # computers.
 
-require 'lib/all'
+#require 'lib/all'
+require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 $log.level = Logger::INFO
 
