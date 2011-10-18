@@ -315,7 +315,7 @@ class JobdTrace < Jobd
 					end
 				end
 						
-				$log.info("END OF TRACE (but we continue to keep the running nodes up)")
+				$log.info("END OF TRACE")
 
         			# signal that trace ended
 				q_act = ""
