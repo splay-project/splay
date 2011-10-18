@@ -114,5 +114,5 @@ rm -rf splayd_${VER}
 rm -rf ${PKG}
 mkdir -p ${VER}/${ARCH}
 mv ${PKG}.deb ${VER}/${ARCH}/
-dpkg-scanpackages ${VER}/${ARCH}/ /dev/null | gzip -9c > ${VER}/${ARCH}/Packages.gz
+dpkg-scanpackages ${VER}/${ARCH}/  | gzip -9c > ${VER}/${ARCH}/Packages.gz
 
