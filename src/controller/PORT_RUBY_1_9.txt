@@ -1,0 +1,18 @@
+rvm gem install (all required gems here)
+rvm use 1.9.2
+ruby -rubygems controller.rb
+
+I, [00:58:07 #21111]  INFO -- : >>> Splay Controller Log Daemon (port: 11100)
+F, [00:58:07 #21111] FATAL -- : NameError: uninitialized constant SplaydServer::TCPserver
+/Users/veleno/workspace/splay-trunk/sources/trunk/src/controller/lib/splayd.rb:45:in `main'
+/Users/veleno/workspace/splay-trunk/sources/trunk/src/controller/lib/splayd.rb:39:in `block in run'
+I, [00:58:07 #21111]  INFO -- : >>> Splay Controller Job Daemon
+F, [00:58:07 #21111] FATAL -- : NameError: uninitialized constant LogdServer::TCPserver
+/Users/veleno/workspace/splay-trunk/sources/trunk/src/controller/lib/logd.rb:50:in `main'
+/Users/veleno/workspace/splay-trunk/sources/trunk/src/controller/lib/logd.rb:34:in `block in run'
+
+
+Apparenty the TCPserver class has been renamed to TCPServer in Ruby 1.9 (capital S in 'Server').
+It works fine in 1.8.7 as well.
+
+In jobd.rb:288 an Invalid next (Syntax error) is thrown under 1.9: how to rewrite it for 1.8.7/1.9 compatibility ? 
