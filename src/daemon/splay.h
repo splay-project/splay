@@ -25,6 +25,7 @@
 
 LUA_API int luaopen_splay_core(lua_State *L);
 int sp_sleep(lua_State *L);
+int sp_msleep(lua_State *L);
 int sp_bits_detect(lua_State *L);
 int sp_endian(lua_State *L);
 int sp_fork(lua_State *L);

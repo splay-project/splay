@@ -148,7 +148,7 @@ class Ctrl_api
 	end
 
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict)
+	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt)
 	 	#initializes the return variable
 		ret = Hash.new
 		#checks the validity of the session ID and stores the returning value in the variable user
@@ -211,7 +211,11 @@ class Ctrl_api
 				churn_trace.lines do |line|
 					options['nb_splayds'] = options['nb_splayds'] + 1
 				end
-				options['scheduler'] = 'trace'
+				if trace_alt == "TRUE" then
+					options['scheduler'] = 'tracealt'
+				else
+					options['scheduler'] = 'trace'
+				end
 				churn_field = "die_free='FALSE', scheduler_description='#{addslashes(churn_trace)}',"
 			end
 
@@ -222,7 +226,6 @@ class Ctrl_api
 				sleep(1)
 				timeout = timeout - 1
 				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
-
 				# queued job behavior
 				if job['status'] == "QUEUED" then
 					ret['ok'] = true
