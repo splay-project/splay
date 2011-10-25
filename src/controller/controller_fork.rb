@@ -77,6 +77,11 @@ end
 
 fork do
 	$db = DBUtils.get_new
+	JobdTraceAlt.run.join
+end
+
+fork do
+	$db = DBUtils.get_new
 	Unseend.run.join
 end
 

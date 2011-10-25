@@ -45,6 +45,7 @@
 static const luaL_reg sp_funcs[] =
 {
 	{"sleep", sp_sleep},
+	{"msleep", sp_msleep}, /* JV added */
 	{"bits_detect", sp_bits_detect},
 	{"endian", sp_endian},
 	{"fork", sp_fork},
@@ -67,6 +68,15 @@ int sp_sleep(lua_State *L)
 {
 	if (lua_isnumber(L, 1)) {
 		sleep(lua_tonumber(L, 1));
+	}
+	return 1;
+}
+
+/* JV added */
+int sp_msleep(lua_State *L)
+{
+	if (lua_isnumber(L, 1)) {
+		usleep(lua_tonumber(L, 1)*1000);
 	}
 	return 1;
 }
@@ -102,7 +112,7 @@ int sp_fork(lua_State *L)
 	lua_pushnumber(L, pid);
 	return 1;
 }
-#define MAX_INTEGER_DIGITS 21 //up to 64 bit machines, it works. See you in 2025 
+#define MAX_INTEGER_DIGITS 21 /* up to 64 bit machines, it works. See you in 2025 */
 int sp_exec(lua_State *L)
 {
 	int i = 0;

@@ -1,21 +1,21 @@
 ## Splay Controller ### v1.1.1 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
-## 
-## 
-## 
+##
+##
+##
 ## This file is part of Splay.
-## 
-## Splayd is free software: you can redistribute it and/or modify 
-## it under the terms of the GNU General Public License as published 
-## by the Free Software Foundation, either version 3 of the License, 
+##
+## Splayd is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License,
 ## or (at your option) any later version.
-## 
-## Splayd is distributed in the hope that it will be useful,but 
+##
+## Splayd is distributed in the hope that it will be useful,but
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ## See the GNU General Public License for more details.
-## 
+##
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
@@ -92,7 +92,7 @@ class Jobd
 		if not list['position']
 			out += ',"position":_POSITION_'
 		else
-			out += ',"position":' + (list['position'].to_i + 1).to_s
+			out += ',"position":' + list['position'].to_s
 		end
 
 		if list['type']
@@ -112,7 +112,52 @@ class Jobd
 		else
 			out += ',"nodes":[]'
 		end
+
+		# If there is a timeline (trace_alt type of job)
+		if list['timeline']
+			# starts the JSON string for "timeline"
+			timelines = ',"timeline":['
+			# for each of the lines in the timeline (chronologically sorted)
+			list['timeline'].sort_by { |k, v| k }.each do |list_timeline|
+				# t (time) is the time of the event
+				t = list_timeline[0]
+				# tl (timeline) has a list of nodes that are ON at that time
+				tl = list_timeline[1]
+				# initializes nodes as an empty string
+				nodes = ""
+				# for each node on the list tl
+				tl.each do |n|
+					# add the node to the JSON string
+					nodes = nodes + n.to_s + ','
+				end
+				# if there are nodes
+				if nodes.size > 0
+					# cut the final "," before adding the string
+					nodes = nodes[0, nodes.length - 1]
+				end
+				# add the string into the main "timeline" string
+				timelines = timelines + '{"time":' + t.to_s + ',"nodes":[' + nodes + ']},'
+			end
+			# add the "timeline" string to the JSON out string
+			out += timelines[0, timelines.length - 1] + ']'
+		end
+
+		# If there is a "my_timeline" table (table that describes only the timeline of the node)
+		if list['my_timeline']
+			# initializes the string
+			my_timeline = ',"my_timeline":['
+			# for each element in "my_timeline"
+			list['my_timeline'].each do |mtl|
+				# add it to the string
+				my_timeline = my_timeline + mtl.to_s + ','
+			end
+			# add "my_timeline" to the JSON out string
+			out += my_timeline[0, my_timeline.length - 1] + ']'
+		end
+
 		out += '}'
+
+		#$log.info("list json is #{out}")
 
 		return out
 	end
@@ -176,7 +221,7 @@ class Jobd
 			(1..size).each do
 				list['nodes'] << nodes.slice!(rand(nodes.size))
 			end
-			
+
 			lists[me['id']] = my_json(list)
 			pos += 1
 		end
@@ -189,7 +234,7 @@ class Jobd
 	# (query should return values with splayd_id)
 	def self.send_all_list(job, query)
 		m_s_s = $db.select_all query
-		
+
 		case job['list_type']
 		when 'HEAD' # simple head list of job['list_size'] element
 
@@ -215,7 +260,7 @@ class Jobd
 			lists.each do |splayd_id, json|
 				q_act += "('#{splayd_id}','#{job['id']}','LIST', '#{json}'),"
 			end
-			if q_act.size > 0 
+			if q_act.size > 0
 				q_act = q_act[0, q_act.length - 1]
 				$db.do "INSERT INTO actions (splayd_id, job_id, command, data)
 						VALUES #{q_act}"
@@ -247,11 +292,11 @@ class Jobd
 					" AND longitude IS NOT NULL AND latitude IS NOT NULL AND
 				DEGREES(
 					ACOS(
-						( 
+						(
 							SIN(RADIANS(#{job['latitude']})) * SIN(RADIANS(latitude))
 						)
 						+
-						( 
+						(
 							COS(RADIANS(#{job['latitude']}))
 							*
 							COS(RADIANS(latitude))
@@ -288,7 +333,7 @@ class Jobd
 				next
 			end
 		end
-		
+
 		hostmasks_filter = ""
 		if job['hostmasks']
 			# TODO split with "|"
@@ -361,7 +406,7 @@ class Jobd
 		'ke', 'km', 'lr', 'ls', 'ly', 'ma', 'mg', 'ml', 'mr', 'mu', 'mw', 'mz', 'na',
 		'ne', 'ng', 're', 'rw', 'sc', 'sd', 'sh', 'sl', 'sn', 'so', 'st', 'sz', 'td',
 		'tg', 'tn', 'tz', 'ug', 'yt', 'za', 'zm', 'zw']
-		countries['an'] = ['aq', 'bv', 'gs', 'hm', 'tf'] 
+		countries['an'] = ['aq', 'bv', 'gs', 'hm', 'tf']
 		countries['as'] = ['ae', 'af', 'am', 'az', 'bd', 'bh', 'bn', 'bt', 'cc', 'cn',
 		'cx', 'cy', 'ge', 'hk', 'id', 'il', 'in', 'io', 'iq', 'ir', 'jo', 'jp', 'kg',
 		'kh', 'kp', 'kr', 'kw', 'kz', 'la', 'lb', 'lk', 'mm', 'mn', 'mo', 'mv', 'my',
@@ -392,7 +437,7 @@ class Jobd
 			c_splayd = {}
 			c_splayd['nb_nodes'] = {}
 			c_splayd['max_number'] = {}
-				
+
 			# Do not take only AVAILABLE splayds here because new ones can become
 			# AVAILABLE before the next filters.
 			$db.select_all "SELECT id, max_number FROM splayds" do |m|
@@ -410,7 +455,7 @@ class Jobd
 		status_msg = ""
 		normal_ok = true
 
-		# To select the splayds that have the lowest percentage of occupation 
+		# To select the splayds that have the lowest percentage of occupation
 		occupation = {}
 
 		$db.select_all(create_filter_query(job)) do |m|
@@ -503,8 +548,8 @@ class Jobd
         			#next
 				return c_splayd, occupation, 0, nil, true
 			else
-				status_msg = "Cannot be submitted immediately: " + 
-					     "Not enough splayds found with the requested resources " + 
+				status_msg = "Cannot be submitted immediately: " +
+					     "Not enough splayds found with the requested resources " +
 					     "(only #{occupation.size} instead of #{job['nb_splayds']})"
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
         			#next
@@ -518,7 +563,7 @@ class Jobd
 		factor = job['factor'].to_f
 		nb_selected_splayds = (job['nb_splayds'] * factor).ceil
 
-		return c_splayd, occupation, nb_selected_splayds, new_job, false		
+		return c_splayd, occupation, nb_selected_splayds, new_job, false
 	end
 
 	def self.status_registering_common(job)
@@ -539,8 +584,8 @@ class Jobd
 
 			$db.do "DELETE FROM splayd_selections WHERE
 					job_id='#{job['id']}'"
-		    
-			set_job_status(job['id'], 'REGISTER_TIMEOUT')		
+
+			set_job_status(job['id'], 'REGISTER_TIMEOUT')
 		end
 	end
 
@@ -561,8 +606,8 @@ class Jobd
 			if job['strict'] == "FALSE"
         			return c_splayd, occupation, 0, nil, true #next
 			else
-				status_msg = "Cannot be submitted immediately: " + 
-					     "Not enough splayds found with the requested resources " + 
+				status_msg = "Cannot be submitted immediately: " +
+					     "Not enough splayds found with the requested resources " +
 					     "(only #{occupation.size} instead of #{job['nb_splayds']})"
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
         			return c_splayd, occupation, 0, nil, true #next
@@ -605,3 +650,4 @@ class Jobd
 	end
 
 end
+
