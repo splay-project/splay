@@ -48,14 +48,14 @@ end
 
 --function print_usage: shows the usage and exits
 function print_usage()
-	print("Usage: lua "..command_name..".lua [OPTION] "..other_mandatory_args.."CLI_SERVER_URL\n")
-	print("Mandatory arguments to long options are mandatory for short options too.")
+	print_line(QUIET, "Usage: lua "..command_name..".lua [OPTION] "..other_mandatory_args.."CLI_SERVER_URL\n")
+	print_line(QUIET, "Mandatory arguments to long options are mandatory for short options too.")
 	for i,v in ipairs(usage_options) do
-		print(v)
+		print_line(QUIET, v)
 	end
-	print("-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
-	print("\t\t\t\tis automatically completed as http://A.B.C.D:2222/json-rpc (default config for rpc_server)")
-	print("-h, --help\t\t\tdisplays this help and exit\n")
+	print_line(QUIET, "-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
+	print_line(QUIET, "\t\t\t\tis automatically completed as http://A.B.C.D:2222/json-rpc (default config for rpc_server)")
+	print_line(QUIET, "-h, --help\t\t\tdisplays this help and exit\n")
 	os.exit()
 end
 
