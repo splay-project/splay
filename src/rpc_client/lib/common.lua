@@ -55,6 +55,8 @@ function print_usage()
 	end
 	print_line(QUIET, "-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
 	print_line(QUIET, "\t\t\t\tis automatically completed as http://A.B.C.D:2222/json-rpc (default config for rpc_server)")
+	print_line(QUIET, "-q, --quiet\t\t\tquiet mode, displays only basic information\n")
+	print_line(QUIET, "-v, --verbose\t\t\tverbose mode, displays detailed information\n")
 	print_line(QUIET, "-h, --help\t\t\tdisplays this help and exit\n")
 	os.exit()
 end
