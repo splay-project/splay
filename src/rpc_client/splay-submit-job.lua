@@ -47,7 +47,7 @@ function add_usage_options()
 	table.insert(usage_options, "-N, --name\t\t\tthe program will ask for a short name of the job")
 	table.insert(usage_options, "-d, --description\t\tthe program will ask for a description of the job")
 	table.insert(usage_options, "-a, --args=\"ARG1 ARG2\"\t\tthe protocol arguments, as given with local runs")
-	table.insert(usage_options, "    --absolute-time \t\tthe job will be submitted at YYYY-MM-DD HH:MM:SS")
+	table.insert(usage_options, "    --absolute-time \t\tthe job will be submitted at [YYYY-MM-DD] HH:MM:SS")
 	table.insert(usage_options, "    --relative-time \t\tthe job will be submitted after HH:MM:SS")
 	table.insert(usage_options, "    --strict \t\t\tthe job will be submitted now / at the scheduled time or rejected with NO_RESSOURCES message")
 	table.insert(usage_options, "    --trace_alt\t\t\tthe churn is managed on the splayd side (alternative way)")
@@ -115,11 +115,22 @@ function parse_arguments()
 		elseif arg[i] == "--absolute-time" then
 			-- get the current time
 			crt_time = os.time()
-			-- next argument is YYYY-MM-DD
 			i = i + 1
-			sch_year = string.sub(arg[i], 1, 4)
-			sch_month = string.sub(arg[i], 6, 7)
-			sch_day = string.sub(arg[i], 9, 10)
+			sch_year = ""
+			sch_month = ""
+			sch_day = ""
+			if string.len(arg[i]) == 10 then
+				-- next argument is YYYY-MM-DD
+				sch_year = string.sub(arg[i], 1, 4)
+				sch_month = string.sub(arg[i], 6, 7)
+				sch_day = string.sub(arg[i], 9, 10)
+			else
+				-- get current year, month, day
+				t = os.date('*t')
+				sch_year = t.year
+				sch_month = t.month
+				sch_day = t.day			
+			end     
 			-- next argument is HH:MM:SS
 			i = i + 1
 			sch_hour = string.sub(arg[i], 1, 2)
