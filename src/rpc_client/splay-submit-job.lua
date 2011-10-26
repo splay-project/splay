@@ -77,7 +77,7 @@ function parse_arguments()
 		--if argument is "-h" or "--help"
 		elseif arg[i] == "--help" or arg[i] == "-h" then
 			--prints a short explanation of what the program does
-			print("send \"SUBMIT JOB\" command to the SPLAY CLI server; submits a job for execution\n")
+			print_line(QUIET, "send \"SUBMIT JOB\" command to the SPLAY CLI server; submits a job for execution\n")
 			--prints the usage
 			print_usage()
 		--if argument is "-q" or "--quiet"
@@ -129,11 +129,11 @@ function parse_arguments()
 			scheduled_at = os.time{year=sch_year, month=sch_month, day=sch_day, hour=sch_hour, min=sch_min, sec=sch_sec}
 			-- if YYYY-MM-DD HH:MM:SS is in the past, show a warning message
 			if scheduled_at < crt_time then
-				print("WARNING: Cannot schedule a job in the past! ")
+				print_line(NORMAL, "WARNING: Cannot schedule a job in the past! ")
 			end
 			-- if YYYY-MM-DD HH:MM:SS is more than 30 days away, show a warning message
 			if scheduled_at > (crt_time + 2592000) then
-				print("WARNING: Job was scheduled over 30 days from now. ")
+				print_line(NORMAL, "WARNING: Job was scheduled over 30 days from now. ")
 			end
 		-- if argument is "--relative-time HH:MM:SS"
 		elseif arg[i] == "--relative-time" then
@@ -175,28 +175,32 @@ function submit_job_extra_checks()
 	--if the user asked to input a name
 	if ask_for_name then
 		--asks for the Name
-		print("Job name:")
+		print_line(QUIET, "Job name:")
 		name = io.read()
 	end
 
 	--if the user asked to input a description
 	if ask_for_description then
 		--asks for the Description
-		print("Description:")
+		print_line(QUIET, "Description:")
 		description = io.read()
 	end
 
-	--if number of splayds is empty
-	if (not nb_splayds and not churn_trace_filename) then
-		--number of splayds is forced to 1
-		nb_splayds = 1
-		--prints a message reporting it
-		print("\nThe number of splayds is forced to 1\n")
-	elseif (nb_splayds<1 and not churn_trace_filename) then
-		--number of splayds is forced to 1
-		nb_splayds = 1
-		--prints a message reporting it
-		print("\nThe number of splayds is forced to 1\n")
+	
+	if not churn_trace_filename then
+		--if number of splayds is empty
+		if not nb_splayds then
+			--number of splayds is forced to 1
+			nb_splayds = 1
+			--prints a message reporting it
+			print_line(VERBOSE, "\nThe number of splayds is forced to 1\n")
+		--or if it is less than 1
+		elseif nb_splayds<1 then
+			--number of splayds is forced to 1
+			nb_splayds = 1
+			--prints a message reporting it
+			print_line(VERBOSE, "\nThe number of splayds is forced to 1\n")
+		end
 	end
 
        -- if not scheduled
@@ -245,7 +249,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		--if not
 		else
 			--prints an error message
-			print("ERROR: CHURN_TRACE_FILE does not exist")
+			error("CHURN_TRACE_FILE does not exist")
 			--exists
 			os.exit()
 		end
