@@ -182,27 +182,16 @@ class Ctrl_api
 				name_field = "name='#{name}',"
 			end
 
-                        # scheduled job
-                        if scheduled_at && (scheduled_at > 0) then
-                        	time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
+			# scheduled job
+			if scheduled_at && (scheduled_at > 0) then
+				time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
 				options['scheduled_at'] = time_scheduled
 			end
 
 			# strict job
-                        if strict == "TRUE" then
+			if strict == "TRUE" then
 				options['strict'] = strict
-                        end
-
-                        # scheduled job
-                        if scheduled_at && (scheduled_at > 0) then
-                        	time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
-				options['scheduled_at'] = time_scheduled
-                        end
-
-			# strict job
-                        if strict == "TRUE" then
-				options['strict'] = strict
-                        end
+			end
 
 			if churn_trace == "" then
 				churn_field = ""
