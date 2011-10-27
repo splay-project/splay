@@ -196,10 +196,7 @@ class Ctrl_api
 			if churn_trace == "" then
 				churn_field = ""
 			else
-				options['nb_splayds'] = 0
-				churn_trace.lines do |line|
-					options['nb_splayds'] = options['nb_splayds'] + 1
-				end
+				options['nb_splayds'] = churn_trace.lines.count
 				if trace_alt == "TRUE" then
 					options['scheduler'] = 'tracealt'
 				else
