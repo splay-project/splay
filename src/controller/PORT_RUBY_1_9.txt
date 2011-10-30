@@ -16,3 +16,30 @@ Apparenty the TCPserver class has been renamed to TCPServer in Ruby 1.9 (capital
 It works fine in 1.8.7 as well.
 
 In jobd.rb:288 an Invalid next (Syntax error) is thrown under 1.9: how to rewrite it for 1.8.7/1.9 compatibility ? 
+
+
+On job submitted, the following error occurs at runtime:
+F, [01:58:07 #6917] FATAL -- : ArgumentError: comparison of String with 0 failed
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:467:in `between?'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:467:in `utf8_to_json'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:638:in `to_json'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:567:in `block in json_transform'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:565:in `each'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:565:in `map'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:565:in `json_transform'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:539:in `block in to_json'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:550:in `json_check_circular'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:539:in `to_json'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd.rb:416:in `create_job_json'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd.rb:579:in `status_local_common'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd_standard.rb:43:in `block in status_local'
+/Users/veleno/.rvm/gems/ruby-1.9.2-p0/gems/dbi-0.4.5/lib/dbi/handles/statement.rb:214:in `fetch'
+/Users/veleno/.rvm/gems/ruby-1.9.2-p0/gems/dbi-0.4.5/lib/dbi/handles/statement.rb:240:in `each'
+/Users/veleno/.rvm/gems/ruby-1.9.2-p0/gems/dbi-0.4.5/lib/dbi/handles/database.rb:130:in `block in select_all'
+/Users/veleno/.rvm/gems/ruby-1.9.2-p0/gems/dbi-0.4.5/lib/dbi/handles/database.rb:88:in `execute'
+/Users/veleno/.rvm/gems/ruby-1.9.2-p0/gems/dbi-0.4.5/lib/dbi/handles/database.rb:128:in `select_all'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/log_object.rb:34:in `method_missing'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd_standard.rb:39:in `status_local'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd.rb:45:in `main'
+/Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd.rb:37:in `block in run'
+
