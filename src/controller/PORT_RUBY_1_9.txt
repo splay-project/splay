@@ -2,6 +2,7 @@ rvm gem install (all required gems here)
 rvm use 1.9.2
 ruby -rubygems controller.rb
 
+1) 
 I, [00:58:07 #21111]  INFO -- : >>> Splay Controller Log Daemon (port: 11100)
 F, [00:58:07 #21111] FATAL -- : NameError: uninitialized constant SplaydServer::TCPserver
 /Users/veleno/workspace/splay-trunk/sources/trunk/src/controller/lib/splayd.rb:45:in `main'
@@ -15,9 +16,10 @@ F, [00:58:07 #21111] FATAL -- : NameError: uninitialized constant LogdServer::TC
 Apparenty the TCPserver class has been renamed to TCPServer in Ruby 1.9 (capital S in 'Server').
 It works fine in 1.8.7 as well.
 
+2) 
 In jobd.rb:288 an Invalid next (Syntax error) is thrown under 1.9: how to rewrite it for 1.8.7/1.9 compatibility ? 
 
-
+3) 
 On job submitted, the following error occurs at runtime:
 F, [01:58:07 #6917] FATAL -- : ArgumentError: comparison of String with 0 failed
 /Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/json.rb:467:in `between?'
@@ -42,4 +44,14 @@ F, [01:58:07 #6917] FATAL -- : ArgumentError: comparison of String with 0 failed
 /Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd_standard.rb:39:in `status_local'
 /Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd.rb:45:in `main'
 /Users/veleno/workspace/unine-svn/code/trunk/splay_topo/controller/lib/jobd.rb:37:in `block in run'
+
+It is possible to use the default json gem (gem install json) and get rid of the json.rb file in the lib/ directory
+
+4) cli-server.rb depends on Orbjson which is not Ruby 1.9-compatible.
+VS redid a version of this class that do not use Orbjson.
+
+5) Problem with DBI under Ruby 1.9: this is nasty, as the method select_all/fetch_all seem to produce lists with duplicates.
+VS opened a bug on the ruby-forge for the library http://rubyforge.org/forum/forum.php?thread_id=48845&forum_id=958
+The problem seems also to be related to this bug: http://rubyforge.org/tracker/index.php?func=detail&aid=28624&group_id=234&atid=967
+
 
