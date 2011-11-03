@@ -17,7 +17,8 @@ Apparenty the TCPserver class has been renamed to TCPServer in Ruby 1.9 (capital
 It works fine in 1.8.7 as well.
 
 2) 
-In jobd.rb:288 an Invalid next (Syntax error) is thrown under 1.9: how to rewrite it for 1.8.7/1.9 compatibility ? 
+- In jobd.rb:288 an Invalid next (Syntax error) is thrown under 1.9: how to rewrite it for 1.8.7/1.9 compatibility ? 
+  Just remove the next: it doesn't make sense anyway how it is done now.
 
 3) 
 On job submitted, the following error occurs at runtime:
@@ -48,10 +49,28 @@ F, [01:58:07 #6917] FATAL -- : ArgumentError: comparison of String with 0 failed
 It is possible to use the default json gem (gem install json) and get rid of the json.rb file in the lib/ directory
 
 4) cli-server.rb depends on Orbjson which is not Ruby 1.9-compatible.
-VS redid a version of this class that do not use Orbjson.
+VS re-did a version of this class that do not use Orbjson.
 
 5) Problem with DBI under Ruby 1.9: this is nasty, as the method select_all/fetch_all seem to produce lists with duplicates.
 VS opened a bug on the ruby-forge for the library http://rubyforge.org/forum/forum.php?thread_id=48845&forum_id=958
 The problem seems also to be related to this bug: http://rubyforge.org/tracker/index.php?func=detail&aid=28624&group_id=234&atid=967
 
+A first attemp to port to RDBI must:
+- change method calls from .do to .execute 
+- change method calls from select_one to select("...").fetch(:first)
+- fix type problems (first problems occur in distributed_lock.rb)
+- fix require statements:
+require 'rdbi' #gem install rdbi
+require"rdbi-driver-mysql" #gem install rdbi-driver-mysql
+- change dbutils to use the new connection format :
+	args = {
+	  :host     => SplayControllerConfig::SQL_HOST,
+	  :hostname => SplayControllerConfig::SQL_HOST,
+	  :port     => 3306,
+	  :username => SplayControllerConfig::SQL_USER,
+	  :password => SplayControllerConfig::SQL_PASS,
+	  :database => SplayControllerConfig::SQL_DB
+	}
+	db = RDBI.connect(:MySQL,args)
 
+- Open question: how this DBI call "db['AutoCommit'] = true" translates to RDBI ? I could not find the same one.
