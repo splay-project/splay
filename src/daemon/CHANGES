@@ -1,5 +1,9 @@
+splayd 1.1:
+    - support for trace_alt: decentralized churn management
+    - fix possible resource leak during the ctrl/splayd protocol (command LOAD)
+-----------------------------
 splayd 1.0.7:
-        - fix bug for Mac OSX due to wrong parsing of arguments (bug and patch reported by Lucas Charles)
+    - fix bug for Mac OSX due to wrong parsing of arguments (bug and patch reported by Lucas Charles)
 	- major performance improvements in json module (function encode completely rewritten)
 -----------------------------
 splayd 1.0.6:
