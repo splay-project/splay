@@ -583,11 +583,9 @@ function loadavg(so)
 		else
 			assert(so:send("-1 -1 -1")) --status error?
 		end
-		p_avg:close()
  	elseif splayd.status.os == "Darwin" then
 		local lf=io.popen("sysctl -n vm.loadavg"):read():match("%d+.%d+ %d+.%d+ %d+.%d+")
 		assert(so:send(lf))
-		lf:close()
 	end
 	-- restablish timeout
 	so:settimeout(so_timeout)
