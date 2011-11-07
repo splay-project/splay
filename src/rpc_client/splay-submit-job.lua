@@ -199,14 +199,8 @@ function submit_job_extra_checks()
 
 	
 	if not churn_trace_filename then
-		--if number of splayds is empty
-		if not nb_splayds then
-			--number of splayds is forced to 1
-			nb_splayds = 1
-			--prints a message reporting it
-			print_line(VERBOSE, "\nThe number of splayds is forced to 1\n")
-		--or if it is less than 1
-		elseif nb_splayds<1 then
+		--if number of splayds is empty or less than 1
+		if not nb_splayds or nb_splayds<1 then
 			--number of splayds is forced to 1
 			nb_splayds = 1
 			--prints a message reporting it
@@ -214,10 +208,10 @@ function submit_job_extra_checks()
 		end
 	end
 
-       -- if not scheduled
-       if (not scheduled_at) then
-       		scheduled_at = 0
-       end
+	-- if not scheduled
+	if not scheduled_at then
+		scheduled_at = 0
+	end
 
 	--contructs options table from the options string
 	while options_string do

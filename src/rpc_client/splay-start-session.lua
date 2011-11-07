@@ -51,9 +51,16 @@ function parse_arguments()
 		--if argument is "-h" or "--help"
 		if arg[i] == "--help" or arg[i] == "-h" then
 			--prints a short explanation of what the program does
-			print("send \"START SESSION\" command to the SPLAY CLI server; starts a session linked to a key, so the user need not type username-password at every command\n")
+			print_line(QUIET, "send \"START SESSION\" command to the SPLAY CLI server; starts a session linked to a key, so the user need not type username-password at every command\n")
 			--prints the usage
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-u"
 		elseif arg[i] == "-u" then
 			i = i + 1
@@ -102,7 +109,7 @@ function send_start_session(username, password, cli_server_url)
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
@@ -110,9 +117,9 @@ function send_start_session(username, password, cli_server_url)
 	--if there is a response
 	if check_response(response) then
 		local json_response = json.decode(response)
-		print("Session started:")
-		print("SESSION_ID = "..json_response.result.session_id)
-		print("EXPIRES_AT = "..json_response.result.expires_at.."\n")
+		print_line(NORMAL, "Session started:")
+		print_line(NORMAL, "SESSION_ID = "..json_response.result.session_id)
+		print_line(NORMAL, "EXPIRES_AT = "..json_response.result.expires_at.."\n")
 		local hashed_cli_server_url = sha1(cli_server_url)
 		local session_file = io.open("."..hashed_cli_server_url..".session_id","w")
 		session_file:write(json_response.result.session_id)
@@ -138,9 +145,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

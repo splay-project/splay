@@ -52,10 +52,17 @@ function parse_arguments()
 		--if argument is "-h" or "--help"
 		if arg[i] == "--help" or arg[i] == "-h" then
 			--prints a short explanation of what the program does
-			print("send \"CHANGE PASSWORD\" command to the SPLAY CLI server; changes the password of a given user\n")
+			print_line(QUIET, "send \"CHANGE PASSWORD\" command to the SPLAY CLI server; changes the password of a given user\n")
 			--prints the usage
 			print_usage()
-			--if argument is "-u"
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
+		--if argument is "-u"
 		elseif arg[i] == "-u" then
 			i = i + 1
 			--the username is the next argument
@@ -84,8 +91,8 @@ function parse_arguments()
 			new_password = string.sub(arg[i], 12)
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
-			--Flag rpc_as_ip_addr is true
-			rpc_as_ip_addr = true
+			--Flag cli_server_as_ip_addr is true
+			cli_server_as_ip_addr = true
 		--if cli_server_url is not yet filled
 		elseif not cli_server_url then
 			--RPC server URL is the argument
@@ -114,14 +121,14 @@ function send_change_passwd(username, current_password, new_password, cli_server
 
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
 
 	--if there is a response
 	if check_response(response) then
-		print("Password changed\n")
+		print_line(NORMAL, "Password changed\n")
 	end
 
 end
@@ -145,9 +152,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

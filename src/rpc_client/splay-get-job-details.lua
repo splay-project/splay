@@ -47,8 +47,15 @@ function parse_arguments()
 	local i = 1
 	while i<=#arg do
 		if arg[i] == "--help" or arg[i] == "-h" then
-			print("send \"GET JOB DETAILS\" command to the SPLAY RPC server; retrieves details about a previously submitted job and prints them on the screen\n")
+			print_line(QUIET, "send \"GET JOB DETAILS\" command to the SPLAY RPC server; retrieves details about a previously submitted job and prints them on the screen\n")
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
 			--Flag cli_server_as_ip_addr is true
@@ -71,8 +78,8 @@ end
 --function send_get_job_details: sends a "GET JOB DETAILS" command to the SPLAY CLI server
 function send_get_job_details(job_id, cli_server_url, session_id)
 	--prints the arguments
-	print("JOB_ID         = "..job_id)
-	print("SESSION_ID     = "..session_id)
+	print_line(VERBOSE, "JOB_ID         = "..job_id)
+	print_line(VERBOSE, "SESSION_ID     = "..session_id)
 	print_cli_server()
 
 	--prepares the body of the message
@@ -82,7 +89,7 @@ function send_get_job_details(job_id, cli_server_url, session_id)
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
@@ -90,25 +97,25 @@ function send_get_job_details(job_id, cli_server_url, session_id)
 	if check_response(response) then
 		local json_response = json.decode(response)
 		if json_response.result.name then
-			print("Name        = "..json_response.result.name)
+			print_line(QUIET, "Name        = "..json_response.result.name)
 		else
-			print("Name        = ")
+			print_line(QUIET, "Name        = ")
 		end
 		if json_response.result.description then
-			print("Description = "..json_response.result.description)
+			print_line(QUIET, "Description = "..json_response.result.description)
 		else
-			print("Description = ")
+			print_line(QUIET, "Description = ")
 		end
-		print("Ref         = "..json_response.result.ref)
-		print("Status      = "..json_response.result.status)
+		print_line(QUIET, "Ref         = "..json_response.result.ref)
+		print_line(QUIET, "Status      = "..json_response.result.status)
 		if json_response.result.user_id then
-			print("User ID     = "..json_response.result.user_id)
+			print_line(QUIET, "User ID     = "..json_response.result.user_id)
 		end
-		print("Host list = ")
+		print_line(QUIET, "Host list = ")
 		for _,v in ipairs(json_response.result.host_list) do
-			print("\tsplayd_id="..v.splayd_id..", ip="..v.ip..", port="..v.port)
+			print_line(QUIET, "\tsplayd_id="..v.splayd_id..", ip="..v.ip..", port="..v.port)
 		end
-		print()
+		print_line(QUIET, "")
 	end
 
 end
@@ -126,9 +133,9 @@ load_config()
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

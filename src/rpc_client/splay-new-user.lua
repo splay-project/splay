@@ -53,9 +53,16 @@ function parse_arguments()
 		--if argument is "-h" or "--help"
 		if arg[i] == "--help" or arg[i] == "-h" then
 			--prints a short explanation of what the program does
-			print("send \"NEW USER\" command to the SPLAY CLI server; creates a new user (only for Administrators)")
+			print_line(QUIET, "send \"NEW USER\" command to the SPLAY CLI server; creates a new user (only for Administrators)")
 			--prints the usage
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-U"
 		elseif arg[i] == "-U" then
 			i = i + 1
@@ -111,7 +118,7 @@ end
 function send_new_user(username, password, cli_server_url,admin_username, admin_password)
 	--prints the arguments
 	print_username("ADMIN USERNAME ", admin_username)
-	print("NEW USERNAME   = "..username)
+	print_line(VERBOSE, "NEW USERNAME   = "..username)
 	print_cli_server()
 
 	local hashed_password = sha1(password)
@@ -124,15 +131,15 @@ function send_new_user(username, password, cli_server_url,admin_username, admin_
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
 
 	if check_response(response) then
 		local json_response = json.decode(response)
-		print("User added")
-		print("User ID = "..json_response.result.user_id.."\n")
+		print_line(NORMAL, "User added")
+		print_line(NORMAL, "User ID = "..json_response.result.user_id.."\n")
 	end
 
 end
@@ -154,9 +161,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

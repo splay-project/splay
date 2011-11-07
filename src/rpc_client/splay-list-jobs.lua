@@ -47,8 +47,15 @@ function parse_arguments()
 	local i = 1
 	while i<=#arg do
 		if arg[i] == "--help" or arg[i] == "-h" then
-			print("send \"LIST JOBS\" command to the SPLAY CLI server; lists all jobs submitted by the user, or all if the user is an administrator\n")
+			print_line(QUIET, "send \"LIST JOBS\" command to the SPLAY CLI server; lists all jobs submitted by the user, or all if the user is an administrator\n")
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
 			--Flag cli_server_as_ip_addr is true
@@ -64,7 +71,7 @@ end
 --function send_list_jobs: sends a "LIST JOBS" command to the SPLAY CLI server
 function send_list_jobs(cli_server_url, session_id)
 	--prints the arguments
-	print("SESSION_ID     = "..session_id)
+	print_line(VERBOSE, "SESSION_ID     = "..session_id)
 	print_cli_server()
 
 	--prepares the body of the message
@@ -74,7 +81,7 @@ function send_list_jobs(cli_server_url, session_id)
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
@@ -93,20 +100,20 @@ function send_list_jobs(cli_server_url, session_id)
                         QUEUED = 0	-- raluca: No. jobs that are queued, waiting for resources
 		}
 		--prints the result
-		print("Job List =")
+		print_line(NORMAL, "Job List =")
 		for _,v in ipairs(json_response.result.job_list) do
 			if v.user_id then
-				print("\tjob_id="..v.id..", user_id="..v.user_id..", status="..v.status)
+				print_line(QUIET, "\tjob_id="..v.id..", user_id="..v.user_id..", status="..v.status)
 			else
-				print("\tjob_id="..v.id..", status="..v.status)
+				print_line(QUIET, "\tjob_id="..v.id..", status="..v.status)
 			end
 			stats[v.status] = stats[v.status] + 1
 		end
-		print("\nTotals =")
+		print_line(NORMAL, "\nTotals =")
 		for k,v in pairs(stats) do
-			print(k.." = "..v.." ")
+			print_line(NORMAL, k.." = "..v.." ")
 		end
-		print()
+		print_line(NORMAL, "")
 	end
 
 end
@@ -128,9 +135,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 
