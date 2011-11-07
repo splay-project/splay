@@ -49,9 +49,16 @@ function parse_arguments()
 	local i = 1
 	while i<=#arg do
 		if arg[i] == "--help" or arg[i] == "-h" then
-			print("send \"LIST USERS\" command to the SPLAY CLI server; lists all SPLAY users (only for Administrators)\n")
+			print_line(QUIET, "send \"LIST USERS\" command to the SPLAY CLI server; lists all SPLAY users (only for Administrators)\n")
 			print_usage()
 		--if argument is "-U"
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		elseif arg[i] == "-U" then
 			i = i + 1
 			--the Administrator's username is the next argument
@@ -99,18 +106,18 @@ function send_list_users(cli_server_url, admin_username, admin_password)
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
 
 	if check_response(response) then
 		local json_response = json.decode(response)
-		print("User List =")
+		print_line(NORMAL, "User List =")
 		for _,v in ipairs(json_response.result.user_list) do
-			print("\tid="..v.id..", username="..v.username)
+			print_line(QUIET, "\tid="..v.id..", username="..v.username)
 		end
-		print()
+		print_line(NORMAL, "")
 	end
 
 end
@@ -133,9 +140,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

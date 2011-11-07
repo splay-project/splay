@@ -47,8 +47,15 @@ function parse_arguments()
 	local i = 1
 	while i<=#arg do
 		if arg[i] == "--help" or arg[i] == "-h" then
-			print("send \"GET JOB CODE\" command to the SPLAY CLI server; retrieves the code of a previously submitted job and saves it on the file code_\"JOB_ID\".txt\n")
+			print_line(QUIET, "send \"GET JOB CODE\" command to the SPLAY CLI server; retrieves the code of a previously submitted job and saves it on the file code_\"JOB_ID\".txt\n")
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
 			--Flag cli_server_as_ip_addr is true
@@ -71,8 +78,8 @@ end
 --function send_get_job_code: sends a "GET JOB CODE" command to the SPLAY CLI server
 function send_get_job_code(job_id, cli_server_url, session_id)
 	--prints the arguments
-	print("JOB_ID         = "..job_id)
-	print("SESSION_ID     = "..session_id)
+	print_line(VERBOSE, "JOB_ID         = "..job_id)
+	print_line(VERBOSE, "SESSION_ID     = "..session_id)
 	print_cli_server()
 
 	--prepares the body of the message
@@ -82,18 +89,18 @@ function send_get_job_code(job_id, cli_server_url, session_id)
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
 
 	if check_response(response) then
 		local json_response = json.decode(response)
-		print("Code from JOB "..job_id.." successfully retrieved")
-		print("\nCode saved in file code_"..job_id..".txt\n")
+		print_line(NORMAL, "Code from JOB "..job_id.." successfully retrieved")
 		local f1 = io.open("code_"..job_id..".txt","w")
 		f1:write(json_response.result.code)
 		f1:close()
+		print_line(NORMAL, "\nCode saved in file code_"..job_id..".txt\n")
 	end
 
 end
@@ -111,9 +118,9 @@ load_config()
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

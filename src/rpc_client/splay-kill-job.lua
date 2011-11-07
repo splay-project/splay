@@ -47,8 +47,15 @@ function parse_arguments()
 	local i = 1
 	while i<=#arg do
 		if arg[i] == "--help" or arg[i] == "-h" then
-			print("send \"KILL JOB\" command to the SPLAY CLI server; forces the controller to send a KILL signal to a job\n")
+			print_line(QUIET, "send \"KILL JOB\" command to the SPLAY CLI server; forces the controller to send a KILL signal to a job\n")
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
 			--Flag cli_server_as_ip_addr is true
@@ -71,8 +78,8 @@ end
 --function send_kill_job: sends a "KILL JOB" command to the SPLAY RPC server
 function send_kill_job(job_id, cli_server_url, session_id)
 	--prints the arguments
-	print("JOB_ID         = "..job_id)
-	print("SESSION_ID     = "..session_id)
+	print_line(VERBOSE, "JOB_ID         = "..job_id)
+	print_line(VERBOSE, "SESSION_ID     = "..session_id)
 	print_cli_server()
 
 	--prepares the body of the message
@@ -82,13 +89,13 @@ function send_kill_job(job_id, cli_server_url, session_id)
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
 
 	if check_response(response) then
-			print("KILL command successfully sent")
+			print_line(NORMAL, "KILL command successfully sent")
 	end
 
 end
@@ -106,9 +113,9 @@ load_config()
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

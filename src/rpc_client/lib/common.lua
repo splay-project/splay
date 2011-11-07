@@ -55,8 +55,8 @@ function print_usage()
 	end
 	print_line(QUIET, "-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
 	print_line(QUIET, "\t\t\t\tis automatically completed as http://A.B.C.D:2222/json-rpc (default config for rpc_server)")
-	print_line(QUIET, "-q, --quiet\t\t\tquiet mode, displays only basic information\n")
-	print_line(QUIET, "-v, --verbose\t\t\tverbose mode, displays detailed information\n")
+	print_line(QUIET, "-q, --quiet\t\t\tquiet mode, displays only basic information")
+	print_line(QUIET, "-v, --verbose\t\t\tverbose mode, displays detailed information")
 	print_line(QUIET, "-h, --help\t\t\tdisplays this help and exit\n")
 	os.exit()
 end
@@ -101,7 +101,7 @@ function check_cli_server()
 		--if cli_server_as_ip_addr is true
 		if cli_server_as_ip_addr then
 			--the URL is completed with the default port and page
-			cli_server_url = "http://"..cli_server_url..":2222/json-rpc"
+			cli_server_url = "http://"..cli_server_url..":2222/splay-ctrl-api"
 		end
 	--if no SPLAY CLI was passed as argument
 	else
@@ -187,6 +187,8 @@ end
 
 function check_response(response)
 	if response then
+		--prints the actual json string
+		print_line(VERBOSE, "\nJSON String received:\n"..response.."\n")
 		local json_response = json.decode(response)
 		if json_response.result then
 			if json_response.result.ok == true then
