@@ -1,5 +1,5 @@
 --[[
-       Splay Client Commands ### v1.2 ###
+       Splay Client Commands ### v1.3 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
