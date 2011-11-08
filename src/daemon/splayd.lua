@@ -28,7 +28,7 @@ SETTINGS section near the end of this file.
 ]]
 
 _COPYRIGHT = "Copyright 2006 - 2011"
-_SPLAYD_VERSION = 1.07
+_SPLAYD_VERSION = 1.1
 
 require"table"
 require"math"
