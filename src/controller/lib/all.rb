@@ -22,18 +22,18 @@
 
 dir = File.dirname(__FILE__)
 
-require "#{dir}/common"
+require File.expand_path(File.join(dir, 'common'))
 
-require "#{dir}/splayd"
-require "#{dir}/logd"
-require "#{dir}/jobd"
-require "#{dir}/jobd_standard"
-require "#{dir}/jobd_trace"
-require "#{dir}/jobd_trace_alt"
-require "#{dir}/unseend"
-require "#{dir}/statusd"
-require "#{dir}/blacklistd"
-require "#{dir}/loadavgd"
+require File.expand_path(File.join(dir, 'splayd'))
+require File.expand_path(File.join(dir, 'logd'))
+require File.expand_path(File.join(dir, 'jobd'))
+require File.expand_path(File.join(dir, 'jobd_standard'))
+require File.expand_path(File.join(dir, 'jobd_trace'))
+require File.expand_path(File.join(dir, 'jobd_trace_alt'))
+require File.expand_path(File.join(dir, 'unseend'))
+require File.expand_path(File.join(dir, 'statusd'))
+require File.expand_path(File.join(dir, 'blacklistd'))
+require File.expand_path(File.join(dir, 'loadavgd'))
 
 $db = DBUtils.get_new
 $dbt = DBUtils.get_new

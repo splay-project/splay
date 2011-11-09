@@ -42,19 +42,19 @@ require 'fileutils'
 require 'dbi' # DBI::Error
 require 'resolv'
 
-require "#{dir}/db_config"
-require "#{dir}/config"
-require "#{dir}/log_object"
-require "#{dir}/dbutils"
+require File.expand_path(File.join(dir, 'db_config'))
+require File.expand_path(File.join(dir, 'config'))
+require File.expand_path(File.join(dir, 'log_object'))
+require File.expand_path(File.join(dir, 'dbutils'))
 
-require "#{dir}/json"
-require "#{dir}/llenc"
-require "#{dir}/array_rand"
-require "#{dir}/utils"
-require "#{dir}/distributed_lock"
+require "json" #gem install json
+require File.expand_path(File.join(dir, 'llenc'))
+require File.expand_path(File.join(dir, 'array_rand'))
+require File.expand_path(File.join(dir, 'utils'))
+require File.expand_path(File.join(dir, 'distributed_lock'))
 
 if SplayControllerConfig::Localize
-	require "#{dir}/localization"
+  require File.expand_path(File.join(dir, 'localization'))
 end
 
 $db = DBUtils.get_new
