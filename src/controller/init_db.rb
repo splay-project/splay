@@ -24,7 +24,7 @@
 
 # GRANT ALL PRIVILEGES ON splay.* TO splay@localhost IDENTIFIED BY 'splay';
 
-require 'lib/all'
+require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 def drop_db(db)
 	db.do("DROP TABLE IF EXISTS splayds")
