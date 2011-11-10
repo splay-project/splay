@@ -1,6 +1,7 @@
 controller 1.2.1:
 	- remove lib/json.rb, using most recent json gem (1.6.1)
 	- remove dependency to Orbjson 0.0.4 for cli-server/cli-server.rb: the oly remaining dep is toward Webrick
+	- performance improvements (create_filter_query only once x job submission, r1264)
 controller 1.2:
 	- fix bug where CLI server was sending incorrect response to submit job (error even when the submission was successful).
 	- support for decentralized churn management: jobs using trace_alt are managed by jobd_trace_alt.rb
