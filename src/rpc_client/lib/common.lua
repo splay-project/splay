@@ -15,6 +15,8 @@ password = nil
 username_from_conf_file = nil
 password_from_conf_file = nil
 username_taken_from_conf = false
+--used by -get-log, -get-job-code
+output_filename = nil
 --used by all session oriented commands
 session_id = nil
 --used by all job related commands
@@ -54,7 +56,8 @@ function print_usage()
 		print_line(QUIET, v)
 	end
 	print_line(QUIET, "-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
-	print_line(QUIET, "\t\t\t\tis automatically completed as http://A.B.C.D:2222/json-rpc (default config for rpc_server)")
+	print_line(QUIET, "\t\t\t\tis automatically completed as http://A.B.C.D:2222/splay-ctrl-api")
+	print_line(QUIET, "\t\t\t\t(default config for the CLI server)")
 	print_line(QUIET, "-q, --quiet\t\t\tquiet mode, displays only basic information")
 	print_line(QUIET, "-v, --verbose\t\t\tverbose mode, displays detailed information")
 	print_line(QUIET, "-h, --help\t\t\tdisplays this help and exit\n")
