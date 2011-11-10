@@ -41,6 +41,7 @@ common_lib()
 -- FUNCTIONS
 
 function add_usage_options()
+	table.insert(usage_options, "-o, --output-file=FILENAME\tthe code will be saved in the file FILENAME; default file is log_JOB_ID.txt")
 end
 
 function parse_arguments()
@@ -56,6 +57,15 @@ function parse_arguments()
 		elseif arg[i] == "--verbose" or arg[i] == "-v" then
 			--the print mode is "verbose"
 			print_mode = VERBOSE
+		--if argument is "-o"
+		elseif arg[i] == "-o" then
+			i = i + 1
+			--the name of the output file is the next argument
+			output_filename = arg[i]
+		--if argument contains "--output-file=" at the beginning
+		elseif string.find(arg[i], "^--output-file=") then
+			--the name of the output file is extracted from the rest of the argument
+			output_filename = string.sub(arg[i], 15)
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
 			--Flag cli_server_as_ip_addr is true
@@ -97,10 +107,15 @@ function send_get_log(job_id, cli_server_url, session_id)
 	if check_response(response) then
 		local json_response = json.decode(response)
 		print_line(NORMAL, "Log from JOB "..job_id.." successfully retrieved")
-		local f1 = io.open("log_"..job_id..".txt","w")
+		--if the user specifies an output file
+		if not output_filename then
+			--the default output file is log_jobid.txt (e.g. for Job ID = 3, file = log_3.txt)
+			output_filename = "log_"..job_id..".txt"
+		end
+		local f1 = io.open(output_filename,"w")
 		f1:write(json_response.result.log)
 		f1:close()
-		print_line(NORMAL, "\nLog saved in file log_"..job_id..".txt")
+		print_line(NORMAL, "\nLog saved in file "..output_filename)
 	end
 
 end
