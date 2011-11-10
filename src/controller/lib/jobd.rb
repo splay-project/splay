@@ -457,8 +457,8 @@ class Jobd
 
 		# To select the splayds that have the lowest percentage of occupation
 		occupation = {}
-
-		$db.select_all(create_filter_query(job)) do |m|
+    filter_query=create_filter_query(job)
+		$db.select_all(filter_query) do |m|
 			if m['network_send_speed'] / c_splayd['max_number'][m['id']] >=
 					job['network_send_speed'] and
 					m['network_receive_speed'] / c_splayd['max_number'][m['id']] >=
@@ -476,7 +476,7 @@ class Jobd
 		# Compute the number of splayds with the required characteristics
 		if occupation.size < job['nb_splayds']
         		nb_total = 0
-        		$db.select_all(create_filter_query(job)) do |m|
+        		$db.select_all(filter_query) do |m|
           			nb_total = nb_total + 1
         		end
 
