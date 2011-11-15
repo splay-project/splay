@@ -40,6 +40,9 @@ require"ssl"
 -- Luacrypto
 require"crypto"
 
+-- lbase64
+require "base64"
+
 print("------------- end testing installation -------------")
 print()
 print("If there is no error messages, all the required libraries are ")

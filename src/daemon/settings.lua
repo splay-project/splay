@@ -34,6 +34,9 @@ splayd.settings.name = "my name"
 splayd.settings.controller.ip = "localhost"
 splayd.settings.controller.port = 11000
 
+-- Set wether you want to be able to support native libs
+splayd.settings.protocol = "grid"
+
 -- all sizes are in bytes
 splayd.settings.job.max_number = 16
 splayd.settings.job.max_mem = 12 * 1024 * 1024 -- 12 Mo

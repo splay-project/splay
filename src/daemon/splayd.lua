@@ -38,8 +38,12 @@ require"io"
 
 require"json"
 require"splay"
+crypto = require"crypto"
+evp = crypto.evp
 
 llenc = require"splay.llenc"
+
+require"base64"
 math.randomseed(os.time())
 
 do
@@ -88,6 +92,13 @@ function init_job_dir(dir)
 	return true
 end
 
+function init_job_lib_dir(dir)
+	if string.sub(dir, #dir, #dir) == "/" then
+		print("Job directory must not end with a /")
+		return false
+	end
+	prepare_dir(dir)
+end
 --[[ Common functions ]]--
 
 -- called after a fork
@@ -462,7 +473,7 @@ function register(so)
 		end
 	end
 
-	-- We fill mising ip if needed
+	-- We fill missing ip if needed
 	if not job.network.ip then
 		job.network.ip = "127.0.0.1"
 	end
@@ -511,6 +522,10 @@ function register(so)
 	job.disk.directory = s.disk.directory.."/"..ref
 	splay.mkdir(job.disk.directory)
 
+	if not prepare_lib_directory(job) then
+		assert(so:send("DEPENDENCIES NOT OK"))
+		return
+	end
 	job.status = "waiting"
 
 	-- We give the blacklist to the job.
@@ -523,6 +538,36 @@ function register(so)
 	assert(so:send(job.me.port))
 	-- restablish timeout
 	so:settimeout(so_timeout)
+end
+
+function prepare_lib_directory(job)
+	if job.disk then
+		job.disk.lib_directory = job.disk.directory.."/".."lib"
+		splay.mkdir(job.disk.lib_directory)
+		if job.lib_code and job.lib_code ~= "" then
+			local lib_file = io.open(libs_cache_dir.."/".. job.lib_sha1, "w+")
+			local lib_code = base64.decode(job.lib_code)
+			local sha1=evp.new("sha1")
+			local lib_code_sha1 =  sha1:digest(lib_code)
+
+			if (lib_code_sha1 == job.lib_sha1) then
+				lib_file:write(lib_code)
+				lib_file:close()
+				job.lib_code = nil
+				collectgarbage()
+			else
+				print("Wrong checksum for lib "..job.lib_name.."\ncomputed : "..lib_code_sha1.."\nRegistered as : "..job.lib_sha1)
+				return false
+			end
+		end
+		if job.lib_name and job.lib_name ~= "" then
+			os.execute("ln "..libs_cache_dir.."/"..job.lib_sha1.. " " .. job.disk.lib_directory.."/"..job.lib_name)
+		end
+	else
+		print("Wrong job configuration")
+		return false
+	end
+	return true
 end
 
 function n_free(so)
@@ -951,15 +996,67 @@ function size_of_table(t)
 	return size
 end
 
+-- Return a table of all libs in the cache and their hash
+function list_libs_in_cache(dir)
+	
+	local libs_list = io.popen("ls "..dir):read("*a")
+	local lib_table = {}
+	local name_table = {}
+	local sha1_table = {}
+	local lib = nil
+	local lib_sha1 = nil
+	-- TODO Find another pattern
+	for lib_name in string.gmatch(libs_list, "[^%s]+") do
+		lib = io.open(dir.."/"..lib_name):read("*a")
+		local sha1=evp.new("sha1")
+		lib_sha1 =  sha1:digest(lib)
+		print("splayd.lua:list_libs file with sha1 ",lib_sha1)
+		table.insert(lib_table, {name = lib_name, sha1 = lib_sha1})
+	end
+	
+	return lib_table
+end
+
+-- Reads the libs in the cache, send them to the controller and 
+-- according to the controller update the old ones and add the new ones
+function check_libs(so)
+	local libs_in_cache = list_libs_in_cache(libs_cache_dir)
+	local msg = json.encode(libs_in_cache)
+	assert(so:send(msg))
+	local response = nil
+	response = assert(so:receive())
+	local old_libs = json.decode(response)
+	
+	clean_libs(libs_cache_dir, old_libs)
+	assert(so:send("OK"))
+	--return new_libs
+end
+-- Update the cache by updating old libs and adding new ones.
+function clean_libs(dir, old_libs)
+	for i,v in pairs(old_libs) do
+			os.execute("rm "..dir.."/"..v['name'])
+	end
+	
+end
 
 function controller(so)
 	print("Controller registration")
-
+	-- Send the splayd-type
+	assert(so:send(splayd.settings.protocol))
 	-- the splayd registers on the Controller
 	assert(so:send("KEY"))
 	assert(so:send(splayd.settings.key))
 	assert(so:send(splayd.session))
+	
+	-- The splayd lists the libs it already has in its cache.
+	-- It informs the controller of the libs that it has.
+	
 
+	-- call only if settings splayd-type == 'grid'
+	if splayd.settings.protocol == "grid" then
+		check_libs(so)
+	end
+	
 	local msg = assert(so:receive())
 	if msg ~= "OK" then
 		local reason = assert(so:receive())
@@ -1187,11 +1284,13 @@ production = true
 --[[ SETTINGS (if not in production mode) ]]--
 
 root_dir = io.popen("pwd"):read()
-
+libs_cache_dir = root_dir.."/libs_cache"
 logs_dir = root_dir.."/logs"
 jobs_logs_dir = root_dir.."/logs/jobs"
 jobs_dir = root_dir.."/jobs"
 jobs_fs_dir = root_dir.."/jobs_fs" -- then splayd.settings.job.disk.directory
+jobs_lib_dir = jobs_fs_dir.."/lib"
+
 
 lua_version = "Lua 5.1" -- Do not run without this version.
 SSL = true -- Use SSL instead of plain text connection.
@@ -1238,6 +1337,8 @@ splayd.settings.name = "Default Name"
 splayd.settings.controller = {}
 splayd.settings.controller.ip = "127.0.0.1"
 splayd.settings.controller.port = 11000
+
+splayd.settings.protocol = "standard" -- "standard OR grid, default is STANDARD"
 
 splayd.settings.job = {}
 splayd.settings.job.max_number = 16
@@ -1293,7 +1394,7 @@ splayd.status.endianness = splay.endian()
 -- TODO non unices support
 splayd.status.os = io.popen("uname"):read()
 splayd.status.full_os = io.popen("uname -a"):read()
-
+splayd.status.architecture = io.popen("uname -m"):read()
 --  MacOS X:
 -- uname: Darwin
 -- uname -a:Darwin stud2066.idi.ntnu.no 9.6.0 Darwin Kernel Version 9.6.0: Mon
@@ -1380,6 +1481,7 @@ job.status can have the folowing values:
 prepare_dir(jobs_dir)
 prepare_dir(logs_dir)
 prepare_dir(jobs_logs_dir)
+prepare_dir(libs_cache_dir)
 prepare_dir(splayd.settings.job.disk.directory)
 if not check() then os.exit() end
 display_config()

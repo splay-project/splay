@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
 			perror("connect()");
 			exit(1);
 		}
-			
+	
 		if (argc >= 7) {
 			/* ref */
 			tmp = write(sock_fd, argv[5], strlen(argv[5]));

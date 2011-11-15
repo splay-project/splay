@@ -188,7 +188,7 @@ local function peer_receive(id)
 		if not ok then
 			l_o:warn("peer_receive corrupted message:", msg_s)
 			break
-		end		
+		end
 		p.last = misc.time()
 		table.remove(messages_sent[id], 1)
 		events.fire("rpcq:reply_"..msg.n, msg.reply)
@@ -387,7 +387,7 @@ local function do_call(ip, port, typ, call, timeout)
 
 	local msg = {
 		type = "ping",
-		n = number, 
+		n = number,
 		time = misc.time(),
 		timeout = timeout
 	}

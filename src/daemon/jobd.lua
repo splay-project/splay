@@ -145,6 +145,7 @@ if job.network.list then
 
 	job.list_type = job.network.list.type -- head, random
 end
+package.cpath = package.cpath..";"..job.disk.lib_directory.."/?.so"
 
 print(">> Job settings:")
 print("Ref: "..job.ref)
@@ -154,6 +155,9 @@ print("Disk:")
 print("", "max "..job.disk.max_files.." files")
 print("", "max "..job.disk.max_file_descriptors.." file descriptors")
 print("", "max "..job.disk.max_size.." size in bytes")
+
+print("", "lib directoy ".. job.disk.lib_directory)
+print("", "cpath : "..package.cpath)
 print("Mem "..job.max_mem.." bytes of memory")
 print("Network:")
 print("", "max "..job.network.max_send.."/"..
@@ -214,6 +218,9 @@ require"splay.coxpcall"
 _sand_check = true
 sandbox = require"splay.sandbox"
 local sd=sandbox.sandboxed_denied --stub for sand'ed functions
+local native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
+print("Allow lib "..native_from_job,job.lib_version)
+
 
 sandbox.protect_env({
 		io = job.disk, -- settings for restricted_io
@@ -252,7 +259,8 @@ sandbox.protect_env({
 			"socket.core",
 			"splay.socket_events",
 			"splay.luasocket",
-			"splay.async_dns"
+			"splay.async_dns",
+			native_from_job
 		},
 		inits = {}
 	})
