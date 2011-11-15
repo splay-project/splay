@@ -1,5 +1,6 @@
 splayd 1.1:
     - support for trace_alt: decentralized churn management
+	- fix bug on Mac OSX (zombie 'sysctl' processes)
 -----------------------------
 splayd 1.0.7:
     - fix bug for Mac OSX due to wrong parsing of arguments (bug and patch reported by Lucas Charles)

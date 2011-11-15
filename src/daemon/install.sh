@@ -2,8 +2,8 @@
 
 #L_PATH=/usr/share/lua/5.1
 #L_CPATH=/usr/lib/lua/5.1
-L_PATH="$HOME/lualibs/lualib"
-L_CPATH="$HOME/lualibs/lualibc"
+L_PATH="$HOME/local/lualibs/lib"
+L_CPATH="$HOME/local/lualibs/clib"
 
 if [[ $L_PATH == "" ]]; then
 	echo "L_PATH not set, set it (LUA_PATH)."
@@ -55,6 +55,7 @@ cp splay_core.so $L_CPATH/
 cp luacrypto/crypto.so $L_CPATH/crypto.so
 cp misc_core.so $L_CPATH/splay/
 cp data_bits_core.so $L_CPATH/splay/
+cp lbase64/base64.so $L_CPATH/base64.so
 
 echo
 echo
