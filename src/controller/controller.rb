@@ -48,6 +48,10 @@ LogdServer.new.run
 SplaydServer.new.run
 JobdStandard.run
 
+if SplayControllerConfig::AllowNativeLibs
+  JobdGrid.run
+end
+
 JobdTrace.init
 JobdTrace.run
 

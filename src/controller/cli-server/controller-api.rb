@@ -146,11 +146,152 @@ class Ctrl_api
 		#returns ret
 		return ret
 	end
+if SplayControllerConfig::AllowNativeLibs
+	#When submitting a lib we test if it already exists in the DB.
+	def pre_submit_lib(lib_filename, lib_sha1, lib_version, session_id)
+		ret = Hash.new
+		user = check_session_id(session_id)
+		if user then 
+		existing_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_filename}' AND lib_version='#{lib_version}' AND lib_sha1='#{lib_sha1}'")
+		if existing_lib then
+			ret['ok'] = true
+			ret['message'] = "lib in db no need to upload"
+		else
+			ret['ok'] = true
+			ret['message'] = "UPLOAD"
+		end
+		else
+			ret['ok'] = false 
+			ret['error'] = "Invalid or expired Session ID" 
+		end
+		return ret
+	end
+	
+	def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id)
+	#if we are here there is no lib with the given hash, but there might be one that we want to update with the same name.
+		ret = Hash.new
+		#puts "writing lib : #{lib_name}, V= #{lib_version}, os=#{lib_os}, arch=#{lib_arch}"   
+		user = check_session_id(session_id)
+		if user then
+			existing_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_name}' AND lib_os='#{lib_os}' AND lib_arch='#{lib_arch}'")
+			if existing_lib then
+				$db.do("UPDATE libs SET lib_version='#{lib_version}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}' WHERE id='#{existing_lib['id']}'")
+				ret['ok'] = true
+				ret['message'] = "existing_lib updated"
+			else
+				$db.do("INSERT INTO libs SET lib_name='#{lib_name}', lib_version='#{lib_version}', lib_os='#{lib_os}', lib_arch='#{lib_arch}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}'")
+				ret['ok'] = true
+				ret['message'] = "new lib inserted"
+				ret['os'] = lib_os  
+			end
+		else
+		ret['ok'] = false
+		ret['error'] = "Invalid or expired Session ID"  
+		end
+		return ret
+	end
+	
+	# Before writing the job in the DB we check that the required dep are met.
+	def test_lib_exists(lib_filename, lib_version, session_id)
+		ret = Hash.new
+		user = check_session_id(session_id)
+		if user then
+		# TODO parse a string to determine the range of versions the users provides as compatibles
+			a_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_filename}' AND lib_version='#{lib_version}'")
+			if a_lib then
+				ret['ok'] = true
+				ret['message'] = 'lib exists'
+			else
+				ret['ok'] = false
+				ret['error'] = "no such version "
+			end
+		else
+			ret['ok'] = false
+			ret['error'] = "Invalid or expired Session ID"
+		end
+		return ret
+	end
+	
+	def list_libs(lib_name, session_id)
+		ret = Hash.new
+		user = check_session_id(session_id)
+		if user then
+			libs_list = Array.new
+			if lib_name and lib_name != "" then
+			#list libs with the given name. for now show only the versions and platforms.
+			#TODO give a detailed presentation of the libs, and possibly the splayds they are deployed on
+				$db.select_all("SELECT * FROM libs WHERE lib_name='#{lib_name}'") do |a_lib|
+				lib = Hash.new
+				lib['lib_name'] = a_lib['lib_name']
+				lib['lib_version'] = a_lib['lib_version']
+				lib['lib_os'] = a_lib['lib_os']
+				lib['lib_arch'] = a_lib['lib_arch']   
+				libs_list.push(lib)
+			end
+		else
+		#list all libs in db
+			$db.select_all("SELECT * FROM libs") do |a_lib|
+				lib = Hash.new
+				lib['lib_name'] = a_lib['lib_name']
+				lib['lib_version'] = a_lib['lib_version']
+				lib['lib_os'] = a_lib['lib_os']
+				lib['lib_arch'] = a_lib['lib_arch']   
+				lib['lib_sha1'] = a_lib['lib_sha1']
+				libs_list.push(lib)
+			end
+		end
+			ret['ok'] = true
+			ret['libs_list'] = libs_list
+		else
+			ret['ok'] = false
+			ret['error'] = "Invalid or expired Session ID"
+   		end
+		return ret
+	end
 
+	def remove_lib(lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id)
+		ret = Hash.new
+		user = check_session_id(session_id)
+		if user then
+			if lib_name and lib_name != ""
+				where_clause = "WHERE lib_name='#{lib_name}' "
+				if lib_version and lib_version != ""
+ 						where_clause += "AND lib_version='#{lib_version}'"
+				end
+				if lib_arch and lib_arch != ""
+					where_clause += "AND lib_arch='#{lib_arch}'"
+			    end
+				if lib_os and lib_os != ""
+					where_clause += "AND lib_os='#{lib_os}'"
+				end
+				if lib_sha1 and lib_sha1 != ""
+					where_clause += "AND lib_sha1='#{lib_sha1}'"
+				end
+				#puts where_clause
+				$db.do("DELETE FROM libs #{where_clause}")
+				ret['ok'] = true
+				ret['message'] = "Lib deleted"
+			else
+				ret['ok'] = false
+				ret['error'] = "Cannot use an empty string for lib_name"
+			end
+		else
+			ret['ok'] = false
+			ret['error'] = "Invalid or expired Session ID"
+		end
+		return ret
+	end
+end
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt)
+	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt)
 	 	#initializes the return variable
 		ret = Hash.new
+		
+		if  !SplayControllerConfig::AllowNativeLibs and lib_filename !=""
+		  ret['ok'] = false
+  		ret['error'] = "Submitting jobs for native libs forbidden"
+  		return ret
+	  end
 		#checks the validity of the session ID and stores the returning value in the variable user
 		user = check_session_id(session_id)
 		#check_session_id returns false if the session ID is not valid; if user is not false (the session ID is valid)
@@ -205,7 +346,10 @@ class Ctrl_api
 				churn_field = "die_free='FALSE', scheduler_description='#{addslashes(churn_trace)}',"
 			end
 
-			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', user_id=#{user_id}, created_at='#{time_now}'")
+			if lib_filename != "" then
+				options['scheduler'] = 'grid'
+			end
+			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', lib_name='#{lib_filename}', lib_version='#{lib_version}', user_id=#{user_id}, created_at='#{time_now}'")
 
 			timeout = 30
 			while timeout > 0
