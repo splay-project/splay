@@ -29,7 +29,11 @@
 class JobdStandard < Jobd
 
 	@@scheduler = 'standard'
-
+	
+	def self.get_scheduler
+		return 'standard'
+	end
+	
 	# LOCAL => REGISTERING|NO RESSOURCES|QUEUED
 	def self.status_local
 		@@dlock_jr.get
@@ -37,10 +41,10 @@ class JobdStandard < Jobd
 		c_splayd = nil
 
 		$db.select_all "SELECT * FROM jobs WHERE
-				scheduler='#{@@scheduler}' AND status='LOCAL'" do |job|
-		
+				scheduler='#{get_scheduler}' AND status='LOCAL'" do |job|
+
 			# Splayds selection
-			c_splayd, occupation, nb_selected_splayds, new_job, do_next = Jobd.status_local_common(job)	
+			c_splayd, occupation, nb_selected_splayds, new_job, do_next = status_local_common(job)
 
 			# If this job cannot be submitted immediately, jump to the next one
 			if do_next == true
@@ -95,7 +99,7 @@ class JobdStandard < Jobd
 	# REGISTERING => REGISTERING_TIMEOUT|RUNNING
 	def self.status_registering
 		$db.select_all "SELECT * FROM jobs WHERE
-				scheduler='#{@@scheduler}' AND status='REGISTERING'" do |job|
+				scheduler='#{get_scheduler}' AND status='REGISTERING'" do |job|
 
 			# Mandatory filter
 			mandatory_filter = ''
@@ -186,7 +190,7 @@ class JobdStandard < Jobd
 	# RUNNING => ENDED
 	def self.status_running
 		$db.select_all "SELECT * FROM jobs WHERE
-		  scheduler='#{@@scheduler}' AND status='RUNNING'" do |job|
+		  scheduler='#{get_scheduler}' AND status='RUNNING'" do |job|
 			if not $db.select_one "SELECT * FROM splayd_jobs
 				WHERE job_id='#{job['id']}' AND status!='RESERVED'"
 				set_job_status(job['id'], 'ENDED')
@@ -201,11 +205,11 @@ class JobdStandard < Jobd
     		c_splayd = nil
 
     		$db.select_all "SELECT * FROM jobs WHERE
-	            		scheduler='#{@@scheduler}' AND status='QUEUED' AND (scheduled_at is NULL OR scheduled_at<NOW())" do |job|
+	            		scheduler='#{get_scheduler}' AND status='QUEUED' AND (scheduled_at is NULL OR scheduled_at<NOW())" do |job|
 
 			
 			# Splayds selection
-			c_splayd, occupation, nb_selected_splayds, new_job, do_next = Jobd.status_queued_common(job)	
+			c_splayd, occupation, nb_selected_splayds, new_job, do_next = status_queued_common(job)	
 
 			# If this job cannot be submitted immediately, jump to the next one
 			if do_next == true
@@ -266,7 +270,7 @@ class JobdStandard < Jobd
 	def self.command
 		# NOTE splayd_jobs table is cleaned directly by splayd when it apply the
 		# free command (or reset)
-		$db.select_all "SELECT * FROM jobs WHERE scheduler='#{@@scheduler}' AND
+		$db.select_all "SELECT * FROM jobs WHERE scheduler='#{get_scheduler}' AND
 				command IS NOT NULL" do |job|
 			if job['command'] =~ /kill|KILL/
 				kill_job(job, "user kill")
@@ -281,7 +285,7 @@ class JobdStandard < Jobd
 	# KILL AT
 	def self.kill_max_time
 		$db.select_all "SELECT * FROM jobs WHERE
-				scheduler='#{@@scheduler}' AND
+				scheduler='#{get_scheduler}' AND
 				status='RUNNING' AND
 				max_time IS NOT NULL AND
 				status_time + max_time < #{Time.now.to_i}" do |job|

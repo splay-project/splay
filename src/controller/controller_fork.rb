@@ -69,6 +69,13 @@ fork do
 	JobdStandard.run.join
 end
 
+if SplayControllerConfig::AllowNativeLibs
+  fork do
+    $db = DBUtils.get_new
+    JobdGrid.run.join
+  end
+end
+
 fork do
 	$db = DBUtils.get_new
 	JobdTrace.init

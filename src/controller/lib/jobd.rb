@@ -46,8 +46,8 @@ class Jobd
 				status_running
 				kill_max_time
 				command
-        			status_queued
-      end
+				status_queued
+			end
 		rescue => e
 			$log.fatal(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
 		end
@@ -66,7 +66,7 @@ class Jobd
 	end
 
  	def self.status_queued
-  	end
+	end
 
 	def self.kill_max_time
 	end
@@ -341,7 +341,7 @@ class Jobd
 			hostmasks_filter = " AND (ip LIKE '#{hm_t}' OR hostname LIKE '#{hm_t}') "
 		end
 
-    		resources_filter = "AND (splayds.status='AVAILABLE') AND
+		resources_filter = "AND (splayds.status='AVAILABLE') AND
 					max_mem >= '#{job['max_mem']}' AND
 					disk_max_size >= '#{job['disk_max_size']}' AND
 					disk_max_files >= '#{job['disk_max_files']}' AND
@@ -379,6 +379,7 @@ class Jobd
 			new_job = {}
 			new_job['ref'] = job['ref']
 			new_job['code'] = job['code']
+			new_job['lib_name'] = job['lib_name']
 			new_job['script'] = job['script']
 			new_job['network'] = {}
 			new_job['network']['max_send'] = job['network_max_send']
@@ -457,7 +458,7 @@ class Jobd
 
 		# To select the splayds that have the lowest percentage of occupation
 		occupation = {}
-    filter_query=create_filter_query(job)
+    	filter_query=create_filter_query(job)
 		$db.select_all(filter_query) do |m|
 			if m['network_send_speed'] / c_splayd['max_number'][m['id']] >=
 					job['network_send_speed'] and

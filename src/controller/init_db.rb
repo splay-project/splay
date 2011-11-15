@@ -36,6 +36,8 @@ def drop_db(db)
 	db.do("DROP TABLE IF EXISTS blacklist_hosts")
 	db.do("DROP TABLE IF EXISTS actions")
 	db.do("DROP TABLE IF EXISTS locks")
+	db.do("DROP TABLE IF EXISTS libs")
+	db.do("DROP TABLE IF EXISTS splayd_libs")
 end
 
 def init_db(db)
@@ -47,6 +49,7 @@ def init_db(db)
 			hostname VARCHAR(255),
 			session VARCHAR(255),
 			name VARCHAR(255),
+			protocol VARCHAR(255),
 
 			country VARCHAR(2),
 			city VARCHAR(255),
@@ -59,6 +62,7 @@ def init_db(db)
 			endianness ENUM('big', 'little') DEFAULT 'little',
 			os VARCHAR(255),
 			full_os VARCHAR(255),
+			architecture VARCHAR(255),
 			start_time INT,
 
 			load_1 DECIMAL(5,2) DEFAULT '999.99',
@@ -122,6 +126,8 @@ def init_db(db)
 			network_receive_speed INT NOT NULL DEFAULT '51200',
 			udp_drop_ratio DECIMAL(3, 2) NOT NULL DEFAULT '0',
 			code TEXT NOT NULL,
+			lib_name varchar(255),
+			lib_version VARCHAR(255),
 			script TEXT NOT NULL,
 			nb_splayds INT NOT NULL DEFAULT '1',
 			factor DECIMAL(3, 2) NOT NULL DEFAULT '1.25',
@@ -134,7 +140,7 @@ def init_db(db)
 			die_free ENUM('TRUE','FALSE') DEFAULT 'TRUE',
 			keep_files ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 
-			scheduler ENUM('standard','trace','tracealt') DEFAULT 'standard',
+			scheduler ENUM('standard','trace','tracealt','grid') DEFAULT 'standard',
 			scheduler_description TEXT,
 
 			list_type ENUM('HEAD','RANDOM') DEFAULT 'HEAD',
@@ -226,8 +232,21 @@ def init_db(db)
 			remember_token_expires_at datetime default NULL,
 			admin int(11) default '0',
 			demo int(11) default '1'
-			);")
-
+			)")
+	db.do("CREATE TABLE IF NOT EXISTS libs (
+	    id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	    lib_name varchar(255) default NULL,
+	    lib_version VARCHAR(255) default NULL,
+	    lib_os varchar(255) default NULL,
+	    lib_arch varchar(255) default NULL,
+	    lib_sha1 varchar(40) default NULL,
+	    lib_blob LONGBLOB default NULL
+	    );") 
+   db.do("CREATE TABLE IF NOT EXISTS splayd_libs (
+      id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      splayd_id INT NOT NULL,
+      lib_id INT NOT NULL
+      );")
 end
 
 db = DBUtils::get_new
