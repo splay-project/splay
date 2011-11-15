@@ -51,6 +51,7 @@ function add_usage_options()
 	table.insert(usage_options, "    --relative-time \t\tthe job will be submitted after HH:MM:SS")
 	table.insert(usage_options, "    --strict \t\t\tthe job will be submitted now / at the scheduled time or rejected with NO_RESSOURCES message")
 	table.insert(usage_options, "    --trace_alt\t\t\tthe churn is managed on the splayd side (alternative way)")
+	table.insert(usage_options, "-l  --lib=LIB_FILE\ttdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
 end
 
 function parse_arguments()
@@ -162,6 +163,12 @@ function parse_arguments()
 			strict = "TRUE"
 		elseif arg[i] == "--trace_alt" then
 			trace_alt = "TRUE"
+		elseif arg[i] == "--lib" or arg[i] == "-l" then
+			i = i + 1
+			lib_filename = arg[i]
+		elseif arg[i] == "-lv" then
+			i = i + 1
+			lib_version = arg[i]
 		--if code_filename is not yet filled and the argument has not matched any of the other rules
 		elseif not code_filename then
 			--the code file is the argument
@@ -231,7 +238,7 @@ function submit_job_extra_checks()
 end
 
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
-function send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
+function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
 	--prints the arguments
 	print_line(VERBOSE, "NAME              = "..name)
 	print_line(VERBOSE, "DESCRIPTION       = "..description)
@@ -303,7 +310,27 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 		--exists
 		os.exit()
 	end
-
+	
+	-- local lib_code = nil
+	-- local lib_hash = nil
+	if lib_filename then
+		local body = json.encode({
+			method = "ctrl_api.test_lib_exists",
+			params = {lib_filename, lib_version, session_id}
+		})
+		local response = http.request(cli_server_url, body)
+		if check_response(response) then
+			local json_response = json.decode(response)
+			if json_response.result.ok == false then
+				print(json_response.result.message)
+				os.exit()
+			end
+		else
+			os.exit()
+		end
+	else 
+		lib_filename = ""
+	end
 	--put args in arg{} global table
 	args_code="arg={}\narg[0]= '".. code_filename.."'\n"
 	if job_args then
@@ -319,7 +346,7 @@ function send_submit_job(name, description, code_filename, nb_splayds, churn_tra
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
-		params = {name, description, code, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt}
+		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt}
 	})
 
 	--prints that it is sending the message
@@ -341,6 +368,9 @@ end
 
 --MAIN FUNCTION:
 --initializes the variables
+lib_filename = nil
+lib_version = nil
+
 code_filename = nil
 churn_trace_filename = nil
 options_string = nil
@@ -376,5 +406,4 @@ check_session_id()
 submit_job_extra_checks()
 
 --calls send_submit_job
-send_submit_job(name, description, code_filename, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
-
+send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
