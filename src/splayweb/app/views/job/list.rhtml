@@ -22,7 +22,7 @@
 	<tr>
 		<td class="id"><%= job.id %></td>
 		<% if current_user.admin == 1 %>
-		<td class="user"><%= job.user.login %></td>
+		<td class="user"><%= if job.user!=nil then job.user.login else "DELETED" end %></td>	
 		<% end %>
 		<td class="created_at"><%= job.created_at %></td>
 		<td class="nb_splayds"><%= job.nb_splayds %></td>
