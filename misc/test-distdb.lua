@@ -15,11 +15,11 @@ events.loop(function()
 	distdb.init(job)
 
 
-	if job.position == 10 then
-		events.sleep(60)
-		log:print(job.me.port..": im goin DOOOOWN!!!")
-		os.exit()
-	end
+	--if job.position == 5 then
+	--	events.sleep(60)
+	--	log:print(job.me.port..": im goin DOOOOWN!!!")
+	--	os.exit()
+	--end
 
 end)
 

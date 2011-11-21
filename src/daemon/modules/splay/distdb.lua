@@ -90,6 +90,10 @@ local next_node = nil
 local previous_node = nil
 --init_done is a flag to avoid double initialization
 local init_done = false
+--prop_ids holds the Proposal IDs for Paxos operations (used by Proposer)
+local prop_ids = {}
+--paxos_max_retries is the maximum number of times a Proposer can try a Proposal
+local paxos_max_retries = 5 --TODO maybe this should match with some distdb settings object
 
 
 --LOCAL FUNCTIONS
@@ -266,6 +270,7 @@ end
 
 --function remove_node_from_neighborhood: removes a node from the neighborhood table, re-sorts and updates n.position
 function remove_node_from_neighborhood(node_pos)
+	--TODO take care of n_nodes < n_replicas
 	--gets the node from the table before removal
 	local node = neighborhood[node_pos]
 	--removes it from it
@@ -282,7 +287,7 @@ end
 
 --function receive_gossip: updates the table if necessary and forwards the gossip
 function receive_gossip(message, neighbor_about)
-	--TODO this gossiping technique may not work for 2 failures in 1 period
+	--TODO this gossiping technique may not work for 2 failures in 1 whole gossiping period
 	--if the message is an "add"
 	if message == "add" then
 		--if get_position returns something, it means the node is already in the list, so it returns
@@ -418,23 +423,29 @@ function handle_get(type_of_transaction, key)
 	local chosen_node_id = math.random(#responsibles)
 	--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
-	local function_to_call = nil
-	if type_of_transaction == "consistent" then
-		function_to_call = "distdb.consistent_get"
-	else
-		function_to_call = "distdb.evtl_consistent_get"
+	--construct the function to call
+	local function_to_call = "distdb."..type_of_transaction.."_get"
+	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
+	if rpc_ok then
+		return rpc_answer[1], rpc_answer[2]
 	end
-	local ok, answer = rpc.call(chosen_node, {function_to_call, key, value})
-	return ok, answer
+	return nil, "network problem"
 end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
 	log:print(n.ip..":"..n.port..": handling a PUT for key: "..key..", value: "..value)
-	local responsibles = get_responsibles(key)
-	local chosen_node_id = math.random(#responsibles)
-	--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
-	local chosen_node = responsibles[chosen_node_id]
+	
+	local chosen_node = nil
+	
+	if type_of_transaction == "consistent" then
+		chosen_node = get_master(key)
+	else
+		local responsibles = get_responsibles(key)
+		local chosen_node_id = math.random(#responsibles)
+		--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
+		chosen_node = responsibles[chosen_node_id]
+	end
 	--log:print(n.ip..":"..n.port..": Chosen node is "..chosen_node.id)
 	--[[TESTING WRONG NODE
 	if math.random(5) == 1 then
@@ -444,14 +455,17 @@ function handle_put(type_of_transaction, key, value) --TODO check about setting 
 	end
 	]]--
 	--log:print()
-	local function_to_call = nil
-	if type_of_transaction == "consistent" then
-		function_to_call = "distdb.consistent_put"
-	else
-		function_to_call = "distdb.evtl_consistent_put"
+	--construct the function to call
+	local function_to_call = "distdb."..type_of_transaction.."_put"
+	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
+	if rpc_ok then
+		--if something went wrong
+		if not rpc_answer[1] then
+			log:print(n.ip..":"..n.port..": node "..chosen_node.ip..":"..chosen_node.port.." answered "..rpc_answer[2])
+		end
+		return rpc_answer[1]
 	end
-	local answer = rpc.call(chosen_node, {function_to_call, key, value})
-	return answer
+	return nil, "network problem"
 end
 
 
@@ -554,7 +568,7 @@ function init(job)
 		--initializes db_table
 		db_table = {}
 		--initializes the variable holding the number of replicas
-		n_replicas = 10 --TODO this should be configurable
+		n_replicas = 5 --TODO this should be configurable
 		min_replicas_write = 3 --TODO this should be configurable
 		min_replicas_read = 3 --TODO this should be configurable
 
@@ -596,6 +610,161 @@ end
 function stop()
 	net.stop_server(n.port+1)
 	rpc.stop_server(n.port)
+end
+
+--function paxos_operation: performs a generic operation of the Basic Paxos protocol
+function paxos_operation(operation_type, key, prop_id, retries, value)
+	log:print(n.ip..":"..n.port..":paxos_operation: ENTERED")
+	log:print(n.ip..":"..n.port..":paxos_operation: key="..key..", propID="..prop_id..", retriesLeft="..retries..", value="..value)
+	--initializes boolean not_responsible
+	local not_responsible = true
+	--gets all responsibles for the key
+	local responsibles = get_responsibles(key)
+	--for all responsibles
+	for i,v in ipairs(responsibles) do
+		--if the ID of the node matches, make not_responsible false
+		if v.id == n.id then
+			not_responsible = false
+			break
+		end
+	end
+	--if the node is not responsible, return with an error message
+	if not_responsible then
+		return false, "wrong node"
+	end
+	--calculates the minimum majority of the replicas
+	local min_majority = math.floor(n_replicas/2)+1
+	--send propose
+	--initialize the answers as 0
+	local propose_answers = 0
+	--initialize successful as false
+	local successful = false
+	--initialize successful as false
+	local higher_prop_id = 0
+
+	--if the key is not being modified right now
+	if not locked_keys[key] then
+		--lock the key during the put -TODO think about this lock, is it necessary/useful?
+		locked_keys[key] = true
+		--initializes the acceptors group
+		local acceptors = {}
+		--for all responsibles
+		for i,v in ipairs(responsibles) do
+			--execute in parallel
+			events.thread(function()
+				local propose_answer = {}
+				--if node ID is not the same as the node itself (avoids RPC calling itself)
+				if v.id ~= n.id then
+					--puts the key remotely on the others responsibles, if the put is successful
+					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.receive_proposal", key, prop_id})
+					--if the RPC call was OK
+					if rpc_ok then
+						propose_answer = rpc_answer
+					--else (maybe network problem, dropped message) TODO also consider timeouts!
+					else
+						--WTF
+						log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
+					end
+				else
+					propose_answer[1], propose_answer[2] = receive_proposal(key, prop_id)
+				end
+				if propose_answer[1] then
+					log:print(n.ip..":"..n.port..":paxos_operation: Received a positive answer from node="..v.id)
+					--adds the node to the acceptor's group
+					table.insert(acceptors, v)
+					--increments answers
+					propose_answers = propose_answers + 1
+					--if answers reaches the minimum majority
+					if propose_answers >= min_majority then
+						--trigger the unlocking of the key
+						events.fire("propose_"..key)
+					end
+				else
+					log:print(n.ip..":"..n.port..":paxos_operation: Received a negative answer from node="..v.id.." , highest prop ID=", propose_answer[2])
+					if propose_answer[2] then
+						higher_prop_id = math.max(higher_prop_id, propose_answer[2])
+						--TODO complicated reasoning about what to do once you find the first negative answer
+					end
+				end
+			end)
+		end
+		--waits until min_write replicas answer, or until the rpc_timeout is depleted
+		successful = events.wait("propose_"..key, rpc_timeout) --TODO match this with settings
+
+		--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1". see above
+		--this is done because even after the triggering of event "key", acceptors
+		--can continue engrossing the acceptors group
+		--TODO check if necessary (maybe having more acceptors doesn't hurt - it involves
+		--more messages in accept phase, though)
+		local n_acceptors = #acceptors
+		
+		--if the proposal didn't gather the quorum needed
+		if not successful then
+			--if a higher prop_id was indicated by the acceptors
+			if higher_prop_id > 0 then
+				--propose 1 more than that prop_id
+				prop_id = higher_prop_id + 1
+			end
+			--if the number of retries is depleted
+			if retries == 0 then
+				--unlocks the key
+				locked_keys[key] = nil
+				--returns failure
+				return false, "failed after all retries"
+			--if not
+			else
+				--retry (retries--)
+				return paxos_operation(operation_type, key, prop_id, retries-1, value)
+			end
+		end
+		
+		local accept_answers = 0
+		
+		--for all acceptors
+		for i=1,n_acceptors do
+			v = acceptors[i]
+			--execute in parallel
+			events.thread(function()
+				local accept_answer = nil
+				--if node ID is not the same as the node itself (avoids RPC calling itself)
+				if v.id ~= n.id then
+					--puts the key remotely on the others responsibles, if the put is successful
+					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.receive_accept", key, prop_id, value})
+					--if the RPC call was OK
+					if rpc_ok then
+						accept_answer = rpc_answer
+					--else (maybe network problem, dropped message) TODO also consider timeouts!
+					else
+						--WTF
+						log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
+					end
+				else
+					accept_answer = {receive_accept(key, prop_id, value)}
+				end
+				if accept_answer[1] then
+					log:print(n.ip..":"..n.port..":paxos_operation: Received a positive answer from node="..v.id)
+					--increments answers
+					accept_answers = accept_answers + 1
+					--if answers reaches the number of acceptors
+					if accept_answers >= n_acceptors then
+						--trigger the unlocking of the key
+						events.fire("accept_"..key)
+					end
+				else
+					log:print(n.ip..":"..n.port..":paxos_operation: Received a negative answer from node="..v.id.." , something went WRONG")
+				end
+			end)
+		end
+
+
+		--waits until min_write replicas answer, or until the rpc_timeout is depleted
+		successful, timeout = events.wait("accept_"..key, rpc_timeout) --TODO match this with settings
+
+
+		--unlocks the key
+		locked_keys[key] = nil
+	end
+	return successful, timeout
 end
 
 --function consistent_put: puts a k,v and waits until all replicas assure they have a copy
@@ -644,15 +813,24 @@ function consistent_put(key, value)
 				end
 				--log:print("i: "..i)
 				--log:print("replica id: "..replica_id)
-				--puts the key remotely on the replica, if the put is successful
-				if rpc.call(neighborhood[replica_id], {"distdb.put_local", key, value}) then
-					--answers gets incremented
-					answers = answers + 1
-					--if answers reaches the number of replicas
-					if answers >= n_replicas then
-						--trigger the unlocking of the key
-						events.fire(key)
+				--puts the key remotely on the replica
+				local rpc_ok, rpc_answer = rpc.acall(neighborhood[replica_id], {"distdb.put_local", key, value})
+				--if the RPC call was OK
+				if rpc_ok then
+					--if the put is successful
+					if rpc_answer[1] then
+						--answers gets incremented
+						answers = answers + 1
+						--if answers reaches the number of replicas
+						if answers >= n_replicas then
+							--trigger the unlocking of the key
+							events.fire(key)
+						end
 					end
+				--else (maybe network problem, dropped message) TODO also consider timeouts!
+				else
+					--WTF
+					log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
 				end
 			end)
 		end
@@ -715,14 +893,22 @@ function evtl_consistent_put(key, value)
 				--execute in parallel
 				events.thread(function()
 					--puts the key remotely on the others responsibles, if the put is successful
-					if rpc.call(v, {"distdb.put_local", key, value, n}) then
-						--increment answers
-						answers = answers + 1
-						--if answers reaches the minimum number of replicas that must write
-						if answers >= min_replicas_write then
-							--trigger the unlocking of the key
-							events.fire(key)
+					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					--if the RPC call was OK
+					if rpc_ok then
+						if rpc_answer[1] then
+							--increment answers
+							answers = answers + 1
+							--if answers reaches the minimum number of replicas that must write
+							if answers >= min_replicas_write then
+								--trigger the unlocking of the key
+								events.fire(key)
+							end
 						end
+					--else (maybe network problem, dropped message) TODO also consider timeouts!
+					else
+						--WTF
+						log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
 					end
 				end)
 			end
@@ -734,6 +920,16 @@ function evtl_consistent_put(key, value)
 	end
 	--returns the value of the variable successful
 	return successful
+end
+
+--function paxos_put: performs a Basic Paxos protocol in order to put a k,v pair
+function paxos_put(key, value)
+	--if no previous proposals have been done for this key
+	if not prop_ids[key] then
+		--first number to use is 1
+		prop_ids[key] = 1
+	end
+	return paxos_operation("put", key, prop_ids[key], paxos_max_retries, value)
 end
 
 --function consistent_get: returns the value of a certain key; reads the value only from the node itself (matches with
@@ -791,7 +987,15 @@ function evtl_consistent_get(key)
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
-				answer_data[v.id] = rpc.call(v, {"distdb.get_local", key})
+				local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.get_local", key})
+				--if the RPC call was OK
+				if rpc_ok then
+					answer_data[v.id] = rpc_answer[1]
+				--else (maybe network problem, dropped message) TODO also consider timeouts!
+				else
+					--WTF
+					log:print("SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL")
+				end
 			end
 			--if there is an answer
 			if answer_data[v.id] then
@@ -915,14 +1119,83 @@ function evtl_consistent_get(key)
 	return true, return_data
 end
 
---function put_local: writes a k,v pair. TODO should be atomic? is it?
-function put_local(key, value, src_write)
-	--TODO how to check if the source node is valid?
+--function receive_proposal: receives and answers to a "Propose" message, used in Paxos
+function receive_proposal(key, prop_id)
+	log:print(n.ip..":"..n.port..": Entered in RECEIVE PROPOSAL for key "..key..", prop_id="..prop_id)
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
-		log:print(n.ip..":"..n.port..": NOT writing key: "..key)
-		return false, "404"
+		log:print(n.ip..":"..n.port..": NOT accepting Propose for key: "..key)
+		return false
 	end
+	--adding a random waiting time to simulate different response times
+	events.sleep(math.random(100)/100)
+	--if key is not a string, dont accept the transaction
+	if type(key) ~= "string" then
+		log:print(n.ip..":"..n.port..": NOT accepting Propose for key, wrong key type")
+		return false, "wrong key type"
+	end
+
+	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
+	if not db_table[key] then
+		db_table[key] = {enabled=true, vector_clock={}} --check how to make compatible with vector_clock
+	--if it exists
+	elseif db_table[key].prop_id and db_table[key].prop_id >= prop_id then
+		return false, db_table[key].prop_id
+	end
+	db_table[key].prop_id = prop_id
+	return true
+end
+
+--function receive_accept: receives and answers to a "Accept!" message, used in Paxos
+function receive_accept(key, prop_id, value)
+	log:print(n.ip..":"..n.port..": Entered in RECEIVE ACCEPT for key "..key)
+	--adding a random waiting time to simulate different response times
+	events.sleep(math.random(100)/100)
+	--if key is not a string, dont accept the transaction
+	if type(key) ~= "string" then
+		log:print(n.ip..":"..n.port..": NOT accepting Accept! for key, wrong key type")
+		return false, "wrong key type"
+	end
+
+	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
+	if not db_table[key] then
+		log:print(n.ip..":"..n.port..":receive_accept: BIZARRE! wrong key, key does not exist")
+		return false, "BIZARRE! wrong key, key does not exist"
+	--if it exists
+	elseif db_table[key].prop_id > prop_id then
+		log:print(n.ip..":"..n.port..":receive_accept: REJECTED, higher prop_id")
+		return false, "higher prop_id"
+	elseif db_table[key].prop_id < prop_id then
+		log:print(n.ip..":"..n.port..":receive_accept: BIZARRE! lower prop_id")
+		return false, "BIZARRE! lower prop_id"
+	end
+	log:print(n.ip..":"..n.port..": Telling learners about key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "propID:"..prop_id)
+	local responsibles = get_responsibles(key)
+	for i,v in ipairs(responsibles) do
+		if v.id == n.id then
+			events.thread(function()
+				put_local(key, value)
+			end)
+		else
+			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
+			--sends put_local to a Learner
+			events.thread(function()
+				rpc.call(v, {"distdb.put_local", key, value})
+			end)
+		end
+	end
+	return true
+end
+
+--function put_local: writes a k,v pair. TODO should be atomic? is it?
+function put_local(key, value, src_write)
+	log:print(n.ip..":"..n.port..": Entered in LOCAL PUT for key "..key)
+	--TODO how to check if the source node is valid?
+	--adding a random failure to simulate failed local transactions
+	--if math.random(5) == 1 then
+	--	log:print(n.ip..":"..n.port..": NOT writing key: "..key)
+	--	return false, "404"
+	--end
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
@@ -964,9 +1237,9 @@ end
 
 function get_local(key)
 	--adding a random failure to simulate failed local transactions
-	if math.random(10) == 1 then
-		return nil
-	end
+	--if math.random(10) == 1 then
+	--	return nil
+	--end
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
 	return db_table[key]
