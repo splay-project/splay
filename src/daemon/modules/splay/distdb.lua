@@ -82,6 +82,12 @@ local min_replicas_write = 0 --TODO maybe this should match with some distdb set
 local min_replicas_read = 0 --TODO maybe this should match with some distdb settings object
 --rpc_timeout is the time in seconds that a node waits for an answer from another node on any rpc call
 local rpc_timeout = 15
+--paxos_propose_timeout is the time in seconds that a Proposer waits that all Acceptors answer a Propose message
+local paxos_propose_timeout = 15
+--paxos_accept_timeout is the time in seconds that a Proposer waits that all Acceptors answer an Accept message
+local paxos_accept_timeout = 15
+--paxos_learn_timeout is the time in seconds that an Acceptor waits that all Learners answer a Learn message
+local paxos_learn_timeout = 15
 --neighborhood is a table containing tables that contains the ip address, port and ID of all other nodes
 local neighborhood = {}
 --next_node is a table containing the ip addr, port and ID of the smallest node with bigger ID (next on the ring)
@@ -224,26 +230,27 @@ local function get_responsibles(key)
 	return responsibles, master_pos
 end
 
---function print_me: prints the ID and position of the node
+--function print_me: prints the IP address, port and position of the node
 local function print_me()
-	log:print(n.ip..":"..n.port..": ME! ID: ", n.id, "position: ", n.position)
+	log:print(n.id..":print_me: ME! IP:port=", n.ip..":"..n.port, "position=", n.position)
 end
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function print_node(node)
-	log:print(n.ip..":"..n.port..": neighbor, ", node.ip, node.port, node.id)
+	log:print(n.id..":print_node: neighbor=", node.ip, node.port, node.id)
 end
 
 --function print_all: prints the node itself and its neighbors
 function print_all()
 	print_me()
 	log:print()
+	--for the conf file "ports.lua" of the client test file
 	local for_ports_lua = "for ports.lua "
 	for _,v in ipairs(neighborhood) do
 		print_node(v)
 		for_ports_lua = for_ports_lua..", "..(v.port+1)
 	end
-	log:print(n.ip..":"..n.port..": "..for_ports_lua)
+	log:print(n.id..":print_all: "..for_ports_lua)
 
 end
 
@@ -264,7 +271,7 @@ function add_node_to_neighborhood(node)
 	--updates the "pointer" to the previous node
 	previous_node = get_previous_node()
 	--logs
-	log:print(n.ip..":"..n.port..": adding node "..node.id.." to my list")
+	log:print(n.id..":add_node_to_neighborhood: adding node="..node.id.." to my list")
 
 end
 
@@ -282,7 +289,7 @@ function remove_node_from_neighborhood(node_pos)
 	--updates the "pointer" to the previous node
 	previous_node = get_previous_node()
 	--logs
-	log:print(n.ip..":"..n.port..": removing node "..node.id.." of my list")
+	log:print(n.id..":remove_node_from_neighborhood: removing node="..node.id.." of my list")
 end
 
 --function receive_gossip: updates the table if necessary and forwards the gossip
@@ -312,7 +319,7 @@ function receive_gossip(message, neighbor_about)
 
 	--forward the gossip to the previous node
 	events.thread(function()
-		log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+		log:print(n.id..":receive_gossip: gossiping to node="..previous_node.id..", message="..message..", about node="..neighbor_about.id)
 		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
@@ -323,7 +330,7 @@ local function gossip_changes(message, neighbor_about)
 	if previous_node then
 		--create the gossip to the previous node
 		events.thread(function()
-			log:print(n.ip..":"..n.port..": gossiping to "..previous_node.id..", message: "..message..", about: "..neighbor_about.id)
+			log:print(n.id..":gossip_changes: gossiping to node="..previous_node.id..", message="..message..", about node="..neighbor_about.id)
 			rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 		end)
 	end
@@ -334,11 +341,11 @@ local function ping_others()
 	--if there is a next_node (it could be the case of a 1-node ring, where the node will not ping anyone)
 	if next_node then
 		--logs
-		--log:print(n.ip..":"..n.port..": pinging "..next_node.id)
+		--log:print(n.id..": pinging "..next_node.id)
 		--pings, and if the response is not ok
 		if not rpc.ping(next_node) then --TODO should be after several tries
 			--logs that it lost a neighbor
-			log:print(n.ip..":"..n.port..": i lost neighbor "..next_node.id)
+			log:print(n.id..":ping_others: i lost neighbor="..next_node.id)
 			--creates an object node_about to insert it into the message to be gossipped
 			local node_about = {id = next_node.id}
 			--calculates the position of the next node
@@ -418,10 +425,10 @@ end
 
 --function handle_get_bucket: handles a GET BUCKET request as the Coordinator of the Access Key ID
 function handle_get(type_of_transaction, key)
-	log:print(n.ip..":"..n.port.." handling a GET for key: "..key)
+	log:print(n.id.."handle_get: for key="..key)
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
-	--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
+	--log:print(n.id..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_get"
@@ -434,7 +441,7 @@ end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
-	log:print(n.ip..":"..n.port..": handling a PUT for key: "..key..", value: "..value)
+	log:print(n.id..":handle_put: for key="..key..", value="..value)
 	
 	local chosen_node = nil
 	
@@ -443,15 +450,15 @@ function handle_put(type_of_transaction, key, value) --TODO check about setting 
 	else
 		local responsibles = get_responsibles(key)
 		local chosen_node_id = math.random(#responsibles)
-		--log:print(n.ip..":"..n.port..": choosing responsible n. "..chosen_node_id)
+		--log:print(n.id..": choosing responsible n. "..chosen_node_id)
 		chosen_node = responsibles[chosen_node_id]
 	end
-	--log:print(n.ip..":"..n.port..": Chosen node is "..chosen_node.id)
+	--log:print(n.id..": Chosen node is "..chosen_node.id)
 	--[[TESTING WRONG NODE
 	if math.random(5) == 1 then
 		local new_node_id = math.random(#job.nodes)
 		chosen_node = job.nodes[new_node_id]
-		log:print(n.ip..":"..n.port..": Chosen node changed")
+		log:print(n.id..": Chosen node changed")
 	end
 	]]--
 	--log:print()
@@ -461,10 +468,11 @@ function handle_put(type_of_transaction, key, value) --TODO check about setting 
 	if rpc_ok then
 		--if something went wrong
 		if not rpc_answer[1] then
-			log:print(n.ip..":"..n.port..": node "..chosen_node.ip..":"..chosen_node.port.." answered "..rpc_answer[2])
+			log:print(n.id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
-		return rpc_answer[1]
+		return rpc_answer[1], rpc_answer[2]
 	end
+	log:print(n.id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
 	return nil, "network problem"
 end
 
@@ -488,16 +496,16 @@ function handle_http_message(socket)
 	--the resource has the format /key
 	local key = string.sub(resource, 2)
 	--logs
-	--log:print(n.ip..":"..n.port..": resource is "..resource)
-	--log:print(n.ip..":"..n.port..": requesting for "..key)
+	--log:print(n.id..": resource is "..resource)
+	--log:print(n.id..": requesting for "..key)
 
 	--the value is the body if it exists
 	local value = body
 	--the header Type tells if the transaction is strongly consistent or eventually consistent
 	local type_of_transaction = headers["Type"] or headers["type"]
 	--logs
-	log:print(n.ip..":"..n.port..": http request parsed, a "..method.." request will be forwarded")
-	log:print(n.ip..":"..n.port..": key: "..key..", value:", value)
+	log:print(n.id..":handle_http_message: http request parsed, a "..method.." request will be forwarded")
+	log:print(n.id..":handle_http_message: key="..key..", value=", value)
 	--forwards the request to a node that is responsible for this key
 	local ok, answer = forward_request[method](type_of_transaction, key, tonumber(value))
 
@@ -520,6 +528,10 @@ function handle_http_message(socket)
 	else
 		--send 409 Conflict (can be more specific)
 		http_response_code = "409 Conflict"
+		if answer then
+			http_response_body = answer
+			http_response_content_type = "text/plain"
+		end
 	end
 
 	--constructs the HTTP message's first line
@@ -597,7 +609,7 @@ function init(job)
 
 		--PRINTING STUFF
 		--prints a initialization message
-		log:print(n.ip..":"..n.port..": HTTP server - Started on port "..http_server_port)
+		log:print(n.id..":init: HTTP server started on port="..http_server_port)
 
 		print_all()
 
@@ -614,8 +626,7 @@ end
 
 --function paxos_operation: performs a generic operation of the Basic Paxos protocol
 function paxos_operation(operation_type, key, prop_id, retries, value)
-	log:print(n.ip..":"..n.port..":paxos_operation: ENTERED")
-	log:print(n.ip..":"..n.port..":paxos_operation: key="..key..", propID="..prop_id..", retriesLeft="..retries..", value="..value)
+	log:print(n.id..":paxos_operation: ENTERED, "..operation_type.." for key="..key..", propID="..prop_id..", retriesLeft="..retries..", value="..value)
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -634,17 +645,18 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 	end
 	--calculates the minimum majority of the replicas
 	local min_majority = math.floor(n_replicas/2)+1
-	--send propose
 	--initialize the answers as 0
 	local propose_answers = 0
 	--initialize successful as false
 	local successful = false
-	--initialize successful as false
+	--initialize string paxos_op_error_msg as "key is locked"
+	local paxos_op_error_msg = "key is locked"
+	--initialize higher_prop_id as 0
 	local higher_prop_id = 0
 
 	--if the key is not being modified right now
 	if not locked_keys[key] then
-		--lock the key during the put -TODO think about this lock, is it necessary/useful?
+		--lock the key during the operation -TODO think about this lock, is it necessary/useful?
 		locked_keys[key] = true
 		--initializes the acceptors group
 		local acceptors = {}
@@ -655,7 +667,7 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 				local propose_answer = {}
 				--if node ID is not the same as the node itself (avoids RPC calling itself)
 				if v.id ~= n.id then
-					--puts the key remotely on the others responsibles, if the put is successful
+					--sends a Propose message
 					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.receive_proposal", key, prop_id})
 					--if the RPC call was OK
 					if rpc_ok then
@@ -663,13 +675,15 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 					--else (maybe network problem, dropped message) TODO also consider timeouts!
 					else
 						--WTF
-						log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
+						log:print(n.id..":paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_PROPOSAL TO NODE="..v.id)
 					end
+				--if it is itself
 				else
+					--calls on "receive_proposal" internally, no need to RPC it
 					propose_answer[1], propose_answer[2] = receive_proposal(key, prop_id)
 				end
 				if propose_answer[1] then
-					log:print(n.ip..":"..n.port..":paxos_operation: Received a positive answer from node="..v.id)
+					log:print(n.id..":paxos_operation: Received a positive answer from node="..v.id)
 					--adds the node to the acceptor's group
 					table.insert(acceptors, v)
 					--increments answers
@@ -680,7 +694,7 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 						events.fire("propose_"..key)
 					end
 				else
-					log:print(n.ip..":"..n.port..":paxos_operation: Received a negative answer from node="..v.id.." , highest prop ID=", propose_answer[2])
+					log:print(n.id..":paxos_operation: Received a negative answer from node="..v.id.." , highest prop ID=", propose_answer[2])
 					if propose_answer[2] then
 						higher_prop_id = math.max(higher_prop_id, propose_answer[2])
 						--TODO complicated reasoning about what to do once you find the first negative answer
@@ -688,8 +702,8 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 				end
 			end)
 		end
-		--waits until min_write replicas answer, or until the rpc_timeout is depleted
-		successful = events.wait("propose_"..key, rpc_timeout) --TODO match this with settings
+		--waits until min_write replicas answer, or until paxos_propose_timeout is depleted
+		successful = events.wait("propose_"..key, paxos_propose_timeout) --TODO match this with settings
 
 		--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1". see above
 		--this is done because even after the triggering of event "key", acceptors
@@ -710,9 +724,11 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 				--unlocks the key
 				locked_keys[key] = nil
 				--returns failure
-				return false, "failed after all retries"
+				return false, "failed at Propose phase after "..paxos_max_retries.."retries"
 			--if not
 			else
+				--unlocks the key
+				locked_keys[key] = nil
 				--retry (retries--)
 				return paxos_operation(operation_type, key, prop_id, retries-1, value)
 			end
@@ -736,13 +752,13 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 					--else (maybe network problem, dropped message) TODO also consider timeouts!
 					else
 						--WTF
-						log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
+						log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.id)
 					end
 				else
 					accept_answer = {receive_accept(key, prop_id, value)}
 				end
 				if accept_answer[1] then
-					log:print(n.ip..":"..n.port..":paxos_operation: Received a positive answer from node="..v.id)
+					log:print(n.id..":paxos_operation: Received a positive answer from node="..v.id)
 					--increments answers
 					accept_answers = accept_answers + 1
 					--if answers reaches the number of acceptors
@@ -751,25 +767,25 @@ function paxos_operation(operation_type, key, prop_id, retries, value)
 						events.fire("accept_"..key)
 					end
 				else
-					log:print(n.ip..":"..n.port..":paxos_operation: Received a negative answer from node="..v.id.." , something went WRONG")
+					log:print(n.id..":paxos_operation: Received a negative answer from node="..v.id.." , something went WRONG")
 				end
 			end)
 		end
 
 
-		--waits until min_write replicas answer, or until the rpc_timeout is depleted
-		successful, timeout = events.wait("accept_"..key, rpc_timeout) --TODO match this with settings
+		--waits until min_write replicas answer, or until the paxos_accept_timeout is depleted
+		successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout) --TODO match this with settings
 
 
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	return successful, timeout
+	return successful, paxos_op_error_msg
 end
 
 --function consistent_put: puts a k,v and waits until all replicas assure they have a copy
 function consistent_put(key, value)
-	log:print(n.ip..":"..n.port..": Entered in CONSISTENT PUT for key "..key)
+	log:print(n.id..":consistent_put: ENTERED, for key="..key..", value="..value)
 	--gets the master of this key
 	local master, master_pos = get_master(key)
 	--if the node is not the master
@@ -803,18 +819,18 @@ function consistent_put(key, value)
 		for i = 1, n_replicas - 1 do
 			--execute in parallel
 			events.thread(function()
-				local replica_id = nil
+				local replica_pos = nil
 				--the replica position in the table is master_pos + i if it is not bigger as the size of the table neighborhood
 				if master_pos + i <= #neighborhood then
-					replica_id = master_pos + i
+					replica_pos = master_pos + i
 				--if it is, then it takes the first nodes (e.g. neighborhood size=10 => neighbors: 8, 9, 10, 1, 2...)
 				else
-					replica_id = master_pos + i - #neighborhood
+					replica_pos = master_pos + i - #neighborhood
 				end
-				--log:print("i: "..i)
-				--log:print("replica id: "..replica_id)
+				--log:print(n.id..":consistent_put: i="..i)
+				--log:print(n.id..":consistent_put: replica pos="..replica_pos)
 				--puts the key remotely on the replica
-				local rpc_ok, rpc_answer = rpc.acall(neighborhood[replica_id], {"distdb.put_local", key, value})
+				local rpc_ok, rpc_answer = rpc.acall(neighborhood[replica_pos], {"distdb.put_local", key, value})
 				--if the RPC call was OK
 				if rpc_ok then
 					--if the put is successful
@@ -830,7 +846,7 @@ function consistent_put(key, value)
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--WTF
-					log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
+					log:print(n.id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..neighborhood[replica_pos].id)
 				end
 			end)
 		end
@@ -845,6 +861,7 @@ end
 
 --function evtl_consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
 function evtl_consistent_put(key, value)
+	log:print(n.id..":evtl_consistent_put: ENTERED, for key="..key..", value="..value)
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -908,7 +925,7 @@ function evtl_consistent_put(key, value)
 					--else (maybe network problem, dropped message) TODO also consider timeouts!
 					else
 						--WTF
-						log:print("SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL")
+						log:print(n.id..":evtl_consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.id)
 					end
 				end)
 			end
@@ -924,6 +941,7 @@ end
 
 --function paxos_put: performs a Basic Paxos protocol in order to put a k,v pair
 function paxos_put(key, value)
+	log:print(n.id..":paxos_put: ENTERED, for key="..key..", value="..value)
 	--if no previous proposals have been done for this key
 	if not prop_ids[key] then
 		--first number to use is 1
@@ -935,6 +953,7 @@ end
 --function consistent_get: returns the value of a certain key; reads the value only from the node itself (matches with
 --the behavior of consisten_put, where all replicas write always all values)
 function consistent_get(key)
+	log:print(n.id..":consistent_get: ENTERED, for key="..key)
 	--gets the responsibles of the key
 	local responsibles = get_responsibles(key)
 	--for all responsibles
@@ -951,6 +970,7 @@ end
 
 --function consistent_get: returns the value of a certain key; reads the value from a minimum of replicas
 function evtl_consistent_get(key)
+	log:print(n.id..":evtl_consistent_get: ENTERED, for key="..key)
 	--initializes not_responsible as false
 	local not_responsible = true
 	--gets the responsibles of the key
@@ -994,16 +1014,16 @@ function evtl_consistent_get(key)
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--WTF
-					log:print("SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL")
+					log:print(n.id..":evtl_consistent_get: SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL TO NODE="..v.id)
 				end
 			end
 			--if there is an answer
 			if answer_data[v.id] then
 				--logs
-				log:print(n.ip..":"..n.port..": received from "..v.id.." key: "..key..", value: "..answer_data[v.id].value..", enabled: ", answer_data[v.id].enabled, "vector_clock:")
+				log:print(n.id..":evtl_consistent_get: received from node="..v.id..", key="..key..", value="..answer_data[v.id].value..", enabled=", answer_data[v.id].enabled)
 				--prints the vector clock
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
-					log:print(n.ip..":"..n.port..":",i2,v2)
+					log:print(n.id..":evtl_consistent_get: vector_clock=",i2,v2)
 				end
 				--increments answers
 				answers = answers + 1
@@ -1108,11 +1128,9 @@ function evtl_consistent_get(key)
 			--TODO WHAT IF they are equal? i think im not considering this case
 		end
 	end
-	--logs
-	log:print(n.ip..":"..n.port..": remaining answers")
 	--insert the info in the return data
 	for i,v in pairs(answer_data) do
-		log:print(n.ip..":"..n.port..":", i, v.value)
+		log:print(n.id..":evtl_consistent_get: remaining answer=", i, v.value)
 		table.insert(return_data, v)
 	end
 	--returns
@@ -1121,17 +1139,17 @@ end
 
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
 function receive_proposal(key, prop_id)
-	log:print(n.ip..":"..n.port..": Entered in RECEIVE PROPOSAL for key "..key..", prop_id="..prop_id)
+	log:print(n.id..": Entered in RECEIVE PROPOSAL for key "..key..", prop_id="..prop_id)
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
-		log:print(n.ip..":"..n.port..": NOT accepting Propose for key: "..key)
+		log:print(n.id..": NOT accepting Propose for key: "..key)
 		return false
 	end
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(n.ip..":"..n.port..": NOT accepting Propose for key, wrong key type")
+		log:print(n.id..": NOT accepting Propose for key, wrong key type")
 		return false, "wrong key type"
 	end
 
@@ -1148,28 +1166,28 @@ end
 
 --function receive_accept: receives and answers to a "Accept!" message, used in Paxos
 function receive_accept(key, prop_id, value)
-	log:print(n.ip..":"..n.port..": Entered in RECEIVE ACCEPT for key "..key)
+	log:print(n.id..": Entered in RECEIVE ACCEPT for key "..key)
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(n.ip..":"..n.port..": NOT accepting Accept! for key, wrong key type")
+		log:print(n.id..": NOT accepting Accept! for key, wrong key type")
 		return false, "wrong key type"
 	end
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
 	if not db_table[key] then
-		log:print(n.ip..":"..n.port..":receive_accept: BIZARRE! wrong key, key does not exist")
+		log:print(n.id..":receive_accept: BIZARRE! wrong key, key does not exist")
 		return false, "BIZARRE! wrong key, key does not exist"
 	--if it exists
 	elseif db_table[key].prop_id > prop_id then
-		log:print(n.ip..":"..n.port..":receive_accept: REJECTED, higher prop_id")
+		log:print(n.id..":receive_accept: REJECTED, higher prop_id")
 		return false, "higher prop_id"
 	elseif db_table[key].prop_id < prop_id then
-		log:print(n.ip..":"..n.port..":receive_accept: BIZARRE! lower prop_id")
+		log:print(n.id..":receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
-	log:print(n.ip..":"..n.port..": Telling learners about key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "propID:"..prop_id)
+	log:print(n.id..": Telling learners about key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "propID:"..prop_id)
 	local responsibles = get_responsibles(key)
 	for i,v in ipairs(responsibles) do
 		if v.id == n.id then
@@ -1189,23 +1207,23 @@ end
 
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
 function put_local(key, value, src_write)
-	log:print(n.ip..":"..n.port..": Entered in LOCAL PUT for key "..key)
+	log:print(n.id..": Entered in LOCAL PUT for key "..key)
 	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
 	--if math.random(5) == 1 then
-	--	log:print(n.ip..":"..n.port..": NOT writing key: "..key)
+	--	log:print(n.id..": NOT writing key: "..key)
 	--	return false, "404"
 	--end
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(n.ip..":"..n.port..": NOT writing key, wrong key type")
+		log:print(n.id..": NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
-		log:print(n.ip..":"..n.port..": NOT writing key, wrong value type")
+		log:print(n.id..": NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
 
@@ -1228,9 +1246,9 @@ function put_local(key, value, src_write)
 		--TODO handle enabled
 		--TODO add timestamps
 	end
-	log:print(n.ip..":"..n.port..": writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
+	log:print(n.id..": writing key: "..key..", value: "..value..", enabled: ", db_table[key].enabled, "vector_clock:")
 	for i,v in pairs(db_table[key].vector_clock) do
-		log:print(n.ip..":"..n.port..":",i,v)
+		log:print(n.id..":",i,v)
 	end
 	return true
 end
