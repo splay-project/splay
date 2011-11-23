@@ -978,6 +978,7 @@ end
 function paxos_put(key, value)
 	log:print(n.short_id..":paxos_put: ENTERED, for key="..shorten_id(key)..", value="..value)
 	--if no previous proposals have been done for this key
+	--TODO why does it always start always with 1???
 	if not prop_ids[key] then
 		--first number to use is 1
 		prop_ids[key] = 1

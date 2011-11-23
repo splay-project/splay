@@ -98,7 +98,7 @@ events.run(function()
 	math.randomseed(os.time())
 	local key = crypto.evp.digest("sha1",math.random(100000))
 
-	for i=1, 10 do
+	for i=1, 4 do
 		local port = misc.random_pick(ports)
 		print("Key is "..key)
 --		send_put(port, "evtl_consistent", key, i*10)
