@@ -40,6 +40,7 @@ local misc	= require"splay.misc" --TODO look if the use of splay.misc fits here
 local events	= require"splay.events" --TODO look if the use of splay.events fits here
 -- for encoding/decoding the GET answer
 local json	= require"json" --TODO look if the use of json fits here
+local paxos	= require"splay.paxos"
 
 
 --REQUIRED FUNCTIONS AND OBJECTS
@@ -230,7 +231,7 @@ local function get_responsibles(key)
 	return responsibles, master_pos
 end
 
---function shorten_id: returns only the first 5 hexadigits of a ID string
+--function shorten_id: returns only the first 5 hexadigits of a ID string (for better printing)
 function shorten_id(id)
 	return string.sub(id, 1, 5)..".."
 end
@@ -590,6 +591,14 @@ function init(job)
 		n_replicas = 5 --TODO this should be configurable
 		min_replicas_write = 3 --TODO this should be configurable
 		min_replicas_read = 3 --TODO this should be configurable
+		
+		--changing pointers of paxos functions
+		paxos.send_paxos_proposal = send_paxos_proposal
+		receive_paxos_proposal = paxos.receive_proposal
+		paxos.send_paxos_accept = send_paxos_accept
+		receive_paxos_accept = paxos.receive_accept
+		paxos.send_paxos_proposal = send_paxos_proposal
+
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
@@ -629,269 +638,6 @@ end
 function stop()
 	net.stop_server(n.port+1)
 	rpc.stop_server(n.port)
-end
-
---function paxos_operation: performs a generic operation of the Basic Paxos protocol
-function paxos_operation(operation_type, key, prop_id, retries, value)
-	log:print(n.short_id..":paxos_operation: ENTERED, "..operation_type.." for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
-	--initializes boolean not_responsible
-	local not_responsible = true
-	--gets all responsibles for the key
-	local responsibles = get_responsibles(key)
-	--for all responsibles
-	for i,v in ipairs(responsibles) do
-		--if the ID of the node matches, make not_responsible false
-		if v.id == n.id then
-			not_responsible = false
-			break
-		end
-	end
-
-	--if the node is not responsible, return with an error message
-	if not_responsible then
-		return false, "wrong node"
-	end
-
-	--if the key is being modified right now
-	if locked_keys[key] then
-		return false, "key is locked"
-	end
-
-	--lock the key during the operation -TODO think about this lock, is it necessary/useful?
-	locked_keys[key] = true
-	--initialize successful as false
-	local successful = false
-	--initialize string paxos_op_error_msg as nil
-	local paxos_op_error_msg = nil
-	--calculates the minimum majority of the replicas
-	local min_majority = math.floor(n_replicas/2)+1
-	--initialize the answers as 0
-	local propose_answers = 0
-	--initialize newest_prop_id as 0
-	local newest_prop_id = 0
-	
-	local newest_value = nil
-	
-	--initializes the acceptors group
-	local acceptors = {}
-	--for all responsibles
-	for i,v in ipairs(responsibles) do
-		--execute in parallel
-		events.thread(function()
-			local propose_answer = {}
-			--if node ID is not the same as the node itself (avoids RPC calling itself)
-			if v.id ~= n.id then
-				--sends a Propose message
-				local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.receive_proposal", key, prop_id})
-				--if the RPC call was OK
-				if rpc_ok then
-					propose_answer = rpc_answer
-				--else (maybe network problem, dropped message) TODO also consider timeouts!
-				else
-					--WTF
-					log:print(n.short_id..":paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_PROPOSAL TO NODE="..v.short_id)
-				end
-			--if it is itself
-			else
-				--calls on "receive_proposal" internally, no need to RPC it
-				propose_answer[1], propose_answer[2], propose_answer[3] = receive_proposal(key, prop_id)
-			end
-			if propose_answer[1] then
-				if propose_answer[3] then
-					log:print(n.short_id..":paxos_operation: Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
-				else
-					log:print(n.short_id..":paxos_operation: Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
-				end
-				--adds the node to the acceptor's group
-				table.insert(acceptors, v)
-				--increments answers
-				propose_answers = propose_answers + 1
-				--if answers reaches the minimum majority
-				if propose_answers >= min_majority then
-					--trigger the unlocking of the key
-					events.fire("propose_"..key)
-				end
-			else
-				if propose_answer[3] then
-					log:print(n.short_id..":paxos_operation: Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
-				else
-					log:print(n.short_id..":paxos_operation: Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
-				end
-			end
-			if propose_answer[2] then
-				--TODO complicated reasoning about what to do once you find the first negative answer
-				if propose_answer[2] > newest_prop_id then
-					newest_prop_id = propose_answer[2]
-					if propose_answer[3] then
-						newest_value = propose_answer[3]
-					end
-				end
-			end
-			if newest_value then
-				log:print(n.short_id..":paxos_operation: newest_prop_id="..newest_prop_id..", newest_value=", newest_value.value)
-			else
-				log:print(n.short_id..":paxos_operation: newest_prop_id="..newest_prop_id..", newest_value=")
-			end
-		end)
-	end
-
-	--waits until min_write replicas answer, or until paxos_propose_timeout is depleted
-	successful = events.wait("propose_"..key, paxos_propose_timeout) --TODO match this with settings
-
-	--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1". see above
-	--this is done because even after the triggering of event "key", acceptors
-	--can continue engrossing the acceptors group
-	--TODO check if necessary (maybe having more acceptors doesn't hurt - it involves
-	--more messages in accept phase, though)
-	local n_acceptors = #acceptors
-
-	--if the proposal didn't gather the quorum needed
-	if not successful then
-		--if a higher prop_id was indicated by the acceptors
-		if newest_prop_id > 0 then
-			--propose 1 more than that prop_id
-			prop_id = newest_prop_id + 1
-		end
-		--if the number of retries is depleted
-		if retries == 0 then
-			--unlocks the key
-			locked_keys[key] = nil
-			--returns failure
-			return false, "failed at Propose phase after "..paxos_max_retries.."retries"
-		--if not
-		else
-			--unlocks the key
-			locked_keys[key] = nil
-			--retry (retries--)
-			return paxos_operation(operation_type, key, prop_id, retries-1, value)
-		end
-	end
-
-	if operation_type == "get" then
-		return true, {newest_value}
-	end
-
-
-	local accept_answers = 0
-	--for all acceptors
-	for i=1,n_acceptors do
-		v = acceptors[i]
-		--execute in parallel
-		events.thread(function()
-			local accept_answer = nil
-			--if node ID is not the same as the node itself (avoids RPC calling itself)
-			if v.id ~= n.id then
-				--puts the key remotely on the others responsibles, if the put is successful
-				local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.receive_accept", key, prop_id, value})
-				--if the RPC call was OK
-				if rpc_ok then
-					accept_answer = rpc_answer
-				--else (maybe network problem, dropped message) TODO also consider timeouts!
-				else
-					--WTF
-					log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.short_id)
-				end
-			else
-				accept_answer = {receive_accept(key, prop_id, value)}
-			end
-			if accept_answer[1] then
-				log:print(n.short_id..":paxos_operation: Received a positive answer from node="..v.short_id)
-				--increments answers
-				accept_answers = accept_answers + 1
-				--if answers reaches the number of acceptors
-				if accept_answers >= n_acceptors then
-					--trigger the unlocking of the key
-					events.fire("accept_"..key)
-				end
-			else
-				log:print(n.short_id..":paxos_operation: Received a negative answer from node="..v.short_id.." , something went WRONG")
-			end
-		end)
-	end
-
-
-	--waits until min_write replicas answer, or until the paxos_accept_timeout is depleted
-	successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout) --TODO match this with settings
-
-	--unlocks the key
-	locked_keys[key] = nil
-	return successful, paxos_op_error_msg
-end
-
---function consistent_put: puts a k,v and waits until all replicas assure they have a copy
-function consistent_put(key, value)
-	log:print(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value="..value)
-	--gets the master of this key
-	local master, master_pos = get_master(key)
-	--if the node is not the master
-	if master_pos ~= n.position then
-		--return with error message
-		return false, "wrong master"
-	end
-	--initialize the answers as 0
-	local answers = 0
-	--initialize successful as false
-	local successful = false
-	--if the key is not being modified right now
-	if not locked_keys[key] then
-		--lock the key during the put
-		locked_keys[key] = true
-		--put the key locally
-		events.thread(function()
-			--if the "put" action is successful
-			if put_local(key, value) then
-				--increment answers
-				answers = answers + 1
-				--if answers reaches the number of replicas
-				if answers >= n_replicas then --TODO adapt this to n_responsibles
-					--trigger the unlocking of the key (see below. events.wait)
-					events.fire(key)
-				end
-			end
-
-		end)
-		--for the next n - 1 nodes (the other replicas)
-		for i = 1, n_replicas - 1 do
-			--execute in parallel
-			events.thread(function()
-				local replica_pos = nil
-				--the replica position in the table is master_pos + i if it is not bigger as the size of the table neighborhood
-				if master_pos + i <= #neighborhood then
-					replica_pos = master_pos + i
-				--if it is, then it takes the first nodes (e.g. neighborhood size=10 => neighbors: 8, 9, 10, 1, 2...)
-				else
-					replica_pos = master_pos + i - #neighborhood
-				end
-				--log:print(n.short_id..":consistent_put: i="..i)
-				--log:print(n.short_id..":consistent_put: replica pos="..replica_pos)
-				--puts the key remotely on the replica
-				local rpc_ok, rpc_answer = rpc.acall(neighborhood[replica_pos], {"distdb.put_local", key, value})
-				--if the RPC call was OK
-				if rpc_ok then
-					--if the put is successful
-					if rpc_answer[1] then
-						--answers gets incremented
-						answers = answers + 1
-						--if answers reaches the number of replicas
-						if answers >= n_replicas then
-							--trigger the unlocking of the key
-							events.fire(key)
-						end
-					end
-				--else (maybe network problem, dropped message) TODO also consider timeouts!
-				else
-					--WTF
-					log:print(n.short_id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..neighborhood[replica_pos].short_id)
-				end
-			end)
-		end
-		--waits until all replicas answer, or until the rpc_timeout is depleted
-		successful = events.wait(key, rpc_timeout) --TODO match this with settings --TODO 2 watch out with node failures, how to handle???
-		--unlocks the key
-		locked_keys[key] = nil
-	end
-	--returns the value of the variable successful
-	return successful
 end
 
 --function evtl_consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
@@ -983,7 +729,38 @@ function paxos_put(key, value)
 		--first number to use is 1
 		prop_ids[key] = 1
 	end
-	return paxos_operation("put", key, prop_ids[key], paxos_max_retries, value)
+	--logs the propID
+	log:print(n.short_id..":paxos_put:key="..shorten_id(key)..", propID="..prop_ids[key])
+	--initializes boolean not_responsible
+	local not_responsible = true
+	--gets all responsibles for the key
+	local responsibles = get_responsibles(key)
+	--for all responsibles
+	for i,v in ipairs(responsibles) do
+		--if the ID of the node matches, make not_responsible false
+		if v.id == n.id then
+			not_responsible = false
+			break
+		end
+	end
+
+	--if the node is not responsible, return with an error message
+	if not_responsible then
+		return false, "wrong node"
+	end
+
+	--if the key is being modified right now
+	if locked_keys[key] then
+		return false, "key is locked"
+	end
+
+	--check if this is necessary
+	locked_keys[key] = true
+	local ok, answer = paxos.paxos_operation("put", key, prop_ids[key], responsibles, paxos_max_retries, value)
+	locked_keys[key] = false
+
+	--returns the answer of paxos_operation
+	return ok, answer
 end
 
 --function consistent_get: returns the value of a certain key; reads the value only from the node itself (matches with
@@ -1177,12 +954,66 @@ end
 function paxos_get(key)
 	log:print(n.short_id..":paxos_get: ENTERED, for key="..shorten_id(key))
 	--if no previous proposals have been done for this key
+	--TODO why does it always start always with 1???
 	if not prop_ids[key] then
 		--first number to use is 1
 		prop_ids[key] = 1
 	end
-	return paxos_operation("get", key, prop_ids[key], paxos_max_retries)
+	--logs the propID
+	log:print(n.short_id..":paxos_get:key="..shorten_id(key)..", propID="..prop_ids[key])
+	--initializes boolean not_responsible
+	local not_responsible = true
+	--gets all responsibles for the key
+	local responsibles = get_responsibles(key)
+	--for all responsibles
+	for i,v in ipairs(responsibles) do
+		--if the ID of the node matches, make not_responsible false
+		if v.id == n.id then
+			not_responsible = false
+			break
+		end
+	end
+
+	--if the node is not responsible, return with an error message
+	if not_responsible then
+		return false, "wrong node"
+	end
+
+	--if the key is being modified right now
+	if locked_keys[key] then
+		return false, "key is locked"
+	end
+
+	--check if this is necessary
+	locked_keys[key] = true
+	local ok, answer = paxos.paxos_operation("get", key, prop_ids[key], responsibles, paxos_max_retries)
+	locked_keys[key] = false
+
+	--returns the answer of paxos_operation
+	return ok, answer
 end
+
+
+function send_paxos_proposal(v, key, prop_id)
+	log:print(n.short_id..":send_paxos_proposal: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id)
+	return rpc.acall(v, {"dist.receive_paxos_proposal", key, prop_id})
+end
+
+function send_paxos_accept(v, key, prop_id, value)
+	log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
+	return rpc.acall(v, {"dist.receive_paxos_accept", key, prop_id, value})
+end
+
+function send_paxos_learn(v, key, value)
+	log:print(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value="..value)
+	return rpc.call(v, {"dist.put_local", key, value})
+end
+
+--receive_paxos_accept = paxos.receive_accept
+
+
+
+
 
 --BACK-END FUNCTIONS
 
