@@ -594,9 +594,9 @@ function init(job)
 		
 		--changing pointers of paxos functions
 		paxos.send_proposal = send_paxos_proposal
-		receive_paxos_proposal = paxos.receive_proposal
+		--receive_paxos_proposal = paxos.receive_proposal
 		paxos.send_accept = send_paxos_accept
-		receive_paxos_accept = paxos.receive_accept
+		--receive_paxos_accept = paxos.receive_accept
 		paxos.send_proposal = send_paxos_proposal
 
 
@@ -1001,9 +1001,12 @@ function send_paxos_proposal(v, key, prop_id)
 	return rpc.acall(v, {"distdb.receive_paxos_proposal", key, prop_id})
 end
 
-function send_paxos_accept(v, key, prop_id, value)
+function send_paxos_accept(v, key, prop_id, peers, value)
 	log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
-	return rpc.acall(v, {"distdb.receive_paxos_accept", key, prop_id, value})
+	for i2,v2 in ipairs(peers) do
+		log:print(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
+	end
+	return rpc.acall(v, {"distdb.receive_paxos_accept", key, prop_id, peers, value})
 end
 
 function send_paxos_learn(v, key, value)
@@ -1076,7 +1079,7 @@ function receive_paxos_accept(key, prop_id, peers, value)
 			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
 			--sends put_local to a Learner
 			events.thread(function()
-				send_learn(v, key, value)
+				send_paxos_learn(v, key, value)
 			end)
 		end
 	end
@@ -1174,12 +1177,12 @@ function put_local(key, value, src_write)
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(n.short_id..": NOT writing key, wrong key type")
+		log:print(n.short_id..":put_local: NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
-		log:print(n.short_id..": NOT writing key, wrong value type")
+		log:print(n.short_id..":put_local: NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
 

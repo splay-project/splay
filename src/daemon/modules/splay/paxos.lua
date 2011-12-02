@@ -194,7 +194,7 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 		--if not
 		else
 			--retry (retries--)
-			return paxos_operation(operation_type, key, prop_id, retries-1, value)
+			return paxos_operation(operation_type, key, prop_id, peers, retries-1, value)
 		end
 	end
 
@@ -210,20 +210,15 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 		--execute in parallel
 		events.thread(function()
 			local accept_answer = nil
-			--if node ID is not the same as the node itself (avoids RPC calling itself)
-			if v.id ~= n.id then
-				--puts the key remotely on the others responsibles, if the put is successful
-				local rpc_ok, rpc_answer = receive_accept(v, key, prop_id, value)
-				--if the RPC call was OK
-				if rpc_ok then
-					accept_answer = rpc_answer
-				--else (maybe network problem, dropped message) TODO also consider timeouts!
-				else
-					--WTF
-					log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.short_id)
-				end
+			--puts the key remotely on the others responsibles, if the put is successful
+			local rpc_ok, rpc_answer = send_accept(v, key, prop_id, peers, value)
+			--if the RPC call was OK
+			if rpc_ok then
+				accept_answer = rpc_answer
+			--else (maybe network problem, dropped message) TODO also consider timeouts!
 			else
-				accept_answer = {receive_accept(key, prop_id, value)}
+				--WTF
+				log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.short_id)
 			end
 			if accept_answer[1] then
 				log:print("paxos_operation: Received a positive answer from node="..v.short_id)
@@ -254,10 +249,13 @@ function send_proposal(v, key, prop_id)
 	return rpc.acall(v, {"paxos.receive_proposal", key, prop_id})
 end
 
-function send_accept(v, key, prop_id, value)
+function send_accept(v, key, prop_id, peers, value)
 	--logs entrance to the function
 	log:print("send_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
-	return rpc.acall(v, {"paxos.receive_accept", key, prop_id, value})
+	for i2,v2 in ipairs(peers) do
+		log:print("send_accept: peers: node="..shorten_id(v2.id))
+	end
+	return rpc.acall(v, {"paxos.receive_accept", key, prop_id, peers, value})
 end
 
 function send_learn(v, key, value)
@@ -267,7 +265,6 @@ function send_learn(v, key, value)
 end
 
 --BACK-END FUNCTIONS
---TODO HAY QUE CAMBIAR ESTAS
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
 function receive_proposal(key, prop_id)
 	log:print("receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
@@ -347,37 +344,27 @@ function receive_learn(key, value)
 	events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(n.short_id..": NOT writing key, wrong key type")
+		log:print("receive_learn: NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
-		log:print(n.short_id..": NOT writing key, wrong value type")
+		log:print("receive_learn: NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
---AQUI ME QUEDE
+--[[
+--TODO write only when there is a quorum
 	if not src_write then
 		src_write = {id="version"} --for compatibility with consistent_put
 	end
-
+--]]
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	if not db_table[key] then
-		db_table[key] = {value=value, enabled=true, vector_clock={}}
-		db_table[key].vector_clock[src_write.id] = 1
-	else
-	--else, replace the value and increase the version
-		db_table[key].value=value
-		if db_table[key].vector_clock[src_write.id] then
-			db_table[key].vector_clock[src_write.id] = db_table[key].vector_clock[src_write.id] + 1
-		else
-			db_table[key].vector_clock[src_write.id] = 1
-		end
-		--TODO handle enabled
-		--TODO add timestamps
+	if not paxos_db[key] then
+		paxos_db[key] = {}
 	end
-	log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: "..value..", enabled: ", db_table[key].enabled)
-	for i,v in pairs(db_table[key].vector_clock) do
-		log:print(n.short_id..":put_local: vector_clock=",i,v)
-	end
+	--replace the value
+	paxos_db[key].value=value
+
+	log:print("receive_learn: writing key="..shorten_id(key)..", value: "..value)
 	return true
 end
