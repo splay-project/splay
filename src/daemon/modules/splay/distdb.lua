@@ -593,11 +593,11 @@ function init(job)
 		min_replicas_read = 3 --TODO this should be configurable
 		
 		--changing pointers of paxos functions
-		paxos.send_paxos_proposal = send_paxos_proposal
+		paxos.send_proposal = send_paxos_proposal
 		receive_paxos_proposal = paxos.receive_proposal
-		paxos.send_paxos_accept = send_paxos_accept
+		paxos.send_accept = send_paxos_accept
 		receive_paxos_accept = paxos.receive_accept
-		paxos.send_paxos_proposal = send_paxos_proposal
+		paxos.send_proposal = send_paxos_proposal
 
 
 		--starts the RPC server for internal communication
@@ -994,25 +994,94 @@ function paxos_get(key)
 end
 
 
+
+--REPLACEMENTS OF PAXOS FUNCTIONS
 function send_paxos_proposal(v, key, prop_id)
 	log:print(n.short_id..":send_paxos_proposal: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id)
-	return rpc.acall(v, {"dist.receive_paxos_proposal", key, prop_id})
+	return rpc.acall(v, {"distdb.receive_paxos_proposal", key, prop_id})
 end
 
 function send_paxos_accept(v, key, prop_id, value)
 	log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
-	return rpc.acall(v, {"dist.receive_paxos_accept", key, prop_id, value})
+	return rpc.acall(v, {"distdb.receive_paxos_accept", key, prop_id, value})
 end
 
 function send_paxos_learn(v, key, value)
 	log:print(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value="..value)
-	return rpc.call(v, {"dist.put_local", key, value})
+	return rpc.call(v, {"distdb.put_local", key, value})
 end
 
---receive_paxos_accept = paxos.receive_accept
+function receive_paxos_proposal(key, prop_id)
+	log:print(n.short_id..":receive_paxos_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
+	--adding a random failure to simulate failed local transactions
+	if math.random(5) == 1 then
+		log:print("receive_paxos_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
+		return false
+	end
+	--adding a random waiting time to simulate different response times
+	events.sleep(math.random(100)/100)
+	--if key is not a string, dont accept the transaction
+	if type(key) ~= "string" then
+		log:print("receive_paxos_proposal: NOT accepting Propose for key, wrong key type")
+		return false, "wrong key type"
+	end
 
+	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
+	if not db_table[key] then
+		db_table[key] = {enabled=true, vector_clock={}} --check how to make compatible with vector_clock
+	--if it exists
+	elseif db_table[key].prop_id and db_table[key].prop_id >= prop_id then
+		--TODO maybe to send the value on a negative answer is not necessary
+		return false, db_table[key].prop_id, db_table[key]
+	end
+	local old_prop_id = db_table[key].prop_id
+	db_table[key].prop_id = prop_id
+	return true, old_prop_id, db_table[key]
+end
 
+function receive_paxos_accept(key, prop_id, peers, value)
+	log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
+	--adding a random waiting time to simulate different response times
+	events.sleep(math.random(100)/100)
+	--if key is not a string, dont accept the transaction
+	if type(key) ~= "string" then
+		log:print(" NOT accepting Accept! wrong key type")
+		return false, "wrong key type"
+	end
 
+	--if the k,v pair doesnt exist
+	if not db_table[key] then
+		--BIZARRE: because this is not meant to happen (an Accept comes after a Propose, and a record for the key
+		--is always created at a Propose)
+		log:print("receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
+		return false, "BIZARRE! wrong key, key does not exist"
+	--if it exists, and the locally stored prop_id is bigger than the proposed prop_id
+	elseif db_table[key].prop_id > prop_id then
+		--reject the Accept! message
+		log:print("receive_accept: REJECTED, higher prop_id")
+		return false, "higher prop_id"
+	--if the locally stored prop_id is smaller than the proposed prop_id
+	elseif db_table[key].prop_id < prop_id then
+		--BIZARRE: again, Accept comes after Propose, and a later Propose can only increase the prop_id
+		log:print("receive_accept: BIZARRE! lower prop_id")
+		return false, "BIZARRE! lower prop_id"
+	end
+	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value="..value..", enabled=", db_table[key].enabled, "propID="..prop_id)
+	for i,v in ipairs(peers) do
+		if v.id == n.id then
+			events.thread(function()
+				put_local(key, value)
+			end)
+		else
+			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
+			--sends put_local to a Learner
+			events.thread(function()
+				send_learn(v, key, value)
+			end)
+		end
+	end
+	return true
+end
 
 
 --BACK-END FUNCTIONS
