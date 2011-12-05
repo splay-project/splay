@@ -24,3 +24,5 @@ osx_pkg=splayd_${ver}.pkg
 
 ftp -u ftp://${ftp_user}:${ftp_passwd}@splay-project.org/sites/splay-project.org/files/release/ ${daemon} ${controller}
 #ftp -u ftp://${ftp_user}:${ftp_passwd}@splay-project.org/sites/splay-project.org/files/binaries/ ${luarocks} ${osx_pkg}
+
+
