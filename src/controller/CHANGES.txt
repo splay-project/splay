@@ -1,3 +1,5 @@
+controller 1.3:
+	- support to ship binary libraries (splayd in grid mode)
 controller 1.2.1:
 	- remove lib/json.rb, using most recent json gem (1.6.1)
 	- remove dependency to Orbjson 0.0.4 for cli-server/cli-server.rb: the oly remaining dep is toward Webrick
