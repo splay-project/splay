@@ -15,6 +15,7 @@ rm splayd_planetlab/splayd/modules/splay/test-misc.lua
 rm splayd_planetlab/splayd/modules/splay/test-splay-async-dns.lua
 rm splayd_planetlab/splayd/modules/splay/test-benc.lua
 rm splayd_planetlab/splayd/modules/splay/test-async_dns.lua
+rm splayd_planetlab/splayd/modules/test-json.lua
 
 
 COPY_EXTENDED_ATTRIBUTES_DISABLE=true COPYFILE_DISABLE=true tar czvf "splayd_planetlab.tar.gz"  --exclude=.svn splayd_planetlab/
