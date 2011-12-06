@@ -275,29 +275,30 @@ s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitu
   </td>
 </tr>
 <tr>
-	<th>Max execution time (seconds)
-	</th>
+	<th>List type</th>
   <td>
-    <%= text_field 'job', :max_time, :size => 4 %>
-		<% if current_user.demo == 1 %>
-		<font color="red"><b>Demo: max 300</b></font>
-		<% end %>
+		<%= radio_button 'job', :list_type, 'HEAD' %> head
+		<%= radio_button 'job', :list_type, 'RANDOM' %> random
   </td>
 </tr>
 <tr>
-	<th>Splayd's version</th>
-	<td>
-		<% s_v = Splayd.find_by_sql("SELECT DISTINCT version FROM splayds WHERE version IS NOT NULL") %>
-    <%= select 'job', :splayd_version, s_v.collect{|p| [p.version]}.sort.reverse %>
-	</td>
+	<th>Job type</th>
+  <td>
+		<%= check_box 'job', :strict, {}, 'TRUE', 'FALSE' %> strict
+  </td>
 </tr>
 <tr>
-	<th>Max load</th>
-	<td><%= text_field 'job', :max_load, :size => 4 %></td>
+	<th>Scheduled at</th>
+        <td>
+                <%= text_field 'job', :scheduled_at, :size => 19, :value => "YYYY-MM-DD HH:MM:SS" %>  
+		<img src="/images/calendar/cal.gif" style="cursor: pointer;" onclick="javascript:NewCssCal('job_scheduled_at', 'ddMMyyyy', 'dropdown', true, '24', true)" />  absolute
+                <br/>
+                <input type="text" size="19" id="job_scheduled_at_relative" value="HH:MM:SS" onblur="update_absolute();"> relative to now
+         </td>
 </tr>
 <tr>
-	<th>Min uptime (seconds)</th>
-	<td><%= text_field 'job', :min_uptime, :size => 5 %></td>
+  <th>Number of splayds in list (0 = all)</th>
+	<td><%= text_field 'job', :list_size, :size => 4 %></td>
 </tr>
 
 <% if SplayController::localization %>
@@ -336,6 +337,31 @@ s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitu
 </tr>
 
 <% end %>
+<tr>
+	<th>Max execution time (seconds)
+	</th>
+  <td>
+    <%= text_field 'job', :max_time, :size => 4 %>
+		<% if current_user.demo == 1 %>
+		<font color="red"><b>Demo: max 300</b></font>
+		<% end %>
+  </td>
+</tr>
+<tr>
+	<th>Splayd's version</th>
+	<td>
+		<% s_v = Splayd.find_by_sql("SELECT DISTINCT version FROM splayds WHERE version IS NOT NULL") %>
+    <%= select 'job', :splayd_version, s_v.collect{|p| [p.version]}.sort.reverse %>
+	</td>
+</tr>
+<tr>
+	<th>Max load</th>
+	<td><%= text_field 'job', :max_load, :size => 4 %></td>
+</tr>
+<tr>
+	<th>Min uptime (seconds)</th>
+	<td><%= text_field 'job', :min_uptime, :size => 5 %></td>
+</tr>
 
 <tr>
 	<th>Max mem (bytes)</th>
@@ -385,32 +411,7 @@ s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitu
 <%#  <th>Host masks (100.100.*|*.edu|...)</th>%>
 <%#  <td><%= text_field 'job', :hostmasks, :size => 10 +|</td>%>
 <%#</tr>%>
-<tr>
-	<th>List type</th>
-  <td>
-		<%= radio_button 'job', :list_type, 'HEAD' %> head
-		<%= radio_button 'job', :list_type, 'RANDOM' %> random
-  </td>
-</tr>
-<tr>
-	<th>Job type</th>
-  <td>
-		<%= check_box 'job', :strict, {}, 'TRUE', 'FALSE' %> strict
-  </td>
-</tr>
-<tr>
-	<th>Scheduled at</th>
-        <td>
-                <%= text_field 'job', :scheduled_at, :size => 19, :value => "YYYY-MM-DD HH:MM:SS" %>  
-		<img src="/images/calendar/cal.gif" style="cursor: pointer;" onclick="javascript:NewCssCal('job_scheduled_at', 'ddMMyyyy', 'dropdown', true, '24', true)" />  absolute
-                <br/>
-                <input type="text" size="19" id="job_scheduled_at_relative" value="HH:MM:SS" onblur="update_absolute();"> relative to now
-         </td>
-</tr>
-<tr>
-  <th>Number of splayds in list (0 = all)</th>
-	<td><%= text_field 'job', :list_size, :size => 4 %></td>
-</tr>
+
 <!--
 <tr bgcolor="#CCCCCC">
   <th>
