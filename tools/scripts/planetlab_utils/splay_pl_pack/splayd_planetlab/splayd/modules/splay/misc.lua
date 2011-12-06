@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.5 ###
+       Splay ### v1.2 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -65,11 +65,9 @@ end
 --[[ String generation ]]--
 function gen_string(times, s)
 
-	-- compatibility when 2 first parameters where swapped
+	-- compatibility when 2 first parameters are swapped
 	if type(times) == "string" then
-		local tmp = times
-		times = s
-		s = tmp
+		times,s=s,times
 	end
 	
 	s = s or "a"

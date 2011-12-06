@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.0.5 ###
+       Splay ### v1.2 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -7,14 +7,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -28,7 +28,7 @@ SETTINGS section near the end of this file.
 ]]
 
 _COPYRIGHT = "Copyright 2006 - 2011"
-_SPLAYD_VERSION = 1.05
+_SPLAYD_VERSION = 1.2
 
 require"table"
 require"math"
@@ -38,8 +38,12 @@ require"io"
 
 require"json"
 require"splay"
+crypto = require"crypto"
+evp = crypto.evp
 
 llenc = require"splay.llenc"
+
+require"base64"
 math.randomseed(os.time())
 
 do
@@ -88,6 +92,13 @@ function init_job_dir(dir)
 	return true
 end
 
+function init_job_lib_dir(dir)
+	if string.sub(dir, #dir, #dir) == "/" then
+		print("Job directory must not end with a /")
+		return false
+	end
+	prepare_dir(dir)
+end
 --[[ Common functions ]]--
 
 -- called after a fork
@@ -201,6 +212,13 @@ function free(ref)
 		splay.release_ports(splayd.jobs[ref].me.port,
 				splayd.jobs[ref].me.port + splayd.jobs[ref].network.nb_ports - 1)
 	end
+
+	-- if the job had a "trace_alt" churn trace
+	if splayd.churn_mgmt_jobs[ref] then
+		-- remove the job from the list of churn jobs
+		splayd.churn_mgmt_jobs[ref] = nil
+	end
+
 	splayd.jobs[ref] = nil
 end
 
@@ -241,7 +259,11 @@ function free_ended_jobs()
 				if job.die_free then
 					free(ref)
 				else
-					stop(ref)
+					if job_trace_ended[ref] == true then
+						free(ref)
+					else
+						stop(ref)
+					end
 				end
 			end
 		end
@@ -309,21 +331,32 @@ end
 --[[ Network protocol ]]--
 
 function n_reset(so)
+	-- every function that handles commands sets timeout to nil (blocking socket) until the answer is sent
+	so:settimeout(nil)
 	reset()
 	assert(so:send("OK"))
+	-- then the timeout is restablished to what it was before: 0 (non-blocking socket) when there are churn jobs, nil if not
+	so:settimeout(so_timeout)
 end
 
 function blacklist(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local blacklist = json.decode(assert(so:receive()))
-	
+
+
 	for _, b in pairs(blacklist) do
 		splayd.blacklist[#splayd.blacklist + 1] = b
 	end
 
 	assert(so:send("OK"))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function register(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local s = splayd.settings.job
 
 	local job = json.decode(assert(so:receive()))
@@ -350,7 +383,7 @@ function register(so)
 	We complete them here like that, successive "modules" that have no access
 	to splayd limitations can use them directly.
 	]]--
-	
+
 	if not job.name then
 		job.name = ""
 	end
@@ -440,7 +473,7 @@ function register(so)
 		end
 	end
 
-	-- We fill mising ip if needed
+	-- We fill missing ip if needed
 	if not job.network.ip then
 		job.network.ip = "127.0.0.1"
 	end
@@ -485,10 +518,14 @@ function register(so)
 
 	-- corrections finished, we will now add some extra informations to the
 	-- job description
-	
+
 	job.disk.directory = s.disk.directory.."/"..ref
 	splay.mkdir(job.disk.directory)
 
+	if not prepare_lib_directory(job) then
+		assert(so:send("DEPENDENCIES NOT OK"))
+		return
+	end
 	job.status = "waiting"
 
 	-- We give the blacklist to the job.
@@ -499,9 +536,43 @@ function register(so)
 
 	assert(so:send("OK"))
 	assert(so:send(job.me.port))
+	-- restablish timeout
+	so:settimeout(so_timeout)
+end
+
+function prepare_lib_directory(job)
+	if job.disk then
+		job.disk.lib_directory = job.disk.directory.."/".."lib"
+		splay.mkdir(job.disk.lib_directory)
+		if job.lib_code and job.lib_code ~= "" then
+			local lib_file = io.open(libs_cache_dir.."/".. job.lib_sha1, "w+")
+			local lib_code = base64.decode(job.lib_code)
+			local sha1=evp.new("sha1")
+			local lib_code_sha1 =  sha1:digest(lib_code)
+
+			if (lib_code_sha1 == job.lib_sha1) then
+				lib_file:write(lib_code)
+				lib_file:close()
+				job.lib_code = nil
+				collectgarbage()
+			else
+				print("Wrong checksum for lib "..job.lib_name.."\ncomputed : "..lib_code_sha1.."\nRegistered as : "..job.lib_sha1)
+				return false
+			end
+		end
+		if job.lib_name and job.lib_name ~= "" then
+			os.execute("ln "..libs_cache_dir.."/"..job.lib_sha1.. " " .. job.disk.lib_directory.."/"..job.lib_name)
+		end
+	else
+		print("Wrong job configuration")
+		return false
+	end
+	return true
 end
 
 function n_free(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if splayd.jobs[ref] then
 		free(ref)
@@ -509,17 +580,25 @@ function n_free(so)
 	else
 		assert(so:send("UNKNOWN_REF"))
 	end
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function n_log(so)
+	-- blocking socket
+	so:settimeout(nil)
 	splayd.settings.log = json.decode(assert(so:receive()))
 	if not splayd.settings.log.ip then
 		splayd.settings.log.ip = splayd.settings.controller.ip
 	end
 	assert(so:send("OK"))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function list(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local list = json.decode(assert(so:receive()))
 	local ref = list.ref
 
@@ -528,14 +607,18 @@ function list(so)
 		return
 	end
 	job = splayd.jobs[ref]
-	
+
 	-- We append the list to the job configuration.
 	list.ref = nil
 	job.network.list = list
 	assert(so:send("OK"))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function loadavg(so)
+	-- blocking socket
+	so:settimeout(nil)
 	assert(so:send("OK"))
 	if splayd.status.os == "Linux" then
 		local p_avg=assert(io.open("/proc/loadavg","r"))
@@ -545,27 +628,120 @@ function loadavg(so)
 		else
 			assert(so:send("-1 -1 -1")) --status error?
 		end
+		p_avg:close()
  	elseif splayd.status.os == "Darwin" then
-		local lf=io.popen("sysctl -n vm.loadavg"):read():match("%d+.%d+ %d+.%d+ %d+.%d+")
+		local fh=assert(io.popen("sysctl -n vm.loadavg","r"))
+		local lf=fh:read():match("%d+.%d+ %d+.%d+ %d+.%d+")
 		assert(so:send(lf))
+		fh:close()
+	end
+	-- restablish timeout
+	so:settimeout(so_timeout)
+end
+
+
+-- coroutine that handles start/stop events for "trace_alt" churning jobs
+function churn_mgmt()
+	-- initializes count msleep as 10
+	local count_msleep = 10
+	-- eternal loop (has a break inside)
+	while true do
+		-- if count msleep = 10 (every second; 1 sleep = 100ms)
+		if count_msleep == 10 then
+			-- initializes number of churn jobs
+			local n_churn_jobs = 0
+			-- for all jobs in the table of active churning jobs
+			for i,v in pairs(splayd.churn_mgmt_jobs) do
+				-- increments the number of churn jobs
+				n_churn_jobs = n_churn_jobs + 1
+				-- increments the count of seconds that has passed for that job
+				splayd.churn_mgmt_jobs[i] = v + 1
+				-- turn on is true by default
+				local turn_on = true
+				-- takes the timeline of the job
+				local my_timeline = splayd.jobs[i].network.list.my_timeline
+				-- for all "times" in the timeline
+				for i2,v2 in ipairs(my_timeline) do
+					-- if one of the times is exactly equal to the delayed time of that job
+					if v == v2 then
+						-- if that "time" element has an even position on the timeline... it is a stop
+						if i2 % 2 == 0 then
+							-- if it is the last one
+							if i2 == #my_timeline then
+								-- it is a "free" (end of the trace)
+								free(i)
+							else
+								-- if not, it is a simple "stop" (later there will be another start)
+								stop(i)
+							end
+						else
+							-- if the position is odd, it is a "start"
+							start(i)
+						end
+						-- stop looking the timeline table
+						break
+					end
+					-- reverse turn-on (in fact, i think i don't use this anymore, TODO check if it is used)
+					turn_on = not turn_on
+				end
+			end
+			-- if number of jobs is 0 (there were no jobs on the table)
+			if n_churn_jobs == 0 then
+				-- break the eternal loop (it will cause death of the coroutine, until a churn job
+				-- arrives and creates a new one)
+				break
+			end
+			-- reset count msleep to 0
+			count_msleep = 0
+		end
+		-- sleep for 100ms
+		splay.msleep(100)
+		-- increment count msleep
+		count_msleep = count_msleep + 1
+		-- yield
+		coroutine.yield()
 	end
 end
 
 function n_start(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if splayd.jobs[ref] then
 		if splayd.jobs[ref].status == "running" then
 			assert(so:send("RUNNING"))
 			return
 		end
-		start(ref)
+		-- if the job has a timeline (trace_alt type)
+		if splayd.jobs[ref].network.list.my_timeline then
+			-- initializes the running time of that job to 0
+			splayd.churn_mgmt_jobs[ref] = 0
+			-- saves a timestamp of the start time
+			splayd.jobs[ref].network.list['start_time'] = os.time()
+			-- if this is the first job to be added to the table
+			if size_of_table(splayd.churn_mgmt_jobs) == 1 then
+				-- set socket timeout to 0 (non-blocking socket)
+				so:settimeout(0)
+				-- so_timeout also to 0, to keep track of that
+				so_timeout = 0
+				-- creates the churn coroutine
+				co_churn = coroutine.create(churn_mgmt)
+			end
+		else
+			--if the job doesn't have timeline, simply start (normal job)
+			start(ref)
+		end
 		assert(so:send("OK"))
 	else
 		assert(so:send("UNKNOWN_REF"))
 	end
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function n_stop(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if splayd.jobs[ref] then
 		if splayd.jobs[ref].status ~= "running" then
@@ -577,9 +753,13 @@ function n_stop(so)
 	else
 		assert(so:send("UNKNOWN_REF"))
 	end
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function restart(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if err then return false end
 	if splayd.jobs[ref] then
@@ -593,10 +773,14 @@ function restart(so)
 	else
 		assert(so:send("UNKNOWN_REF"))
 	end
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 -- The controller ask for theses infos only once (by session).
 function infos(so)
+	-- blocking socket
+	so:settimeout(nil)
 	-- We update our IP as seen by the controller
 	splayd.ip = assert(so:receive())
 	local m_tmp = {}
@@ -605,16 +789,20 @@ function infos(so)
 
 	assert(so:send("OK"))
 	assert(so:send(json.encode(m_tmp)))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 -- This function should be called regulary from the controller, it acts as a
 -- "cron" in our splayd.
 -- It sends (light) job informations of the splayd.
 function status(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local m_tmp = {}
 
 	free_ended_jobs()
-	
+
 	-- We select a minimal set of job informations to send.
 	m_tmp.jobs = {}
 	for ref, job in pairs(splayd.jobs) do
@@ -632,9 +820,13 @@ function status(so)
 
 	assert(so:send("OK"))
 	assert(so:send(json.encode(m_tmp)))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 function local_log(so)
+	-- blocking socket
+	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if splayd.jobs[ref] then
 		local log_file = jobs_logs_dir.."/"..ref.."_"..splayd.settings.key
@@ -646,12 +838,16 @@ function local_log(so)
 		end
 	end
 	assert(so:send("NOT_FOUND"))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 end
 
 -- Halt only if no jobs are still registered.
 function halt(so)
+	-- blocking socket
+	so:settimeout(nil)
 	free_ended_jobs()
-	
+
 	for ref, job in pairs(splayd.jobs) do
 		assert(so:send("JOBS_REGISTERED"))
 		return false
@@ -659,6 +855,8 @@ function halt(so)
 
 	running = false
 	assert(so:send("OK"))
+	-- restablish timeout
+	so:settimeout(so_timeout)
 	return true
 end
 
@@ -688,72 +886,177 @@ function halt_splayd()
 	running = false
 end
 
-function server_loop(so)
-    while true do
-			splayd.last_connection_time = os.time()
-			
-			local msg = assert(so:receive())
+function trace_end(so)
+	-- blocking socket
+	so:settimeout(nil)
+	local ref = assert(so:receive())
 
-			print("Command: "..msg)
-			if msg == "PING" then
-				assert(so:send("OK"))
-			elseif msg == "BLACKLIST" then
-				blacklist(so)
-			elseif msg == "REGISTER" then
-				register(so)
-			elseif msg == "FREE" then
-				n_free(so)
-			elseif msg == "UNREGISTER" then -- deprecated
-				n_free(so)
-			elseif msg == "LOG" then
-				n_log(so)
-			elseif msg == "LOCAL_LOG" then
-				local_log(so)
-			elseif msg == "LIST" then
-				list(so)
-			elseif msg == "RESET" then
-				n_reset(so)
-			elseif msg == "START" then
-				n_start(so)
-			elseif msg == "RESTART" then
-				restart(so)
-			elseif msg == "STOP" then
-				n_stop(so)
-			elseif msg == "INFOS" then
-				infos(so)
-			elseif msg == "STATUS" then
-				status(so)
-			elseif msg == "LOADAVG" then
-				loadavg(so)
-			elseif msg == "HALT" then
-				if (halt(so)) then
+	job_trace_ended[ref] = true
+	assert(so:send("OK"))
+
+	if splayd.jobs[ref].status == "waiting" then
+		free(ref)
+	end
+	-- restablish timeout
+	so:settimeout(so_timeout)
+end
+
+function server_loop(so)
+		while true do
+			splayd.last_connection_time = os.time()
+
+			local msg = so:receive()
+
+			-- if there is a msg (msg can be empty when using non-blocking sockets - when the churn coroutine is active)
+			if msg then
+
+				print("Command: "..msg)
+				if msg == "PING" then
+					-- blocking socket
+					so:settimeout(nil)
+					assert(so:send("OK"))
+					-- restablish timeout
+					so:settimeout(so_timeout)
+				elseif msg == "BLACKLIST" then
+					blacklist(so)
+				elseif msg == "REGISTER" then
+					register(so)
+				elseif msg == "FREE" then
+					n_free(so)
+				elseif msg == "UNREGISTER" then -- deprecated
+					n_free(so)
+				elseif msg == "LOG" then
+					n_log(so)
+				elseif msg == "LOCAL_LOG" then
+					local_log(so)
+				elseif msg == "LIST" then
+					list(so)
+				elseif msg == "RESET" then
+					n_reset(so)
+				elseif msg == "START" then
+					n_start(so)
+				elseif msg == "RESTART" then
+					restart(so)
+				elseif msg == "STOP" then
+					n_stop(so)
+				elseif msg == "INFOS" then
+					infos(so)
+				elseif msg == "STATUS" then
+					status(so)
+				elseif msg == "TRACE_END" then
+					trace_end(so)
+				elseif msg == "LOADAVG" then
+					loadavg(so)
+				elseif msg == "HALT" then
+					if (halt(so)) then
+						break
+					end
+				elseif msg == "KILL" then
+					running = false
+					break
+				elseif msg == "ERROR" then
+					break
+
+				--[[ Next one(s) are for testing only ]]--
+				elseif msg == "TEST" then
+					-- blocking socket
+					so:settimeout(nil)
+					assert(so:send("OK"))
+					-- restablish timeout
+					so:settimeout(so_timeout)
+					test(so)
+				else
+					print("Unknow command.")
 					break
 				end
-			elseif msg == "KILL" then
-				running = false
-				break
-			elseif msg == "ERROR" then
-				break
-
-			--[[ Next one(s) are for testing only ]]--
-			elseif msg == "TEST" then
-				assert(so:send("OK"))
-				test(so)
-			else
-				print("Unknow command.")
-				break
 			end
+
+			-- if there is a churn coroutine
+			if co_churn then
+				-- if the coroutine is not dead
+				if coroutine.status(co_churn) ~= "dead" then
+					-- yield (if the coroutine is dead, no need to yield)
+					coroutine.yield()
+				else
+					-- if churn coroutine is dead set the socket timeout to nil (blocking socket)
+					so:settimeout(nil)
+					so_timeout = nil
+				end
+			end
+
     end
+end
+
+-- to calculate the size of a table (not array)
+function size_of_table(t)
+	local size = 0
+	for i,v in pairs(t) do
+		size = size + 1
+	end
+	return size
+end
+
+-- Return a table of all libs in the cache and their hash
+function list_libs_in_cache(dir)
+	
+	local libs_list = io.popen("ls "..dir):read("*a")
+	local lib_table = {}
+	local name_table = {}
+	local sha1_table = {}
+	local lib = nil
+	local lib_sha1 = nil
+	-- TODO Find another pattern
+	for lib_name in string.gmatch(libs_list, "[^%s]+") do
+		lib = io.open(dir.."/"..lib_name):read("*a")
+		local sha1=evp.new("sha1")
+		lib_sha1 =  sha1:digest(lib)
+		print("splayd.lua:list_libs file with sha1 ",lib_sha1)
+		table.insert(lib_table, {name = lib_name, sha1 = lib_sha1})
+	end
+	
+	return lib_table
+end
+
+-- Reads the libs in the cache, send them to the controller and 
+-- according to the controller update the old ones and add the new ones
+function check_libs(so)
+	local libs_in_cache = list_libs_in_cache(libs_cache_dir)
+	local msg = json.encode(libs_in_cache)
+	assert(so:send(msg))
+	local response = nil
+	response = assert(so:receive())
+	local old_libs = json.decode(response)
+	
+	clean_libs(libs_cache_dir, old_libs)
+	assert(so:send("OK"))
+	--return new_libs
+end
+-- Update the cache by updating old libs and adding new ones.
+function clean_libs(dir, old_libs)
+	for i,v in pairs(old_libs) do
+			os.execute("rm "..dir.."/"..v['name'])
+	end
+	
 end
 
 function controller(so)
 	print("Controller registration")
-	
+	-- Send the splayd-type
+	assert(so:send(splayd.settings.protocol))
 	-- the splayd registers on the Controller
 	assert(so:send("KEY"))
 	assert(so:send(splayd.settings.key))
 	assert(so:send(splayd.session))
+	
+	-- The splayd lists the libs it already has in its cache.
+	-- It informs the controller of the libs that it has.
+	
 
+	-- call only if settings splayd-type == 'grid'
+	if splayd.settings.protocol == "grid" then
+		check_libs(so)
+	end
+	
 	local msg = assert(so:receive())
 	if msg ~= "OK" then
 		local reason = assert(so:receive())
@@ -771,7 +1074,21 @@ function controller(so)
 	end
 
 	print("Waiting for commands.")
-  server_loop(so)
+
+	-- creates a coroutine for the server loop
+	co_server_loop = coroutine.create(function()
+		server_loop(so)
+	end)
+	coroutine.resume(co_server_loop)
+
+	-- as long as the server loop coroutine is not dead, alternate eternally between churn coroutine and server loop coroutine
+	while coroutine.status(co_server_loop) ~= "dead" do
+		coroutine.resume(co_server_loop)
+		coroutine.resume(co_churn)
+	end
+
+
+
 end
 
 function check()
@@ -801,7 +1118,7 @@ function check()
 			not (s.network.max_ports > 0) or
 			not (s.network.start_port > 0) or
 			not (s.network.end_port > 0) then
-		
+
 		-- unlimited is NOT acceptable (and is a non sense)
 		print("Limits MUST have values > 0. Check your settings.")
 		return false
@@ -900,7 +1217,7 @@ function run()
 		status, err = so:connect(splayd.settings.controller.ip,
 				splayd.settings.controller.port)
 		so:setoption('keepalive', true)
-		
+
 		-- LuaSec
 		if SSL and status then
 			-- TLS/SSL client parameters
@@ -967,11 +1284,13 @@ production = true
 --[[ SETTINGS (if not in production mode) ]]--
 
 root_dir = io.popen("pwd"):read()
-
+libs_cache_dir = root_dir.."/libs_cache"
 logs_dir = root_dir.."/logs"
 jobs_logs_dir = root_dir.."/logs/jobs"
 jobs_dir = root_dir.."/jobs"
 jobs_fs_dir = root_dir.."/jobs_fs" -- then splayd.settings.job.disk.directory
+jobs_lib_dir = jobs_fs_dir.."/lib"
+
 
 lua_version = "Lua 5.1" -- Do not run without this version.
 SSL = true -- Use SSL instead of plain text connection.
@@ -984,6 +1303,9 @@ exec_script = false
 -- Will log splayd's output in logs_directoy/splayd.log and, if not in production
 -- mode, log each job's output in logs_directoy/jobs/job.log.
 jobs_log = true -- Log jobs output.
+
+-- if the trace has ended for a trace-job
+job_trace_ended = {}
 
 if production then
 	exec_script = false
@@ -1015,6 +1337,8 @@ splayd.settings.name = "Default Name"
 splayd.settings.controller = {}
 splayd.settings.controller.ip = "127.0.0.1"
 splayd.settings.controller.port = 11000
+
+splayd.settings.protocol = "standard" -- "standard OR grid, default is STANDARD"
 
 splayd.settings.job = {}
 splayd.settings.job.max_number = 16
@@ -1052,7 +1376,7 @@ if not production and arg then
 	if arg[2] then splayd.settings.controller.ip = arg[2] end
 	if arg[3] then splayd.settings.controller.port = tonumber(arg[3]) end
 	if arg[4] then splayd.settings.job.network.start_port = tonumber(arg[4]) end
-	if (arg[4] and (arg[5]==nil)) 
+	if (arg[4] and (arg[5]==nil))
 	then
 		print("You need to specify a start port AND a end port")
 		os.exit()
@@ -1070,7 +1394,7 @@ splayd.status.endianness = splay.endian()
 -- TODO non unices support
 splayd.status.os = io.popen("uname"):read()
 splayd.status.full_os = io.popen("uname -a"):read()
-
+splayd.status.architecture = io.popen("uname -m"):read()
 --  MacOS X:
 -- uname: Darwin
 -- uname -a:Darwin stud2066.idi.ntnu.no 9.6.0 Darwin Kernel Version 9.6.0: Mon
@@ -1090,15 +1414,15 @@ elseif splayd.status.os == "Darwin" then
 	splayd.status.uptime=now-boottime
 	-- { 0.40 0.37 0.25 }
 	splayd.status.loadavg = io.popen("sysctl -n vm.loadavg"):read():match("%d+.%d+ %d+.%d+ %d+.%d+")
-else	
+else
 	splayd.status.uptime = "1"
 	splayd.status.loadavg = "1.0 1.0 1.0"
 end
 
 
 --[[ These information seems not very interesting... maybe one day.
-splayd.status.ram = 
-splayd.status.cpu_speed = 
+splayd.status.ram =
+splayd.status.cpu_speed =
 splayd.status.nb_cpu =
 --]]
 
@@ -1118,7 +1442,7 @@ if splayd.settings.controller.ip ~= "127.0.0.1" and
 		splayd.settings.controller.ip ~= "localhost" then
 
 	--splayd.blacklist = {splayd.settings.controller.ip, "127.0.0.1", "localhost"}
-	
+
 	-- UPDATE actually we do not blacklist anymore controller IP because:
 	-- 1) the controller can be a set of IPs
 	-- 2) if the controller wants to blacklist its IPs, it can use the blacklist
@@ -1131,8 +1455,20 @@ end
 splayd.session = ""
 splayd.last_connection_time = 0
 
+
+-- reference to the churn coroutine
+co_churn = nil
+-- reference to the server loop coroutine
+co_server_loop = nil
+-- so_timeout can be 0 (non-blocking socket) or nil (blocking socket)
+so_timeout = nil
+
+
 -- received from Controller
 splayd.jobs = {}
+
+-- table of churn jobs
+splayd.churn_mgmt_jobs = {}
 
 --[[
 job.status can have the folowing values:
@@ -1145,9 +1481,11 @@ job.status can have the folowing values:
 prepare_dir(jobs_dir)
 prepare_dir(logs_dir)
 prepare_dir(jobs_logs_dir)
+prepare_dir(libs_cache_dir)
 prepare_dir(splayd.settings.job.disk.directory)
 if not check() then os.exit() end
 display_config()
 run()
 
 print("Splayd shutdown.")
+
