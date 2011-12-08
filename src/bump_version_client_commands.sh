@@ -5,4 +5,9 @@ if [[ $1 == "" ]]; then
 	exit
 fi
 new_version=$1
-find rpc_client -name "*.lua" | xargs  sed -i "" s/'Splay Client Commands ### v..* ###'/"Splay Client Commands ### v${new_version} ###"/ 
+
+if [[ "$OSTYPE" == 'linux-gnu' ]]; then
+   	find rpc_client -name "*.lua" | xargs  sed -i"" s/'Splay Client Commands ### v..* ###'/"Splay Client Commands ### v${new_version} ###"/ 
+elif [[ "$OSTYPE" == 'darwin10.0' ]]; then
+   	find rpc_client -name "*.lua" | xargs  sed -i "" s/'Splay Client Commands ### v..* ###'/"Splay Client Commands ### v${new_version} ###"/ 
+fi
