@@ -5,7 +5,7 @@ import sys
 import urllib
 
 if len(sys.argv) != 4:
-	print "Usage: ./add_nodes_to_slice.py pl_username pl_pwd pl_slice_name"
+	print "Usage: ./reset_slice.py pl_username pl_pwd pl_slice_name"
 	sys.exit(2)
 
 all_alive_nodes_query = "http://comon.cs.princeton.edu/status/tabulator.cgi?table=table_nodeviewshort&format=nameonly"
@@ -19,5 +19,17 @@ auth['Username'] = sys.argv[1] # <-- substitute your actual username here
 auth['AuthString'] = sys.argv[2] # <-- substitute your actual password here
 auth['AuthMethod'] = "password"
 
-node_list = [line.strip() for line in open("nodes.txt")]
-api_server.AddSliceToNodes(auth, sys.argv[3], node_list)
+
+api_server = xmlrpclib.ServerProxy('https://www.planet-lab.eu/PLCAPI/')
+auth = {}
+auth['Username'] = sys.argv[1] # <-- substitute your actual username here
+auth['AuthString'] = sys.argv[2] # <-- substitute your actual password here
+auth['AuthMethod'] = "password"
+
+slice_name=sys.argv[3]
+
+# the slice's node ids
+node_ids = api_server.GetSlices(auth,slice_name,['node_ids'])[0]['node_ids']
+#for node in node_ids:
+#    print node
+api_server.DeleteSliceFromNodes(auth, sys.argv[3], node_ids)
