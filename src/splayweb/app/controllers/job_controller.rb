@@ -178,7 +178,9 @@ class JobController < ApplicationController
       end
     end
     params[:job].delete('trace') 
-
+   
+    params[:job][:lib_name] = '' # SplayWeb do not support jobs w/ binary libs
+ 
     @job = Job.new(params[:job])
     if @job.save
       flash[:notice] = 'Job was successfully created.'
