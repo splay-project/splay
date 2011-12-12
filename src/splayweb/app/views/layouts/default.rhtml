@@ -8,8 +8,10 @@
   <%= stylesheet_link_tag 'default' %>
   <%= stylesheet_link_tag 'syntax' %>
   <%= stylesheet_link_tag 'ui.tabs' %>
-	<%= javascript_include_tag 'jquery' %>
-	<%= javascript_include_tag 'jquery.ui.all.packed' %>
+  <%= javascript_include_tag 'jquery-1.7.1.min' %>
+  <%= javascript_include_tag 'jquery-ui-1.8.16.custom.min' %>
+  <%# <%= javascript_include_tag 'jquery' %>
+  <%# <%= javascript_include_tag 'jquery.ui.all.packed' %>
 	<%= javascript_include_tag 'shCore' %>
 	<%= javascript_include_tag 'shBrushLua' %>
 
@@ -47,12 +49,6 @@
 
 </head>
 <body>
-
-<!--
-SPLAYweb
-Copyright 2006 - 2008 Lorenzo Leonini (University of Neuchâtel, Switzerland)
-All rights reserved.
--->
 
 <%= render :file => "layouts/top.rhtml" %>
 
