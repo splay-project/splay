@@ -113,23 +113,25 @@ function generate_job(position, number, first_port, list_size, random)
 	job.me = {ip = "127.0.0.1", port = first_port + position - 1}
 	job.position = position
 	local nodes = {}
+	local jobnodes_array = nil
 	for i = 1, number do
 		table.insert(nodes, {ip = "127.0.0.1",  port = first_port + i - 1})
 	end
 	if random then
 		job.list_type = "random"
 		table.remove(nodes, position)
-		job.nodes = misc.random_pick(nodes, list_size)
+		jobnodes_array = misc.random_pick(nodes, list_size)
 	else
 		job.list_type = "head"
 		if list_size < #nodes then
-			job.nodes = {}
+			jobnodes_array = {}
 			for i = 1, list_size do
-				table.insert(job.nodes, nodes[i])
+				table.insert(jobnodes_array, nodes[i])
 			end
 		else
-			job.nodes = nodes
+			jobnodes_array = nodes
 		end
 	end
+	job.nodes = function() return jobnodes_array end
 	return job
 end
