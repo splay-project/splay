@@ -1,3 +1,7 @@
+v1.5 (or 1.4.1)
+- fix bug with --absolute-time (
+v1.4
+- document the changes here
 v1.3
  - support for quite/verbose mode
 v1.2
