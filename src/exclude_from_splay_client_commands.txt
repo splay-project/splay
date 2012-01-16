@@ -1,7 +1,0 @@
-todo.txt
-history.txt
-new-interface-controller-v0.1.zip
-new-interface-controller-v0.2.zip
-test-all.sh
-test-job.lua
-sample.log

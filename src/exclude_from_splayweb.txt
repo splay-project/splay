@@ -1,6 +1,0 @@
-log/
-test/
-splayd_planetlab.tar.gz
-local_install.sh
-local_install_dev.sh
-GeoLiteCity.dat

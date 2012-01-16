@@ -1,6 +1,0 @@
-test-async_dns.lua
-test-dns.lua
-test-splay-async-dns.lua
-test-benc.lua
-lbinenc.lua
-.DS_Store
