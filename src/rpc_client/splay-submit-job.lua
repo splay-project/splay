@@ -125,6 +125,8 @@ function parse_arguments()
 				sch_year = string.sub(arg[i], 1, 4)
 				sch_month = string.sub(arg[i], 6, 7)
 				sch_day = string.sub(arg[i], 9, 10)
+				-- next argument is HH:MM:SS
+				i = i + 1
 			else
 				-- get current year, month, day
 				t = os.date('*t')
@@ -132,8 +134,6 @@ function parse_arguments()
 				sch_month = t.month
 				sch_day = t.day			
 			end     
-			-- next argument is HH:MM:SS
-			i = i + 1
 			sch_hour = string.sub(arg[i], 1, 2)
 			sch_min = string.sub(arg[i], 4, 5)
 			sch_sec = string.sub(arg[i], 7, 8)
