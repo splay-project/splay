@@ -1,0 +1,141 @@
+<table class="smart_table" cellspacing="0">
+  <thead>
+  <tr>
+    <th class="nobg" style="width: 250px"></th>
+    <th class="top" style="width: 300px">Values</th>
+  </tr>
+  </thead>
+  <tbody>
+	<tr>
+		<th>ID</th>
+    <td><%= @job.id %> (<a href="/logs/<%= @job.ref %>.txt">Logs</a>)</td>
+	</tr>
+	<tr>
+		<th>Status</th>
+    <td>
+    <%= @job.status %>
+    <%= if @job.status_msg and
+          @job.status_msg != "" then "(#{@job.status_msg})" end %>
+		<% if @job.status=='RUNNING' or @job.status=='QUEUED' %>
+		<%= link_to 'KILL', :action => 'kill', :id => @job %>
+		<% end %>
+		</td>
+	</tr>
+	<tr>
+		<th>User</th>
+		<td><%= @job.user.login %></td>
+	</tr>
+	<tr>
+		<th>Name</th>
+		<td><%= @job.name %></td>
+	</tr>
+	<tr>
+		<th>Description</th>
+		<td><%= @job.description %></td>
+	</tr>
+	<tr>
+		<th>Number of splayds</th>
+		<td><%= @job.nb_splayds %></td>
+	</tr>
+  <% if @job.splayd_version %>
+	<tr>
+		<th>Splayd's version</th>
+		<td><%= @job.splayd_version %></td>
+  </tr>
+  <% end %>
+	<tr>
+		<th>Splayd's max load</th>
+		<td><%= @job.max_load %></td>
+	</tr>
+	<tr>
+		<th>Splayd's min uptime</th>
+		<td><%= @job.min_uptime %></td>
+	</tr>
+	<tr>
+		<th>Bits</th>
+		<td><%= @job.bits %></td>
+	</tr>
+	<tr>
+		<th>Endianness</th>
+		<td><%= @job.endianness %></td>
+	</tr>
+	<tr>
+		<th>Max mem (octets)</th>
+		<td><%= @job.max_mem %></td>
+	</tr>
+	<tr>
+		<th>Disk max size (octets)</th>
+		<td><%= @job.disk_max_size %></td>
+	</tr>
+	<tr>
+		<th>Disk max files</th>
+		<td><%= @job.disk_max_files %></td>
+	</tr>
+	<tr>
+		<th>Disk max file descriptors</th>
+		<td><%= @job.disk_max_file_descriptors %></td>
+	</tr>
+	<tr>
+		<th>Network max send (octets)</th>
+		<td><%= @job.network_max_send %></td>
+	</tr>
+	<tr>
+		<th>Network max receive (octets)</th>
+		<td><%= @job.network_max_receive %></td>
+	</tr>
+	<tr>
+		<th>Max number of sockets</th>
+		<td><%= @job.network_max_sockets %></td>
+	</tr>
+	<tr>
+		<th>Number of ports to bind</th>
+		<td><%= @job.network_nb_ports %></td>
+	</tr>
+	<tr>
+		<th>Network send speed (bytes/s)</th>
+		<td><%= @job.network_send_speed %></td>
+	</tr>
+	<tr>
+		<th>Network receive speed (bytes/s)</th>
+		<td><%= @job.network_receive_speed %></td>
+	</tr>
+	<% if @job.localization %>
+	<tr>
+		<th>Localization</th>
+		<td><%= @job.localization %></td>
+	</tr>
+	<% end %>
+
+	<tr>
+		<th>List type</th>
+		<td><%= @job.list_type %></td>
+	</tr>
+        <tr>
+		<th>Job type</th>
+		<td><%= @job.strict %></td>
+	</tr>
+	<tr>
+		<th>List size</th>
+		<td><%= @job.list_size %></td>
+	</tr>
+
+	<% if @job.scheduler == "trace" %>
+	<tr>
+		<th>Trace</th>
+		<td><pre><%= @job.scheduler_description %></pre></td>
+	</tr>
+	<% end %>
+
+        <tr>
+		<th>Strict</th>
+		<td><%= @job.strict %></td>
+        </tr>
+
+        <% if @job.scheduled_at %>
+	<tr>
+		<th>Scheduled at</th>
+		<td><%= @job.scheduled_at %></td>
+        </tr>
+        <% end %>
+  </tbody>
+</table>
