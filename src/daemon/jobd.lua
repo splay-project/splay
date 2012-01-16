@@ -249,6 +249,8 @@ sandbox.protect_env({
 			"splay.rpcq",
 			"splay.socket",
 			"splay.urpc",
+			"splay.distdb",
+			"splay.paxos",
 			"crypto",
 			"socket",
 			"socket.ftp",
