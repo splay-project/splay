@@ -167,5 +167,5 @@ f=f()()
 
 - integrate the text editor of http://repl.it/ in the SplayWeb page for job submission
 
-
+- improve splay.event system. In particular, it is currently impossible to use event.fire multiple times with the SAME key: only the first fired event is triggered. 
 
