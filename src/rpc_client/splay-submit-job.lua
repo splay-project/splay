@@ -51,7 +51,8 @@ function add_usage_options()
 	table.insert(usage_options, "    --relative-time \t\tthe job will be submitted after HH:MM:SS")
 	table.insert(usage_options, "    --strict \t\t\tthe job will be submitted now / at the scheduled time or rejected with NO_RESSOURCES message")
 	table.insert(usage_options, "    --trace_alt\t\t\tthe churn is managed on the splayd side (alternative way)")
-	table.insert(usage_options, "-l  --lib=LIB_FILE\ttdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
+	table.insert(usage_options, "-l  --lib=LIB_FILE\t\tdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
+	table.insert(usage_options, "-qt --queue-timeout\t\tthe job will timeout after the given time (in seconds)")
 end
 
 function parse_arguments()
@@ -133,7 +134,9 @@ function parse_arguments()
 				sch_year = t.year
 				sch_month = t.month
 				sch_day = t.day			
-			end     
+			end
+			-- next argument is HH:MM:SS
+			i = i + 1
 			sch_hour = string.sub(arg[i], 1, 2)
 			sch_min = string.sub(arg[i], 4, 5)
 			sch_sec = string.sub(arg[i], 7, 8)
@@ -169,6 +172,9 @@ function parse_arguments()
 		elseif arg[i] == "-lv" then
 			i = i + 1
 			lib_version = arg[i]
+		elseif arg[i] == "-qt" or arg[i] == "--queue-timeout" then
+			i = i + 1
+			queue_timeout = arg[i]
 		--if code_filename is not yet filled and the argument has not matched any of the other rules
 		elseif not code_filename then
 			--the code file is the argument
@@ -220,6 +226,11 @@ function submit_job_extra_checks()
 		scheduled_at = 0
 	end
 
+	-- if queue timeout not provided
+	if not queue_timeout then
+		queue_timeout = 0
+	end
+
 	--contructs options table from the options string
 	while options_string do
 		local colon_sign = string.find(options_string, ":")
@@ -238,7 +249,7 @@ function submit_job_extra_checks()
 end
 
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
-function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
+function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout)
 	--prints the arguments
 	print_line(VERBOSE, "NAME              = "..name)
 	print_line(VERBOSE, "DESCRIPTION       = "..description)
@@ -291,6 +302,10 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 
 	if trace_alt then
 		print_line(VERBOSE, "TRACE ALT MODE	  = "..trace_alt)
+	end
+
+	if queue_timeout then
+		print_line(VERBOSE, "QUEUE_TIMEOUT		  = "..queue_timeout)
 	end
 
 	--initializes the string that holds the code as empty
@@ -346,7 +361,7 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
-		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt}
+		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout}
 	})
 
 	--prints that it is sending the message
@@ -385,6 +400,7 @@ strict = "FALSE"
 trace_alt = "FALSE"
 command_name = "splay_submit_job"
 other_mandatory_args = "CODE_FILE "
+queue_timeout = nil
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
@@ -406,4 +422,4 @@ check_session_id()
 submit_job_extra_checks()
 
 --calls send_submit_job
-send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
+send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout)

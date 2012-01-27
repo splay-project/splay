@@ -283,7 +283,7 @@ if SplayControllerConfig::AllowNativeLibs
 	end
 end
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt)
+	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout)
 	 	#initializes the return variable
 		ret = Hash.new
 		
@@ -349,6 +349,11 @@ end
 			if lib_filename != "" then
 				options['scheduler'] = 'grid'
 			end
+
+			if queue_timeout then
+				options['queue_timeout'] = queue_timeout
+			end
+
 			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', lib_name='#{lib_filename}', lib_version='#{lib_version}', user_id=#{user_id}, created_at='#{time_now}'")
 
 			timeout = 30

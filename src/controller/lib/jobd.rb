@@ -27,6 +27,7 @@ class Jobd
 	@@dlock_jr = DistributedLock.new('job_reservation')
 
 	@@register_timeout = SplayControllerConfig::RegisterTimeout
+	@@max_queue_timeout = SplayControllerConfig::MaxQueueTimeout
 	@@poll_time = SplayControllerConfig::JobPollTime
 	@@link_log_dir = SplayControllerConfig::LinkLogDir
 	@@log_dir = SplayControllerConfig::LogDir
@@ -592,6 +593,20 @@ class Jobd
 
 	def self.status_queued_common(job)
 
+		queue_timeout = job['queue_timeout']
+		status_time = job['status_time']
+		if queue_timeout != 0 && queue_timeout < @@max_queue_timeout then
+			# take into account user-defined timeout
+			if Time.now.to_i > status_time + queue_timeout then
+				set_job_status(job['id'], 'QUEUE_TIMEOUT')
+			end
+		else
+			# take into account administrator-defined timeout
+			if Time.now.to_i > status_time + @@max_queue_timeout then
+				set_job_status(job['id'], 'QUEUE_TIMEOUT')
+			end
+		end
+
 		c_splayd, occupation, status_msg, normal_ok, mandatory_ok, no_resources, do_next = self.select_splayds(job)
 		if do_next == true
 			# next
@@ -603,17 +618,17 @@ class Jobd
 			return c_splayd, occupation, 0, nil, true #next
 		end
 
-                if not normal_ok and not no_resources
+		if not normal_ok and not no_resources
 			if job['strict'] == "FALSE"
-        			return c_splayd, occupation, 0, nil, true #next
+				return c_splayd, occupation, 0, nil, true #next
 			else
 				status_msg = "Cannot be submitted immediately: " +
 					     "Not enough splayds found with the requested resources " +
 					     "(only #{occupation.size} instead of #{job['nb_splayds']})"
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-        			return c_splayd, occupation, 0, nil, true #next
+				return c_splayd, occupation, 0, nil, true #next
 			end
-      		end
+		end
 
 		# We will send the job !
 
