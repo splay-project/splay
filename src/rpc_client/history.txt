@@ -1,5 +1,6 @@
 v1.5 (or 1.4.1)
-- fix bug with --absolute-time (
+- fix bug with --absolute-time 
+- support for max_queue time (support for this feature in controller >=1.4)
 v1.4
 - document the changes here
 v1.3
