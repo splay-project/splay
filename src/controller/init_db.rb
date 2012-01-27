@@ -101,8 +101,8 @@ def init_db(db)
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
 			created_at datetime default NULL,
-                        scheduled_at datetime default NULL,
-                        strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+			scheduled_at datetime default NULL,
+			strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 
 			name VARCHAR(255),
 			description VARCHAR(255),
@@ -136,6 +136,7 @@ def init_db(db)
 			min_uptime INT NOT NULL DEFAULT '0',
 			hostmasks VARCHAR(255),
 			max_time INT DEFAULT '10000',
+			queue_timeout INT DEFAULT NULL,
 
 			die_free ENUM('TRUE','FALSE') DEFAULT 'TRUE',
 			keep_files ENUM('TRUE','FALSE') DEFAULT 'FALSE',
@@ -149,7 +150,7 @@ def init_db(db)
 			command VARCHAR(255),
 			command_msg TEXT,
 
-			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED') DEFAULT 'LOCAL',
+			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED','QUEUE_TIMEOUT') DEFAULT 'LOCAL',
 			status_time INT NOT NULL,
 			status_msg TEXT,
 
