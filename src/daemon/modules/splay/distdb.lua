@@ -610,7 +610,8 @@ function init(job)
 		--else
 		else
 			--ask the RDV node for the neighborhood table
-			neighborhood = rpc.call(job.nodes[1], {"distdb.add_me", n})
+			local job_nodes = job.nodes()
+			neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
 		end
 
 		--gets the position from the neighborhood table

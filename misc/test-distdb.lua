@@ -9,7 +9,7 @@ local counter = 5
 
 
 events.loop(function()
---[[
+
 	events.sleep(2*job.position + math.random(100)/100)
 
 	distdb.init(job)
@@ -20,11 +20,11 @@ events.loop(function()
 	--	log:print(job.me.port..": im goin DOOOOWN!!!")
 	--	os.exit()
 	--end
-]]
 
-print(type(base.settings))
+
 
 --TODO AQUI ME QUEDÉ. Deal with settings and where to put init! in sandbox.lua or here?
+--print(type(base.settings))
 
 end)
 
