@@ -134,18 +134,10 @@ f=f()()
   PlanetLab deployments to students or visitors: they can not do a DDOS to a
   third-party web site.
 
-- Check churn trace generator
-
 - Extend splayd RPC module to take into account ModelNet like topologies, at
   least for latencies between pairs of nodes and for dropped packets
   ==> VALERIO, in progress
-
-- handle properly more than one events.run function (common when using stacks of protocols): 
-  their content should be merged somehow; currently only the last one 
-  encountered is executed. This
-  problem surfaces also using a simple local deployment (splay as lib) and
-  it's not related to the multi-file support itself.
-		
+	
 - Write a developer's guide to make programs more 'splay friendly': better explain which Lua features can be used, how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
 
 - in controller, check if the size of the actions table can be significantly reduce (why do we keep all splayd actions all the time?)
@@ -154,9 +146,7 @@ f=f()()
 
 - Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
 
-- When a job is submitted with a trace, after the trace is completed the job doesn't change its status to ENDED, it continues as RUNNING. The job should finish.
-
-- Add optiont o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a ndoe in a given position is used for well-known reasons (entrypoint)
+- Add optiont o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a node in a given position is used for well-known reasons (entrypoint)
 
 - Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is shutting down/crashing (perhaps because
   of a churn trace). This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. It requires some modifications to the splay sandbox and core module.
@@ -167,5 +157,5 @@ f=f()()
 
 - integrate the text editor of http://repl.it/ in the SplayWeb page for job submission
 
-- improve splay.event system. In particular, it is currently impossible to use event.fire multiple times with the SAME key: only the first fired event is triggered. 
+- sockets should be provide finer grainer statistics. In particular: 1) total bytes sent/received for TCP/UDP, 2) opening/closing time measurements to obtain a socket
 
