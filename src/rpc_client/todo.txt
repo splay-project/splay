@@ -100,3 +100,5 @@ ANSWER: this command reproduces the functionality of the CLI kill-job, which doe
 
 get_log should check first if the job is on the DB, before looking for it on the files
 DONE
+
+- splay-kill-job to accept a list of job IDs (comma-separated or space-separated for example)
