@@ -218,8 +218,9 @@ require"splay.coxpcall"
 _sand_check = true
 sandbox = require"splay.sandbox"
 local sd=sandbox.sandboxed_denied --stub for sand'ed functions
+local native_from_job = nil
 if job.lib_name ~= nil and job.lib_name ~= "" then
-local native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
+native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
 	print("Allow lib "..native_from_job,job.lib_version)
 else
 	print("no lib to add")
