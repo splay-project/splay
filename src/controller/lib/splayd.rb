@@ -229,6 +229,7 @@ class SplaydProtocol
 				infos = @so.read # no addslashes (json)
 				
 				@splayd.insert_splayd_infos(infos)
+				@splayd.update_splayd_infos()
 
 				bl = Splayd.blacklist
 				@so.write "BLACKLIST"
@@ -718,6 +719,10 @@ class Splayd
 				WHERE id='#{@id}'"
 
 		parse_loadavg(infos['status']['loadavg'])
+	end
+
+	def update_splayd_infos
+		@row = $db.select_one "SELECT * FROM splayds WHERE id='#{@id}'"
 	end
 
 	def localize
