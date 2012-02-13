@@ -73,6 +73,12 @@ function parse_arguments()
 		elseif arg[i] == "-lv" then
 			i = i + 1
 			lib_version = arg[i]
+		elseif arg[i] == "-u" then
+			i = i + 1
+			admin_username = arg[i]
+		elseif arg[i] == "-p" then
+			i = i + 1
+			admin_password = arg[i]
 		end
 		i = i + 1 
 	end
@@ -110,17 +116,21 @@ function load_file(lib_filename)
 	end
 end
 
-function send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, session_id)
+function send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, session_id, admin_username, admin_password)
 	-- load session_id
 	-- create json message 
 	-- send hash first
-	print(lib_filename)
-	print(lib_os)
-	print(lib_arch)
-	print(lib_version)
+	
+	--print(lib_os)
+	--print(lib_arch)
+	--print(lib_version)
+
 	local sha1=evp.new("sha1")
 	local lib_hash = sha1:digest(lib_blob)
-	print("SUBMIT A LIB with sha1 ", lib_hash)
+	sha1=evp.new("sha1")
+	local hashed_password = sha1:digest(admin_password)
+
+	print_line(NORMAL,"LIB_NAME= "..lib_filename,"OS= "..lib_os,"ARCH= "..lib_arch,"version= "..lib_version, "SHA1= "..lib_hash)
 	local body = json.encode({
 		method = "ctrl_api.pre_submit_lib",
 		params = {lib_filename, lib_hash, lib_version, session_id}
@@ -144,7 +154,7 @@ function send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, 
 		lib_blob = base64.encode(lib_blob)
 		local body = json.encode({
 			method = "ctrl_api.submit_lib",
-			params = {lib_filename, lib_version, lib_os, lib_arch, lib_hash, lib_blob, session_id}
+			params = {lib_filename, lib_version, lib_os, lib_arch, lib_hash, lib_blob, session_id, admin_username, hashed_password}
 		})
 		local response = http.request(cli_server_url, body)
 		if response then
@@ -181,5 +191,8 @@ check_cli_server()
 check_session_id()
 
 load_file(lib_filename)
+admin_username = check_username(admin_username, "Administrator's username")
 
-send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, session_id)
+admin_password = check_password(admin_password, "Administrator's password")
+
+send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, session_id, admin_username, admin_password)
