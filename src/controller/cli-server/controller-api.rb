@@ -167,26 +167,31 @@ if SplayControllerConfig::AllowNativeLibs
 		return ret
 	end
 	
-	def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id)
+	#def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id)
+	def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id, admin_username, admin_hashedpassword)
+	 
 	#if we are here there is no lib with the given hash, but there might be one that we want to update with the same name.
+		
 		ret = Hash.new
-		#puts "writing lib : #{lib_name}, V= #{lib_version}, os=#{lib_os}, arch=#{lib_arch}"   
-		user = check_session_id(session_id)
-		if user then
-			existing_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_name}' AND lib_os='#{lib_os}' AND lib_arch='#{lib_arch}'")
-			if existing_lib then
-				$db.do("UPDATE libs SET lib_version='#{lib_version}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}' WHERE id='#{existing_lib['id']}'")
-				ret['ok'] = true
-				ret['message'] = "existing_lib updated"
-			else
-				$db.do("INSERT INTO libs SET lib_name='#{lib_name}', lib_version='#{lib_version}', lib_os='#{lib_os}', lib_arch='#{lib_arch}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}'")
-				ret['ok'] = true
-				ret['message'] = "new lib inserted"
-				ret['os'] = lib_os  
+		#puts "writing lib : #{lib_name}, V= #{lib_version}, os=#{lib_os}, arch=#{lib_arch}"
+		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
+		if admin then
+			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
+				existing_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_name}' AND lib_os='#{lib_os}' AND lib_arch='#{lib_arch}'")
+				if existing_lib then
+					$db.do("UPDATE libs SET lib_version='#{lib_version}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}' WHERE id='#{existing_lib['id']}'")
+					ret['ok'] = true
+					ret['message'] = "EXISTING NATIVE LIBRARY UPDATED"
+				else
+					$db.do("INSERT INTO libs SET lib_name='#{lib_name}', lib_version='#{lib_version}', lib_os='#{lib_os}', lib_arch='#{lib_arch}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}'")
+					ret['ok'] = true
+					ret['message'] = "NEW NATIVE LIBRARY INSTALLED"
+					ret['os'] = lib_os  
+				end
 			end
 		else
-		ret['ok'] = false
-		ret['error'] = "Invalid or expired Session ID"  
+			ret['ok'] = false
+			ret['error'] = "Not authenticated as admin"  
 		end
 		return ret
 	end
@@ -249,35 +254,38 @@ if SplayControllerConfig::AllowNativeLibs
 		return ret
 	end
 
-	def remove_lib(lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id)
+	def remove_lib(lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id, admin_username, admin_hashedpassword)
 		ret = Hash.new
 		user = check_session_id(session_id)
-		if user then
-			if lib_name and lib_name != ""
-				where_clause = "WHERE lib_name='#{lib_name}' "
-				if lib_version and lib_version != ""
- 						where_clause += "AND lib_version='#{lib_version}'"
+		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
+		if admin then
+			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
+				if lib_name and lib_name != ""
+					where_clause = "WHERE lib_name='#{lib_name}' "
+					if lib_version and lib_version != ""
+	 						where_clause += "AND lib_version='#{lib_version}'"
+					end
+					if lib_arch and lib_arch != ""
+						where_clause += "AND lib_arch='#{lib_arch}'"
+				    end
+					if lib_os and lib_os != ""
+						where_clause += "AND lib_os='#{lib_os}'"
+					end
+					if lib_sha1 and lib_sha1 != ""
+						where_clause += "AND lib_sha1='#{lib_sha1}'"
+					end
+					#puts where_clause
+					$db.do("DELETE FROM libs #{where_clause}")
+					ret['ok'] = true
+					ret['message'] = "Lib deleted"
+				else
+					ret['ok'] = false
+					ret['error'] = "Cannot use an empty string for lib_name"
 				end
-				if lib_arch and lib_arch != ""
-					where_clause += "AND lib_arch='#{lib_arch}'"
-			    end
-				if lib_os and lib_os != ""
-					where_clause += "AND lib_os='#{lib_os}'"
-				end
-				if lib_sha1 and lib_sha1 != ""
-					where_clause += "AND lib_sha1='#{lib_sha1}'"
-				end
-				#puts where_clause
-				$db.do("DELETE FROM libs #{where_clause}")
-				ret['ok'] = true
-				ret['message'] = "Lib deleted"
-			else
-				ret['ok'] = false
-				ret['error'] = "Cannot use an empty string for lib_name"
 			end
 		else
 			ret['ok'] = false
-			ret['error'] = "Invalid or expired Session ID"
+			ret['error'] = "Not authenticated as admin"
 		end
 		return ret
 	end
@@ -288,10 +296,10 @@ end
 		ret = Hash.new
 		
 		if  !SplayControllerConfig::AllowNativeLibs and lib_filename !=""
-		  ret['ok'] = false
-  		ret['error'] = "Submitting jobs for native libs forbidden"
-  		return ret
-	  end
+		 	ret['ok'] = false
+  			ret['error'] = "Submitting jobs for native libs forbidden"
+  			return ret
+	  	end
 		#checks the validity of the session ID and stores the returning value in the variable user
 		user = check_session_id(session_id)
 		#check_session_id returns false if the session ID is not valid; if user is not false (the session ID is valid)
