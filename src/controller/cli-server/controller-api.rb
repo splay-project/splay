@@ -218,14 +218,14 @@ if SplayControllerConfig::AllowNativeLibs
 		if user then
 			libs_list = Array.new
 			if lib_name and lib_name != "" then
-			#list libs with the given name. for now show only the versions and platforms.
 			#TODO give a detailed presentation of the libs, and possibly the splayds they are deployed on
 				$db.select_all("SELECT * FROM libs WHERE lib_name='#{lib_name}'") do |a_lib|
 				lib = Hash.new
 				lib['lib_name'] = a_lib['lib_name']
 				lib['lib_version'] = a_lib['lib_version']
 				lib['lib_os'] = a_lib['lib_os']
-				lib['lib_arch'] = a_lib['lib_arch']   
+				lib['lib_arch'] = a_lib['lib_arch'] 
+				lib['lib_sha1'] = a_lib['lib_sha1']  
 				libs_list.push(lib)
 			end
 		else
