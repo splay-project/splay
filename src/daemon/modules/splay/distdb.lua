@@ -757,7 +757,7 @@ function paxos_put(key, value)
 
 	--check if this is necessary
 	locked_keys[key] = true
-	local ok, answer = paxos.paxos_operation("put", key, prop_ids[key], responsibles, paxos_max_retries, value)
+	local ok, answer = paxos.paxos_write(key, prop_ids[key], responsibles, paxos_max_retries, value)
 	locked_keys[key] = false
 
 	--returns the answer of paxos_operation
@@ -987,7 +987,7 @@ function paxos_get(key)
 
 	--check if this is necessary
 	locked_keys[key] = true
-	local ok, answer = paxos.paxos_operation("get", key, prop_ids[key], responsibles, paxos_max_retries)
+	local ok, answer = paxos.paxos_read(key, prop_ids[key], responsibles, paxos_max_retries)
 	locked_keys[key] = false
 
 	--returns the answer of paxos_operation

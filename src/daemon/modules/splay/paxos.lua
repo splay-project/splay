@@ -50,16 +50,16 @@ local type = type
 local tonumber = tonumber
 local tostring = tostring
 local log = log
-local base = _G
+local base = _G --TODO is this really useful?
 
 
 --naming the module
 module("splay.paxos")
 
 --authoring info
-_COPYRIGHT   = "Copyright 2011 José Valerio (University of Neuchâtel)"
+_COPYRIGHT   = "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
 _DESCRIPTION = "Paxos functions."
-_VERSION     = "0.99.0"
+_VERSION     = "0.99.1"
 
 
 --LOCAL VARIABLES
@@ -83,137 +83,27 @@ local paxos_max_retries = 5 --TODO maybe this should match with some distdb sett
 --LOCAL FUNCTIONS
 
 --function shorten_id: returns only the first 5 hexadigits of a ID string (for better printing)
-function shorten_id(id)
+local function shorten_id(id)
 	return string.sub(id, 1, 5)..".."
 end
 
 --FRONT-END FUNCTIONS
 
 function paxos_read(key, prop_id, peers, retries)
---TODO CHANGE inside AQUI ME QUEDÉ
-	--logs entrance to the function
-	log:print("paxos_operation: ENTERED, "..operation_type.." for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
-	--prints all the peers
-	for i,v in ipairs(peers) do
-		log:print("paxos_operation: peer="..shorten_id(v.id))
-	end
-
-	--initialize successful as false
-	local successful = false
-	--initialize string paxos_op_error_msg as nil
-	local paxos_op_error_msg = nil
-	--calculates the minimum majority for the peers
-	local min_majority = math.floor(#peers/2)+1
-	--initialize the answers as 0
-	local propose_answers = 0
-	--initialize newest_prop_id as 0
-	local newest_prop_id = 0
-	--initialize newest_value as nil
-	local newest_value = nil
-	--initializes the acceptors group
-	local acceptors = {}
-	--for all responsibles
-	for i,v in ipairs(peers) do
-		--execute in parallel
-		events.thread(function()
-			local propose_answer = {}
-			--sends a Propose message
-			local rpc_ok, rpc_answer = send_proposal(v, key, prop_id)
-			--if the RPC call was OK
-			if rpc_ok then
-				propose_answer = rpc_answer
-			--else (maybe network problem, dropped message) TODO also consider timeouts!
-			else
-				--WTF
-				log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_PROPOSAL TO NODE="..v.short_id)
-			end
-			--if the answer was positive
-			if propose_answer[1] then
-				--log the positive answer
-				if propose_answer[3] then
-					--prints a value if there is one
-					log:print("paxos_operation: Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
-				else
-					--if not, doesn't print value
-					log:print("paxos_operation: Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
-				end
-				--adds the node to the acceptor's group
-				table.insert(acceptors, v)
-				--increments answers
-				propose_answers = propose_answers + 1
-				--if answers reaches the minimum majority
-				if propose_answers >= min_majority then
-					--trigger the unlocking of the key
-					events.fire("propose_"..key)
-				end
-			else
-				if propose_answer[3] then
-					log:print("paxos_operation: Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
-				else
-					log:print("paxos_operation: Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
-				end
-			end
-			if propose_answer[2] then
-				--TODO complicated reasoning about what to do once you find the first negative answer
-				if propose_answer[2] > newest_prop_id then
-					newest_prop_id = propose_answer[2]
-					if propose_answer[3] then
-						newest_value = propose_answer[3]
-					end
-				end
-			end
-			if newest_value then
-				log:print("paxos_operation: newest_prop_id="..newest_prop_id..", newest_value=", newest_value.value)
-			else
-				log:print("paxos_operation: newest_prop_id="..newest_prop_id..", newest_value=")
-			end
-		end)
-	end
-
-	--waits until min_write replicas answer, or until paxos_propose_timeout is depleted
-	successful = events.wait("propose_"..key, paxos_propose_timeout) --TODO match this with settings
-
-	--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1". see above
-	--this is done because even after the triggering of event "key", acceptors
-	--can continue engrossing the acceptors group
-	--TODO check if necessary (maybe having more acceptors doesn't hurt - it involves
-	--more messages in accept phase, though)
-	local n_acceptors = #acceptors
-
-	--if the proposal didn't gather the quorum needed
-	if not successful then
-		--if a higher prop_id was indicated by the acceptors
-		if newest_prop_id > 0 then
-			--propose 1 more than that prop_id
-			prop_id = newest_prop_id + 1
-		end
-		--if the number of retries is depleted
-		if retries == 0 then
-			--returns failure
-			return false, "failed at Propose phase after "..paxos_max_retries.."retries"
-		--if not
-		else
-			--retry (retries--)
-			return paxos_operation(operation_type, key, prop_id, peers, retries-1, value)
-		end
-	end
-
-	if operation_type == "get" then
-		return true, {newest_value}
-	end
+	return paxos_operation("read", key, prop_id, peers, retries)
 end
 
-function paxos_write(key, prop_id, peers, retries, value)
-
+function paxos_write(key, prop_id, peers, retries, value) --AQUI ME QUEDE: TODO: WEIRD ERROR WITH paxos_operation
+	return paxos_operation("write", key, prop_id, peers, retries, value)
 end
 
 --function paxos_operation: performs a generic operation of the Basic Paxos protocol
-function paxos_operation(operation_type, key, prop_id, peers, retries, value)
+local function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 	--logs entrance to the function
-	log:print("paxos_operation: ENTERED, "..operation_type.." for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
+	log:print("paxos_"..operation_type..": ENTERED, for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
 	--prints all the peers
 	for i,v in ipairs(peers) do
-		log:print("paxos_operation: peer="..shorten_id(v.id))
+		log:print("paxos_"..operation_type..": peer="..shorten_id(v.id))
 	end
 
 	--initialize successful as false
@@ -243,17 +133,17 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 			--else (maybe network problem, dropped message) TODO also consider timeouts!
 			else
 				--WTF
-				log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_PROPOSAL TO NODE="..v.short_id)
+				log:print("paxos_"..operation_type..": SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_PROPOSAL TO NODE="..v.short_id)
 			end
 			--if the answer was positive
 			if propose_answer[1] then
 				--log the positive answer
 				if propose_answer[3] then
 					--prints a value if there is one
-					log:print("paxos_operation: Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
+					log:print("paxos_"..operation_type..": Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
 				else
 					--if not, doesn't print value
-					log:print("paxos_operation: Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
+					log:print("paxos_"..operation_type..": Received a positive answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
 				end
 				--adds the node to the acceptor's group
 				table.insert(acceptors, v)
@@ -266,9 +156,9 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 				end
 			else
 				if propose_answer[3] then
-					log:print("paxos_operation: Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
+					log:print("paxos_"..operation_type..": Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=", propose_answer[3].value)
 				else
-					log:print("paxos_operation: Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
+					log:print("paxos_"..operation_type..": Received a negative answer from node="..v.short_id.." , highest prop ID=", propose_answer[2], "value=")
 				end
 			end
 			if propose_answer[2] then
@@ -281,9 +171,9 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 				end
 			end
 			if newest_value then
-				log:print("paxos_operation: newest_prop_id="..newest_prop_id..", newest_value=", newest_value.value)
+				log:print("paxos_"..operation_type..": newest_prop_id="..newest_prop_id..", newest_value=", newest_value.value)
 			else
-				log:print("paxos_operation: newest_prop_id="..newest_prop_id..", newest_value=")
+				log:print("paxos_"..operation_type..": newest_prop_id="..newest_prop_id..", newest_value=")
 			end
 		end)
 	end
@@ -316,7 +206,7 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 		end
 	end
 
-	if operation_type == "get" then
+	if operation_type == "read" then
 		return true, {newest_value}
 	end
 
@@ -336,10 +226,10 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 			--else (maybe network problem, dropped message) TODO also consider timeouts!
 			else
 				--WTF
-				log:print("paxos_operation: SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.short_id)
+				log:print("paxos_"..operation_type..": SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.short_id)
 			end
 			if accept_answer[1] then
-				log:print("paxos_operation: Received a positive answer from node="..v.short_id)
+				log:print("paxos_"..operation_type..": Received a positive answer from node="..v.short_id)
 				--increments answers
 				accept_answers = accept_answers + 1
 				--if answers reaches the number of acceptors
@@ -348,7 +238,7 @@ function paxos_operation(operation_type, key, prop_id, peers, retries, value)
 					events.fire("accept_"..key)
 				end
 			else
-				log:print("paxos_operation: Received a negative answer from node="..v.short_id.." , something went WRONG")
+				log:print("paxos_"..operation_type..": Received a negative answer from node="..v.short_id.." , something went WRONG")
 			end
 		end)
 	end
