@@ -50,7 +50,7 @@ local type = type
 local tonumber = tonumber
 local tostring = tostring
 local log = log
-local base = _G --TODO is this really useful?
+--local base = _G --TODO is this really useful?
 
 
 --naming the module
@@ -85,16 +85,6 @@ local paxos_max_retries = 5 --TODO maybe this should match with some distdb sett
 --function shorten_id: returns only the first 5 hexadigits of a ID string (for better printing)
 local function shorten_id(id)
 	return string.sub(id, 1, 5)..".."
-end
-
---FRONT-END FUNCTIONS
-
-function paxos_read(key, prop_id, peers, retries)
-	return paxos_operation("read", key, prop_id, peers, retries)
-end
-
-function paxos_write(key, prop_id, peers, retries, value) --AQUI ME QUEDE: TODO: WEIRD ERROR WITH paxos_operation
-	return paxos_operation("write", key, prop_id, peers, retries, value)
 end
 
 --function paxos_operation: performs a generic operation of the Basic Paxos protocol
@@ -271,6 +261,18 @@ function send_learn(v, key, value)
 	log:print("send_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value="..value)
 	return rpc.acall(v, {"paxos.receive_learn", key, value})
 end
+
+
+--FRONT-END FUNCTIONS
+
+function paxos_read(key, prop_id, peers, retries)
+	return paxos_operation("read", key, prop_id, peers, retries)
+end
+
+function paxos_write(key, prop_id, peers, retries, value)
+	return paxos_operation("write", key, prop_id, peers, retries, value)
+end
+
 
 --BACK-END FUNCTIONS
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
