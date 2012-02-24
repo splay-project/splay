@@ -89,6 +89,7 @@ end
 
 --function paxos_operation: performs a generic operation of the Basic Paxos protocol
 local function paxos_operation(operation_type, key, prop_id, peers, retries, value)
+	--TODO La idea es que el Key sea interpretado bien cuando se recibe el proposal, eso debe ser modificado en distdb. en ditdb el reemplazo de receive-proposal debe entender a que key pertenece la vaina
 	--logs entrance to the function
 	log:print("paxos_"..operation_type..": ENTERED, for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
 	--prints all the peers
