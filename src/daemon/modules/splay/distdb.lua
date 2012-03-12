@@ -757,7 +757,7 @@ function paxos_put(key, value)
 
 	--check if this is necessary
 	locked_keys[key] = true
-	local ok, answer = paxos.paxos_write(key, prop_ids[key], responsibles, paxos_max_retries, value)
+	local ok, answer = paxos.paxos_write(prop_ids[key], responsibles, paxos_max_retries, value, key)
 	locked_keys[key] = false
 
 	--returns the answer of paxos_operation
@@ -987,7 +987,7 @@ function paxos_get(key)
 
 	--check if this is necessary
 	locked_keys[key] = true
-	local ok, answer = paxos.paxos_read(key, prop_ids[key], responsibles, paxos_max_retries)
+	local ok, answer = paxos.paxos_read(prop_ids[key], responsibles, paxos_max_retries, key)
 	locked_keys[key] = false
 
 	--returns the answer of paxos_operation
@@ -997,25 +997,25 @@ end
 
 
 --REPLACEMENTS OF PAXOS FUNCTIONS
-function send_paxos_proposal(v, key, prop_id)
+function send_paxos_proposal(v, prop_id, key)
 	log:print(n.short_id..":send_paxos_proposal: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id)
-	return rpc.acall(v, {"distdb.receive_paxos_proposal", key, prop_id})
+	return rpc.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
 end
 
-function send_paxos_accept(v, key, prop_id, peers, value)
+function send_paxos_accept(v, prop_id, peers, value, key)
 	log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
 	for i2,v2 in ipairs(peers) do
 		log:print(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
 	end
-	return rpc.acall(v, {"distdb.receive_paxos_accept", key, prop_id, peers, value})
+	return rpc.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
 end
 
-function send_paxos_learn(v, key, value)
+function send_paxos_learn(v, value, key)
 	log:print(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value="..value)
-	return rpc.call(v, {"distdb.put_local", key, value})
+	return rpc.call(v, {"distdb.put_local", value, key})
 end
 
-function receive_paxos_proposal(key, prop_id)
+function receive_paxos_proposal(prop_id, key)
 	log:print(n.short_id..":receive_paxos_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
@@ -1043,7 +1043,7 @@ function receive_paxos_proposal(key, prop_id)
 	return true, old_prop_id, db_table[key]
 end
 
-function receive_paxos_accept(key, prop_id, peers, value)
+function receive_paxos_accept(prop_id, peers, value, key)
 	log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
@@ -1080,7 +1080,7 @@ function receive_paxos_accept(key, prop_id, peers, value)
 			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
 			--sends put_local to a Learner
 			events.thread(function()
-				send_paxos_learn(v, key, value)
+				send_paxos_learn(v, value, key)
 			end)
 		end
 	end
@@ -1091,7 +1091,7 @@ end
 --BACK-END FUNCTIONS
 
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
-function receive_proposal(key, prop_id)
+function receive_proposal(prop_id, key)
 	log:print(n.short_id..":receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
@@ -1120,7 +1120,7 @@ function receive_proposal(key, prop_id)
 end
 
 --function receive_accept: receives and answers to a "Accept!" message, used in Paxos
-function receive_accept(key, prop_id, value)
+function receive_accept(prop_id, value, key)
 	log:print(n.short_id..":receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)

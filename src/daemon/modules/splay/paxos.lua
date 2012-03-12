@@ -84,11 +84,16 @@ local paxos_max_retries = 5 --TODO maybe this should match with some distdb sett
 
 --function shorten_id: returns only the first 5 hexadigits of a ID string (for better printing)
 local function shorten_id(id)
+	if id == "default" then return id end
 	return string.sub(id, 1, 5)..".."
 end
 
 --function paxos_operation: performs a generic operation of the Basic Paxos protocol
-local function paxos_operation(operation_type, key, prop_id, peers, retries, value)
+local function paxos_operation(operation_type, prop_id, peers, retries, value, key)
+	if not key then
+		--default key
+		key = "default"
+	end
 	--logs entrance to the function
 	log:print("paxos_"..operation_type..": ENTERED, for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
 	--prints all the peers
@@ -116,7 +121,7 @@ local function paxos_operation(operation_type, key, prop_id, peers, retries, val
 		events.thread(function()
 			local propose_answer = {}
 			--sends a Propose message
-			local rpc_ok, rpc_answer = send_proposal(v, key, prop_id)
+			local rpc_ok, rpc_answer = send_proposal(v, prop_id, key)
 			--if the RPC call was OK
 			if rpc_ok then
 				propose_answer = rpc_answer
@@ -192,7 +197,7 @@ local function paxos_operation(operation_type, key, prop_id, peers, retries, val
 		--if not
 		else
 			--retry (retries--)
-			return paxos_operation(operation_type, key, prop_id, peers, retries-1, value)
+			return paxos_operation(operation_type, prop_id, peers, retries-1, value, key)
 		end
 	end
 
@@ -209,7 +214,7 @@ local function paxos_operation(operation_type, key, prop_id, peers, retries, val
 		events.thread(function()
 			local accept_answer = nil
 			--puts the key remotely on the others responsibles, if the put is successful
-			local rpc_ok, rpc_answer = send_accept(v, key, prop_id, peers, value)
+			local rpc_ok, rpc_answer = send_accept(v, prop_id, peers, value, key)
 			--if the RPC call was OK
 			if rpc_ok then
 				accept_answer = rpc_answer
@@ -241,42 +246,42 @@ local function paxos_operation(operation_type, key, prop_id, peers, retries, val
 end
 
 --to be replaced if paxos is used as a library inside a library
-function send_proposal(v, key, prop_id)
+function send_proposal(v, prop_id, key)
 	--logs entrance to the function
 	log:print("send_proposal: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id)
-	return rpc.acall(v, {"paxos.receive_proposal", key, prop_id})
+	return rpc.acall(v, {"paxos.receive_proposal", prop_id, key})
 end
 
-function send_accept(v, key, prop_id, peers, value)
+function send_accept(v, prop_id, peers, value, key)
 	--logs entrance to the function
 	log:print("send_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
 	for i2,v2 in ipairs(peers) do
 		log:print("send_accept: peers: node="..shorten_id(v2.id))
 	end
-	return rpc.acall(v, {"paxos.receive_accept", key, prop_id, peers, value})
+	return rpc.acall(v, {"paxos.receive_accept", prop_id, peers, value, key})
 end
 
-function send_learn(v, key, value)
+function send_learn(v, value, key)
 	--logs entrance to the function
 	log:print("send_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value="..value)
-	return rpc.acall(v, {"paxos.receive_learn", key, value})
+	return rpc.acall(v, {"paxos.receive_learn", value, key})
 end
 
 
 --FRONT-END FUNCTIONS
 
-function paxos_read(key, prop_id, peers, retries)
-	return paxos_operation("read", key, prop_id, peers, retries)
+function paxos_read(prop_id, peers, retries, key)
+	return paxos_operation("read", prop_id, peers, retries, nil, key)
 end
 
-function paxos_write(key, prop_id, peers, retries, value)
-	return paxos_operation("write", key, prop_id, peers, retries, value)
+function paxos_write(prop_id, peers, retries, value, key)
+	return paxos_operation("write", prop_id, peers, retries, value, key)
 end
 
 
 --BACK-END FUNCTIONS
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
-function receive_proposal(key, prop_id)
+function receive_proposal(prop_id, key)
 	log:print("receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
 	--adding a random failure to simulate failed local transactions
 	if math.random(5) == 1 then
@@ -305,7 +310,7 @@ function receive_proposal(key, prop_id)
 end
 
 --function receive_accept: receives and answers to a "Accept!" message, used in Paxos
-function receive_accept(key, prop_id, peers, value)
+function receive_accept(prop_id, peers, value, key)
 	log:print("receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
 	--adding a random waiting time to simulate different response times
 	events.sleep(math.random(100)/100)
@@ -335,14 +340,14 @@ function receive_accept(key, prop_id, peers, value)
 	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value="..value..", enabled=", paxos_db[key].enabled, "propID="..prop_id)
 	for i,v in ipairs(peers) do
 		events.thread(function()
-			send_learn(v, key, value)
+			send_learn(v, value, key)
 		end)
 	end
 	return true
 end
 
 --to be replaced with app function
-function receive_learn(key, value)
+function receive_learn(value, key)
 	log:print("receive_learn: ENTERED, for key="..shorten_id(key)..", value="..value)
 	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
