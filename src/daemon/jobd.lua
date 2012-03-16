@@ -92,10 +92,10 @@ end
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
 	job.position = job.network.list.position
-
+	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
-	job.nodes = function()
+	job.get_live_nodes = function()
 		-- if there is a timeline (trace_alt type of job)
 		if job.network.list.timeline then
 			-- look how much time has passed already
