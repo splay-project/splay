@@ -20,6 +20,12 @@ events = require"splay.events"
 -- FUNCTIONS
 
 function send_put(port, type_of_transaction, key, value)
+	
+	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+
+    logfile1:write("sending a PUT\n")
+    
+
 	local response_body = nil
 	local response_to_discard = nil
 	local response_status = nil
@@ -41,13 +47,22 @@ function send_put(port, type_of_transaction, key, value)
 	})
 
 	if response_status == 200 then
-		print("PUT done.")
+		--print("PUT done.")
+		logfile1:write("PUT done.\n")
 	else
-		print("Error "..response_status)
+		--print("Error "..response_status)
+		logfile1:write("Error "..response_status.."\n")
 	end
+
+	logfile1:close()
+
 end
 
 function send_get(port, type_of_transaction, key)
+
+	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+
+	logfile1:write("sending a GET\n")
 
 	local response_body = {}
 	local response_to_discard = nil
@@ -66,19 +81,33 @@ function send_get(port, type_of_transaction, key)
 	})
 
 	if response_status == 200 then
-		print("Content of kv-store: "..key.." is:\n"..response_body[1])
+		--print("Content of kv-store: "..key.." is:\n"..response_body[1])
+		logfile1:write("200 OK received\n")
 	else
-		print("Error "..response_status..":\n"..response_body[1])
+		--print("Error "..response_status..":\n"..response_body[1])
+		logfile1:write("Error\n")
 	end
 
 	local answer = json.decode(response_body[1])
 
-	local chosen_value = 0
+	local chosen_value = nil
+	if type(answer[1].value) == "string" then
+		chosen_value = ""
+	elseif type(answer[1].value) == "number" then
+		chosen_value = 0
+	end
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
-		if v2.value > chosen_value then --in this case is the max, but it could be other criteria
-			chosen_value = v2.value
+		if type(value) == "string" then
+			if string.len(v2.value) > string.len(chosen_value) then --in this case is the max, but it could be other criteria
+				chosen_value = v2.value
+			end
+		elseif type(value) == "number" then
+			if v2.value > chosen_value then --in this case is the max, but it could be other criteria
+				chosen_value = v2.value
+			end
 		end
+		
 		for i3,v3 in pairs(v2.vector_clock) do --NOTE i dont get this 100%, what if the client application wants to fuck up the versions?
 			if not max_vc[i3] then
 				max_vc[i3] = v3
@@ -87,12 +116,17 @@ function send_get(port, type_of_transaction, key)
 			end
 		end
 	end
-	print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
-	for i2,v2 in pairs(max_vc) do
-		print("", i2, v2)
-	end
+	--print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
+	logfile1:write("key: "..key..", value: "..chosen_value.."\n")
+	--for i2,v2 in pairs(max_vc) do
+		--print("", i2, v2)
+	--end
+
+	logfile1:close()
+
 	return chosen_value, max_vc
 end
+--[[
 events.run(function()
 	dofile("ports.lua")
 	math.randomseed(os.time())
@@ -116,3 +150,4 @@ events.run(function()
 	end
 end)
 
+--]]

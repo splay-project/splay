@@ -36,8 +36,8 @@ local blank_block=("0"):rep(mem_block_size)
 local open_mode={'rb','wb','rb+'}
 
 
-local db_port = 
-local db_key = "" --TODO PONER LA LLAVE
+local db_port = 13269
+local db_key = "8c3a39620e85d6323283397343ed2c7afa98c1d6"
 
 
 
@@ -256,11 +256,16 @@ read=function(self, path, size, offset, obj)
         end
     end
 
+    local filecontent = send_get(db_port, "evtl_consistent", db_key);
+    --local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+    --logfile1:write("read function\n")
+    --logfile1:close()
+
     return 0, tjoin(data,"")
 end,
 
 write=function(self, path, buf, offset, obj)
-    dbclient.put(db_port, "paxos", db_key, "helloworld"); --TODO AQUI ME QUEDÉ; LA IDEA ES LLENAR READ Y WRITE
+        
     obj.changed = true
     local size = #buf
     local o = offset % mem_block_size
@@ -285,6 +290,11 @@ write=function(self, path, buf, offset, obj)
     end
     local eof = offset + #buf
     if eof > obj.meta.size then obj.meta.size = eof ; obj.meta_changed = true end
+
+    send_put(db_port, "evtl_consistent", db_key, "helloworld");
+    --local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+    --logfile1:write("write function\n")
+    --logfile1:close()
 
     return #buf
 end,
@@ -419,6 +429,7 @@ symlink=function(self, from, to)
 end,
 
 rename = function(self, from, to)
+    print("renaming")
     if from == to then return 0 end
 
     --print("rename", from, to)
