@@ -513,7 +513,7 @@ function handle_http_message(socket)
 	log:print(n.short_id..":handle_http_message: http request parsed, a "..method.." request will be forwarded")
 	log:print(n.short_id..":handle_http_message: key="..shorten_id(key)..", value=", value)
 	--forwards the request to a node that is responsible for this key
-	local ok, answer = forward_request[method](type_of_transaction, key, tonumber(value))
+	local ok, answer = forward_request[method](type_of_transaction, key, value)
 
 	--initializes the response body, code and content type as nil
 	local http_response_body = nil
@@ -1023,7 +1023,7 @@ function receive_paxos_proposal(prop_id, key)
 		return false
 	end
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/100)
+	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print("receive_paxos_proposal: NOT accepting Propose for key, wrong key type")
@@ -1046,7 +1046,7 @@ end
 function receive_paxos_accept(prop_id, peers, value, key)
 	log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/100)
+	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print(" NOT accepting Accept! wrong key type")
@@ -1099,7 +1099,7 @@ function receive_proposal(prop_id, key)
 		return false
 	end
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/100)
+	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print(n.short_id..":receive_proposal: NOT accepting Propose for key, wrong key type")
@@ -1123,7 +1123,7 @@ end
 function receive_accept(prop_id, value, key)
 	log:print(n.short_id..":receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/100)
+	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print(n.short_id..": NOT accepting Accept! wrong key type")
@@ -1175,7 +1175,7 @@ function put_local(key, value, src_write)
 	--	return false, "404"
 	--end
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/100)
+	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print(n.short_id..":put_local: NOT writing key, wrong key type")
@@ -1221,7 +1221,7 @@ function get_local(key)
 	--	return nil
 	--end
 	--adding a random waiting time to simulate different response times
-	events.sleep(math.random(100)/100)
+	--events.sleep(math.random(100)/100)
 	return db_table[key]
 end
 
