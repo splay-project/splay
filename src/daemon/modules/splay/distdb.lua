@@ -447,7 +447,7 @@ end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
-	log:print(n.short_id..":handle_put: for key="..shorten_id(key)..", value="..value)
+	log:print(n.short_id..":handle_put: for key="..shorten_id(key)..", value="..value) -- TODO: key better be hashed here?
 	
 	local chosen_node = nil
 	
@@ -641,6 +641,86 @@ function stop()
 	rpc.stop_server(n.port)
 end
 
+--function consistent_put: puts a k,v and waits until all the replicas assure they have a copy
+function consistent_put(key, value)
+	log:print(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value="..value)
+	--initializes boolean not_responsible
+	local not_responsible = true
+	--gets all responsibles for the key
+	local responsibles = get_responsibles(key)
+	--for all responsibles
+	for i,v in ipairs(responsibles) do
+		--if the ID of the node matches, make not_responsible false
+		if v.id == n.id then
+			not_responsible = false
+			break
+		end
+	end
+	--if the node is not responsible, return with an error message
+	if not_responsible then
+		return false, "wrong node"
+	end
+	--initialize the answers as 0
+	local answers = 0
+	--initialize successful as false
+	local successful = false
+
+	--TODO consider min replicas and neighborhood
+
+	--if the key is not being modified right now
+	if not locked_keys[key] then
+		--lock the key during the put
+		locked_keys[key] = true
+		--put the key locally TODO maybe this can change to a sequential approach; first node itself
+		--checks the version and writes the k,v, then it writes to others
+		events.thread(function()
+			--if the "put" action is successful
+			if put_local(key, value, n) then
+				--increment answers
+				answers = answers + 1
+				--if answers reaches the number of replicas
+				if answers >= n_replicas then
+					--trigger the unlocking of the key
+					events.fire(key)
+				end
+			end
+		end)
+		--for all responsibles
+		for i,v in ipairs(responsibles) do
+			--if node ID is not the same as the node itself (avoids RPC calling itself)
+			if v.id ~= n.id then
+				--execute in parallel
+				events.thread(function()
+					--puts the key remotely on the others responsibles, if the put is successful
+					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					--if the RPC call was OK
+					if rpc_ok then
+						if rpc_answer[1] then
+							--increment answers
+							answers = answers + 1
+							--if answers reaches the minimum number of replicas that must write
+							if answers >= n_replicas then
+								--trigger the unlocking of the key
+								events.fire(key)
+							end
+						end
+					--else (maybe network problem, dropped message) TODO also consider timeouts!
+					else
+						--WTF
+						log:print(n.short_id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
+					end
+				end)
+			end
+		end
+		--waits until min_write replicas answer, or until the rpc_timeout is depleted
+		successful = events.wait(key, rpc_timeout) --TODO match this with settings
+		--unlocks the key
+		locked_keys[key] = nil
+	end
+	--returns the value of the variable successful
+	return successful
+end
+
 --function evtl_consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
 function evtl_consistent_put(key, value)
 	log:print(n.short_id..":evtl_consistent_put: ENTERED, for key="..shorten_id(key)..", value="..value)
@@ -765,7 +845,7 @@ function paxos_put(key, value)
 end
 
 --function consistent_get: returns the value of a certain key; reads the value only from the node itself (matches with
---the behavior of consisten_put, where all replicas write always all values)
+--the behavior of consistent_put, where all replicas write always all values)
 function consistent_get(key)
 	log:print(n.short_id..":consistent_get: ENTERED, for key="..shorten_id(key))
 	--gets the responsibles of the key

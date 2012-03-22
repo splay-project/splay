@@ -8,7 +8,9 @@
 
 local fuse = require 'fuse'
 local mnode = require 'mnode'
-local dbclient = require 'distdb-client'
+local dbclient = require 'distdb-client' -- JV: ADDED
+local json = require'json' -- JV: ADDED
+local crypto = require'crypto' -- JV: ADDED
 
 local tjoin = table.concat
 local tadd = table.insert
@@ -39,8 +41,8 @@ local open_mode={'rb','wb','rb+'}
 
 
 --BEGIN ADDED BY JV
-local db_port = 15009
-local db_key = "4cded69480ba330e54d30964ac6e55c7d350d642"
+local db_port = 13356
+local db_key = nil
 
 function print_tablez(name, order, input_table)
     local output_string = ""
@@ -136,7 +138,7 @@ end
 
 local function decode_acl(s)
 
-    reportlog("decode_acl", {s=s})
+    reportlog("decode_acl", {s=s}) -- JV: ADDED FOR LOGGING
 
     local version = s:sub(1,4)
     local n = 5
@@ -151,7 +153,7 @@ end
 
 local function clear_buffer(dirent,from,to)
 
-    reportlog("clear_buffer", {dirent=dirent, from=from, to=to})
+    reportlog("clear_buffer", {dirent=dirent, from=from, to=to}) -- JV: ADDED FOR LOGGING
 
     for i = from, to do dirent.content[i] = nil end 
     --[[
@@ -164,23 +166,23 @@ end
 
 local function mk_mode(owner, group, world, sticky)
 
-    reportlog("mk_mode", {owner=owner, group=group, world=world, sticky=sticky})
+    reportlog("mk_mode", {owner=owner, group=group, world=world, sticky=sticky}) -- JV: ADDED FOR LOGGING
 
     sticky = sticky or 0
-    local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID --ADDED BY JV
-    reportlog("mk_mode returns", {result_mode=result_mode})
+    local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID -- JV: ADDED FOR LOGGING
+    reportlog("mk_mode returns", {result_mode=result_mode}) -- JV: ADDED FOR LOGGING
     return owner * S_UID + group * S_GID + world + sticky * S_SID
 end
 
 local function dir_walk(root, path)
 
-    reportlog("dir_walk", {root=root, path=path})
+    reportlog("dir_walk", {root=root, path=path}) -- JV: ADDED FOR LOGGING
 
     local dirent , parent = root, nil
     if path ~= "/" then 
         for c in path:gmatch("[^/]*") do
             if #c > 0 then
-                reportlog("dir_walk searching", {c=c})
+                reportlog("dir_walk searching", {c=c}) -- JV: ADDED FOR LOGGING
                 parent = dirent
                 local content = parent.content
                 --dirent = content[c]
@@ -194,7 +196,7 @@ local function dir_walk(root, path)
         dirent.is_dir = is_dir(dirent.meta.mode)
     end
 
-    reportlog("dir_walk_returns", {dirent=dirent, parent=parent})
+    reportlog("dir_walk_returns", {dirent=dirent, parent=parent}) -- JV: ADDED FOR LOGGING
 
     return dirent, parent
 end
@@ -203,8 +205,14 @@ local uid,gid,pid,puid,pgid = fuse.context()
 
 local root = mnode.get("/")
 
+db_key = crypto.evp.digest("sha1", "/") --JV: ADDED FOR REPLACEMENT WITH DISTDB
+local ok_get_root, rootdb = send_get(db_port, "consistent", db_key) -- JV: ADDED FOR REPLACEMENT WITH DISTDB
+
 if not root then
     local content = mnode.block()
+
+    reportlog("creating root",{content=content}) -- JV: ADDED FOR LOGGING
+
     root = mnode.node{
      meta = {
             data_block = content._key,
@@ -216,12 +224,21 @@ if not root then
             ,
             content = content
     }
+
+    rootdb = {xattr={[-1]=true}, mode= mk_mode(7,5,5) + S_IFDIR,
+            ino = 0,
+            dev = 0, 
+            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()} -- JV: ADDED FOR REPLACEMENT WITH DISTDB
+    rootdbjson = json.encode(rootdb) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    
     mnode.set("/", root)
+    
+    local ok_put_root = send_put(db_port, "consistent", db_key, rootdbjson) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 end
 
 local function unlink_node(dirent, path)
 
-    reportlog("unlink_mode", {dirent=dirent, path=path})
+    reportlog("unlink_mode", {dirent=dirent, path=path}) -- JV: ADDED FOR LOGGING
 
     local meta = dirent.meta
     meta.nlink = meta.nlink - 1 - (is_dir(meta.mode) and 1 or 0)
@@ -240,14 +257,14 @@ local memfs={
 
 pulse=function()
     
-    reportlog("pulse", {})
+    reportlog("pulse", {}) -- JV: ADDED FOR LOGGING
 
     print "periodic pulse"
 end,
 
 getattr=function(self, path)
 
-    reportlog("getattr",{path=path})
+    reportlog("getattr",{path=path}) -- JV: ADDED FOR LOGGING
 
     local dirent = dir_walk(root, path)
     if not dirent then return ENOENT end
@@ -257,7 +274,7 @@ end,
 
 opendir = function(self, path)
 
-    reportlog("opendir",{path=path})
+    reportlog("opendir",{path=path}) -- JV: ADDED FOR LOGGING
 
     local dirent = dir_walk(root, path)
     if not dirent then return ENOENT end
@@ -266,7 +283,7 @@ end,
 
 readdir = function(self, path, offset, dirent)
 
-    reportlog("readdir",{path=path,offset=offset,dirent=dirent})
+    reportlog("readdir",{path=path,offset=offset,dirent=dirent}) -- JV: ADDED FOR LOGGING
 
     local out={'.','..'}
     for k,v in dirent.content do 
@@ -280,14 +297,14 @@ end,
 
 releasedir = function(self, path, dirent)
 
-    reportlog("releasedir",{path=path,dirent=dirent})
+    reportlog("releasedir",{path=path,dirent=dirent}) -- JV: ADDED FOR LOGGING
 
     return 0
 end,
 
 mknod = function(self, path, mode, rdev)
 
-    reportlog("mknod",{path=path,mode=mode,rdev=rdev})
+    reportlog("mknod",{path=path,mode=mode,rdev=rdev}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
     local dirent,parent = dir_walk(root, path)
@@ -313,7 +330,7 @@ end,
 
 read=function(self, path, size, offset, obj)
     
-    reportlog("read",{path=path,size=size,offset=offset,obj=obj})
+    reportlog("read",{path=path,size=size,offset=offset,obj=obj}) -- JV: ADDED FOR LOGGING
 
     local block = floor(offset/mem_block_size)
     local o = offset%mem_block_size
@@ -342,7 +359,7 @@ end,
 
 write=function(self, path, buf, offset, obj)
         
-    reportlog("write",{path=path,buf=buf,offset=offset,obj=obj})
+    reportlog("write",{path=path,buf=buf,offset=offset,obj=obj}) -- JV: ADDED FOR LOGGING
 
     obj.changed = true
     local size = #buf
@@ -377,7 +394,7 @@ end,
 
 open=function(self, path, mode)
 
-    reportlog("open",{path=path,mode=mode})
+    reportlog("open",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
 
     local m = mode % 4
     local dirent = dir_walk(root, path)
@@ -388,7 +405,7 @@ end,
 
 release=function(self, path, obj)
 
-    reportlog("release",{path=path,obj=obj})
+    reportlog("release",{path=path,obj=obj}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
     obj.open = obj.open - 1
@@ -413,7 +430,7 @@ end,
 
 fgetattr=function(self, path, obj, ...)
 
-    reportlog("fgetattr",{path=path,obj=obj})
+    reportlog("fgetattr",{path=path,obj=obj}) -- JV: ADDED FOR LOGGING
 
     local x = obj.meta
     return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime    
@@ -421,7 +438,7 @@ end,
 
 rmdir = function(self, path)
 
-    reportlog("rmdir",{path=path})
+    reportlog("rmdir",{path=path}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
     local dirent,parent = dir_walk(root, path)
@@ -433,7 +450,7 @@ end,
 
 mkdir = function(self, path, mode, ...)
 
-    reportlog("mkdir",{path=path,mode=mode})
+    reportlog("mkdir",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
     local dirent,parent = dir_walk(root, path)
@@ -459,7 +476,7 @@ end,
 
 create = function(self, path, mode, flag, ...)
 
-    reportlog("create",{path=path,mode=mode,flag=flag})
+    reportlog("create",{path=path,mode=mode,flag=flag}) -- JV: ADDED FOR LOGGING
 
     if path:find('hidden') then print("create", path, mode, flag) end
     local dir, base = path:splitpath()
@@ -487,7 +504,7 @@ end,
 
 flush=function(self, path, obj)
 
-    reportlog("flush",{path=path,obj=obj})
+    reportlog("flush",{path=path,obj=obj}) -- JV: ADDED FOR LOGGING
 
     if obj.changed then mnode.flush_data(obj.content, obj, path) end
     return 0
@@ -495,7 +512,7 @@ end,
 
 readlink=function(self, path)
 
-    reportlog("readlink",{path=path})
+    reportlog("readlink",{path=path}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then
@@ -506,7 +523,7 @@ end,
 
 symlink=function(self, from, to)
 
-    reportlog("symlink",{from=from,to=to})
+    reportlog("symlink",{from=from,to=to}) -- JV: ADDED FOR LOGGING
 
     local dir, base = to:splitpath()
     local dirent,parent = dir_walk(root, to)
@@ -533,7 +550,7 @@ end,
 
 rename = function(self, from, to)
 
-    reportlog("rename",{from=from,to=to})
+    reportlog("rename",{from=from,to=to}) -- JV: ADDED FOR LOGGING
 
     if from == to then return 0 end
 
@@ -563,7 +580,7 @@ end,
 
 link=function(self, from, to, ...)
 
-    reportlog("link",{from=from,to=to})
+    reportlog("link",{from=from,to=to}) -- JV: ADDED FOR LOGGING
 
     --print("link", from, to)
     local dir, base = to:splitpath()
@@ -583,7 +600,7 @@ end,
 
 unlink=function(self, path, ...)
 
-    reportlog("unlink",{path=path})
+    reportlog("unlink",{path=path}) -- JV: ADDED FOR LOGGING
 
     if path:find("hidden") then print("unlink", path) end
     local dir, base = path:splitpath()
@@ -604,7 +621,7 @@ end,
 
 chown=function(self, path, uid, gid)
 
-    reportlog("chown",{path=path,uid=uid,gid=gid})
+    reportlog("chown",{path=path,uid=uid,gid=gid}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then
@@ -619,7 +636,7 @@ chown=function(self, path, uid, gid)
 end,
 chmod=function(self, path, mode)
 
-    reportlog("chmod",{path=path,mode=mode})
+    reportlog("chmod",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then
@@ -633,7 +650,7 @@ chmod=function(self, path, mode)
 end,
 utime=function(self, path, atime, mtime)
 
-    reportlog("utime",{path=path,atime=atime,mtime=mtime})
+    reportlog("utime",{path=path,atime=atime,mtime=mtime}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then
@@ -648,7 +665,7 @@ utime=function(self, path, atime, mtime)
 end,
 ftruncate = function(self, path, size, obj)
 
-    reportlog("ftruncate",{path=path,size=size,obj=obj})
+    reportlog("ftruncate",{path=path,size=size,obj=obj}) -- JV: ADDED FOR LOGGING
 
     local old_size = obj.meta.size
     obj.meta.size = size
@@ -658,7 +675,7 @@ end,
 
 truncate=function(self, path, size)
 
-    reportlog("truncate",{path=path,size=size})
+    reportlog("truncate",{path=path,size=size}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then 
@@ -674,13 +691,13 @@ truncate=function(self, path, size)
 end,
 access=function(...)
 
-    reportlog("access",{})
+    reportlog("access",{}) -- JV: ADDED FOR LOGGING
 
     return 0
 end,
 fsync = function(self, path, isdatasync, obj)
 
-    reportlog("fsync",{path=path,isdatasync=isdatasync,obj=obj})
+    reportlog("fsync",{path=path,isdatasync=isdatasync,obj=obj}) -- JV: ADDED FOR LOGGING
 
     mnode.flush_node(obj, path, false) 
     if isdatasync and obj.changed then 
@@ -690,13 +707,13 @@ fsync = function(self, path, isdatasync, obj)
 end,
 fsyncdir = function(self, path, isdatasync, obj)
 
-    reportlog("fsyncdir",{path=path,isdatasync=isdatasync,obj=obj})
+    reportlog("fsyncdir",{path=path,isdatasync=isdatasync,obj=obj}) -- JV: ADDED FOR LOGGING
 
     return 0
 end,
 listxattr = function(self, path, size)
 
-    reportlog("listxattr",{path=path,size=size})
+    reportlog("listxattr",{path=path,size=size}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then
@@ -715,7 +732,7 @@ end,
 
 removexattr = function(self, path, name)
 
-    reportlog("removexattr",{path=path,name=name})
+    reportlog("removexattr",{path=path,name=name}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then
@@ -728,7 +745,7 @@ end,
 
 setxattr = function(self, path, name, val, flags)
 
-    reportlog("setxattr",{path=path,name=name,val=val,flags=flags})
+    reportlog("setxattr",{path=path,name=name,val=val,flags=flags}) -- JV: ADDED FOR LOGGING
 
     --string.hex = function(s) return s:gsub(".", function(c) return format("%02x", string.byte(c)) end) end
     local dirent,parent = dir_walk(root, path)
@@ -742,7 +759,7 @@ end,
 
 getxattr = function(self, path, name, size)
 
-    reportlog("getxattr",{path=path,name=name,size=size})
+    reportlog("getxattr",{path=path,name=name,size=size}) -- JV: ADDED FOR LOGGING
 
     local dirent,parent = dir_walk(root, path)
     if dirent then

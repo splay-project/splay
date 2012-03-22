@@ -23,7 +23,7 @@ function send_put(port, type_of_transaction, key, value)
 	
 	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
 
-    logfile1:write("sending a PUT\n")
+    logfile1:write("send_put: started\n")
     
 
 	local response_body = nil
@@ -48,13 +48,15 @@ function send_put(port, type_of_transaction, key, value)
 
 	if response_status == 200 then
 		--print("PUT done.")
-		logfile1:write("PUT done.\n")
+		logfile1:write("send_put: PUT done.\n")
+		logfile1:close()
+		return true
 	else
 		--print("Error "..response_status)
-		logfile1:write("Error "..response_status.."\n")
+		logfile1:write("send_put: Error "..response_status.."\n")
+		logfile1:close()
+		return false
 	end
-
-	logfile1:close()
 
 end
 
@@ -62,7 +64,7 @@ function send_get(port, type_of_transaction, key)
 
 	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
 
-	logfile1:write("sending a GET\n")
+	logfile1:write("send_get: started\n")
 
 	local response_body = {}
 	local response_to_discard = nil
@@ -82,19 +84,29 @@ function send_get(port, type_of_transaction, key)
 
 	if response_status == 200 then
 		--print("Content of kv-store: "..key.." is:\n"..response_body[1])
-		logfile1:write("200 OK received\n")
+		logfile1:write("send_get: 200 OK received\n")
 	else
 		--print("Error "..response_status..":\n"..response_body[1])
-		logfile1:write("Error\n")
+		logfile1:write("send_get: Error "..response_status.."\n")
+		logfile1:close()
+		return false
 	end
 
 	local answer = json.decode(response_body[1])
+
+	if not answer[1] then
+		logfile1:write("send_get: No answer\n")
+		logfile1:close()
+		return false
+	end
 
 	local chosen_value = nil
 	if type(answer[1].value) == "string" then
 		chosen_value = ""
 	elseif type(answer[1].value) == "number" then
 		chosen_value = 0
+	elseif type(answer[1].value) == "table" then
+		logfile1:write("send_get: value is a table\n")
 	end
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
@@ -117,14 +129,14 @@ function send_get(port, type_of_transaction, key)
 		end
 	end
 	--print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
-	logfile1:write("key: "..key..", value: "..chosen_value.."\n")
+	logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
 	--for i2,v2 in pairs(max_vc) do
 		--print("", i2, v2)
 	--end
 
 	logfile1:close()
 
-	return chosen_value, max_vc
+	return true, chosen_value, max_vc
 end
 --[[
 events.run(function()
