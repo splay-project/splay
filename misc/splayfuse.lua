@@ -422,7 +422,7 @@ write=function(self, path, buf, offset, obj)
     local obj_jsoned = json.encode(obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
     reportlog("write: about to write in distdb:",{path=path,obj=obj,db_key=db_key,obj_jsoned=obj_jsoned}) -- JV: ADDED FOR LOGGING
     local ok_put_obj = send_put(db_port, "consistent", db_key, obj_jsoned);
-    
+    --JV: I DONT KNOW IF IM WRITING ON THE PARENT IN THE DB.
 
     return #buf
 end,
