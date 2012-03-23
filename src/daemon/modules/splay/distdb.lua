@@ -1295,7 +1295,7 @@ end
 
 --function get_local: returns v from a k,v pair.
 function get_local(key)
-	log:print(n.short_id..":put_local: ENTERED, for key="..shorten_id(key))
+	log:print(n.short_id..":get_local: ENTERED, for key="..shorten_id(key))
 	--adding a random failure to simulate failed local transactions
 	--if math.random(10) == 1 then
 	--	return nil

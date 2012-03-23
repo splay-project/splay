@@ -41,8 +41,7 @@ local open_mode={'rb','wb','rb+'}
 
 
 --BEGIN ADDED BY JV
-local db_port = 15511
-local db_key = nil
+local db_port = 16347
 
 function reportlog(function_name, args)
     local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -111,7 +110,7 @@ local function is_dir(mode)
     return o ~= 0
 end
 
-local function decode_acl(s)
+local function decode_acl(s) --JV: NOTHING TO CHANGE
 
     reportlog("decode_acl", {s=s}) -- JV: ADDED FOR LOGGING
 
@@ -126,11 +125,11 @@ local function decode_acl(s)
     end
 end
 
-local function clear_buffer(dirent,from,to)
+local function clear_buffer(dirent,from,to) --JV: NOTHING TO CHANGE
 
     reportlog("clear_buffer", {dirent=dirent, from=from, to=to}) -- JV: ADDED FOR LOGGING
 
-    for i = from, to do dirent.content[i] = nil end 
+    for i = from, to do dirent.content[i] = nil end
     --[[
     if type(dirent.content) == "table" then
         for i=from,to do dirent.content[i] = nil end
@@ -139,7 +138,7 @@ local function clear_buffer(dirent,from,to)
     collectgarbage("collect")
 end
 
-local function mk_mode(owner, group, world, sticky)
+local function mk_mode(owner, group, world, sticky) --JV: NOTHING TO CHANGE
 
     reportlog("mk_mode", {owner=owner, group=group, world=world, sticky=sticky}) -- JV: ADDED FOR LOGGING
 
@@ -155,20 +154,35 @@ local function dir_walk(root, path)
 
     local dirent , parent = root, nil
     if path ~= "/" then 
+        local progressive_path = ""
+        reportlog("dir_walk: progressive_path:", {progressive_path=progressive_path}) -- JV: ADDED FOR LOGGING
         for c in path:gmatch("[^/]*") do
-            if #c > 0 then
-                reportlog("dir_walk searching", {c=c}) -- JV: ADDED FOR LOGGING
+            reportlog("dir_walk: searching", {c=c}) -- JV: ADDED FOR LOGGING
+            if #c > 0 then --JV: TRYING BY REMOVING THIS
+                reportlog("dir_walk: searching c>0", {c=c}) -- JV: ADDED FOR LOGGING
                 parent = dirent
                 local content = parent.content
+                progressive_path = progressive_path.."/"..c --JV: ADDED FOR REPLACEMENT WITH DISTDB
+                --TODO maybe it's possible not to do this recursive search
+                reportlog("dir_walk: the progressive_path is", {progressive_path=progressive_path}) -- JV: ADDED FOR LOGGING
                 --dirent = content[c]
-                dirent = mnode.get(content[c])
-                --dirent = --JV: fill here distdb stuff
-            end
+                --dirent = mnode.get(content[c]) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+                dirent = nil
+                if content[c] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+                    local db_key = crypto.evp.digest("sha1", progressive_path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+                    local send_get_ok, dirent_jsoned = send_get(db_port, "consistent", db_key) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+                    if send_get_ok then
+                        dirent = json.decode(dirent_jsoned)
+                    end
+                end
+            end --JV: TRYING BY REMOVING THIS
             if not dirent then return nil, parent end
         end
     end
     if true or not dirent.content then 
-        dirent.content = mnode.get_block(dirent.meta.data_block) 
+        reportlog("dir_walk: strange not dirent.content error", {}) -- JV: ADDED FOR LOGGING
+        --dirent.content = mnode.get_block(dirent.meta.data_block) --JV: I HOPE THIS NEVER HAPPENS
+        dirent.content = {} --JV: ADDED FOR REPLACEMENT WITH DISTDB
         dirent.is_dir = is_dir(dirent.meta.mode)
     end
 
@@ -179,47 +193,24 @@ end
 
 local uid,gid,pid,puid,pgid = fuse.context()
 
-local root = mnode.get("/")
+--local root = mnode.get("/") --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+local rootdb = nil --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-db_key = crypto.evp.digest("sha1", "/") --JV: ADDED FOR REPLACEMENT WITH DISTDB
+local db_key = crypto.evp.digest("sha1", "/") --JV: ADDED FOR REPLACEMENT WITH DISTDB
 local ok_get_root, rootdb_jsoned = send_get(db_port, "consistent", db_key) -- JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-if ok_get_root then
+if ok_get_root then --JV: ADDED FOR REPLACEMENT WITH DISTDB
     reportlog("decoding root from rootdb_jsoned",{rootdb_jsoned=rootdb_jsoned})
-    local rootdb = json.decode(rootdb_jsoned)
-    local content = mnode.block()
-
-    reportlog("copying root from rootdb",{rootdb=rootdb}) -- JV: ADDED FOR LOGGING
-
---[[
-    root = mnode.node{
-     meta = {
-            data_block = content._key,
-            xattr={[-1]=true},
-            mode= mk_mode(7,5,5) + S_IFDIR, 
-            ino = 0, 
-            dev = 0, 
-            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()}
-            ,
-            content = content
-    }
-    --JV:
-    rootdb = {
-        meta = {
-            xattr ={[-1]=true},
-            mode  = mk_mode(7,5,5) + S_IFDIR,
-            ino   = 0,
-            dev   = 0, 
-            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()},
-        content = {}} -- JV: ADDED FOR REPLACEMENT WITH DISTDB
-    ]]
+    rootdb = json.decode(rootdb_jsoned)
 end
 
-if not root then
-    local content = mnode.block()
+--if not root then --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+if not rootdb then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    --local content = mnode.block() --JV: REMOVED FOR REPLACEMENT WITH DISTDB
 
     reportlog("creating root",{content=content}) -- JV: ADDED FOR LOGGING
 
+    --[[ JV: REMOVED FOR REPLACEMENT WITH DISTDB
     root = mnode.node{
      meta = {
             data_block = content._key,
@@ -231,7 +222,8 @@ if not root then
             ,
             content = content
     }
-    --JV:
+    --]]
+    
     rootdb = {
         meta = {
             xattr ={[-1]=true},
@@ -242,12 +234,12 @@ if not root then
         content = {}} -- JV: ADDED FOR REPLACEMENT WITH DISTDB
     rootdbjson = json.encode(rootdb) --JV: ADDED FOR REPLACEMENT WITH DISTDB
     
-    mnode.set("/", root)
+    --mnode.set("/", root) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
     
     local ok_put_root = send_put(db_port, "consistent", db_key, rootdbjson) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 end
 
-local function unlink_node(dirent, path)
+local function unlink_node(dirent, path) --JV: PA DESPUÉS
 
     reportlog("unlink_mode", {dirent=dirent, path=path}) -- JV: ADDED FOR LOGGING
 
@@ -266,33 +258,33 @@ end
 
 local memfs={
 
-pulse=function()
+pulse=function() --JV: NOTHING TO CHANGE
     
     reportlog("pulse", {}) -- JV: ADDED FOR LOGGING
 
     print "periodic pulse"
 end,
 
-getattr=function(self, path)
+getattr=function(self, path) --JV: NOTHING TO CHANGE
 
     reportlog("getattr",{path=path}) -- JV: ADDED FOR LOGGING
 
-    local dirent = dir_walk(root, path)
+    local dirent = dir_walk(rootdb, path)
     if not dirent then return ENOENT end
     local x = dirent.meta
     return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime    
 end,
 
-opendir = function(self, path)
+opendir = function(self, path) --JV: NOTHING TO CHANGE
 
     reportlog("opendir",{path=path}) -- JV: ADDED FOR LOGGING
 
-    local dirent = dir_walk(root, path)
+    local dirent = dir_walk(rootdb, path)
     if not dirent then return ENOENT end
     return 0, dirent
 end,
 
-readdir = function(self, path, offset, dirent)
+readdir = function(self, path, offset, dirent) --JV: NOTHING TO CHANGE
 
     reportlog("readdir",{path=path,offset=offset,dirent=dirent}) -- JV: ADDED FOR LOGGING
 
@@ -306,19 +298,19 @@ readdir = function(self, path, offset, dirent)
     --return 0, {{d_name="abc", ino = 1, d_type = S_IFREG + 7*S_UID, offset = 0}}
 end,
 
-releasedir = function(self, path, dirent)
+releasedir = function(self, path, dirent) --JV: NOTHING TO CHANGE
 
     reportlog("releasedir",{path=path,dirent=dirent}) -- JV: ADDED FOR LOGGING
 
     return 0
 end,
 
-mknod = function(self, path, mode, rdev)
+mknod = function(self, path, mode, rdev) --JV: NOT SURE IF TO CHANGE OR NOT....!!!
 
     reportlog("mknod",{path=path,mode=mode,rdev=rdev}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     local uid,gid,pid = fuse.context()
     local content = mnode.block()
     local x = {
@@ -343,10 +335,11 @@ read=function(self, path, size, offset, obj)
     
     reportlog("read",{path=path,size=size,offset=offset,obj=obj}) -- JV: ADDED FOR LOGGING
 
-    local block = floor(offset/mem_block_size)
-    local o = offset%mem_block_size
+    --local block = floor(offset/mem_block_size) --JV: NOT NEEDED FOR THE MOMENT
+    --local o = offset%mem_block_size --JV: NOT NEEDED FOR THE MOMENT
     local data={}
     
+    --[[
     if o == 0 and size % mem_block_size == 0 then
         for i=block, block + floor(size/mem_block_size) - 1 do
             data[#data+1]=obj.content[i] or blank_block
@@ -361,11 +354,15 @@ read=function(self, path, size, offset, obj)
             size = size - b_size
             block = block + 1
         end
-    end
+    end --JV: NOT NEEDED FOR THE MOMENT
+    --]]
 
-    --local filecontent = send_get(db_port, "evtl_consistent", db_key);
+    --if size + offset < string.len(obj.content[0]) then -- JV: CREO QUE ESTO NO SE USA
+    local data = string.sub(obj.content[0], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
+    --end --JV: CORRESPONDS TO THE IF ABOVE
 
-    return 0, tjoin(data,"")
+    --return 0, tjoin(data,"") --JV: REMOVED FOR REPLACEMENT WITH DISTDB; data IS ALREADY A STRING
+    return 0, data --JV: ADDED FOR REPLACEMENT WITH DISTDB
 end,
 
 write=function(self, path, buf, offset, obj)
@@ -374,6 +371,8 @@ write=function(self, path, buf, offset, obj)
 
     obj.changed = true
     local size = #buf
+    
+    --[[
     local o = offset % mem_block_size
     local block = floor(offset / mem_block_size)
     if o == 0 and size % mem_block_size == 0 then
@@ -393,11 +392,36 @@ write=function(self, path, buf, offset, obj)
             size = size - b_size
             block = block + 1
         end
-    end
-    local eof = offset + #buf
-    if eof > obj.meta.size then obj.meta.size = eof ; obj.meta_changed = true end
+    end --JV: NOT NEEDED FOR THE MOMENT
+    --]]
+    reportlog("write: CHECKPOINT1",{}) -- JV: ADDED FOR LOGGING
+    if not obj.content[0] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        obj.content[0] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        reportlog("write: CHECKPOINT1a",{}) -- JV: ADDED FOR LOGGING
+    end --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    reportlog("write: CHECKPOINT2",{}) -- JV: ADDED FOR LOGGING
+    local old_content = obj.content[0] --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    local old_size = string.len(obj.content[0])
+    if (offset+size) < old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        obj.content[0] = string.sub(old_content, 1, offset)..buf..string.sub(old_content, (offset+size+1), -1) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        reportlog("write: CHECKPOINT3a",{}) -- JV: ADDED FOR LOGGING
+    else --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        reportlog("write: CHECKPOINT3b",{}) -- JV: ADDED FOR LOGGING
+        obj.content[0] = string.sub(old_content, 1, offset)..buf --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        if (offset+size) > old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+            reportlog("write: CHECKPOINT3c",{}) -- JV: ADDED FOR LOGGING
+            obj.meta.size = offset+size --JV: ADDED FOR REPLACEMENT WITH DISTDB
+            obj.meta_changed = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        end --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    end --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-    --send_put(db_port, "evtl_consistent", db_key, "helloworld");
+    --local eof = offset + #buf --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    --if eof > obj.meta.size then obj.meta.size = eof ; obj.meta_changed = true end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+
+    local db_key = crypto.evp.digest("sha1", path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    local obj_jsoned = json.encode(obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    reportlog("write: about to write in distdb:",{path=path,obj=obj,db_key=db_key,obj_jsoned=obj_jsoned}) -- JV: ADDED FOR LOGGING
+    local ok_put_obj = send_put(db_port, "consistent", db_key, obj_jsoned);
     
 
     return #buf
@@ -408,7 +432,7 @@ open=function(self, path, mode)
     reportlog("open",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
 
     local m = mode % 4
-    local dirent = dir_walk(root, path)
+    local dirent = dir_walk(rootdb, path)
     if not dirent then return ENOENT end
     dirent.open = (dirent.open or 0) + 1
     return 0, dirent
@@ -452,7 +476,7 @@ rmdir = function(self, path)
     reportlog("rmdir",{path=path}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     parent.content[base] = nil; mnode.set(dirent._key, nil)
     parent.meta.nlink = parent.meta.nlink - 1
     mnode.flush_node(parent, dir, true)
@@ -464,7 +488,7 @@ mkdir = function(self, path, mode, ...)
     reportlog("mkdir",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
 
     local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     local uid,gid,pid = fuse.context()
     local content = mnode.block{[-1]=true}
     local x = {
@@ -489,11 +513,14 @@ create = function(self, path, mode, flag, ...)
 
     reportlog("create",{path=path,mode=mode,flag=flag}) -- JV: ADDED FOR LOGGING
 
-    if path:find('hidden') then print("create", path, mode, flag) end
+    --if path:find('hidden') then print("create", path, mode, flag) end --JV: REMOVED
     local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
+    reportlog("create: i got out of dir_walk", {dirent=dirent, parent=parent})
     local uid,gid,pid = fuse.context()
-    local content = mnode.block()
+    --local content = mnode.block() --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    
+    --[[
     local x = {
         data_block = content._key,
         xattr={[-1]=true},
@@ -501,14 +528,43 @@ create = function(self, path, mode, flag, ...)
         ino = 0, 
         dev = 0, 
         nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
-    local o = mnode.node{ meta=x , content = content }
+    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    
+    local o = {
+        meta = {
+            xattr ={[-1]=true},
+            mode  = set_bits(mode, S_IFREG),
+            ino   = 0, 
+            dev   = 0, 
+            nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()},
+        content = {}
+        } --JV: ADDED FOR REPLACEMENT WITH DISTDB
+
+    o.content[0] = ""
+
+    --local o = mnode.node{ meta=x , content = content } --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    reportlog("create: CHECKPOINT1",{}) -- JV: ADDED FOR LOGGING
+
     if not dirent then
+        reportlog("create: CHECKPOINT-IF1",{}) -- JV: ADDED FOR LOGGING
         local content = parent.content
-        content[base]=o._key
+        reportlog("create: CHECKPOINT-IF2",{}) -- JV: ADDED FOR LOGGING
+        content[base]=true
+        reportlog("create: CHECKPOINT-IF3",{}) -- JV: ADDED FOR LOGGING
         parent.meta.nlink = parent.meta.nlink + 1
+        reportlog("create: CHECKPOINT-IF4",{}) -- JV: ADDED FOR LOGGING
         mnode.flush_node(parent, dir, false)
+        reportlog("create: CHECKPOINT-IF5",{}) -- JV: ADDED FOR LOGGING
         o.parent = parent
+        reportlog("create: CHECKPOINT-IF6",{}) -- JV: ADDED FOR LOGGING
         o.open = 1
+        reportlog("create: CHECKPOINT-IF7",{}) -- JV: ADDED FOR LOGGING
+
+        local db_key = crypto.evp.digest("sha1", path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        local obj_jsoned = json.encode(o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        reportlog("create: about to write in distdb:",{path=path,o=o,db_key=db_key,obj_jsoned=obj_jsoned}) -- JV: ADDED FOR LOGGING
+        local ok_put_obj = send_put(db_port, "consistent", db_key, obj_jsoned);
+
         return 0,o
     end
 end,
@@ -525,7 +581,7 @@ readlink=function(self, path)
 
     reportlog("readlink",{path=path}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         return 0, dirent.content[1]
     end
@@ -615,7 +671,7 @@ unlink=function(self, path, ...)
 
     if path:find("hidden") then print("unlink", path) end
     local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         local meta = dirent.meta
         local content = parent.content
@@ -634,7 +690,7 @@ chown=function(self, path, uid, gid)
 
     reportlog("chown",{path=path,uid=uid,gid=gid}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         dirent.meta.uid = uid
         dirent.meta.gid = gid
@@ -649,7 +705,7 @@ chmod=function(self, path, mode)
 
     reportlog("chmod",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         dirent.meta.mode = mode
         if (dirent.open or 0) < 1 then mnode.flush_node(dirent, path, true) 
@@ -663,7 +719,7 @@ utime=function(self, path, atime, mtime)
 
     reportlog("utime",{path=path,atime=atime,mtime=mtime}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         dirent.meta.atime = atime
         dirent.meta.mtime = mtime
@@ -688,7 +744,7 @@ truncate=function(self, path, size)
 
     reportlog("truncate",{path=path,size=size}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then 
         local old_size = dirent.meta.size
         dirent.meta.size = size
@@ -726,7 +782,7 @@ listxattr = function(self, path, size)
 
     reportlog("listxattr",{path=path,size=size}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         --return 0, "attr1\0attr2\0attr3\0"
         --return 0, "" --no attributes
@@ -745,7 +801,7 @@ removexattr = function(self, path, name)
 
     reportlog("removexattr",{path=path,name=name}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         dirent.meta.xattr[name] = nil
         return 0
@@ -759,7 +815,7 @@ setxattr = function(self, path, name, val, flags)
     reportlog("setxattr",{path=path,name=name,val=val,flags=flags}) -- JV: ADDED FOR LOGGING
 
     --string.hex = function(s) return s:gsub(".", function(c) return format("%02x", string.byte(c)) end) end
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         dirent.meta.xattr[name]=val
         return 0
@@ -772,7 +828,7 @@ getxattr = function(self, path, name, size)
 
     reportlog("getxattr",{path=path,name=name,size=size}) -- JV: ADDED FOR LOGGING
 
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     if dirent then
         return 0, dirent.meta.xattr[name] or "" --not found is empty string
     else
@@ -781,7 +837,7 @@ getxattr = function(self, path, name, size)
 end,
 
 statfs = function(self,path)
-    local dirent,parent = dir_walk(root, path)
+    local dirent,parent = dir_walk(rootdb, path)
     local o = {bs=1024,blocks=64,bfree=48,bavail=48,bfiles=16,bffree=16}
     return 0, o.bs, o.blocks, o.bfree, o.bavail, o.bfiles, o.bffree
 end
