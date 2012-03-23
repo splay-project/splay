@@ -41,33 +41,8 @@ local open_mode={'rb','wb','rb+'}
 
 
 --BEGIN ADDED BY JV
-local db_port = 13356
+local db_port = 15511
 local db_key = nil
-
-function print_tablez(name, order, input_table)
-    local output_string = ""
-    local indentation = ""
-    for i=1,order do
-        indentation = indentation.."\t"
-    end
-    for i,v in pairs(input_table) do
-        if type(v) == "string" or type(v) == "number" then
-            output_string = output_string..indentation..name.."."..i.." = "..v.."\n"
-        elseif type(v) == "boolean" then
-            if v == true then
-                output_string = output_string..indentation..name.."."..i.." = true\n"
-            else
-                output_string = output_string..indentation..name.."."..i.." = false\n"
-            end
-        elseif type(v) == "table" then
-            output_string = output_string..indentation..name.."."..i.." type table:\n"
-            output_string = output_string..print_tablez(i, order+1, v)
-        else
-            output_string = output_string..indentation..name.."."..i.." type "..type(v).."\n"
-        end
-    end
-    return output_string
-end
 
 function reportlog(function_name, args)
     local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -187,6 +162,7 @@ local function dir_walk(root, path)
                 local content = parent.content
                 --dirent = content[c]
                 dirent = mnode.get(content[c])
+                --dirent = --JV: fill here distdb stuff
             end
             if not dirent then return nil, parent end
         end
@@ -206,7 +182,38 @@ local uid,gid,pid,puid,pgid = fuse.context()
 local root = mnode.get("/")
 
 db_key = crypto.evp.digest("sha1", "/") --JV: ADDED FOR REPLACEMENT WITH DISTDB
-local ok_get_root, rootdb = send_get(db_port, "consistent", db_key) -- JV: ADDED FOR REPLACEMENT WITH DISTDB
+local ok_get_root, rootdb_jsoned = send_get(db_port, "consistent", db_key) -- JV: ADDED FOR REPLACEMENT WITH DISTDB
+
+if ok_get_root then
+    reportlog("decoding root from rootdb_jsoned",{rootdb_jsoned=rootdb_jsoned})
+    local rootdb = json.decode(rootdb_jsoned)
+    local content = mnode.block()
+
+    reportlog("copying root from rootdb",{rootdb=rootdb}) -- JV: ADDED FOR LOGGING
+
+--[[
+    root = mnode.node{
+     meta = {
+            data_block = content._key,
+            xattr={[-1]=true},
+            mode= mk_mode(7,5,5) + S_IFDIR, 
+            ino = 0, 
+            dev = 0, 
+            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()}
+            ,
+            content = content
+    }
+    --JV:
+    rootdb = {
+        meta = {
+            xattr ={[-1]=true},
+            mode  = mk_mode(7,5,5) + S_IFDIR,
+            ino   = 0,
+            dev   = 0, 
+            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()},
+        content = {}} -- JV: ADDED FOR REPLACEMENT WITH DISTDB
+    ]]
+end
 
 if not root then
     local content = mnode.block()
@@ -224,11 +231,15 @@ if not root then
             ,
             content = content
     }
-
-    rootdb = {xattr={[-1]=true}, mode= mk_mode(7,5,5) + S_IFDIR,
-            ino = 0,
-            dev = 0, 
-            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()} -- JV: ADDED FOR REPLACEMENT WITH DISTDB
+    --JV:
+    rootdb = {
+        meta = {
+            xattr ={[-1]=true},
+            mode  = mk_mode(7,5,5) + S_IFDIR,
+            ino   = 0,
+            dev   = 0, 
+            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()},
+        content = {}} -- JV: ADDED FOR REPLACEMENT WITH DISTDB
     rootdbjson = json.encode(rootdb) --JV: ADDED FOR REPLACEMENT WITH DISTDB
     
     mnode.set("/", root)

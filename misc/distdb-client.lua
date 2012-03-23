@@ -19,6 +19,31 @@ events = require"splay.events"
 
 -- FUNCTIONS
 
+function print_tablez(name, order, input_table)
+    local output_string = ""
+    local indentation = ""
+    for i=1,order do
+        indentation = indentation.."\t"
+    end
+    for i,v in pairs(input_table) do
+        if type(v) == "string" or type(v) == "number" then
+            output_string = output_string..indentation..name.."."..i.." = "..v.."\n"
+        elseif type(v) == "boolean" then
+            if v == true then
+                output_string = output_string..indentation..name.."."..i.." = true\n"
+            else
+                output_string = output_string..indentation..name.."."..i.." = false\n"
+            end
+        elseif type(v) == "table" then
+            output_string = output_string..indentation..name.."."..i.." type table:\n"
+            output_string = output_string..print_tablez(i, order+1, v)
+        else
+            output_string = output_string..indentation..name.."."..i.." type "..type(v).."\n"
+        end
+    end
+    return output_string
+end
+
 function send_put(port, type_of_transaction, key, value)
 	
 	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -85,6 +110,7 @@ function send_get(port, type_of_transaction, key)
 	if response_status == 200 then
 		--print("Content of kv-store: "..key.." is:\n"..response_body[1])
 		logfile1:write("send_get: 200 OK received\n")
+		logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
 	else
 		--print("Error "..response_status..":\n"..response_body[1])
 		logfile1:write("send_get: Error "..response_status.."\n")
@@ -94,6 +120,9 @@ function send_get(port, type_of_transaction, key)
 
 	local answer = json.decode(response_body[1])
 
+	local answer_string = print_tablez("answer",0,answer)
+	logfile1:write("send_get: answer decoded: \n"..answer_string)
+
 	if not answer[1] then
 		logfile1:write("send_get: No answer\n")
 		logfile1:close()
@@ -101,8 +130,10 @@ function send_get(port, type_of_transaction, key)
 	end
 
 	local chosen_value = nil
+
 	if type(answer[1].value) == "string" then
 		chosen_value = ""
+		--logfile1:write("send_get: value is string\n")
 	elseif type(answer[1].value) == "number" then
 		chosen_value = 0
 	elseif type(answer[1].value) == "table" then
@@ -110,11 +141,14 @@ function send_get(port, type_of_transaction, key)
 	end
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
-		if type(value) == "string" then
+		--logfile1:write("send_get: value is "..v2.value.."\n")
+		--logfile1:write("send_get: chosen value is "..chosen_value.."\n")
+		if type(v2.value) == "string" then
 			if string.len(v2.value) > string.len(chosen_value) then --in this case is the max, but it could be other criteria
+				--logfile1:write("send_get: replacing value\n")
 				chosen_value = v2.value
 			end
-		elseif type(value) == "number" then
+		elseif type(v2.value) == "number" then
 			if v2.value > chosen_value then --in this case is the max, but it could be other criteria
 				chosen_value = v2.value
 			end
