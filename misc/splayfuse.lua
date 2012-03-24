@@ -41,7 +41,7 @@ local open_mode={'rb','wb','rb+'}
 
 
 --BEGIN ADDED BY JV
-local db_port = 16691
+local db_port = 15641
 
 function reportlog(function_name, args)
     local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -76,8 +76,13 @@ end
 
 
 function string:splitpath() 
-    local dir,file = self:match("(.-)([^:/\\]*)$") 
-    return dir:match("(.-)[/\\]?$"), file
+    local dir,file = self:match("(.-)([^:/\\]*)$")
+    local dirmatch = dir:match("(.-)[/\\]?$")
+    if dir == "/" then
+        return dir, file
+    else
+        return dir:match("(.-)[/\\]?$"), file
+    end
 end
 
 local tab = {  -- tab[i+1][j+1] = xor(i, j) where i,j in (0-15)
@@ -558,8 +563,9 @@ create = function(self, path, mode, flag, ...)
 
     --if path:find('hidden') then print("create", path, mode, flag) end --JV: REMOVED
     local dir, base = path:splitpath()
+    reportlog("create: for path="..path.." dir="..dir..", base="..base, {})
     local dirent,parent = dir_walk(rootdb, path)
-    reportlog("create: for path="..path.."dir_walk returned", {dirent=dirent, parent=parent})
+    reportlog("create: for path="..path.." dir_walk returned", {dirent=dirent, parent=parent})
     local uid,gid,pid = fuse.context()
     
     --[[
