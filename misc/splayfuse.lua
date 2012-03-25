@@ -41,7 +41,7 @@ local open_mode={'rb','wb','rb+'}
 
 
 --BEGIN ADDED BY JV
-local db_port = 15641
+local db_port = 16501
 
 function reportlog(function_name, args)
     local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -175,23 +175,23 @@ end
 
 local function dir_walk(root, path)
 
-    reportlog("dir_walk: ENTERED for path="..path, {root=root}) -- JV: ADDED FOR LOGGING
+    reportlog("dir_walk: ENTERED for path="..path, {}) -- JV: ADDED FOR LOGGING
 
     local dirent, parent, obj = root, nil, nil
     if path ~= "/" then 
         local progressive_path = ""
-        reportlog("dir_walk: path="..path, {}) -- JV: ADDED FOR LOGGING
+        --reportlog("dir_walk: path="..path, {}) -- JV: ADDED FOR LOGGING
         for c in path:gmatch("[^/]*") do
-            reportlog("dir_walk: searching c="..c, {}) -- JV: ADDED FOR LOGGING
+            --reportlog("dir_walk: searching c="..c, {}) -- JV: ADDED FOR LOGGING
             if #c > 0 then --JV: TRYING BY REMOVING THIS
-                reportlog("dir_walk: searching c="..c..">0", {}) -- JV: ADDED FOR LOGGING
+                --reportlog("dir_walk: searching c="..c..">0", {}) -- JV: ADDED FOR LOGGING
                 parent = dirent
-                reportlog("dir_walk: CHECKPOINT1", {parent=parent}) -- JV: ADDED FOR LOGGING
-                reportlog("dir_walk: is there parent.content["..c.."]?", {parent_content_c=parent.content[c]}) -- JV: ADDED FOR LOGGING
+                --reportlog("dir_walk: CHECKPOINT1", {parent=parent}) -- JV: ADDED FOR LOGGING
+                --reportlog("dir_walk: is there parent.content["..c.."]?", {parent_content_c=parent.content[c]}) -- JV: ADDED FOR LOGGING
                 --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
                 progressive_path = progressive_path.."/"..c --JV: ADDED FOR REPLACEMENT WITH DISTDB
                 --TODO maybe it's possible not to do this recursive search
-                reportlog("dir_walk: progressive_path="..progressive_path, {parent=parent}) -- JV: ADDED FOR LOGGING
+                --reportlog("dir_walk: progressive_path="..progressive_path, {parent=parent}) -- JV: ADDED FOR LOGGING
                 --dirent = content[c]
                 --dirent = mnode.get(content[c]) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
                 if parent.content[c] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
@@ -199,14 +199,14 @@ local function dir_walk(root, path)
                     ok_readdb, obj = readdb(progressive_path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
                     if ok_readdb then
                         dirent = obj
-                        reportlog("dir_walk: readdb result", {dirent=dirent}) -- JV: ADDED FOR LOGGING
+                        --reportlog("dir_walk: readdb result", {dirent=dirent}) -- JV: ADDED FOR LOGGING
                     end
                 else
                     dirent = nil
                 end
             end --JV: TRYING BY REMOVING THIS
             if not dirent then
-                reportlog("dir_walk: for path="..path.." returns nil dirent", {dirent=dirent, parent=parent}) -- JV: ADDED FOR LOGGING
+                reportlog("dir_walk: for path="..path.." returns nil dirent", {parent=parent}) -- JV: ADDED FOR LOGGING
                 return nil, parent
             end
         end
@@ -311,12 +311,13 @@ opendir = function(self, path) --JV: NOTHING TO CHANGE
     return 0, dirent
 end,
 
-readdir = function(self, path, offset, dirent) --JV: NOTHING TO CHANGE
+readdir = function(self, path, offset, dirent)
 
     reportlog("readdir: ENTERED",{path=path,offset=offset,dirent=dirent}) -- JV: ADDED FOR LOGGING
 
     local out={'.','..'}
-    for k,v in dirent.content do 
+    --for k,v in dirent.content do --JV: REMOVED
+    for k,v in pairs(dirent.content) do --JV: ADDED (CORRECTING THE LACK OF WORD 'PAIRS'...)
         if type(k) == "string" then out[#out+1] = k end
 
         --out[#out+1]={d_name=k, ino = v.meta.ino, d_type = v.meta.mode, offset = 0}
@@ -538,6 +539,8 @@ mkdir = function(self, path, mode, ...)
     local dir, base = path:splitpath()
     local dirent,parent = dir_walk(rootdb, path)
     local uid,gid,pid = fuse.context()
+    
+    --[[
     local content = mnode.block{[-1]=true}
     local x = {
         data_block = content._key,
@@ -547,12 +550,31 @@ mkdir = function(self, path, mode, ...)
         dev = 0, 
         nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
     local o = mnode.node{ meta=x , content = content, is_dir=true}
+    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+
+    local o = {
+        meta = {
+            xattr={[-1]=true},
+            mode = set_bits(mode,S_IFDIR), -- mode don't have directory bit set
+            ino = 0, 
+            dev = 0, 
+            nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()
+        },
+        content = {}
+    } --JV: ADDED FOR REPLACEMENT WITH DISTDB
+
     if not dirent then
-        local content = parent.content
-        content[base]=o._key
+        --local content = parent.content
+        parent.content[base]= true
         parent.meta.nlink = parent.meta.nlink + 1
-        mnode.flush_node(parent, dir, true)
-        mnode.flush_node(o, path, true)
+        --mnode.flush_node(parent, dir, true)
+        --mnode.flush_node(o, path, true)
+
+        reportlog("mkdir: gonna write",{dir=dir,parent=parent,path=path,o=o}) -- JV: ADDED FOR LOGGING
+
+        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+
     end
     return 0
 end,
@@ -577,6 +599,7 @@ create = function(self, path, mode, flag, ...)
         ino = 0, 
         dev = 0, 
         nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
+    --local o = mnode.node{ meta=x , content = content } --JV: REMOVED FOR REPLACEMENT WITH DISTDB
     --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
     
     local o = {
@@ -591,13 +614,12 @@ create = function(self, path, mode, flag, ...)
     } --JV: ADDED FOR REPLACEMENT WITH DISTDB
     o.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-    --local o = mnode.node{ meta=x , content = content } --JV: REMOVED FOR REPLACEMENT WITH DISTDB
     reportlog("create: CHECKPOINT1",{}) -- JV: ADDED FOR LOGGING
     
     if not dirent then
         --local content = parent.content
         reportlog("create: CHECKPOINT-IF1",{}) -- JV: ADDED FOR LOGGING
-        parent.content[base]=true
+        parent.content[base] = true
         reportlog("create: CHECKPOINT-IF2",{}) -- JV: ADDED FOR LOGGING
         parent.meta.nlink = parent.meta.nlink + 1
         --mnode.flush_node(parent, dir, false) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
@@ -607,7 +629,7 @@ create = function(self, path, mode, flag, ...)
         o.open = 1
         reportlog("create: CHECKPOINT-IF5",{}) -- JV: ADDED FOR LOGGING
 
-        local ok_writedb_obj = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         --local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB APPARENTLY NOT USED???
         
 
