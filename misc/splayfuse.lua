@@ -36,7 +36,7 @@ local mem_block_size = 4096
 local blank_block=("0"):rep(mem_block_size)
 local open_mode={'rb','wb','rb+'}
 
-local db_port = 13271
+local db_port = 15735
 
 function reportlog(function_name, args)
     local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -64,8 +64,9 @@ local function readdb(elem_type, unhashed_key)
     if not ok_send_get then
         return false
     end
-    --if it's not a inode
-    if elem_type ~= "inode" then
+    --if it's not a inode or there is a nil answer
+    if elem_type ~= "inode" or (not ret_send_get) then
+        reportlog("readdb: returning without JSON",{ret_send_get=ret_send_get})
         --return directly the result
         return true, ret_send_get
     end
@@ -152,7 +153,7 @@ end
 
 local function clear_buffer(inode,from,to)
     --logs entrance
-    reportlog("clear_buffer: ENTERED for inode="..inode..", from="..from..", to="..to})
+    reportlog("clear_buffer: ENTERED for inode="..inode..", from="..from..", to="..to, {})
 
     for i = from, to do inode.content[i] = nil end
 
@@ -161,7 +162,7 @@ end
 
 local function mk_mode(owner, group, world, sticky)
 
-    reportlog("mk_mode: ENTERED for owner="..owner..", group="..group..", world="..world..", sticky="..sticky})
+    reportlog("mk_mode: ENTERED for owner="..owner..", group="..group..", world="..world, {sticky=sticky})
 
     sticky = sticky or 0
     local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID
@@ -172,17 +173,19 @@ end
 --gets a inode element from the db
 local function get_inode(inode_n)
     --logs entrance
-    reportlog("get_inode: ENTERED for inode_n="..inode_n, {})
+    reportlog("get_inode: ENTERED for inode_n=", {inode_n=inode_n})
     
     if type(inode_n) ~= "number" then
-        reportlog("get_inode: ERROR, inode_n not a number")
+        reportlog("get_inode: ERROR, inode_n not a number", {})
         return nil
     end
 
     local ok_readdb_inode, inode = readdb("inode", inode_n)
 
+    reportlog("get_inode: readdb returned", {inode=inode})
+
     if not ok_readdb_inode then
-        reportlog("get_inode: ERROR, readdb of inode was not OK")
+        reportlog("get_inode: ERROR, readdb of inode was not OK", {})
         return nil
     end
 
@@ -197,7 +200,7 @@ local function get_inode_n(filename)
     local ok_readdb_file, inode_n = readdb("file", filename)
 
     if not ok_readdb_file then
-        reportlog("get_inode_n: ERROR, readdb of file was not OK")
+        reportlog("get_inode_n: ERROR, readdb of file was not OK", {})
         return nil
     end
     return inode_n
@@ -219,19 +222,19 @@ local function put_inode(inode_n, inode)
     reportlog("put_inode: ENTERED for inode_n="..inode_n, {inode=inode})
     
     if type(inode_n) ~= "number" then
-        reportlog("put_inode: ERROR, inode_n not a number")
+        reportlog("put_inode: ERROR, inode_n not a number", {})
         return nil
     end
 
     if type(inode) ~= "table" then
-        reportlog("put_inode: ERROR, inode not a table")
+        reportlog("put_inode: ERROR, inode not a table", {})
         return nil
     end    
 
-    local ok_writedb_inode = writedb("inode", inode_n, json.encode(inode))
+    local ok_writedb_inode = writedb("inode", inode_n, inode)
 
     if not ok_writedb_inode then
-        reportlog("put_inode: ERROR, writedb of inode was not OK")
+        reportlog("put_inode: ERROR, writedb of inode was not OK", {})
         return nil
     end
 
@@ -242,7 +245,7 @@ end
 local function put_file(filename, inode_n)
     
     if type(filename) ~= "string" then
-        reportlog("put_file: ERROR, filename not a string")
+        reportlog("put_file: ERROR, filename not a string", {})
         return nil
     end
 
@@ -250,14 +253,14 @@ local function put_file(filename, inode_n)
     reportlog("put_file: ENTERED for filename="..filename..", inode_n="..inode_n, {})
     
     if type(inode_n) ~= "number" then
-        reportlog("put_file: ERROR, inode_n not a number")
+        reportlog("put_file: ERROR, inode_n not a number", {})
         return nil
     end
 
     local ok_writedb_file = writedb("file", filename, inode_n)
 
     if not ok_writedb_file then
-        reportlog("put_file: ERROR, writedb of inode was not OK")
+        reportlog("put_file: ERROR, writedb of inode was not OK", {})
         return nil
     end
 
@@ -269,12 +272,12 @@ local function delete_inode(inode_n, inode)
     reportlog("delete_inode: ENTERED for inode_n="..inode_n, {inode=inode})
     
     if type(inode_n) ~= "number" then
-        reportlog("delete_inode: ERROR, inode_n not a number")
+        reportlog("delete_inode: ERROR, inode_n not a number", {})
         return nil
     end
 
     if type(inode) ~= "table" then
-        reportlog("delete_inode: ERROR, inode not a table")
+        reportlog("delete_inode: ERROR, inode not a table", {})
         return nil
     end
 
@@ -288,7 +291,7 @@ local function delete_inode(inode_n, inode)
     local ok_writedb_inode = writedb("inode", inode_n, nil)
 
     if not ok_writedb_inode then
-        reportlog("delete_inode: ERROR, writedb of inode was not OK")
+        reportlog("delete_inode: ERROR, writedb of inode was not OK", {})
         return nil
     end
     --]]
@@ -300,7 +303,7 @@ local function delete_dir_inode(inode_n)
     reportlog("delete_dir_inode: ENTERED for inode_n="..inode_n, {})
     
     if type(inode_n) ~= "number" then
-        reportlog("delete_inode: ERROR, inode_n not a number")
+        reportlog("delete_inode: ERROR, inode_n not a number", {})
         return nil
     end
 
@@ -308,7 +311,7 @@ local function delete_dir_inode(inode_n)
     local ok_writedb_inode = writedb("inode", inode_n, nil)
 
     if not ok_writedb_inode then
-        reportlog("delete_dir_inode: ERROR, writedb of inode was not OK")
+        reportlog("delete_dir_inode: ERROR, writedb of inode was not OK", {})
         return nil
     end
     --]]
@@ -318,7 +321,7 @@ end
 local function delete_file(filename)
 
     if type(filename) ~= "string" then
-        reportlog("delete_file: ERROR, filename not a string")
+        reportlog("delete_file: ERROR, filename not a string", {})
         return nil
     end
 
@@ -326,14 +329,14 @@ local function delete_file(filename)
     reportlog("delete_file: ENTERED for filename="..filename, {inode=inode})
     
     if type(inode) ~= "table" then
-        reportlog("delete_inode: ERROR, inode not a table")
+        reportlog("delete_inode: ERROR, inode not a table", {})
         return nil
     end
 
     local ok_writedb_file = writedb("file", filename, nil)
 
     if not ok_writedb_file then
-        reportlog("delete_file: ERROR, writedb of inode was not OK")
+        reportlog("delete_file: ERROR, writedb of inode was not OK", {})
         return nil
     end
 
@@ -360,6 +363,7 @@ if not root_inode then
         content = {}
     } -- JV: ADDED FOR REPLACEMENT WITH DISTDB
 
+    put_file("/", 0)
     put_inode(0, root_inode)
 end
 
@@ -373,10 +377,10 @@ local function unlink_node(inode, filename) --PA DESPUES CREO QUE ES ERASE FILE
         inode.content = nil
         inode.meta = nil
     else
-        if (inode.open or 0) < 1 then
+        --if (inode.open or 0) < 1 then
             --mnode.flush_node(inode, filename, true)
             --TODO: WHAT INSTEAD OF THAT?
-        else inode.meta_changed = true end
+        --else inode.meta_changed = true end
     end
 end
 
@@ -475,11 +479,11 @@ read = function(self, filename, size, offset, inode)
     --[[
     if o == 0 and size % mem_block_size == 0 then
         for i=block, block + floor(size/mem_block_size) - 1 do
-            data[#data+1]=obj.content[i] or blank_block
+            data[#data+1]=inode.content[i] or blank_block
         end
     else
         while size > 0 do
-            local x = obj.content[block] or blank_block
+            local x = inode.content[block] or blank_block
             local b_size = mem_block_size - o 
             if b_size > size then b_size = size end
             data[#data+1]=x:sub(o+1, b_size)
@@ -490,10 +494,10 @@ read = function(self, filename, size, offset, inode)
     end --JV: NOT NEEDED FOR THE MOMENT
     --]]
 
-    reportlog("read: for filename="..filename.." the full content of obj:",{obj_content=obj.content})
+    reportlog("read: for filename="..filename.." the full content of inode:",{inode_content=inode.content})
 
-    --if size + offset < string.len(obj.content[1]) then -- JV: CREO QUE ESTO NO SE USA
-    local data = string.sub(obj.content[1], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
+    --if size + offset < string.len(inode.content[1]) then -- JV: CREO QUE ESTO NO SE USA
+    local data = string.sub(inode.content[1], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
     --end --JV: CORRESPONDS TO THE IF ABOVE
 
     reportlog("read: for filename="..filename.." returns",{data=data})
@@ -502,11 +506,11 @@ read = function(self, filename, size, offset, inode)
     return 0, data --JV: ADDED FOR REPLACEMENT WITH DISTDB
 end,
 
-write = function(self, filename, buf, offset, obj)
+write = function(self, filename, buf, offset, inode)
     --logs entrance
-    reportlog("write: ENTERED for filename="..filename, {buf=buf,offset=offset,obj=obj})
+    reportlog("write: ENTERED for filename="..filename, {buf=buf,offset=offset,inode=inode})
 
-    obj.changed = true
+    --inode.changed = true
     local size = #buf
     
     --[[
@@ -515,16 +519,16 @@ write = function(self, filename, buf, offset, obj)
     if o == 0 and size % mem_block_size == 0 then
         local start = 0
         for i=block, block + floor(size/mem_block_size) - 1 do
-            obj.content[i] = buf:sub(start + 1, start + mem_block_size)
+            inode.content[i] = buf:sub(start + 1, start + mem_block_size)
             start = start + mem_block_size
         end
     else
         local start = 0
         while size > 0 do
-            local x = obj.content[block] or blank_block
+            local x = inode.content[block] or blank_block
             local b_size = mem_block_size - o 
             if b_size > size then b_size = size end
-            obj.content[block] = tjoin({x:sub(1, o), buf:sub(start+1, start + b_size), x:sub(o + 1 + b_size)},"")
+            inode.content[block] = tjoin({x:sub(1, o), buf:sub(start+1, start + b_size), x:sub(o + 1 + b_size)},"")
             o = 0
             size = size - b_size
             block = block + 1
@@ -532,46 +536,49 @@ write = function(self, filename, buf, offset, obj)
     end --JV: NOT NEEDED FOR THE MOMENT
     --]]
     reportlog("write: CHECKPOINT1",{})
-    if not obj.content[1] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        obj.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    if not inode.content[1] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        inode.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
         reportlog("write: CHECKPOINT1a",{})
     end --JV: ADDED FOR REPLACEMENT WITH DISTDB
     reportlog("write: CHECKPOINT2",{})
-    local old_content = obj.content[1] --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    local old_size = string.len(obj.content[1])
+    local old_content = inode.content[1] --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    local old_size = string.len(inode.content[1])
     if (offset+size) < old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        obj.content[1] = string.sub(old_content, 1, offset)..buf..string.sub(old_content, (offset+size+1), -1) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        inode.content[1] = string.sub(old_content, 1, offset)..buf..string.sub(old_content, (offset+size+1), -1) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         reportlog("write: CHECKPOINT3a",{})
     else --JV: ADDED FOR REPLACEMENT WITH DISTDB
         reportlog("write: CHECKPOINT3b",{})
-        obj.content[1] = string.sub(old_content, 1, offset)..buf --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        inode.content[1] = string.sub(old_content, 1, offset)..buf --JV: ADDED FOR REPLACEMENT WITH DISTDB
         if (offset+size) > old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
             reportlog("write: CHECKPOINT3c",{})
-            obj.meta.size = offset+size --JV: ADDED FOR REPLACEMENT WITH DISTDB
-            obj.meta_changed = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
+            inode.meta.size = offset+size --JV: ADDED FOR REPLACEMENT WITH DISTDB
+            --inode.meta_changed = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
         end --JV: ADDED FOR REPLACEMENT WITH DISTDB
     end --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
     --local eof = offset + #buf --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    --if eof > obj.meta.size then obj.meta.size = eof ; obj.meta_changed = true end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    --if eof > inode.meta.size then inode.meta.size = eof ; inode.meta_changed = true end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
 
-    local ok_writedb = put_inodewritedb(filename, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    local ok_put_inode = put_inode(inode.meta.ino, inode) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
     return #buf
 end,
 
 open = function(self, filename, mode) --NOTE: MAYBE OPEN DOESN'T DO ANYTHING BECAUSE OF THE SHARED NATURE OF THE FILESYSTEM; EVERY WRITE READ MUST BE ATOMIC AND
 --LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
+--TODO: CHECK ABOUT MODE AND USER RIGHTS.
     --logs entrance
     reportlog("open: ENTERED for filename="..filename, {mode=mode})
 
     local m = mode % 4
     local inode = get_inode_from_filename(filename)
+    --[[
     --TODO: CHECK THIS MODE THING
     if not inode then return ENOENT end
     inode.open = (inode.open or 0) + 1
     put_inode(inode.meta.ino, inode)
     --TODO: CONSIDER CHANGING A FIELD OF THE DISTDB WITHOUT RETRIEVING THE WHOLE OBJECT; DIFFERENTIAL WRITE
+    --]]
     return 0, inode
 end,
 
@@ -579,21 +586,29 @@ release = function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MU
     --logs entrance
     reportlog("release: ENTERED for filename="..filename, {inode=inode})
 
+    --[[
     inode.open = inode.open - 1
+    reportlog("release: for filename="..filename, {inode_open=inode.open})
     if inode.open < 1 then
+        reportlog("release: open < 1", {})
         if inode.changed then
+            reportlog("release: gonna put", {})
             local ok_put_inode = put_inode(inode.ino, inode)
         end
         if inode.meta_changed then
+            reportlog("release: gonna put", {})
             local ok_put_inode = put_inode(inode.ino, inode)
         end
+        reportlog("release: meta_changed = nil", {})
         inode.meta_changed = nil
+        reportlog("release: changed = nil", {})
         inode.changed = nil
     end
+    --]]
     return 0
 end,
 
-fgetattr = function(self, filename, obj, ...) --TODO: CHECK IF fgetattr IS USEFUL
+fgetattr = function(self, filename, obj, ...) --TODO: CHECK IF fgetattr IS USEFUL, IT IS! TODO: CHECK WITH filename
     --logs entrance
     reportlog("fgetattr: ENTERED for filename="..filename, {obj=obj})
 
@@ -674,7 +689,13 @@ create = function(self, filename, mode, flag, ...)
         local dir, base = filename:splitfilename()
         local parent = get_inode_from_filename(dir)
         
-        local root_inode = get_inode(0)
+        local root_inode = nil
+        if parent.meta.ino == 0 then
+            root_inode = parent
+        else
+            root_inode = get_inode(0)
+        end
+
         root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
         local greatest_ino = root_inode.meta.xattr.greatest_inode_n
         
@@ -691,12 +712,11 @@ create = function(self, filename, mode, flag, ...)
         }
         
         parent.content[base]=true
-        parent.meta.nlink = parent.meta.nlink + 1
         local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
         local ok_put_inode = put_inode(greatest_ino, inode)
         local ok_put_file = put_file(filename, greatest_ino)
         local ok_put_root_inode = put_inode(0, root_inode)
-        return 0,o
+        return 0, inode
     end
 end,
 
@@ -785,13 +805,15 @@ rename = function(self, from, to)
         local ok_put_to_parent = put_file(to_dir, to_parent)
         local ok_put_from_parent = put_file(from_dir, from_parent)
         
+        --[[
         if (inode.open or 0) < 1 then
             --mnode.flush_node(inode,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-            --local ok_writedb_inode = writedb(to, inode) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+            local ok_writedb_inode = writedb(to, inode) --JV: ADDED FOR REPLACEMENT WITH DISTDB
             --TODO: WTF DO I DO HERE?
         else
             inode.meta_changed = true
         end
+        --]]
         return 0
     end
 end,
@@ -853,7 +875,7 @@ end,
 
 chown = function(self, filename, uid, gid)
     --logs entrance
-    reportlog("chown: ENTERED for filename="..filename..", uid="..uid..", gid="..gid})
+    reportlog("chown: ENTERED for filename="..filename..", uid="..uid..", gid="..gid, {})
 
     local inode = get_inode_from_filename(filename)
     if inode then

@@ -126,7 +126,7 @@ function send_get(port, type_of_transaction, key)
 	if not answer[1] then
 		logfile1:write("send_get: No answer\n")
 		logfile1:close()
-		return false
+		return true, nil
 	end
 
 	local chosen_value = nil
