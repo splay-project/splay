@@ -7,10 +7,9 @@
 ]]
 
 local fuse = require 'fuse'
-local mnode = require 'mnode'
-local dbclient = require 'distdb-client' -- JV: ADDED
-local json = require'json' -- JV: ADDED
-local crypto = require'crypto' -- JV: ADDED
+local dbclient = require 'distdb-client'
+local json = require'json'
+local crypto = require'crypto'
 
 local tjoin = table.concat
 local tadd = table.insert
@@ -33,14 +32,10 @@ local ENOENT = -2
 local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
-local mem_block_size = 4096 --this seems to be the optimal size for speed and memory
+local mem_block_size = 4096
 local blank_block=("0"):rep(mem_block_size)
 local open_mode={'rb','wb','rb+'}
 
-
-
-
---BEGIN ADDED BY JV
 local db_port = 13271
 
 function reportlog(function_name, args)
@@ -51,31 +46,34 @@ function reportlog(function_name, args)
     logfile1:close()
 end
 
-function writedb(path, obj)
-    local db_key = crypto.evp.digest("sha1", path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    local obj_jsoned = json.encode(obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    reportlog("writedb: about to write in distdb:",{path=path,obj=obj,db_key=db_key,obj_jsoned=obj_jsoned}) -- JV: ADDED FOR LOGGING
-    return send_put(db_port, "consistent", db_key, obj_jsoned)
+local function writedb(elem_type, unhashed_key, obj)
+    local db_key = crypto.evp.digest("sha1", elem_type..":"..unhashed_key)
+    reportlog("writedb: about to write in distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{obj=obj})
+    --if it's not a inode
+    if elem_type ~= "inode" then
+        return send_put(db_port, "consistent", db_key, obj)
+    end
+    --if it's a inode, JSON-encode it first
+    return send_put(db_port, "consistent", db_key, json.encode(obj))
 end
 
-function readdb(path)
-    local db_key = crypto.evp.digest("sha1", path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    reportlog("readdb: about to read in distdb:",{path=path,db_key=db_key}) -- JV: ADDED FOR LOGGING
-    local ok_send_get, obj_jsoned = send_get(db_port, "consistent", db_key)
+local function readdb(elem_type, unhashed_key)
+    local db_key = crypto.evp.digest("sha1", elem_type..":"..unhashed_key)
+    reportlog("readdb: about to read in distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
+    local ok_send_get, ret_send_get = send_get(db_port, "consistent", db_key)
     if not ok_send_get then
         return false
     end
-    reportlog("readdb: obj jsoned:",{obj_jsoned=obj_jsoned}) -- JV: ADDED FOR LOGGING
-    local obj = json.decode(obj_jsoned)
-    return true, obj
+    --if it's not a inode
+    if elem_type ~= "inode" then
+        --return directly the result
+        return true, ret_send_get
+    end
+    --if it's a inode, JSON-decode it first
+    return true, json.decode(ret_send_get)
 end
 
---END ADDED JV
-
-
-
-
-function string:splitpath() 
+function string:splitfilename() 
     local dir,file = self:match("(.-)([^:/\\]*)$")
     local dirmatch = dir:match("(.-)[/\\]?$")
     if dir == "/" then
@@ -85,6 +83,8 @@ function string:splitpath()
     end
 end
 
+
+--TODO: IS THIS USED?
 local tab = {  -- tab[i+1][j+1] = xor(i, j) where i,j in (0-15)
   {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, },
   {1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, },
@@ -135,9 +135,9 @@ local function is_dir(mode)
     return o ~= 0
 end
 
-local function decode_acl(s) --JV: NOTHING TO CHANGE
+local function decode_acl(s)
 
-    reportlog("decode_acl", {s=s}) -- JV: ADDED FOR LOGGING
+    reportlog("decode_acl: ENTERED for s="..s, {})
 
     local version = s:sub(1,4)
     local n = 5
@@ -150,243 +150,323 @@ local function decode_acl(s) --JV: NOTHING TO CHANGE
     end
 end
 
-local function clear_buffer(dirent,from,to) --JV: NOTHING TO CHANGE
+local function clear_buffer(inode,from,to)
+    --logs entrance
+    reportlog("clear_buffer: ENTERED for inode="..inode..", from="..from..", to="..to})
 
-    reportlog("clear_buffer: ENTERED", {dirent=dirent, from=from, to=to}) -- JV: ADDED FOR LOGGING
+    for i = from, to do inode.content[i] = nil end
 
-    for i = from, to do dirent.content[i] = nil end
-    --[[
-    if type(dirent.content) == "table" then
-        for i=from,to do dirent.content[i] = nil end
-    end
-    ]]
     collectgarbage("collect")
 end
 
-local function mk_mode(owner, group, world, sticky) --JV: NOTHING TO CHANGE
+local function mk_mode(owner, group, world, sticky)
 
-    reportlog("mk_mode: ENTERED", {owner=owner, group=group, world=world, sticky=sticky}) -- JV: ADDED FOR LOGGING
+    reportlog("mk_mode: ENTERED for owner="..owner..", group="..group..", world="..world..", sticky="..sticky})
 
     sticky = sticky or 0
-    local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID -- JV: ADDED FOR LOGGING
-    reportlog("mk_mode returns", {result_mode=result_mode}) -- JV: ADDED FOR LOGGING
-    return owner * S_UID + group * S_GID + world + sticky * S_SID
+    local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID
+    reportlog("mk_mode returns result_mode="..result_mode, {})
+    return result_mode
 end
 
-local function dir_walk(root, path)
-
-    reportlog("dir_walk: ENTERED for path="..path, {}) -- JV: ADDED FOR LOGGING
-
-    local dirent, parent, obj = root, nil, nil
-    if path ~= "/" then 
-        local progressive_path = ""
-        --reportlog("dir_walk: path="..path, {}) -- JV: ADDED FOR LOGGING
-        for c in path:gmatch("[^/]*") do
-            --reportlog("dir_walk: searching c="..c, {}) -- JV: ADDED FOR LOGGING
-            if #c > 0 then --JV: TRYING BY REMOVING THIS
-                --reportlog("dir_walk: searching c="..c..">0", {}) -- JV: ADDED FOR LOGGING
-                parent = dirent
-                --reportlog("dir_walk: CHECKPOINT1", {parent=parent}) -- JV: ADDED FOR LOGGING
-                --reportlog("dir_walk: is there parent.content["..c.."]?", {parent_content_c=parent.content[c]}) -- JV: ADDED FOR LOGGING
-                --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-                progressive_path = progressive_path.."/"..c --JV: ADDED FOR REPLACEMENT WITH DISTDB
-                --TODO maybe it's possible not to do this recursive search
-                --reportlog("dir_walk: progressive_path="..progressive_path, {parent=parent}) -- JV: ADDED FOR LOGGING
-                --dirent = content[c]
-                --dirent = mnode.get(content[c]) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-                if parent.content[c] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
-                    local ok_readdb = false
-                    ok_readdb, obj = readdb(progressive_path) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-                    if ok_readdb then
-                        dirent = obj
-                        --reportlog("dir_walk: readdb result", {dirent=dirent}) -- JV: ADDED FOR LOGGING
-                    end
-                else
-                    dirent = nil
-                end
-            end --JV: TRYING BY REMOVING THIS
-            if not dirent then
-                reportlog("dir_walk: for path="..path.." returns nil dirent", {parent=parent}) -- JV: ADDED FOR LOGGING
-                return nil, parent
-            end
-        end
-    end
-    --if true or not dirent.content then --JV: REMOVED, WTF IS A IF TRUE OR ... ?
-    if not dirent.content then --JV: ADDED
-        reportlog("dir_walk: strange not dirent.content error", {}) -- JV: ADDED FOR LOGGING
-        --dirent.content = mnode.get_block(dirent.meta.data_block) --JV: I HOPE THIS NEVER HAPPENS
-        dirent.content = {} --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        dirent.is_dir = is_dir(dirent.meta.mode)
+--gets a inode element from the db
+local function get_inode(inode_n)
+    --logs entrance
+    reportlog("get_inode: ENTERED for inode_n="..inode_n, {})
+    
+    if type(inode_n) ~= "number" then
+        reportlog("get_inode: ERROR, inode_n not a number")
+        return nil
     end
 
-    reportlog("dir_walk: for path="..path.." returns", {dirent=dirent, parent=parent}) -- JV: ADDED FOR LOGGING
+    local ok_readdb_inode, inode = readdb("inode", inode_n)
 
-    return dirent, parent
+    if not ok_readdb_inode then
+        reportlog("get_inode: ERROR, readdb of inode was not OK")
+        return nil
+    end
+
+    return inode
 end
+
+--gets a inode number from the db, by identifying it with the filename
+local function get_inode_n(filename)
+    --logs entrance
+    reportlog("get_inode_n: ENTERED for filename="..filename, {})
+
+    local ok_readdb_file, inode_n = readdb("file", filename)
+
+    if not ok_readdb_file then
+        reportlog("get_inode_n: ERROR, readdb of file was not OK")
+        return nil
+    end
+    return inode_n
+end
+
+--gets a inode element from the db, by identifying it with the filename
+local function get_inode_from_filename(filename)
+    --logs entrance
+    reportlog("get_inode_from_filename: ENTERED for filename="..filename, {})
+
+    local inode_n = tonumber(get_inode_n(filename)) --TODO: CHECK IF TONUMBER IS NECESSARY
+
+    return get_inode(inode_n)
+end
+
+--puts a inode element into the db
+local function put_inode(inode_n, inode)
+    --logs entrance
+    reportlog("put_inode: ENTERED for inode_n="..inode_n, {inode=inode})
+    
+    if type(inode_n) ~= "number" then
+        reportlog("put_inode: ERROR, inode_n not a number")
+        return nil
+    end
+
+    if type(inode) ~= "table" then
+        reportlog("put_inode: ERROR, inode not a table")
+        return nil
+    end    
+
+    local ok_writedb_inode = writedb("inode", inode_n, json.encode(inode))
+
+    if not ok_writedb_inode then
+        reportlog("put_inode: ERROR, writedb of inode was not OK")
+        return nil
+    end
+
+    return true
+end
+
+--puts a file element into the db
+local function put_file(filename, inode_n)
+    
+    if type(filename) ~= "string" then
+        reportlog("put_file: ERROR, filename not a string")
+        return nil
+    end
+
+    --logs entrance
+    reportlog("put_file: ENTERED for filename="..filename..", inode_n="..inode_n, {})
+    
+    if type(inode_n) ~= "number" then
+        reportlog("put_file: ERROR, inode_n not a number")
+        return nil
+    end
+
+    local ok_writedb_file = writedb("file", filename, inode_n)
+
+    if not ok_writedb_file then
+        reportlog("put_file: ERROR, writedb of inode was not OK")
+        return nil
+    end
+
+    return true
+end
+
+local function delete_inode(inode_n, inode)
+    --logs entrance
+    reportlog("delete_inode: ENTERED for inode_n="..inode_n, {inode=inode})
+    
+    if type(inode_n) ~= "number" then
+        reportlog("delete_inode: ERROR, inode_n not a number")
+        return nil
+    end
+
+    if type(inode) ~= "table" then
+        reportlog("delete_inode: ERROR, inode not a table")
+        return nil
+    end
+
+    --[[
+    for i,v in ipairs(inode.content) do
+        writedb("block", v, nil) --TODO: NOT CHECKING IF SUCCESSFUL
+    end
+    --]]
+
+    --[[
+    local ok_writedb_inode = writedb("inode", inode_n, nil)
+
+    if not ok_writedb_inode then
+        reportlog("delete_inode: ERROR, writedb of inode was not OK")
+        return nil
+    end
+    --]]
+    return true
+end
+
+local function delete_dir_inode(inode_n)
+    --logs entrance
+    reportlog("delete_dir_inode: ENTERED for inode_n="..inode_n, {})
+    
+    if type(inode_n) ~= "number" then
+        reportlog("delete_inode: ERROR, inode_n not a number")
+        return nil
+    end
+
+    --[[
+    local ok_writedb_inode = writedb("inode", inode_n, nil)
+
+    if not ok_writedb_inode then
+        reportlog("delete_dir_inode: ERROR, writedb of inode was not OK")
+        return nil
+    end
+    --]]
+    return true
+end
+
+local function delete_file(filename)
+
+    if type(filename) ~= "string" then
+        reportlog("delete_file: ERROR, filename not a string")
+        return nil
+    end
+
+    --logs entrance
+    reportlog("delete_file: ENTERED for filename="..filename, {inode=inode})
+    
+    if type(inode) ~= "table" then
+        reportlog("delete_inode: ERROR, inode not a table")
+        return nil
+    end
+
+    local ok_writedb_file = writedb("file", filename, nil)
+
+    if not ok_writedb_file then
+        reportlog("delete_file: ERROR, writedb of inode was not OK")
+        return nil
+    end
+
+    return true
+end
+
 
 local uid,gid,pid,puid,pgid = fuse.context()
 
---local root = mnode.get("/") --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-local ok_read_rootdb, rootdb = readdb("/") --JV: ADDED FOR REPLACEMENT WITH DISTDB
+local root_inode = get_inode(0)
 
---if not root then --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-if not rootdb then --JV: ADDED FOR REPLACEMENT WITH DISTDB
+--I THINK ROOT_INODE IS NOT EVEN NEEDED, IT WAS USED FOR dir_walk
+if not root_inode then
 
-    reportlog("creating root",{content=content}) -- JV: ADDED FOR LOGGING
-
-    --[[
-    local content = mnode.block()
-    root = mnode.node{
-     meta = {
-            data_block = content._key,
-            xattr={[-1]=true},
-            mode= mk_mode(7,5,5) + S_IFDIR, 
-            ino = 0, 
-            dev = 0, 
-            nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()}
-            ,
-            content = content
-    }
-    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    reportlog("creating root",{})
     
-    rootdb = {
+    root_inode = {
         meta = {
-            xattr ={[-1]=true},
+            ino = 0,
+            xattr ={greatest_inode_n=0},
             mode  = mk_mode(7,5,5) + S_IFDIR,
-            ino   = 0,
-            dev   = 0, 
             nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()
         },
         content = {}
     } -- JV: ADDED FOR REPLACEMENT WITH DISTDB
-        
-    --mnode.set("/", root) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    local ok_write_root = writedb("/", rootdb) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+
+    put_inode(0, root_inode)
 end
 
-local function unlink_node(dirent, path)
+local function unlink_node(inode, filename) --PA DESPUES CREO QUE ES ERASE FILE
+    --logs entrance
+    reportlog("unlink_node: ENTERED", {inode=inode, filename=filename})
 
-    reportlog("unlink_node: ENTERED", {dirent=dirent, path=path}) -- JV: ADDED FOR LOGGING
-
-    local meta = dirent.meta
+    local meta = inode.meta
     meta.nlink = meta.nlink - 1 - (is_dir(meta.mode) and 1 or 0)
     if meta.nlink == 0 then
-        --clear_buffer(dirent, 0, floor(dirent.meta.size/mem_block_size)) --JV: REMOVED FOR REPLACEMENT WITH DISTDB; I THINK IT IS NOT USED... WATCH OUT WITH THIS
-        dirent.content = nil
-        dirent.meta = nil
-        --mnode.set(dirent._key, nil) -- JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --local ok_write_dirent = writedb(path_of_dirent, nil) --JV: ADDED FOR REPLACEMENT WITH DISTDB --TODO WHAT TO PUT HERE??? I THINK I MUST INVENT A DELETE FUNCTION
-        --OR USE AMAZON S3'S FRONT END; COMMENTED FOR THE MOMENT, SO, DATA IS NOT ERASED IN DB!!!
+        inode.content = nil
+        inode.meta = nil
     else
-        if (dirent.open or 0) < 1 then
-            --mnode.flush_node(dirent, path, true)
-
-        else dirent.meta_changed = true end
+        if (inode.open or 0) < 1 then
+            --mnode.flush_node(inode, filename, true)
+            --TODO: WHAT INSTEAD OF THAT?
+        else inode.meta_changed = true end
     end
 end
 
-local memfs={
+local memfs = {
 
-pulse=function() --JV: NOTHING TO CHANGE
-    
-    reportlog("pulse: ENTERED", {}) -- JV: ADDED FOR LOGGING
+pulse = function()
+    --logs entrance
+    reportlog("pulse: ENTERED", {})
 
     print "periodic pulse"
 end,
 
-getattr=function(self, path) --JV: NOTHING TO CHANGE
+getattr = function(self, filename)
+    --logs entrance
+    reportlog("getattr: ENTERED for filename="..filename, {})
 
-    reportlog("getattr: ENTERED",{path=path}) -- JV: ADDED FOR LOGGING
-
-    local dirent = dir_walk(rootdb, path)
-    reportlog("getattr: for path="..path.." dir_walk returned:",{dirent=dirent}) -- JV: ADDED FOR LOGGING
-    if not dirent then return ENOENT end
-    local x = dirent.meta
+    local inode = get_inode_from_filename(filename)
+    reportlog("getattr: for filename="..filename.." get_inode_from_filename returned=",{inode=inode})
+    if not inode then return ENOENT end
+    local x = inode.meta
     return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime    
 end,
 
-opendir = function(self, path) --JV: NOTHING TO CHANGE
+opendir = function(self, filename)
+    --logs entrance
+    reportlog("opendir: ENTERED for filename="..filename, {})
 
-    reportlog("opendir: ENTERED",{path=path}) -- JV: ADDED FOR LOGGING
-
-    local dirent = dir_walk(rootdb, path)
-    reportlog("opendir: for path="..path.." dir_walk returned",{dirent=dirent}) -- JV: ADDED FOR LOGGING
-    if not dirent then return ENOENT end
-    return 0, dirent
+    local inode = get_inode_from_filename(filename)
+    reportlog("opendir: for filename="..filename.." get_inode_from_filename returned",{inode=inode})
+    if not inode then return ENOENT end
+    return 0, inode
 end,
 
-readdir = function(self, path, offset, dirent)
-
-    reportlog("readdir: ENTERED",{path=path,offset=offset,dirent=dirent}) -- JV: ADDED FOR LOGGING
+readdir = function(self, filename, offset, inode)
+    --logs entrance
+    reportlog("readdir: ENTERED for filename="..filename..", offset="..offset, {inode=inode})
 
     local out={'.','..'}
-    --for k,v in dirent.content do --JV: REMOVED
-    for k,v in pairs(dirent.content) do --JV: ADDED (CORRECTING THE LACK OF WORD 'PAIRS'...)
+    for k,v in pairs(inode.content) do
         if type(k) == "string" then out[#out+1] = k end
-
-        --out[#out+1]={d_name=k, ino = v.meta.ino, d_type = v.meta.mode, offset = 0}
     end
     return 0, out
-    --return 0, {{d_name="abc", ino = 1, d_type = S_IFREG + 7*S_UID, offset = 0}}
 end,
 
-releasedir = function(self, path, dirent) --JV: NOTHING TO CHANGE
-
-    reportlog("releasedir: ENTERED",{path=path,dirent=dirent}) -- JV: ADDED FOR LOGGING
+releasedir = function(self, filename, inode)
+    --logs entrance
+    reportlog("releasedir: ENTERED for filename="..filename, {inode=inode})
 
     return 0
 end,
 
-mknod = function(self, path, mode, rdev) --JV: NOT SURE IF TO CHANGE OR NOT....!!!
+mknod = function(self, filename, mode, rdev) --JV: NOT SURE IF TO CHANGE OR NOT....!!!
+    --logs entrance
+    reportlog("mknod: ENTERED for filename="..filename, {mode=mode,rdev=rdev})
 
-    reportlog("mknod: ENTERED",{path=path,mode=mode,rdev=rdev}) -- JV: ADDED FOR LOGGING
-
-    local dir, base = path:splitpath()
-    local dirent, parent = dir_walk(rootdb, path)
-    local uid, gid, pid = fuse.context()
+    local inode = get_inode_from_filename(filename)
     
-    --[[
-    local content = mnode.block()
-    local x = {
-        data_block = content._key,
-        xattr={[-1]=true},
-        mode = mode,
-        ino = 0, 
-        dev = rdev, 
-        nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
-    local o = mnode.node{ meta=x , content = content}
-    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-
-    local o = {
-        meta = {
-            xattr={[-1]=true},
-            mode = mode,
-            ino = 0, 
-            dev = rdev, 
-            nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()
-        },
-        content = {}
-    } --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    o.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
-
-
-
-    if not dirent then
-        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        parent.content[base]=true --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        parent.meta.nlink = parent.meta.nlink + 1
-        --mnode.flush_node(parent, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --mnode.flush_node(o, path, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_obj = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        return 0,o
+    if not inode then
+        
+        local dir, base = filename:splitfilename()
+        local parent = get_inode_from_filename(dir)
+        
+        local root_inode = get_inode(0)
+        root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+        local greatest_ino = root_inode.meta.xattr.greatest_inode_n
+        
+        local uid, gid, pid = fuse.context()
+        
+        inode = {
+            meta = {
+                ino = greatest_ino,
+                mode = mode,
+                dev = rdev, 
+                nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()
+            },
+            content = {""} --TODO: MAYBE THIS IS EMPTY
+        }
+        reportlog("mknod: what is parent_parent?", {parent_parent=parent.parent})
+        parent.content[base]=true
+        local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        local ok_put_inode = put_inode(greatest_ino, inode)
+        local ok_put_file = put_file(filename, greatest_ino)
+        local ok_put_root_inode = put_inode(0, root_inode)
+        return 0, o
     end
 end,
 
-read=function(self, path, size, offset, obj)
-    
-    reportlog("read: ENTERED for path="..path,{size=size,offset=offset,obj=obj}) -- JV: ADDED FOR LOGGING
+read = function(self, filename, size, offset, inode)
+    --logs entrance
+    reportlog("read: ENTERED for filename="..filename..", size="..size..", offset="..offset,{inode=inode})
 
     --local block = floor(offset/mem_block_size) --JV: NOT NEEDED FOR THE MOMENT
     --local o = offset%mem_block_size --JV: NOT NEEDED FOR THE MOMENT
@@ -410,21 +490,21 @@ read=function(self, path, size, offset, obj)
     end --JV: NOT NEEDED FOR THE MOMENT
     --]]
 
-    reportlog("read: for path="..path.." the full content of obj:",{obj_content=obj.content}) -- JV: ADDED FOR LOGGING
+    reportlog("read: for filename="..filename.." the full content of obj:",{obj_content=obj.content})
 
     --if size + offset < string.len(obj.content[1]) then -- JV: CREO QUE ESTO NO SE USA
     local data = string.sub(obj.content[1], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
     --end --JV: CORRESPONDS TO THE IF ABOVE
 
-    reportlog("read: for path="..path.." returns",{data=data}) -- JV: ADDED FOR LOGGING
+    reportlog("read: for filename="..filename.." returns",{data=data})
 
     --return 0, tjoin(data,"") --JV: REMOVED FOR REPLACEMENT WITH DISTDB; data IS ALREADY A STRING
     return 0, data --JV: ADDED FOR REPLACEMENT WITH DISTDB
 end,
 
-write=function(self, path, buf, offset, obj)
-        
-    reportlog("write: ENTERED",{path=path,buf=buf,offset=offset,obj=obj}) -- JV: ADDED FOR LOGGING
+write = function(self, filename, buf, offset, obj)
+    --logs entrance
+    reportlog("write: ENTERED for filename="..filename, {buf=buf,offset=offset,obj=obj})
 
     obj.changed = true
     local size = #buf
@@ -451,22 +531,22 @@ write=function(self, path, buf, offset, obj)
         end
     end --JV: NOT NEEDED FOR THE MOMENT
     --]]
-    reportlog("write: CHECKPOINT1",{}) -- JV: ADDED FOR LOGGING
+    reportlog("write: CHECKPOINT1",{})
     if not obj.content[1] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
         obj.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("write: CHECKPOINT1a",{}) -- JV: ADDED FOR LOGGING
+        reportlog("write: CHECKPOINT1a",{})
     end --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    reportlog("write: CHECKPOINT2",{}) -- JV: ADDED FOR LOGGING
+    reportlog("write: CHECKPOINT2",{})
     local old_content = obj.content[1] --JV: ADDED FOR REPLACEMENT WITH DISTDB
     local old_size = string.len(obj.content[1])
     if (offset+size) < old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
         obj.content[1] = string.sub(old_content, 1, offset)..buf..string.sub(old_content, (offset+size+1), -1) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("write: CHECKPOINT3a",{}) -- JV: ADDED FOR LOGGING
+        reportlog("write: CHECKPOINT3a",{})
     else --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("write: CHECKPOINT3b",{}) -- JV: ADDED FOR LOGGING
+        reportlog("write: CHECKPOINT3b",{})
         obj.content[1] = string.sub(old_content, 1, offset)..buf --JV: ADDED FOR REPLACEMENT WITH DISTDB
         if (offset+size) > old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
-            reportlog("write: CHECKPOINT3c",{}) -- JV: ADDED FOR LOGGING
+            reportlog("write: CHECKPOINT3c",{})
             obj.meta.size = offset+size --JV: ADDED FOR REPLACEMENT WITH DISTDB
             obj.meta_changed = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
         end --JV: ADDED FOR REPLACEMENT WITH DISTDB
@@ -475,483 +555,457 @@ write=function(self, path, buf, offset, obj)
     --local eof = offset + #buf --JV: REMOVED FOR REPLACEMENT WITH DISTDB
     --if eof > obj.meta.size then obj.meta.size = eof ; obj.meta_changed = true end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
 
-    local ok_writedb = writedb(path, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    local ok_writedb = put_inodewritedb(filename, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
     return #buf
 end,
 
-open=function(self, path, mode)
-
-    reportlog("open: ENTERED",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
+open = function(self, filename, mode) --NOTE: MAYBE OPEN DOESN'T DO ANYTHING BECAUSE OF THE SHARED NATURE OF THE FILESYSTEM; EVERY WRITE READ MUST BE ATOMIC AND
+--LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
+    --logs entrance
+    reportlog("open: ENTERED for filename="..filename, {mode=mode})
 
     local m = mode % 4
-    local dirent = dir_walk(rootdb, path)
-    if not dirent then return ENOENT end
-    dirent.open = (dirent.open or 0) + 1
-    return 0, dirent
+    local inode = get_inode_from_filename(filename)
+    --TODO: CHECK THIS MODE THING
+    if not inode then return ENOENT end
+    inode.open = (inode.open or 0) + 1
+    put_inode(inode.meta.ino, inode)
+    --TODO: CONSIDER CHANGING A FIELD OF THE DISTDB WITHOUT RETRIEVING THE WHOLE OBJECT; DIFFERENTIAL WRITE
+    return 0, inode
 end,
 
-release=function(self, path, obj)
+release = function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MUCH SENSE
+    --logs entrance
+    reportlog("release: ENTERED for filename="..filename, {inode=inode})
 
-    reportlog("release: ENTERED",{path=path,obj=obj}) -- JV: ADDED FOR LOGGING
-
-    local dir, base = path:splitpath()
-    obj.open = obj.open - 1
-    if obj.open < 1 then
-        if obj.changed then
-            --local final_key = mnode.flush_data(obj.content, obj, path, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-            --if final_key and final_key ~= obj.data_block then obj.data_block = final_key end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-            local ok_writedb_dirent = writedb(path, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    inode.open = inode.open - 1
+    if inode.open < 1 then
+        if inode.changed then
+            local ok_put_inode = put_inode(inode.ino, inode)
         end
-        if obj.meta_changed or obj.parent then
-            --mnode.flush_node(obj, path, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-            local ok_writedb_dirent = writedb(path, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        if inode.meta_changed then
+            local ok_put_inode = put_inode(inode.ino, inode)
         end
-        --[[
-        if obj.parent then 
-            if final_key and final_key ~= obj.data_block then 
-                parent.content[base] = final_key 
-            end
-            mnode.flush_node(obj.parent, dir, true)
-        end
-        --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        obj.parent = nil
-        obj.meta_changed = nil
-        obj.changed = nil
+        inode.meta_changed = nil
+        inode.changed = nil
     end
     return 0
 end,
 
-fgetattr=function(self, path, obj, ...)
-
-    reportlog("fgetattr: ENTERED",{path=path,obj=obj}) -- JV: ADDED FOR LOGGING
+fgetattr = function(self, filename, obj, ...) --TODO: CHECK IF fgetattr IS USEFUL
+    --logs entrance
+    reportlog("fgetattr: ENTERED for filename="..filename, {obj=obj})
 
     local x = obj.meta
     return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime    
 end,
 
-rmdir = function(self, path)
+rmdir = function(self, filename)
+    --logs entrance
+    reportlog("rmdir: ENTERED for filename="..filename, {})
 
-    reportlog("rmdir: ENTERED",{path=path}) -- JV: ADDED FOR LOGGING
+    local inode_n = get_inode_n(filename)
 
-    local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(rootdb, path)
-    parent.content[base] = nil; mnode.set(dirent._key, nil)
-    parent.meta.nlink = parent.meta.nlink - 1
-    mnode.flush_node(parent, dir, true)
-    return 0
-end,
+    if inode_n then --TODO: WATCH OUT, I PUT THIS IF
+        local dir, base = filename:splitfilename()
 
-mkdir = function(self, path, mode, ...)
+        --local inode = get_inode_from_filename(filename)
+        --TODO: CHECK WHAT HAPPENS WHEN TRYING TO ERASE A NON-EMPTY DIR
+        --reportlog("rmdir: got inode", {inode, inode})
 
-    reportlog("mkdir: ENTERED",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
+        local parent = get_inode_from_filename(dir)
+        parent.content[base] = nil
+        parent.meta.nlink = parent.meta.nlink - 1
 
-    local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(rootdb, path)
-    local uid,gid,pid = fuse.context()
-    
-    --[[
-    local content = mnode.block{[-1]=true}
-    local x = {
-        data_block = content._key,
-        xattr={[-1]=true},
-        mode = set_bits(mode,S_IFDIR), -- mode don't have directory bit set
-        ino = 0, 
-        dev = 0, 
-        nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
-    local o = mnode.node{ meta=x , content = content, is_dir=true}
-    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-
-    local o = {
-        meta = {
-            xattr={[-1]=true},
-            mode = set_bits(mode,S_IFDIR), -- mode don't have directory bit set
-            ino = 0, 
-            dev = 0, 
-            nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()
-        },
-        content = {}
-    } --JV: ADDED FOR REPLACEMENT WITH DISTDB
-
-    if not dirent then
-        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        parent.content[base]= true --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        parent.meta.nlink = parent.meta.nlink + 1
-        --mnode.flush_node(parent, dir, true)
-        --mnode.flush_node(o, path, true)
-
-        reportlog("mkdir: gonna write",{dir=dir,parent=parent,path=path,o=o}) -- JV: ADDED FOR LOGGING
-
-        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-
+        delete_file(filename)
+        delete_dir_inode(inode_n)
+        put_inode(parent.ino, parent)
     end
     return 0
 end,
 
-create = function(self, path, mode, flag, ...)
+mkdir = function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
+--TODO: MERGE THESE CODES (MKDIR, MKNODE, CREATE) ON 1 FUNCTION
+    --logs entrance
+    reportlog("mkdir: ENTERED for filename="..filename, {mode=mode})
 
-    reportlog("create: ENTERED",{path=path,mode=mode,flag=flag}) -- JV: ADDED FOR LOGGING
+    local inode = get_inode_from_filename(filename)
 
-    --if path:find('hidden') then print("create", path, mode, flag) end --JV: REMOVED
-    local dir, base = path:splitpath()
-    reportlog("create: for path="..path.." dir="..dir..", base="..base, {})
-    local dirent,parent = dir_walk(rootdb, path)
-    reportlog("create: for path="..path.." dir_walk returned", {dirent=dirent, parent=parent})
-    local uid,gid,pid = fuse.context()
-    
-    --[[
-    local content = mnode.block()
-    local x = {
-        data_block = content._key,
-        xattr={[-1]=true},
-        mode = set_bits(mode, S_IFREG),
-        ino = 0, 
-        dev = 0, 
-        nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
-    --local o = mnode.node{ meta=x , content = content } --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    
-    local o = {
-        meta = {
-            xattr ={[-1]=true},
-            mode  = set_bits(mode, S_IFREG),
-            ino   = 0, 
-            dev   = 0, 
-            nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()
-        },
-        content = {}
-    } --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    o.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
-
-    reportlog("create: CHECKPOINT1",{}) -- JV: ADDED FOR LOGGING
-    
-    if not dirent then
+    if not inode then
         
-        reportlog("create: CHECKPOINT-IF1",{}) -- JV: ADDED FOR LOGGING
-        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        parent.content[base] = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("create: CHECKPOINT-IF2",{}) -- JV: ADDED FOR LOGGING
+        local dir, base = filename:splitfilename()
+        local parent = get_inode_from_filename(dir)
+        
+        local root_inode = get_inode(0)
+        root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+        local greatest_ino = root_inode.meta.xattr.greatest_inode_n
+        
+        local uid, gid, pid = fuse.context()
+        
+        inode = {
+            meta = {
+                mode = set_bits(mode,S_IFDIR),
+                ino = greatest_ino, 
+                dev = 0, --TODO: CHECK IF USEFUL
+                nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now() --TODO: CHECK IF SIZE IS NOT MAX_BLOCK_SIZE
+            },
+            content = {}
+        }
+        
+        parent.content[base]=true
         parent.meta.nlink = parent.meta.nlink + 1
-        --mnode.flush_node(parent, dir, false) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        reportlog("create: CHECKPOINT-IF3",{}) -- JV: ADDED FOR LOGGING
-        o.parent = parent
-        reportlog("create: CHECKPOINT-IF4",{}) -- JV: ADDED FOR LOGGING
-        o.open = 1
-        reportlog("create: CHECKPOINT-IF5",{}) -- JV: ADDED FOR LOGGING
+        local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        local ok_put_inode = put_inode(greatest_ino, inode)
+        local ok_put_file = put_file(filename, greatest_ino)
+        local ok_put_root_inode = put_inode(0, root_inode)
+    end
+    return 0
+end,
 
-        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+create = function(self, filename, mode, flag, ...)
+    --logs entrance
+    reportlog("create: ENTERED for filename="..filename,{mode=mode,flag=flag})
+
+    local inode = get_inode_from_filename(filename)
+
+    if not inode then
         
-
+        local dir, base = filename:splitfilename()
+        local parent = get_inode_from_filename(dir)
+        
+        local root_inode = get_inode(0)
+        root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+        local greatest_ino = root_inode.meta.xattr.greatest_inode_n
+        
+        local uid, gid, pid = fuse.context()
+        
+        inode = {
+            meta = {
+                mode  = set_bits(mode, S_IFREG),
+                ino = greatest_ino, 
+                dev = 0, 
+                nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()
+            },
+            content = {}
+        }
+        
+        parent.content[base]=true
+        parent.meta.nlink = parent.meta.nlink + 1
+        local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        local ok_put_inode = put_inode(greatest_ino, inode)
+        local ok_put_file = put_file(filename, greatest_ino)
+        local ok_put_root_inode = put_inode(0, root_inode)
         return 0,o
     end
 end,
 
-flush=function(self, path, obj)
+flush = function(self, filename, obj)
+    --logs entrance
+    reportlog("flush: ENTERED for filename="..filename, {obj=obj})
 
-    reportlog("flush: ENTERED",{path=path,obj=obj}) -- JV: ADDED FOR LOGGING
-
-    if obj.changed then mnode.flush_data(obj.content, obj, path) end
+    if obj.changed then
+        --TODO: CHECK WHAT TO DO HERE, IT WAS MNODE.FLUSH, AN EMPTY FUNCTION
+    end
     return 0
 end,
 
-readlink=function(self, path)
+readlink = function(self, filename)
+    --logs entrance
+    reportlog("readlink: ENTERED for filename="..filename, {})
 
-    reportlog("readlink: ENTERED",{path=path}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        return 0, dirent.content[1]
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        return 0, inode.content[1]
     end
     return ENOENT
 end,
 
-symlink=function(self, from, to)
+symlink = function(self, from, to)
+    --logs entrance
+    reportlog("symlink: ENTERED",{from=from,to=to})
 
-    reportlog("symlink: ENTERED",{from=from,to=to}) -- JV: ADDED FOR LOGGING
+    local inode = get_inode_from_filename(filename)
 
-    local dir, base = to:splitpath()
-    local dirent,parent = dir_walk(rootdb, to)
-    local uid,gid,pid = fuse.context()
-    reportlog("symlink: CHECKPOINT1", {}) -- JV: ADDED FOR LOGGING
-    --local content = mnode.block() --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    
-    --[[
-    local x = {
-        data_block = content._key,
-        xattr={[-1]=true},
-        mode= S_IFLNK+mk_mode(7,7,7),
-        ino = 0, 
-        dev = 0, 
-        nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
-    local o = mnode.node{ meta=x , content = content}
-    o.content[1] = from
-    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    local o = {
-        meta = {
-            xattr={[-1]=true},
-            mode= S_IFLNK+mk_mode(7,7,7),
-            ino = 0,
-            dev = 0,
-            nlink = 1, uid = uid, gid = gid, size = string.len(from), atime = now(), mtime = now(), ctime = now()
-        },
-        content ={from}
-    }
-    reportlog("symlink: CHECKPOINT2", {o_meta_size = o.meta.size, string_len_from = string.len(from)}) -- JV: ADDED FOR LOGGING
-    if not dirent then
-        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        reportlog("symlink: CHECKPOINT3", {}) -- JV: ADDED FOR LOGGING
-        parent.content[base] = true  --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("symlink: CHECKPOINT4", {}) -- JV: ADDED FOR LOGGING
-        parent.meta.nlink = parent.meta.nlink + 1
-        --mnode.flush_node(parent, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --mnode.flush_node(o, to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_dirent = writedb(to, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    if not inode then
+        
+        local dir, base = filename:splitfilename()
+        local parent = get_inode_from_filename(dir)
+        
+        local root_inode = get_inode(0)
+        root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+        local greatest_ino = root_inode.meta.xattr.greatest_inode_n
+        
+        local uid, gid, pid = fuse.context()
+        
+        inode = {
+            meta = {
+                mode= S_IFLNK+mk_mode(7,7,7),
+                ino = greatest_ino, 
+                dev = 0, 
+                nlink = 1, uid = uid, gid = gid, size = string.len(from), atime = now(), mtime = now(), ctime = now()
+            },
+            content = {}
+        }
+        
+        parent.content[base]=true
+        local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        local ok_put_inode = put_inode(greatest_ino, inode)
+        local ok_put_file = put_file(filename, greatest_ino)
+        local ok_put_root_inode = put_inode(0, root_inode)
         return 0
     end
 end,
 
 rename = function(self, from, to)
-
-    reportlog("rename: ENTERED",{from=from,to=to}) -- JV: ADDED FOR LOGGING
+    --logs entrance
+    reportlog("rename: ENTERED, from="..from..", to="..to, {})
 
     if from == to then return 0 end
 
-    --print("rename", from, to)
-    local dir_f, o_base = from:splitpath()
-    local dir_t, base = to:splitpath()
-    local dirent,fp = dir_walk(rootdb, from)
-    local n_dirent,tp = dir_walk(rootdb, to)
-    if dirent then
-        --tp.content[base]=dirent._key
-        tp.content[base] = true
-        if n_dirent then
-            unlink_node(n_dirent, to) 
+    local from_inode = get_inode_from_filename(from)
+    
+    if from_inode then
+        local from_dir, from_base = from:splitfilename()
+        local to_dir, to_base = to:splitfilename()
+        local from_parent = get_inode_from_filename(from_dir)
+        local to_parent = nil
+        if to_dir == from_dir then
+            to_parent = from_parent
         else
-            reportlog("rename: not unlink_node",{}) -- JV: ADDED FOR LOGGING
-            tp.meta.nlink = tp.meta.nlink + 1 
+            to_parent = get_inode_from_filename(to_dir)
         end
-        --mnode.flush_node(tp, dir_f, true)
-        local ok_writedb_to_parent = writedb(dir_t, tp) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-        fp.content[o_base]=nil
-        fp.meta.nlink = tp.meta.nlink - 1
-        --mnode.flush_node(fp, dir_t, true)
-        local ok_writedb_from_parent = writedb(dir_f, fp) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        to_parent.content[to_base] = true
+        from_parent.content[from_base] = nil
+        --TODO: CHECK IF IT IS A DIR
 
-        --local ok_writedb_dirent = writedb(to, dirent) --JV: ADDED FOR REPLACEMENT WITH DISTDB, BUT COMMENTED TO TEST IF IT WORKS WITH RELEASE
-
-        if (dirent.open or 0) < 1 then
-            --mnode.flush_node(dirent,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-            local ok_writedb_dirent = writedb(to, dirent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        else dirent.meta_changed = true end
+        local ok_put_file = put_file(to, from_inode)
+        local ok_delete_file = delete_file(from, from_inode)
+        local ok_put_to_parent = put_file(to_dir, to_parent)
+        local ok_put_from_parent = put_file(from_dir, from_parent)
+        
+        if (inode.open or 0) < 1 then
+            --mnode.flush_node(inode,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+            --local ok_writedb_inode = writedb(to, inode) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+            --TODO: WTF DO I DO HERE?
+        else
+            inode.meta_changed = true
+        end
         return 0
     end
 end,
 
-link=function(self, from, to, ...)
+link = function(self, from, to, ...)
+    --logs entrance
+    reportlog("link: ENTERED, from="..from..", to="..to, {})
+   
+    if from == to then return 0 end
 
-    reportlog("link: ENTERED",{from=from,to=to}) -- JV: ADDED FOR LOGGING
+    local from_inode = get_inode_from_filename(from)
+    
+    if from_inode then
+        local from_dir, from_base = from:splitfilename()
+        local to_dir, to_base = to:splitfilename()
+        local from_parent = get_inode_from_filename(from_dir)
+        local to_parent = nil
+        if to_dir == from_dir then
+            to_parent = from_parent
+        else
+            to_parent = get_inode_from_filename(to_dir)
+        end
 
-    --print("link", from, to)
-    local dir, base = to:splitpath()
-    local dirent,fp = dir_walk(rootdb, from)
-    local n_dirent,tp = dir_walk(rootdb, to)
-    if dirent then
-        --tp.content[base]=dirent._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        tp.content[base] = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        tp.meta.nlink = tp.meta.nlink + 1
-        --mnode.flush_node(tp, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_to_parent = writedb(dir, tp) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        dirent.meta.nlink = dirent.meta.nlink + 1
-        if (dirent.open or 0) < 1 then
-            --mnode.flush_node(dirent,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-            local ok_writedb_dirent = writedb(to, dirent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        else dirent.meta_changed = true end
-        if n_dirent then unlink_node(n_dirent, to) end
+        to_parent.content[to_base] = true
+        from_inode.meta.nlink = from_inode.meta.nlink + 1
+
+        local ok_put_file = put_file(to, from_inode)
+        local ok_put_to_parent = put_file(to_dir, to_parent)
+        local ok_put_from_parent = put_file(from_dir, from_parent)
         return 0
     end
 end,
 
-unlink=function(self, path, ...)
+unlink = function(self, filename, ...)
+    --logs entrance
+    reportlog("unlink: ENTERED for filename="..filename, {})
 
-    reportlog("unlink: ENTERED",{path=path}) -- JV: ADDED FOR LOGGING
-
-    --if path:find("hidden") then print("unlink", path) end --JV: REMOVED
-    local dir, base = path:splitpath()
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        --local meta = dirent.meta --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    local inode = get_inode_from_filename(filename)
+    
+    if inode then
+        local dir, base = filename:splitfilename()
+        local parent = get_inode_from_filename(dir)
+        
         parent.content[base] = nil
-        parent.meta.nlink = parent.meta.nlink - 1
-        --mnode.flush_node(parent, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        unlink_node(dirent, path)
+        inode.meta.nlink = inode.meta.nlink - 1
+        if inode.meta.nlink == 0 then
+            delete_inode(inode.meta.ino, inode)
+        end
+
+        --TODO: MAYBE IF 
+        local ok_delete_file = delete_file(filename, inode)
+        local ok_put_parent = put_file(dir, parent)
         return 0
     else
-        print("unlink failed", path)
+        reportlog("unlink: ERROR no inode", {})
         return ENOENT
     end
 end,
 
-chown=function(self, path, uid, gid)
+chown = function(self, filename, uid, gid)
+    --logs entrance
+    reportlog("chown: ENTERED for filename="..filename..", uid="..uid..", gid="..gid})
 
-    reportlog("chown: ENTERED",{path=path,uid=uid,gid=gid}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        dirent.meta.uid = uid
-        dirent.meta.gid = gid
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent, path, true) 
-        else dirent.meta_changed = true end
-        return 0
-    else
-        return ENOENT
-    end
-end,
-chmod=function(self, path, mode)
-
-    reportlog("chmod: ENTERED",{path=path,mode=mode}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        dirent.meta.mode = mode
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent, path, true) 
-        else dirent.meta_changed = true end
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        inode.meta.uid = uid
+        inode.meta.gid = gid
+        local ok_put_inode = put_inode(inode.meta.ino, inode)
         return 0
     else
         return ENOENT
     end
 end,
-utime=function(self, path, atime, mtime)
 
-    reportlog("utime: ENTERED",{path=path,atime=atime,mtime=mtime}) -- JV: ADDED FOR LOGGING
+chmod = function(self, filename, mode)
+    --logs entrance
+    reportlog("chmod: ENTERED for filename="..filename, {mode=mode})
 
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        dirent.meta.atime = atime
-        dirent.meta.mtime = mtime
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent, path, true) 
-        else dirent.meta_changed = true end
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        inode.meta.mode = mode
+        local ok_put_inode = put_inode(inode.meta.ino, inode)
         return 0
     else
         return ENOENT
     end
 end,
-ftruncate = function(self, path, size, obj)
 
-    reportlog("ftruncate: ENTERED",{path=path,size=size,obj=obj}) -- JV: ADDED FOR LOGGING
+utime = function(self, filename, atime, mtime)
+    --logs entrance
+    reportlog("utime: ENTERED for filename="..filename, {atime=atime,mtime=mtime})
 
-    local old_size = obj.meta.size
-    obj.meta.size = size
-    clear_buffer(obj, floor(size/mem_block_size), floor(old_size/mem_block_size))
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        inode.meta.atime = atime
+        inode.meta.mtime = mtime
+        local ok_put_inode = put_inode(inode.meta.ino, inode)
+        return 0
+    else
+        return ENOENT
+    end
+end,
+ftruncate = function(self, filename, size, obj)
+    --logs entrance
+    reportlog("ftruncate: ENTERED for filename="..filename, {size=size,obj=obj})
+    --TODO: PA DESPUES
+    --local old_size = obj.meta.size
+    --obj.meta.size = size
+    --clear_buffer(obj, floor(size/mem_block_size), floor(old_size/mem_block_size))
     return 0
 end,
 
-truncate=function(self, path, size)
-
-    reportlog("truncate: ENTERED",{path=path,size=size}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then 
-        local old_size = dirent.meta.size
-        dirent.meta.size = size
-        clear_buffer(dirent, floor(size/mem_block_size), floor(old_size/mem_block_size))
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent, path, true) 
-        else dirent.meta_changed = true end
+truncate = function(self, filename, size)
+    --logs entrance
+    reportlog("truncate: ENTERED for filename="..filename, {size=size})
+    --TODO: PA DESPUES
+    --[[
+    local inode,parent = get_inode_from_filename(filename)
+    if inode then 
+        local old_size = inode.meta.size
+        inode.meta.size = size
+        clear_buffer(inode, floor(size/mem_block_size), floor(old_size/mem_block_size))
+        if (inode.open or 0) < 1 then mnode.flush_node(inode, filename, true) 
+        else inode.meta_changed = true end
         return 0
     else
         return ENOENT
     end
+    --]]
+    return 0
 end,
-access=function(...)
-
-    reportlog("access: ENTERED",{}) -- JV: ADDED FOR LOGGING
+access = function(...)
+    --logs entrance
+    reportlog("access: ENTERED",{})
 
     return 0
 end,
-fsync = function(self, path, isdatasync, obj)
-
-    reportlog("fsync: ENTERED",{path=path,isdatasync=isdatasync,obj=obj}) -- JV: ADDED FOR LOGGING
-
-    mnode.flush_node(obj, path, false) 
+fsync = function(self, filename, isdatasync, obj)
+    --logs entrance
+    reportlog("fsync: ENTERED for filename="..filename, {isdatasync=isdatasync,obj=obj})
+    --TODO: PA DESPUES
+    --[[
+    mnode.flush_node(obj, filename, false) 
     if isdatasync and obj.changed then 
-        mnode.flush_data(obj.content, obj, path) 
+        mnode.flush_data(obj.content, obj, filename) 
     end
+    --]]
     return 0
 end,
-fsyncdir = function(self, path, isdatasync, obj)
-
-    reportlog("fsyncdir: ENTERED",{path=path,isdatasync=isdatasync,obj=obj}) -- JV: ADDED FOR LOGGING
+fsyncdir = function(self, filename, isdatasync, obj)
+    --logs entrance
+    reportlog("fsyncdir: ENTERED for filename="..filename, {isdatasync=isdatasync,obj=obj})
 
     return 0
 end,
-listxattr = function(self, path, size)
+listxattr = function(self, filename, size)
+    --logs entrance
+    reportlog("listxattr: ENTERED for filename="..filename, {size=size})
 
-    reportlog("listxattr: ENTERED",{path=path,size=size}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        --return 0, "attr1\0attr2\0attr3\0"
-        --return 0, "" --no attributes
+    local inode = get_inode_from_filename(filename)
+    if inode then
         local v={}
-        for k in pairs(dirent.meta.xattr) do 
+        for k in pairs(inode.meta.xattr) do 
             if type(k) == "string" then v[#v+1]=k end
         end
-        --return 0, table.concat(v,"\0") .. "\0"
         return 0, table.concat(v,"\0") .. "\0"
     else
         return ENOENT
     end
 end,
 
-removexattr = function(self, path, name)
+removexattr = function(self, filename, name)
+    --logs entrance
+    reportlog("removexattr: ENTERED for filename="..filename, {name=name})
 
-    reportlog("removexattr: ENTERED",{path=path,name=name}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        dirent.meta.xattr[name] = nil
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        inode.meta.xattr[name] = nil
+        local ok_put_inode = put_inode(inode.meta.ino, inode)
         return 0
     else
         return ENOENT
     end
 end,
 
-setxattr = function(self, path, name, val, flags)
-
-    reportlog("setxattr: ENTERED",{path=path,name=name,val=val,flags=flags}) -- JV: ADDED FOR LOGGING
+setxattr = function(self, filename, name, val, flags)
+    --logs entrance
+    reportlog("setxattr: ENTERED for filename="..filename, {name=name,val=val,flags=flags})
 
     --string.hex = function(s) return s:gsub(".", function(c) return format("%02x", string.byte(c)) end) end
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        dirent.meta.xattr[name]=val
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        inode.meta.xattr[name]=val
+        local ok_put_inode = put_inode(inode.meta.ino, inode)
         return 0
     else
         return ENOENT
     end
 end,
 
-getxattr = function(self, path, name, size)
+getxattr = function(self, filename, name, size)
+    --logs entrance
+    reportlog("getxattr: ENTERED for filename="..filename, {name=name,size=size})
 
-    reportlog("getxattr: ENTERED",{path=path,name=name,size=size}) -- JV: ADDED FOR LOGGING
-
-    local dirent,parent = dir_walk(rootdb, path)
-    if dirent then
-        return 0, dirent.meta.xattr[name] or "" --not found is empty string
+    local inode = get_inode_from_filename(filename)
+    if inode then
+        return 0, inode.meta.xattr[name] or "" --not found is empty string
     else
         return ENOENT
     end
 end,
 
-statfs = function(self,path)
-    local dirent,parent = dir_walk(rootdb, path)
+statfs = function(self,filename)
+    local inode,parent = get_inode_from_filename(filename)
     local o = {bs=1024,blocks=64,bfree=48,bavail=48,bfiles=16,bffree=16}
     return 0, o.bs, o.blocks, o.bfree, o.bavail, o.bfiles, o.bffree
 end
