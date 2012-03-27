@@ -41,7 +41,7 @@ local open_mode={'rb','wb','rb+'}
 
 
 --BEGIN ADDED BY JV
-local db_port = 16501
+local db_port = 13271
 
 function reportlog(function_name, args)
     local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -261,22 +261,26 @@ if not rootdb then --JV: ADDED FOR REPLACEMENT WITH DISTDB
     } -- JV: ADDED FOR REPLACEMENT WITH DISTDB
         
     --mnode.set("/", root) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-    writedb("/", rootdb) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    local ok_write_root = writedb("/", rootdb) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 end
 
-local function unlink_node(dirent, path) --JV: PA DESPUÉS
+local function unlink_node(dirent, path)
 
-    reportlog("unlink_mode: ENTERED", {dirent=dirent, path=path}) -- JV: ADDED FOR LOGGING
+    reportlog("unlink_node: ENTERED", {dirent=dirent, path=path}) -- JV: ADDED FOR LOGGING
 
     local meta = dirent.meta
     meta.nlink = meta.nlink - 1 - (is_dir(meta.mode) and 1 or 0)
     if meta.nlink == 0 then
-        clear_buffer(dirent, 0, floor(dirent.meta.size/mem_block_size))
+        --clear_buffer(dirent, 0, floor(dirent.meta.size/mem_block_size)) --JV: REMOVED FOR REPLACEMENT WITH DISTDB; I THINK IT IS NOT USED... WATCH OUT WITH THIS
         dirent.content = nil
         dirent.meta = nil
-        mnode.set(dirent._key, nil)
+        --mnode.set(dirent._key, nil) -- JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        --local ok_write_dirent = writedb(path_of_dirent, nil) --JV: ADDED FOR REPLACEMENT WITH DISTDB --TODO WHAT TO PUT HERE??? I THINK I MUST INVENT A DELETE FUNCTION
+        --OR USE AMAZON S3'S FRONT END; COMMENTED FOR THE MOMENT, SO, DATA IS NOT ERASED IN DB!!!
     else
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent, path, true) 
+        if (dirent.open or 0) < 1 then
+            --mnode.flush_node(dirent, path, true)
+
         else dirent.meta_changed = true end
     end
 end
@@ -495,16 +499,22 @@ release=function(self, path, obj)
     obj.open = obj.open - 1
     if obj.open < 1 then
         if obj.changed then
-            local final_key = mnode.flush_data(obj.content, obj, path, true)
-            if final_key and final_key ~= obj.data_block then obj.data_block = final_key end
+            --local final_key = mnode.flush_data(obj.content, obj, path, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+            --if final_key and final_key ~= obj.data_block then obj.data_block = final_key end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+            local ok_writedb_dirent = writedb(path, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         end
-        if obj.meta_changed or obj.parent then mnode.flush_node(obj, path, true) end
+        if obj.meta_changed or obj.parent then
+            --mnode.flush_node(obj, path, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+            local ok_writedb_dirent = writedb(path, obj) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        end
+        --[[
         if obj.parent then 
             if final_key and final_key ~= obj.data_block then 
                 parent.content[base] = final_key 
             end
-            mnode.flush_node(obj.parent, dir, true) 
+            mnode.flush_node(obj.parent, dir, true)
         end
+        --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
         obj.parent = nil
         obj.meta_changed = nil
         obj.changed = nil
@@ -564,8 +574,9 @@ mkdir = function(self, path, mode, ...)
     } --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
     if not dirent then
-        --local content = parent.content
-        parent.content[base]= true
+        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        parent.content[base]= true --JV: ADDED FOR REPLACEMENT WITH DISTDB
         parent.meta.nlink = parent.meta.nlink + 1
         --mnode.flush_node(parent, dir, true)
         --mnode.flush_node(o, path, true)
@@ -617,9 +628,11 @@ create = function(self, path, mode, flag, ...)
     reportlog("create: CHECKPOINT1",{}) -- JV: ADDED FOR LOGGING
     
     if not dirent then
-        --local content = parent.content
+        
         reportlog("create: CHECKPOINT-IF1",{}) -- JV: ADDED FOR LOGGING
-        parent.content[base] = true
+        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        parent.content[base] = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
         reportlog("create: CHECKPOINT-IF2",{}) -- JV: ADDED FOR LOGGING
         parent.meta.nlink = parent.meta.nlink + 1
         --mnode.flush_node(parent, dir, false) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
@@ -630,7 +643,7 @@ create = function(self, path, mode, flag, ...)
         reportlog("create: CHECKPOINT-IF5",{}) -- JV: ADDED FOR LOGGING
 
         local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        --local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB APPARENTLY NOT USED???
+        local ok_writedb_obj = writedb(path, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         
 
         return 0,o
@@ -661,9 +674,12 @@ symlink=function(self, from, to)
     reportlog("symlink: ENTERED",{from=from,to=to}) -- JV: ADDED FOR LOGGING
 
     local dir, base = to:splitpath()
-    local dirent,parent = dir_walk(root, to)
+    local dirent,parent = dir_walk(rootdb, to)
     local uid,gid,pid = fuse.context()
-    local content = mnode.block()
+    reportlog("symlink: CHECKPOINT1", {}) -- JV: ADDED FOR LOGGING
+    --local content = mnode.block() --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    
+    --[[
     local x = {
         data_block = content._key,
         xattr={[-1]=true},
@@ -673,12 +689,29 @@ symlink=function(self, from, to)
         nlink = 1, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now()}
     local o = mnode.node{ meta=x , content = content}
     o.content[1] = from
+    --]] --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+    local o = {
+        meta = {
+            xattr={[-1]=true},
+            mode= S_IFLNK+mk_mode(7,7,7),
+            ino = 0,
+            dev = 0,
+            nlink = 1, uid = uid, gid = gid, size = string.len(from), atime = now(), mtime = now(), ctime = now()
+        },
+        content ={from}
+    }
+    reportlog("symlink: CHECKPOINT2", {o_meta_size = o.meta.size, string_len_from = string.len(from)}) -- JV: ADDED FOR LOGGING
     if not dirent then
-        local content = parent.content
-        content[base]=o._key
+        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        --content[base]=o._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        reportlog("symlink: CHECKPOINT3", {}) -- JV: ADDED FOR LOGGING
+        parent.content[base] = true  --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        reportlog("symlink: CHECKPOINT4", {}) -- JV: ADDED FOR LOGGING
         parent.meta.nlink = parent.meta.nlink + 1
-        mnode.flush_node(parent, dir, true)
-        mnode.flush_node(o, to, true)
+        --mnode.flush_node(parent, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        --mnode.flush_node(o, to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
+        local ok_writedb_dirent = writedb(to, o) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         return 0
     end
 end,
@@ -692,22 +725,30 @@ rename = function(self, from, to)
     --print("rename", from, to)
     local dir_f, o_base = from:splitpath()
     local dir_t, base = to:splitpath()
-    local dirent,fp = dir_walk(root, from)
-    local n_dirent,tp = dir_walk(root, to)
+    local dirent,fp = dir_walk(rootdb, from)
+    local n_dirent,tp = dir_walk(rootdb, to)
     if dirent then
-        tp.content[base]=dirent._key
-        if n_dirent then 
+        --tp.content[base]=dirent._key
+        tp.content[base] = true
+        if n_dirent then
             unlink_node(n_dirent, to) 
         else
+            reportlog("rename: not unlink_node",{}) -- JV: ADDED FOR LOGGING
             tp.meta.nlink = tp.meta.nlink + 1 
         end
-        mnode.flush_node(tp, dir_f, true)
+        --mnode.flush_node(tp, dir_f, true)
+        local ok_writedb_to_parent = writedb(dir_t, tp) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
         fp.content[o_base]=nil
         fp.meta.nlink = tp.meta.nlink - 1
-        mnode.flush_node(fp, dir_t, true)
+        --mnode.flush_node(fp, dir_t, true)
+        local ok_writedb_from_parent = writedb(dir_f, fp) --JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent,to, true) 
+        --local ok_writedb_dirent = writedb(to, dirent) --JV: ADDED FOR REPLACEMENT WITH DISTDB, BUT COMMENTED TO TEST IF IT WORKS WITH RELEASE
+
+        if (dirent.open or 0) < 1 then
+            --mnode.flush_node(dirent,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+            local ok_writedb_dirent = writedb(to, dirent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         else dirent.meta_changed = true end
         return 0
     end
@@ -719,14 +760,18 @@ link=function(self, from, to, ...)
 
     --print("link", from, to)
     local dir, base = to:splitpath()
-    local dirent,fp = dir_walk(root, from)
-    local n_dirent,tp = dir_walk(root, to)
+    local dirent,fp = dir_walk(rootdb, from)
+    local n_dirent,tp = dir_walk(rootdb, to)
     if dirent then
-        tp.content[base]=dirent._key
+        --tp.content[base]=dirent._key --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        tp.content[base] = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
         tp.meta.nlink = tp.meta.nlink + 1
-        mnode.flush_node(tp, dir, true)
+        --mnode.flush_node(tp, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        local ok_writedb_to_parent = writedb(dir, tp) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         dirent.meta.nlink = dirent.meta.nlink + 1
-        if (dirent.open or 0) < 1 then mnode.flush_node(dirent,to, true) 
+        if (dirent.open or 0) < 1 then
+            --mnode.flush_node(dirent,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+            local ok_writedb_dirent = writedb(to, dirent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         else dirent.meta_changed = true end
         if n_dirent then unlink_node(n_dirent, to) end
         return 0
@@ -737,15 +782,16 @@ unlink=function(self, path, ...)
 
     reportlog("unlink: ENTERED",{path=path}) -- JV: ADDED FOR LOGGING
 
-    if path:find("hidden") then print("unlink", path) end
+    --if path:find("hidden") then print("unlink", path) end --JV: REMOVED
     local dir, base = path:splitpath()
     local dirent,parent = dir_walk(rootdb, path)
     if dirent then
-        local meta = dirent.meta
-        local content = parent.content
+        --local meta = dirent.meta --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        --local content = parent.content --JV: REMOVED FOR REPLACEMENT WITH DISTDB
         parent.content[base] = nil
         parent.meta.nlink = parent.meta.nlink - 1
-        mnode.flush_node(parent, dir, true)
+        --mnode.flush_node(parent, dir, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
+        local ok_writedb_parent = writedb(dir, parent) --JV: ADDED FOR REPLACEMENT WITH DISTDB
         unlink_node(dirent, path)
         return 0
     else
