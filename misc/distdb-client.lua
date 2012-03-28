@@ -109,11 +109,11 @@ function send_get(port, type_of_transaction, key)
 
 	if response_status == 200 then
 		--print("Content of kv-store: "..key.." is:\n"..response_body[1])
-		logfile1:write("send_get: 200 OK received\n")
-		logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
+		--logfile1:write("send_get: 200 OK received\n")
+		--logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
 	else
 		--print("Error "..response_status..":\n"..response_body[1])
-		logfile1:write("send_get: Error "..response_status.."\n")
+		--logfile1:write("send_get: Error "..response_status.."\n")
 		logfile1:close()
 		return false
 	end
@@ -121,10 +121,10 @@ function send_get(port, type_of_transaction, key)
 	local answer = json.decode(response_body[1])
 
 	local answer_string = print_tablez("answer",0,answer)
-	logfile1:write("send_get: answer decoded: \n"..answer_string)
+	--logfile1:write("send_get: answer decoded: \n"..answer_string)
 
 	if not answer[1] then
-		logfile1:write("send_get: No answer\n")
+		--logfile1:write("send_get: No answer\n")
 		logfile1:close()
 		return true, nil
 	end
@@ -137,7 +137,7 @@ function send_get(port, type_of_transaction, key)
 	elseif type(answer[1].value) == "number" then
 		chosen_value = 0
 	elseif type(answer[1].value) == "table" then
-		logfile1:write("send_get: value is a table\n")
+		--logfile1:write("send_get: value is a table\n")
 	end
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
@@ -163,7 +163,7 @@ function send_get(port, type_of_transaction, key)
 		end
 	end
 	--print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
-	logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
+	--logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
 	--for i2,v2 in pairs(max_vc) do
 		--print("", i2, v2)
 	--end
