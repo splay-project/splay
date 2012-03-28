@@ -447,7 +447,7 @@ end
 
 --function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
-	log:print(n.short_id..":handle_put: for key="..shorten_id(key)..", value="..value) -- TODO: key better be hashed here?
+	log:print(n.short_id..":handle_put: for key="..shorten_id(key)..", value=", value) -- TODO: key better be hashed here?
 	
 	local chosen_node = nil
 	
@@ -643,7 +643,7 @@ end
 
 --function consistent_put: puts a k,v and waits until all the replicas assure they have a copy
 function consistent_put(key, value)
-	log:print(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value="..value)
+	log:print(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -674,8 +674,15 @@ function consistent_put(key, value)
 		--put the key locally TODO maybe this can change to a sequential approach; first node itself
 		--checks the version and writes the k,v, then it writes to others
 		events.thread(function()
+			local put_local_result = nil
+			log:print(n.short_id..":consistent_put: value_type="..type(value))
+			if value == nil then
+				put_local_result = delete_local(key)
+			else
+				put_local_result = put_local(key, value, n)
+			end
 			--if the "put" action is successful
-			if put_local(key, value, n) then
+			if put_local_result then
 				--increment answers
 				answers = answers + 1
 				--if answers reaches the number of replicas
@@ -692,7 +699,13 @@ function consistent_put(key, value)
 				--execute in parallel
 				events.thread(function()
 					--puts the key remotely on the others responsibles, if the put is successful
-					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					local rpc_ok, rpc_answer = nil, nil
+					if value == nil then
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
+					else
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					end
+
 					--if the RPC call was OK
 					if rpc_ok then
 						if rpc_answer[1] then
@@ -723,7 +736,7 @@ end
 
 --function evtl_consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
 function evtl_consistent_put(key, value)
-	log:print(n.short_id..":evtl_consistent_put: ENTERED, for key="..shorten_id(key)..", value="..value)
+	log:print(n.short_id..":evtl_consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -755,7 +768,14 @@ function evtl_consistent_put(key, value)
 		--checks the version and writes the k,v, then it writes to others
 		events.thread(function()
 			--if the "put" action is successful
-			if put_local(key, value, n) then
+			local put_local_result = nil
+			if value == nil then
+				put_local_result = delete_local(key)
+			else
+				put_local_result = put_local(key, value, n)
+			end
+			--if the "put" action is successful
+			if put_local_result then
 				--increment answers
 				answers = answers + 1
 				--if answers reaches the minimum number of replicas that must write
@@ -772,7 +792,12 @@ function evtl_consistent_put(key, value)
 				--execute in parallel
 				events.thread(function()
 					--puts the key remotely on the others responsibles, if the put is successful
-					local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					local rpc_ok, rpc_answer = nil, nil
+					if value == nil then
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
+					else
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					end
 					--if the RPC call was OK
 					if rpc_ok then
 						if rpc_answer[1] then
@@ -803,7 +828,7 @@ end
 
 --function paxos_put: performs a Basic Paxos protocol in order to put a k,v pair
 function paxos_put(key, value)
-	log:print(n.short_id..":paxos_put: ENTERED, for key="..shorten_id(key)..", value="..value)
+	log:print(n.short_id..":paxos_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--if no previous proposals have been done for this key
 	--TODO why does it always start always with 1???
 	if not prop_ids[key] then
@@ -1083,7 +1108,7 @@ function send_paxos_proposal(v, prop_id, key)
 end
 
 function send_paxos_accept(v, prop_id, peers, value, key)
-	log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
+	log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value=",value)
 	for i2,v2 in ipairs(peers) do
 		log:print(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
 	end
@@ -1091,8 +1116,14 @@ function send_paxos_accept(v, prop_id, peers, value, key)
 end
 
 function send_paxos_learn(v, value, key)
-	log:print(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value="..value)
-	return rpc.call(v, {"distdb.put_local", value, key})
+	log:print(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value=",value)
+	local ret_put_local = nil
+	if value == nil then
+		ret_put_local = rpc.call(v, {"distdb.delete_local", value})
+	else
+		ret_put_local = rpc.call(v, {"distdb.put_local", value, key})
+	end
+	return ret_put_local
 end
 
 function receive_paxos_proposal(prop_id, key)
@@ -1124,7 +1155,7 @@ function receive_paxos_proposal(prop_id, key)
 end
 
 function receive_paxos_accept(prop_id, peers, value, key)
-	log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
+	log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
 	--adding a random waiting time to simulate different response times
 	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
@@ -1150,11 +1181,15 @@ function receive_paxos_accept(prop_id, peers, value, key)
 		log:print("receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
-	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value="..value..", enabled=", db_table[key].enabled, "propID="..prop_id)
+	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", db_table[key].enabled, "propID="..prop_id)
 	for i,v in ipairs(peers) do
 		if v.id == n.id then
 			events.thread(function()
-				put_local(key, value)
+				if value == nil then
+					delete_local(key)
+				else
+					put_local(key, value)
+				end
 			end)
 		else
 			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
@@ -1201,7 +1236,7 @@ end
 
 --function receive_accept: receives and answers to a "Accept!" message, used in Paxos
 function receive_accept(prop_id, value, key)
-	log:print(n.short_id..":receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
+	log:print(n.short_id..":receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
 	--adding a random waiting time to simulate different response times
 	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
@@ -1227,18 +1262,26 @@ function receive_accept(prop_id, value, key)
 		log:print(n.short_id..":receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
-	log:print(n.short_id..":receive_accept: Telling learners about key="..shorten_id(key)..", value="..value..", enabled=", db_table[key].enabled, "propID="..prop_id)
+	log:print(n.short_id..":receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", db_table[key].enabled, "propID="..prop_id)
 	local responsibles = get_responsibles(key)
 	for i,v in ipairs(responsibles) do
 		if v.id == n.id then
 			events.thread(function()
-				put_local(key, value)
+				if value == nil then
+					delete_local(key)
+				else
+					put_local(key, value)
+				end
 			end)
 		else
 			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
 			--sends put_local to a Learner
 			events.thread(function()
-				rpc.call(v, {"distdb.put_local", key, value})
+				if value == nil then
+					rpc.call(v, {"distdb.delete_local", key})
+				else
+					rpc.call(v, {"distdb.put_local", key, value})
+				end
 			end)
 		end
 	end
@@ -1247,7 +1290,7 @@ end
 
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
 function put_local(key, value, src_write)
-	log:print(n.short_id..":put_local: ENTERED, for key="..shorten_id(key)..", value="..value)
+	log:print(n.short_id..":put_local: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
 	--if math.random(5) == 1 then
@@ -1286,10 +1329,36 @@ function put_local(key, value, src_write)
 		--TODO handle enabled
 		--TODO add timestamps
 	end
-	log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: "..value..", enabled: ", db_table[key].enabled)
+	log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", db_table[key].enabled)
 	for i,v in pairs(db_table[key].vector_clock) do
 		log:print(n.short_id..":put_local: vector_clock=",i,v)
 	end
+	return true
+end
+
+--function delete_local: deletes a k,v pair. TODO should be atomic? is it?
+function delete_local(key, src_write) --TODO: Consider this fucking src_write and if the data is ever deleted NOTE: enabled is a field meant to handle this
+	log:print(n.short_id..":delete_local: ENTERED, for key="..shorten_id(key))
+	--TODO how to check if the source node is valid?
+	--adding a random failure to simulate failed local transactions
+	--if math.random(5) == 1 then
+	--	log:print(n.short_id..": NOT writing key: "..key)
+	--	return false, "404"
+	--end
+	--adding a random waiting time to simulate different response times
+	--events.sleep(math.random(100)/100)
+	--if key is not a string, dont accept the transaction
+	if type(key) ~= "string" then
+		log:print(n.short_id..":delete_local: NOT writing key, wrong key type")
+		return false, "wrong key type"
+	end
+	
+	--if the k,v pair exists, delete it
+	if db_table[key] then
+	--else, replace the value and increase the version
+		db_table[key]=nil
+	end
+	log:print(n.short_id..":delete_local: deleting key="..shorten_id(key))
 	return true
 end
 

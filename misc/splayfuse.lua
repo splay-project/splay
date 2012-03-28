@@ -36,8 +36,8 @@ local mem_block_size = 4096
 local blank_block=("0"):rep(mem_block_size)
 local open_mode={'rb','wb','rb+'}
 local log_domains = {
-    --DB_OP=true,
-    --FILE_INODE_OP=true,
+    DB_OP=true,
+    FILE_INODE_OP=true,
     DIR_OP=true,
     LINK_OP=true,
     READ_WRITE_OP=true,
@@ -45,7 +45,7 @@ local log_domains = {
     MV_CP_OP=true
 }
 
-local db_port = 16394
+local db_port = 13811
 
 function reportlog(log_domain, function_name, args)
     if log_domains[log_domain] then
@@ -61,7 +61,7 @@ local function writedb(elem_type, unhashed_key, obj)
     local db_key = crypto.evp.digest("sha1", elem_type..":"..unhashed_key)
     reportlog("DB_OP", "writedb: about to write in distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{obj=obj})
     --if it's not a inode
-    if elem_type ~= "inode" then
+    if elem_type ~= "inode" or obj == "" then
         return send_put(db_port, "consistent", db_key, obj)
     end
     --if it's a inode, JSON-encode it first
@@ -279,6 +279,9 @@ local function put_file(filename, inode_n)
 end
 
 local function delete_inode(inode_n, inode)
+--TODOS: WEIRD LATENCY IN DELETE_LOCAL
+--DELETE AS PUT "" IS UGLY, BETTER TO CREATE A DIFF WEB SERVICE CALL
+--I THINK THE INODE DOES NOT GET DELETED.
     --logs entrance
     reportlog("FILE_INODE_OP", "delete_inode: ENTERED for inode_n="..inode_n, {inode=inode})
     
@@ -298,14 +301,14 @@ local function delete_inode(inode_n, inode)
     end
     --]]
 
-    --[[
-    local ok_writedb_inode = writedb("inode", inode_n, nil)
+    
+    local ok_writedb_inode = writedb("inode", inode_n, "")
 
     if not ok_writedb_inode then
         reportlog("_OP", "delete_inode: ERROR, writedb of inode was not OK", {})
         return nil
     end
-    --]]
+    
     return true
 end
 
@@ -318,14 +321,14 @@ local function delete_dir_inode(inode_n)
         return nil
     end
 
-    --[[
-    local ok_writedb_inode = writedb("inode", inode_n, nil)
+    
+    local ok_writedb_inode = writedb("inode", inode_n, "")
 
     if not ok_writedb_inode then
         reportlog("_OP", "delete_dir_inode: ERROR, writedb of inode was not OK", {})
         return nil
     end
-    --]]
+
     return true
 end
 
@@ -344,7 +347,7 @@ local function delete_file(filename)
         return nil
     end
 
-    local ok_writedb_file = writedb("file", filename, nil)
+    local ok_writedb_file = writedb("file", filename, "")
 
     if not ok_writedb_file then
         reportlog("FILE_INODE_OP", "delete_file: ERROR, writedb of inode was not OK", {})
@@ -357,7 +360,7 @@ end
 
 local uid,gid,pid,puid,pgid = fuse.context()
 
-local root_inode = get_inode(0)
+local root_inode = get_inode(1)
 
 --I THINK ROOT_INODE IS NOT EVEN NEEDED, IT WAS USED FOR dir_walk
 if not root_inode then
@@ -366,16 +369,16 @@ if not root_inode then
     
     root_inode = {
         meta = {
-            ino = 0,
-            xattr ={greatest_inode_n=0},
+            ino = 1,
+            xattr ={greatest_inode_n=1},
             mode  = mk_mode(7,5,5) + S_IFDIR,
             nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()
         },
         content = {}
     } -- JV: ADDED FOR REPLACEMENT WITH DISTDB
 
-    put_file("/", 0)
-    put_inode(0, root_inode)
+    put_file("/", 1)
+    put_inode(1, root_inode)
 end
 
 local function unlink_node(inode, filename) --PA DESPUES CREO QUE ES ERASE FILE
@@ -454,7 +457,7 @@ mknod = function(self, filename, mode, rdev) --JV: NOT SURE IF TO CHANGE OR NOT.
         local dir, base = filename:splitfilename()
         local parent = get_inode_from_filename(dir)
         
-        local root_inode = get_inode(0)
+        local root_inode = get_inode(1)
         root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
         local greatest_ino = root_inode.meta.xattr.greatest_inode_n
         
@@ -474,7 +477,7 @@ mknod = function(self, filename, mode, rdev) --JV: NOT SURE IF TO CHANGE OR NOT.
         local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
         local ok_put_inode = put_inode(greatest_ino, inode)
         local ok_put_file = put_file(filename, greatest_ino)
-        local ok_put_root_inode = put_inode(0, root_inode)
+        local ok_put_root_inode = put_inode(1, root_inode)
         return 0, o
     end
 end,
@@ -663,7 +666,7 @@ mkdir = function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYI
         local dir, base = filename:splitfilename()
         local parent = get_inode_from_filename(dir)
         
-        local root_inode = get_inode(0)
+        local root_inode = get_inode(1)
         root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
         local greatest_ino = root_inode.meta.xattr.greatest_inode_n
         
@@ -681,10 +684,15 @@ mkdir = function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYI
         
         parent.content[base]=true
         parent.meta.nlink = parent.meta.nlink + 1
+
+        --put the parent's inode, because the contents changed
         local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        --put the inode, because it's new
         local ok_put_inode = put_inode(greatest_ino, inode)
+        --put the file, because it's new
         local ok_put_file = put_file(filename, greatest_ino)
-        local ok_put_root_inode = put_inode(0, root_inode)
+        --put root inode, because greatest ino was incremented
+        local ok_put_root_inode = put_inode(1, root_inode)
     end
     return 0
 end,
@@ -701,10 +709,10 @@ create = function(self, filename, mode, flag, ...)
         local parent = get_inode_from_filename(dir)
         
         local root_inode = nil
-        if parent.meta.ino == 0 then
+        if parent.meta.ino == 1 then
             root_inode = parent
         else
-            root_inode = get_inode(0)
+            root_inode = get_inode(1)
         end
 
         root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
@@ -723,10 +731,15 @@ create = function(self, filename, mode, flag, ...)
         }
         
         parent.content[base]=true
+
+        --put the parent's inode, because the contents changed
         local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        --put the inode, because it's new
         local ok_put_inode = put_inode(greatest_ino, inode)
+        --put the file, because it's new
         local ok_put_file = put_file(filename, greatest_ino)
-        local ok_put_root_inode = put_inode(0, root_inode)
+        --put root inode, because greatest ino was incremented
+        local ok_put_root_inode = put_inode(1, root_inode)
         return 0, inode
     end
 end,
@@ -756,36 +769,44 @@ symlink = function(self, from, to)
     --logs entrance
     reportlog("LINK_OP", "symlink: ENTERED",{from=from,to=to})
 
-    local inode = get_inode_from_filename(filename)
+    local to_dir, to_base = to:splitfilename()
+    local to_parent = get_inode_from_filename(to_dir)
 
-    if not inode then
-        
-        local dir, base = filename:splitfilename()
-        local parent = get_inode_from_filename(dir)
-        
-        local root_inode = get_inode(0)
-        root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
-        local greatest_ino = root_inode.meta.xattr.greatest_inode_n
-        
-        local uid, gid, pid = fuse.context()
-        
-        inode = {
-            meta = {
-                mode= S_IFLNK+mk_mode(7,7,7),
-                ino = greatest_ino, 
-                dev = 0, 
-                nlink = 1, uid = uid, gid = gid, size = string.len(from), atime = now(), mtime = now(), ctime = now()
-            },
-            content = {}
-        }
-        
-        parent.content[base]=true
-        local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
-        local ok_put_inode = put_inode(greatest_ino, inode)
-        local ok_put_file = put_file(filename, greatest_ino)
-        local ok_put_root_inode = put_inode(0, root_inode)
-        return 0
+    local root_inode = nil
+    if to_parent.meta.ino == 1 then
+        root_inode = to_parent
+    else
+        root_inode = get_inode(1)
     end
+
+    reportlog("LINK_OP", "symlink: root_inode retrieved",{root_inode=root_inode})
+
+    root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+    local greatest_ino = root_inode.meta.xattr.greatest_inode_n
+
+    local uid, gid, pid = fuse.context()
+
+    local to_inode = {
+        meta = {
+            mode= S_IFLNK+mk_mode(7,7,7),
+            ino = greatest_ino, 
+            dev = 0, 
+            nlink = 1, uid = uid, gid = gid, size = string.len(from), atime = now(), mtime = now(), ctime = now()
+        },
+        content = {from}
+    }
+
+    to_parent.content[to_base]=true
+
+    --put the to_parent's inode, because the contents changed
+    local ok_put_to_parent_inode = put_inode(to_parent.meta.ino, to_parent)
+    --put the to_inode, because it's new
+    local ok_put_inode = put_inode(greatest_ino, to_inode)
+    --put the file, because it's new
+    local ok_put_file = put_file(to, greatest_ino)
+    --put root inode, because greatest ino was incremented
+    local ok_put_root_inode = put_inode(1, root_inode)
+    return 0
 end,
 
 rename = function(self, from, to)
@@ -797,6 +818,9 @@ rename = function(self, from, to)
     local from_inode = get_inode_from_filename(from)
     
     if from_inode then
+
+        reportlog("MV_CP_OP", "rename: entered in IF", {from_inode=from_inode})
+        
         local from_dir, from_base = from:splitfilename()
         local to_dir, to_base = to:splitfilename()
         local from_parent = get_inode_from_filename(from_dir)
@@ -809,12 +833,21 @@ rename = function(self, from, to)
 
         to_parent.content[to_base] = true
         from_parent.content[from_base] = nil
+        
+        reportlog("MV_CP_OP", "rename: changes made", {to_parent=to_parent, from_parent=from_parent})
         --TODO: CHECK IF IT IS A DIR
 
-        local ok_put_file = put_file(to, from_inode)
-        local ok_delete_file = delete_file(from, from_inode)
-        local ok_put_to_parent = put_file(to_dir, to_parent)
-        local ok_put_from_parent = put_file(from_dir, from_parent)
+        --only if to and from are different (avoids writing on parent's inode twice, for the sake of efficiency)
+        if to_dir ~= from_dir then
+            --put the to_parent's inode, because the contents changed
+            local ok_put_to_parent_inode = put_inode(to_parent.meta.ino, to_parent)
+        end
+        --put the from_parent's inode, because the contents changed
+        local ok_put_from_parent_inode = put_inode(from_parent.meta.ino, from_parent)
+        --put the to_file, because it's new
+        local ok_put_file = put_file(to, from_inode.meta.ino)
+        --delete the from_file
+        local ok_delete_file = delete_file(from)
         
         --[[
         if (inode.open or 0) < 1 then
@@ -841,30 +874,22 @@ link = function(self, from, to, ...)
 
     if from_inode then
         reportlog("LINK_OP", "link: entered in IF", {})
-        local from_dir, from_base = from:splitfilename()
         local to_dir, to_base = to:splitfilename()
-        reportlog("LINK_OP", "link: from_dir="..from_dir..", from_base="..from_base..", to_dir="..to_dir..", to_base="..to_base, {})
-        local from_parent = get_inode_from_filename(from_dir)
-        reportlog("LINK_OP", "link: from_parent", {from_parent=from_parent})
-        local to_parent = nil
-        if to_dir == from_dir then
-            to_parent = from_parent
-            reportlog("LINK_OP", "link: from_ and to_ parents are the same", {to_parent=to_parent})
-        else
-            to_parent = get_inode_from_filename(to_dir)
-        end
-
+        reportlog("LINK_OP", "link: to_dir="..to_dir..", to_base="..to_base, {})
+        local to_parent = get_inode_from_filename(to_dir)
+        reportlog("LINK_OP", "link: to_parent", {to_parent=to_parent})
+        
         to_parent.content[to_base] = true
         reportlog("LINK_OP", "link: added file in to_parent", {to_parent=to_parent})
         from_inode.meta.nlink = from_inode.meta.nlink + 1
         reportlog("LINK_OP", "link: incremented nlink in from_inode", {from_inode=from_inode})
 
-        local ok_put_file = put_file(to, from_inode.meta.ino)
+        --put the to_parent's inode, because the contents changed
+        local ok_put_to_parent = put_inode(to_parent.meta.ino, to_parent)
+        --put the inode, because nlink was incremented
         local ok_put_inode = put_inode(from_inode.meta.ino, from_inode)
-        if to_dir ~= from_dir then
-            local ok_put_to_parent = put_inode(to_parent.meta.ino, to_parent)
-        end
-        local ok_put_from_parent = put_inode(from_parent.meta.ino, from_parent)
+        --put the to_file, because it's new
+        local ok_put_file = put_file(to, from_inode.meta.ino)
         return 0
     end
 end,
@@ -881,13 +906,18 @@ unlink = function(self, filename, ...)
         
         parent.content[base] = nil
         inode.meta.nlink = inode.meta.nlink - 1
-        if inode.meta.nlink == 0 then
-            delete_inode(inode.meta.ino, inode)
-        end
-
-        --TODO: MAYBE IF 
+        
+        --delete the file, because it's being unlinked
         local ok_delete_file = delete_file(filename, inode)
-        local ok_put_parent = put_file(dir, parent)
+        --put the parent ino, because the record of the file was deleted
+        local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+        --if the inode has no more links
+        if inode.meta.nlink == 0 then
+            --delete the inode, since it's not linked anymore
+            delete_inode(inode.meta.ino, inode)
+        else
+            local ok_put_inode = put_inode(inode.meta.ino, inode)
+        end
         return 0
     else
         reportlog("_OP", "unlink: ERROR no inode", {})
@@ -1055,7 +1085,7 @@ statfs = function(self,filename)
 end
 }
 
-fuse_opt = { 'memfs', 'mnt', '-f', '-s', '-oallow_other', '-ofs_name=KIKE'}
+fuse_opt = { 'memfs', 'mnt', '-f', '-s', '-oallow_other'}
 
 if select('#', ...) < 2 then
     print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
