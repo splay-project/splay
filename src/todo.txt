@@ -159,3 +159,4 @@ f=f()()
 
 - sockets should be provide finer grainer statistics. In particular: 1) total bytes sent/received for TCP/UDP, 2) opening/closing time measurements to obtain a socket
 
+- check files splayweb/app/model/user_observer|notifier as they might be legacy from a very faraway past
