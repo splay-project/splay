@@ -123,7 +123,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 			--if the RPC call was OK
 			if rpc_ok then
 				propose_answer = rpc_answer
-			--else (maybe network problem, dropped message) TODO also consider timeouts!
+			--else (maybe network problem, dropped message, timeout reached)
 			else
 				--log that something went wrong during the RPC call
 				l_o:print("paxos_"..operation_type..": SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_PROPOSAL TO NODE="..v.ip..":"..v.port)
@@ -154,11 +154,15 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 					l_o:print("paxos_"..operation_type..": Received a negative answer from node="..v.ip..":"..v.port.." , highest prop ID=", propose_answer[2], "value=")
 				end
 			end
+			--if the Acceptor's answer includes the newest proposal ID it had
 			if propose_answer[2] then
-				--TODO complicated reasoning about what to do once you find the first negative answer
+				--if this proposal ID is newer than the one accumulated from previous responses
 				if propose_answer[2] > newest_prop_id then
+					--replace the newest proposal ID
 					newest_prop_id = propose_answer[2]
+					--if there is also a value that comes
 					if propose_answer[3] then
+						--replace the value too
 						newest_value = propose_answer[3]
 					end
 				end
@@ -216,10 +220,10 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 			--if the RPC call was OK
 			if rpc_ok then
 				accept_answer = rpc_answer
-			--else (maybe network problem, dropped message) TODO also consider timeouts!
+			--else (maybe network problem, dropped message, timeout reached)
 			else
-				--WTF
-				l_o:print("paxos_"..operation_type..": SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.ip..":"..v.port)
+				--log the error
+				l_o:error("paxos_"..operation_type..": SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..v.ip..":"..v.port)
 			end
 			if accept_answer[1] then
 				l_o:print("paxos_"..operation_type..": Received a positive answer from node="..v.ip..":"..v.port)
@@ -322,7 +326,7 @@ function receive_accept(prop_id, peers, value, key)
 	if not paxos_db[key] then
 		--BIZARRE: because this is not meant to happen (an Accept comes after a Propose, and a record for the key
 		--is always created at a Propose)
-		l_o:print("receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
+		l_o:error("receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
 		return false, "BIZARRE! wrong key, key does not exist"
 	--if it exists, and the locally stored prop_id is bigger than the proposed prop_id
 	elseif paxos_db[key].prop_id > prop_id then
@@ -332,7 +336,7 @@ function receive_accept(prop_id, peers, value, key)
 	--if the locally stored prop_id is smaller than the proposed prop_id
 	elseif paxos_db[key].prop_id < prop_id then
 		--BIZARRE: again, Accept comes after Propose, and a later Propose can only increase the prop_id
-		l_o:print("receive_accept: BIZARRE! lower prop_id")
+		l_o:error("receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
 	l_o:print("receive_accept: Telling learners about key="..shorten_id(key)..", value="..value..", enabled=", paxos_db[key].enabled, "propID="..prop_id)
@@ -347,7 +351,6 @@ end
 --to be replaced with app function
 function receive_learn(value, key)
 	l_o:print("receive_learn: ENTERED, for key="..shorten_id(key)..", value="..value)
-	--TODO how to check if the source node is valid?
 	--adding a random failure to simulate failed local transactions
 	--if math.random(5) == 1 then
 	--	l_o:print(n.short_id..": NOT writing key: "..key)
@@ -365,13 +368,7 @@ function receive_learn(value, key)
 		l_o:print("receive_learn: NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
---[[
---TODO write only when there is a quorum
-	if not src_write then
-		src_write = {id="version"} --for compatibility with consistent_put
-	end
---]]
-	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
+	--if there is no record for this key, create it empty
 	if not paxos_db[key] then
 		paxos_db[key] = {}
 	end
