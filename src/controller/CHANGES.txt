@@ -2,6 +2,9 @@ controller 1.4:
 	- support for max_queue time: a job is kept in QUEUED state for a max_queue time, after which it is discarded. Value can be overloaded from clients (client-commands >=1.5)
 	- Restrict lib submission to users with admin rights.
 	- Bug fix in the lib delivery process that occured when a job was submitted through splayweb.
+	- Remove deprecated local commands
+	- support for multifile job
+	- support for splayd designation per job: users can choose on which splayds to deploy a job, either by giving the host keys or by asking to 'clone' a previously executed job 
 controller 1.3:
 	- support to ship binary libraries (splayd in grid mode)
 controller 1.2.1:
