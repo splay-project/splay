@@ -3,21 +3,21 @@
 ## Splay Controller ### v1.3 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
-##
-##
-##
+## 
+## 
+## 
 ## This file is part of Splay.
-##
-## Splayd is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published
-## by the Free Software Foundation, either version 3 of the License,
+## 
+## Splayd is free software: you can redistribute it and/or modify 
+## it under the terms of the GNU General Public License as published 
+## by the Free Software Foundation, either version 3 of the License, 
 ## or (at your option) any later version.
-##
-## Splayd is distributed in the hope that it will be useful,but
+## 
+## Splayd is distributed in the hope that it will be useful,but 
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 ## See the GNU General Public License for more details.
-##
+## 
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
@@ -31,6 +31,7 @@ def drop_db(db)
 	db.do("DROP TABLE IF EXISTS splayd_availabilities")
 	db.do("DROP TABLE IF EXISTS jobs")
 	db.do("DROP TABLE IF EXISTS job_mandatory_splayds")
+	db.do("DROP TABLE IF EXISTS job_designated_splayds")
 	db.do("DROP TABLE IF EXISTS splayd_jobs")
 	db.do("DROP TABLE IF EXISTS splayd_selections")
 	db.do("DROP TABLE IF EXISTS blacklist_hosts")
@@ -101,9 +102,10 @@ def init_db(db)
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
 			created_at datetime default NULL,
-			scheduled_at datetime default NULL,
-			strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
-
+            scheduled_at datetime default NULL,
+            strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+			multifile ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+			
 			name VARCHAR(255),
 			description VARCHAR(255),
 
@@ -162,6 +164,13 @@ def init_db(db)
 			job_id INT NOT NULL,
 			splayd_id INT NOT NULL
 			)")
+
+	db.do("CREATE TABLE IF NOT EXISTS job_designated_splayds (
+			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			job_id INT NOT NULL,
+			splayd_id INT NOT NULL
+			)")
+
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_jobs (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -254,4 +263,3 @@ db = DBUtils::get_new
 drop_db(db)
 init_db(db)
 db.disconnect
-

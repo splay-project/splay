@@ -1,0 +1,20 @@
+require"base"
+local chunk_number = 2
+
+function chunky()
+	return 2 + chunk_number
+end
+
+
+local chunk_number_ = 1
+
+function chunky_()
+	return 1 + chunk_number_
+end
+
+events.run(
+	events.periodic(2,chunky_())
+	events.periodic(2,function() print("chunk2") end)
+	events.periodic(1,chunky_())
+	events.periodic(1,function() print("chunk1") end)
+)
