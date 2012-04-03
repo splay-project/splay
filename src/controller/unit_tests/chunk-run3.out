@@ -1,0 +1,18 @@
+require"base"
+function chunky()
+	return "chunk2"
+end
+
+events.thread(function()
+	events.periodic(2,chunky())
+	events.periodic(2,function() print("chunk2") end)
+end)
+
+events.thread()
+
+events.thread(function()
+	events.periodic(1,chunky())
+	events.periodic(1,function() print("chunk1") end)
+end)
+
+events.run()

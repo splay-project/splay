@@ -108,6 +108,23 @@ class JobdStandard < Jobd
 				mandatory_filter += " AND splayd_id!=#{mm['splayd_id']} "
 			end
 
+			# Designated filter
+			designated_filter = ""
+			pos = 0
+			$db.select_all "SELECT * FROM job_designated_splayds
+					WHERE job_id='#{job['id']}'" do |jds|
+				if pos == 0
+					designated_filter += " AND (splayds.id=#{jds['splayd_id']}"
+				else
+					designated_filter += " OR splayds.id=#{jds['splayd_id']}"
+				end
+				pos=pos+1
+			end
+			if designated_filter != ""
+				designated_filter += ")"
+			end
+
+
 			# NOTE ORDER BY reply_time can not be an excellent idea in that sense that
 			# it could advantage splayd near of the controller.
 			selected_splayds = []

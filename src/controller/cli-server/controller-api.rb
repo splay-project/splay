@@ -38,12 +38,12 @@ class Ctrl_api
 		#checks the validity of the session ID and stores the returning value in the variable user
 		user = check_session_id(session_id)
 		#check_session_id returns false if the session ID is not valid; if user is not false (the session ID
-		# is valid)
+		#is valid)
 		if (user) then
 			#user_id is taken from the field 'id' from variable user
 			user_id = user['id']
 			#if the user is admin (can see all the jobs) or the job belongs to her
-			if ((user['admin'] == 1) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
+			if (($db.select_one("SELECT * FROM jobs WHERE id=#{job_id}") and (user['admin'] == 1)) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
 				#opens the log file of the requested job
 				log_file = File.open("../logs/"+job_id)
 				#ok is true
@@ -56,11 +56,15 @@ class Ctrl_api
 				return ret
 			end
 			#if the 'if (user)' statement was true, the function would have ended with the return on the line above,
-			# if not, the following lines are processed
+			#if not, the following lines are processed
 			#ok is false
 			ret['ok'] = false
-			#error says that the job doesn't exist
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 			#returns ret
 			return ret
 		end
@@ -72,8 +76,8 @@ class Ctrl_api
 		return ret
 	end
 
-#function get_job_code: triggered when a "GET JOB CODE" message is received, returns the corresponding
-# source code as a string
+	#function get_job_code: triggered when a "GET JOB CODE" message is received, returns the corresponding
+	#source code as a string
 	def get_job_code(job_id, session_id)
 		#initializes the return variable
 		ret = Hash.new
@@ -98,11 +102,16 @@ class Ctrl_api
 				end
 			end
 			#if the 'if (user)' statement was true, the function would have ended with the return on the line above,
-			# if not, the following lines are processed
+			#if not, the following lines are processed
 			#ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 			#returns ret
 			return ret
 		end
@@ -127,7 +136,7 @@ class Ctrl_api
 			#if the user is admin (can see all the jobs) or the job belongs to her
 			if ((user['admin'] == 1) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
 				#writes KILL in the field 'command' of table 'jobs'; the contoller takes this command as an order
-				# to kill the job
+				#to kill the job
 				$db.do("UPDATE jobs SET command='KILL' WHERE id='#{job_id}'")
 				#ok is true
 				ret['ok'] = true
@@ -137,7 +146,12 @@ class Ctrl_api
 			#if the user is not admin and the job doesn't belong to her, ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist for the given user (if user is admin, the job doesn't exist at all)
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 		end
 		#if the session was not valid, ok is false
 		ret['ok'] = false
@@ -361,21 +375,69 @@ end
 			if queue_timeout then
 				options['queue_timeout'] = queue_timeout
 			end
+			
+			#multifile job
+			if multiple_code_nodes == true then
+				options['multifile'] = multiple_code_nodes
+				code, ret = LuaMerger.new.merge_lua_files(code, ret)
+				if code == "" then
+					return ret
+				end
+			end
+
+
 
 			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', lib_name='#{lib_filename}', lib_version='#{lib_version}', user_id=#{user_id}, created_at='#{time_now}'")
+			
+			#designated splayds
+			if designated_splayds_string != "" then
+				#eliminate white spaces
+				job_id = $db.select_one("SELECT id FROM jobs WHERE ref='#{ref}'")
+				designated_splayds_string.delete(' ')
+				#prepare query
+				q_jds = ""
+				designated_splayds_string.split(',').each { |splayd_id|
+					q_jds = q_jds + "('#{job_id}','#{splayd_id}'),"
+				}
+				q_jds = q_jds[0, q_jds.length - 1]
+				$db.do("INSERT INTO job_designated_splayds (job_id, splayd_id) VALUES #{q_jds}")
+			end
+
+			#use the same splayds as another job
+			if splayds_as_job != "" then
+				job_id = $db.select_one("SELECT id FROM jobs WHERE ref='#{ref}'")
+				other_job_id = splayds_as_job
+
+				# check if the other job 
+				# 1. was killed before execution (and splayds booking)
+				# 2. is currently queued 
+				# 3. it was rejected because of the lack of resources 
+				other_job_splayds = $db.select_one("SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'")
+				other_job_status = $db.select_one("SELECT status FROM jobs WHERE id='#{other_job_id}' AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')")
+
+				if (other_job_status != nil && other_job_splayds == nil) then
+					$db.do "INSERT INTO job_designated_splayds (job_id,other_job_status) VALUES ('#{job_id}','#{other_job_status}')"
+				else
+					# find the number of splayds used by the other job
+					other_job_nb_splayds = $db.select_one("SELECT nb_splayds FROM jobs WHERE id='#{other_job_id}'")
+					$db.do "UPDATE jobs SET nb_splayds='#{other_job_nb_splayds}' WHERE id='#{job_id}'"
+
+					# find the splayds used by the other job
+					q_jds = ""
+					$db.select_all "SELECT * FROM splayd_selections
+							WHERE job_id='#{other_job_id}' AND selected='TRUE'" do |jds|
+						q_jds = q_jds + "('#{job_id}','#{jds['splayd_id']}'),"
+					end
+					q_jds = q_jds[0, q_jds.length - 1]
+					$db.do "INSERT INTO job_designated_splayds (job_id,splayd_id) VALUES #{q_jds}"
+				end
+			end
 
 			timeout = 30
 			while timeout > 0
 				sleep(1)
 				timeout = timeout - 1
 				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
-				# queued job behavior
-				if job['status'] == "QUEUED" then
-					ret['ok'] = true
-					ret['job_id'] = job['id']
-					ret['ref'] = ref
-					return ret
-				end
 				if job['status'] == "RUNNING" then
 					ret['ok'] = true
 					ret['job_id'] = job['id']
@@ -387,7 +449,7 @@ end
 					ret['error'] = "JOB " + job['id'].to_s + ": " + job['status_msg']
 					return ret
 				end
-                                # queued job behavior
+				#queued job behavior
 				if job['status'] == "QUEUED" then
 					ret['ok'] = true
 					ret['job_id'] = job['id']
@@ -434,6 +496,7 @@ end
 				ret['host_list'] = host_list
 				ret['status'] = job['status']
 				ret['ref'] = job['ref']
+				ret['name'] = job['name']
 				ret['description'] = job['description']
 				if (user['admin'] == 1) then
 					ret['user_id'] = job['user_id']
@@ -441,7 +504,12 @@ end
 				return ret
 			end
 			ret['ok'] = false
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 			return ret
 		end
 		ret['ok'] = false
@@ -588,11 +656,13 @@ end
 		#initializes the return variable
 		ret = Hash.new
 		user = $db.select_one "SELECT * FROM users WHERE login='#{username}'"
-		hashed_password_from_db = user['crypted_password']
-		if (hashed_currentpassword == hashed_password_from_db) then
-			$db.do("UPDATE users SET crypted_password='#{hashed_newpassword}' WHERE login='#{username}'")
-			ret['ok'] = true
-			return ret
+		if user then
+			hashed_password_from_db = user['crypted_password']
+			if (hashed_currentpassword == hashed_password_from_db) then
+				$db.do("UPDATE users SET crypted_password='#{hashed_newpassword}' WHERE login='#{username}'")
+				ret['ok'] = true
+				return ret
+			end
 		end
 		ret['ok'] = false
 		ret['error'] = "Not authenticated"
@@ -606,8 +676,14 @@ end
 		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
 		if admin then
 			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
-				$db.do("DELETE FROM users WHERE login='#{username}'")
-				ret['ok'] = true
+				user = $db.select_one("SELECT * FROM users WHERE login='#{username}'")
+				if user then
+					$db.do("DELETE FROM users WHERE login='#{username}'")
+					ret['ok'] = true
+					return ret
+				end
+				ret['ok'] = false
+				ret['error'] = "User does not exist"
 				return ret
 			end
 		end
@@ -640,4 +716,3 @@ end
 		end
 	end
 end
-
