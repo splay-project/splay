@@ -45,7 +45,7 @@ local log_domains = {
     MV_CP_OP=true
 }
 
-local db_port = 13811
+local db_port = 13304
 
 function reportlog(log_domain, function_name, args)
     if log_domains[log_domain] then

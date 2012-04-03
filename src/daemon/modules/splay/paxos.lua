@@ -61,13 +61,13 @@ l_o = log.new(3, "[".._NAME.."]")
 --LOCAL VARIABLES
 
 --rpc_timeout is the time in seconds that a node waits for an answer from another node on any rpc call
-local rpc_timeout = 15
+local rpc_timeout = 1
 --paxos_propose_timeout is the time in seconds that a Proposer waits that all Acceptors answer a Propose message
-local paxos_propose_timeout = 15
+local paxos_propose_timeout = 1
 --paxos_accept_timeout is the time in seconds that a Proposer waits that all Acceptors answer an Accept message
-local paxos_accept_timeout = 15
+local paxos_accept_timeout = 1
 --paxos_learn_timeout is the time in seconds that an Acceptor waits that all Learners answer a Learn message
-local paxos_learn_timeout = 15
+local paxos_learn_timeout = 1
 --init_done is a flag to avoid double initialization
 local init_done = false
 --prop_ids holds the Proposal IDs for Paxos operations (used by Proposer)
