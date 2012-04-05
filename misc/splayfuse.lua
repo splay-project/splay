@@ -32,8 +32,8 @@ local ENOENT = -2
 local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
-local mem_block_size = 4096
-local blank_block=("0"):rep(mem_block_size)
+local block_size = 4096
+local blank_block=("0"):rep(block_size)
 local open_mode={'rb','wb','rb+'}
 local log_domains = {
     DB_OP=true,
@@ -197,6 +197,21 @@ local function mk_mode(owner, group, world, sticky)
     return result_mode
 end
 
+--function get_block: gets a block from the db
+local function get_block(block_n)
+    --logs entrance
+    reportlog("FILE_INODE_OP", "get_block: ENTERED for block_n="..block_n, {})
+    --reads the file element from the DB
+    local ok_read_from_db_block, data = read_from_db("block:"..block_n)
+    --if the reading was not successful, report the error and return nil
+    if not ok_read_from_db_block then
+        reportlog("FILE_INODE_OP", "get_block: ERROR, read_from_db of block was not OK", {})
+        return nil
+    end
+    --if everything went well return the inode number
+    return data
+end
+
 --function get_inode: gets a inode element from the db
 local function get_inode(inode_n)
     --logs entrance
@@ -261,6 +276,32 @@ local function get_inode_from_filename(filename)
     return get_inode(inode_n)
 end
 
+--function put_block: puts a block element into the db
+local function put_block(block_n, data)
+    --if block_n is not a number, report an error and return nil
+    if type(block_n) ~= "number" then
+        reportlog("FILE_INODE_OP", "put_block: ERROR, block_n not a number", {})
+        return nil
+    end
+    --if data is not a string, report an error and return nil
+    if type(data) ~= "string" then
+        reportlog("FILE_INODE_OP", "put_block: ERROR, data not a string", {})
+        return nil
+    end
+    
+    --logs entrance
+    reportlog("FILE_INODE_OP", "put_block: ENTERED for block_n="..block_n..", data size="..string.len(data), {})
+    --writes the block in the DB
+    local ok_write_in_db_block = write_in_db("block:"..block_n, data)
+    --if the writing was not successful, report the error and return nil
+    if not ok_write_in_db_block then
+        reportlog("FILE_INODE_OP", "put_block: ERROR, write_in_db of block was not OK", {})
+        return nil
+    end
+    --if everything went well return true
+    return true
+end
+
 --function put_inode: puts a inode element into the db
 local function put_inode(inode_n, inode)
     --logs entrance
@@ -305,10 +346,30 @@ local function put_file(filename, inode_n)
     local ok_write_in_db_file = write_in_db("file:"..filename, inode_n)
     --if the writing was not successful, report the error and return nil
     if not ok_write_in_db_file then
-        reportlog("FILE_INODE_OP", "put_file: ERROR, write_in_db of inode was not OK", {})
+        reportlog("FILE_INODE_OP", "put_file: ERROR, write_in_db of file was not OK", {})
         return nil
     end
     --if everything went well return true
+    return true
+end
+
+local function delete_block(block_n)
+
+    if type(block_n) ~= "number" then
+        reportlog("FILE_INODE_OP", "delete_block: ERROR, block_n not a number", {})
+        return nil
+    end
+
+    --logs entrance
+    reportlog("FILE_INODE_OP", "delete_block: ENTERED for block_n="..block_n, {})
+    
+    local ok_delete_from_db_block = delete_from_db("block:"..block_n)
+
+    if not ok_delete_from_db_block then
+        reportlog("FILE_INODE_OP", "delete_block: ERROR, delete_from_db of inode was not OK", {})
+        return nil
+    end
+
     return true
 end
 
@@ -527,19 +588,51 @@ read = function(self, filename, size, offset, inode)
     --logs entrance
     reportlog("READ_WRITE_OP", "read: ENTERED for filename="..filename..", size="..size..", offset="..offset, {inode=inode})
 
-    --local block = floor(offset/mem_block_size) --JV: NOT NEEDED FOR THE MOMENT
-    --local o = offset%mem_block_size --JV: NOT NEEDED FOR THE MOMENT
+    local block_idx = get_block_idx(inode.content, offset)
+    local block_n = inode.content[block_idx]
+
+    reportlog("READ_WRITE_OP", "read: block number is="..block_n, {})
+
+    local start_block_idx = floor(offset / block_size)
+    local rem_start_offset = offset % block_size
+    local end_block_idx = floor((offset+size) / block_size)
+    local rem_end_offset = (offset+size) % block_size
+
+    local block = get_block(inode.content[start_block_idx])
+
+    local data = nil
+
+    if start_block_idx == end_block_idx then
+        reportlog("READ_WRITE_OP", "read: just one block to read", {})
+        data = string.sub(block, rem_start_offset+1, rem_end_offset)
+    else
+        data = string.sub(block, rem_start_offset+1)
+
+        for i=start_block_idx+1,end_block_idx-1 do
+            reportlog("READ_WRITE_OP", "read: so far data is="..data, {})
+            block = get_block(inode.content[i])
+            data = data..block
+        end
+
+        block = get_block(inode.content[end_block_idx])
+        data = data..string.sub(block, 1, rem_end_offset)
+    end
+
+    reportlog("READ_WRITE_OP", "read: finally data is="..data, {})
+
+    --local block = floor(offset/block_size) --JV: NOT NEEDED FOR THE MOMENT
+    --local o = offset%block_size --JV: NOT NEEDED FOR THE MOMENT
     --local data={} --JV: REMOVED FOR REPLACEMENT WITH DISTDB
     
     --[[
-    if o == 0 and size % mem_block_size == 0 then
-        for i=block, block + floor(size/mem_block_size) - 1 do
+    if o == 0 and size % block_size == 0 then
+        for i=block, block + floor(size/block_size) - 1 do
             data[#data+1]=inode.content[i] or blank_block
         end
     else
         while size > 0 do
             local x = inode.content[block] or blank_block
-            local b_size = mem_block_size - o 
+            local b_size = block_size - o 
             if b_size > size then b_size = size end
             data[#data+1]=x:sub(o+1, b_size)
             o = 0
@@ -549,13 +642,13 @@ read = function(self, filename, size, offset, inode)
     end --JV: NOT NEEDED FOR THE MOMENT
     --]]
 
-    reportlog("READ_WRITE_OP", "read: for filename="..filename.." the full content of inode:", {inode_content=inode.content})
+    --reportlog("READ_WRITE_OP", "read: for filename="..filename.." the full content of inode:", {inode_content=inode.content})
 
     --if size + offset < string.len(inode.content[1]) then -- JV: CREO QUE ESTO NO SE USA
-    local data = string.sub(inode.content[1], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
+    --local data = string.sub(inode.content[1], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
     --end --JV: CORRESPONDS TO THE IF ABOVE
 
-    reportlog("READ_WRITE_OP", "read: for filename="..filename.." returns", {data=data})
+    --reportlog("READ_WRITE_OP", "read: for filename="..filename.." returns", {data=data})
 
     --return 0, tjoin(data,"") --JV: REMOVED FOR REPLACEMENT WITH DISTDB; data IS ALREADY A STRING
     return 0, data --JV: ADDED FOR REPLACEMENT WITH DISTDB
@@ -566,22 +659,94 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {buf=buf,offset=offset,inode=inode})
 
     --inode.changed = true
+    local orig_size = inode.meta.size
     local size = #buf
     
+    local start_block_idx = floor(offset / block_size)
+    local rem_start_offset = offset % block_size
+    local end_block_idx = floor((offset+size) / block_size)
+    local rem_end_offset = (offset+size) % block_size
+
+    local block = get_block(inode.content[start_block_idx])
+
+    reportlog("READ_WRITE_OP", "read: buf="..buf, {})
+
+    if start_block_idx == end_block_idx then
+        if size >= orig_size then
+            block = string.sub(block, 1, rem_start_offset)..buf
+        else
+            block = string.sub(block, 1, rem_start_offset)..buf..string.sub(block, rem_end_offset+1) --TODO CHECK IF THE +1 AT THE END IS OK
+        end
+    else
+        block = string.sub(block, 1, rem_start_offset)..buf
+        local remaining_buf = string.sub(buf, block_size - rem_start_offset, -1)
+
+
+        if end_block_idx > #inode.content then
+            local root_inode = get_inode(1)
+            reportlog("READ_WRITE_OP", "read: new size is bigger", {})
+            local orig_n_blocks = #inode.content
+            for i=start_block_idx+1, orig_n_blocks do
+                reportlog("READ_WRITE_OP", "read: remaining_buf="..remaining_buf, {})
+                block = string.sub(remaining_buf, 1, block_size)
+                put_block(inode.content[i], block)
+                remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
+            end
+
+            local block_n = nil
+
+            for i=orig_n_blocks+1, end_block_idx-1 do
+                reportlog("READ_WRITE_OP", "read: remaining_buf="..remaining_buf, {})
+                block = string.sub(remaining_buf, 1, block_size)
+                root_inode.meta.xattr[greatest_block_n] = root_inode.meta.xattr[greatest_block_n] + 1
+                --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
+                block_n = root_inode.meta.xattr[greatest_block_n]
+                put_block(block_n, block)
+                table.insert(inode.content, block_n)
+                remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
+            end
+
+            root_inode.meta.xattr[greatest_block_n] = root_inode.meta.xattr[greatest_block_n] + 1
+            block_n = root_inode.meta.xattr[greatest_block_n]
+            block = remainig_buf
+            put_block(block_n, block) --TODO CONSISTENT OK = PUT OR JUST PUT
+            put_inode(1, root_inode)
+            
+        else
+            for i=start_block_idx+1,end_block_idx-1 do
+                reportlog("READ_WRITE_OP", "read: remaining_buf="..remaining_buf, {})
+                block = string.sub(remaining_buf, 1, block_size)
+                put_block(inode.content[i], block)
+                remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
+            end
+
+            if size >= orig_size then
+                block = remainig_buf
+            else
+                block = get_block(inode.content[end_block_idx])
+                block = remaining_buf..string.sub(block, rem_end_offset+1) --TODO CHECK IF THE +1 AT THE END IS OK
+            end
+            put_block(inode.content[end_block_idx], block) --TODO CONSISTENT OK = PUT OR JUST PUT
+        end
+        
+
+    end
+
+
     --[[
-    local o = offset % mem_block_size
-    local block = floor(offset / mem_block_size)
-    if o == 0 and size % mem_block_size == 0 then
+    local o = offset % block_size
+    local block = floor(offset / block_size)
+    if o == 0 and size % block_size == 0 then
         local start = 0
-        for i=block, block + floor(size/mem_block_size) - 1 do
-            inode.content[i] = buf:sub(start + 1, start + mem_block_size)
-            start = start + mem_block_size
+        for i=block, block + floor(size/block_size) - 1 do
+            inode.content[i] = buf:sub(start + 1, start + block_size)
+            start = start + block_size
         end
     else
         local start = 0
         while size > 0 do
             local x = inode.content[block] or blank_block
-            local b_size = mem_block_size - o 
+            local b_size = block_size - o 
             if b_size > size then b_size = size end
             inode.content[block] = tjoin({x:sub(1, o), buf:sub(start+1, start + b_size), x:sub(o + 1 + b_size)},"")
             o = 0
@@ -730,7 +895,7 @@ mkdir = function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYI
                 mode = set_bits(mode,S_IFDIR),
                 ino = greatest_ino, 
                 dev = 0, --TODO: CHECK IF USEFUL
-                nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now() --TODO: CHECK IF SIZE IS NOT MAX_BLOCK_SIZE
+                nlink = 2, uid = uid, gid = gid, size = 0, atime = now(), mtime = now(), ctime = now() --TODO: CHECK IF SIZE IS NOT block_size
             },
             content = {}
         }
@@ -1037,7 +1202,7 @@ ftruncate = function(self, filename, size, inode)
     --TODO: PA DESPUES
     --local old_size = inode.meta.size
     --inode.meta.size = size
-    --clear_buffer(inode, floor(size/mem_block_size), floor(old_size/mem_block_size))
+    --clear_buffer(inode, floor(size/block_size), floor(old_size/block_size))
     return 0
 end,
 
@@ -1050,7 +1215,7 @@ truncate = function(self, filename, size)
     if inode then 
         local old_size = inode.meta.size
         inode.meta.size = size
-        clear_buffer(inode, floor(size/mem_block_size), floor(old_size/mem_block_size))
+        clear_buffer(inode, floor(size/block_size), floor(old_size/block_size))
         if (inode.open or 0) < 1 then mnode.flush_node(inode, filename, true) 
         else inode.meta_changed = true end
         return 0
