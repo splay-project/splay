@@ -37,6 +37,8 @@ function print_tablez(name, order, input_table)
         elseif type(v) == "table" then
             output_string = output_string..indentation..name.."."..i.." type table:\n"
             output_string = output_string..print_tablez(i, order+1, v)
+        elseif not v then
+        	output_string = output_string..indentation..name.."."..i.." is nil\n"
         else
             output_string = output_string..indentation..name.."."..i.." type "..type(v).."\n"
         end
@@ -109,7 +111,7 @@ function send_get(port, type_of_transaction, key)
 
 	if response_status == 200 then
 		--print("Content of kv-store: "..key.." is:\n"..response_body[1])
-		--logfile1:write("send_get: 200 OK received\n")
+		logfile1:write("send_get: 200 OK received\n")
 		--logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
 	else
 		--print("Error "..response_status..":\n"..response_body[1])
@@ -121,10 +123,10 @@ function send_get(port, type_of_transaction, key)
 	local answer = json.decode(response_body[1])
 
 	local answer_string = print_tablez("answer",0,answer)
-	--logfile1:write("send_get: answer decoded: \n"..answer_string)
+	logfile1:write("send_get: answer decoded: \n"..answer_string)
 
 	if not answer[1] then
-		--logfile1:write("send_get: No answer\n")
+		logfile1:write("send_get: No answer\n")
 		logfile1:close()
 		return true, nil
 	end
@@ -172,6 +174,43 @@ function send_get(port, type_of_transaction, key)
 
 	return true, chosen_value, max_vc
 end
+
+function send_delete(port, type_of_transaction, key)
+
+	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+
+	logfile1:write("send_delete: started\n")
+
+	local response_body = {}
+	local response_to_discard = nil
+	local response_status = nil
+	local response_headers = nil
+	local response_status_line = nil
+
+	response_to_discard, response_status, response_headers, response_status_line = http.request({
+		url = "http://127.0.0.1:"..port.."/"..key,
+		method = "DELETE",
+		headers = {
+			["Type"] = type_of_transaction
+			},
+		source = ltn12.source.empty(),
+		sink = ltn12.sink.table(response_body)
+	})
+
+	if response_status == 200 then
+		--print("PUT done.")
+		logfile1:write("send_delete: DELETE done.\n")
+		logfile1:close()
+		return true
+	else
+		--print("Error "..response_status)
+		logfile1:write("send_delete: Error "..response_status.."\n")
+		logfile1:close()
+		return false
+	end
+
+end
+
 --[[
 events.run(function()
 	dofile("ports.lua")

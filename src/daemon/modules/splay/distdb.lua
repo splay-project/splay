@@ -429,7 +429,7 @@ end
 
 --REQUEST HANDLING FUNCTIONS
 
---function handle_get_bucket: handles a GET BUCKET request as the Coordinator of the Access Key ID
+--function handle_get_bucket: handles a GET request as the Coordinator of the Access Key ID
 function handle_get(type_of_transaction, key)
 	log:print(n.short_id.."handle_get: for key="..shorten_id(key))
 	local responsibles = get_responsibles(key)
@@ -445,7 +445,7 @@ function handle_get(type_of_transaction, key)
 	return nil, "network problem"
 end
 
---function handle_put_bucket: handles a PUT BUCKET request as the Coordinator of the Access Key ID
+--function handle_put_bucket: handles a PUT request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
 	log:print(n.short_id..":handle_put: for key="..shorten_id(key)..", value=", value) -- TODO: key better be hashed here?
 	
@@ -482,12 +482,17 @@ function handle_put(type_of_transaction, key, value) --TODO check about setting 
 	return nil, "network problem"
 end
 
+--function handle_put_bucket: handles a PUT request as the Coordinator of the Access Key ID
+function handle_delete(type_of_transaction, key) --TODO check about setting N,R,W on the transaction
+	return handle_put(type_of_transaction, key, nil)
+end
 
 --TABLE OF FORWARDING FUNCTIONS
 
 local forward_request = {
 	["GET"] = handle_get,
 	["PUT"] = handle_put,
+	["DELETE"] = handle_delete
 	}
 
 
