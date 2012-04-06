@@ -32,7 +32,7 @@ local ENOENT = -2
 local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
-local block_size = 4096
+local block_size = 1024
 local blank_block=("0"):rep(block_size)
 local open_mode={'rb','wb','rb+'}
 local log_domains = {
@@ -46,7 +46,7 @@ local log_domains = {
 }
 local consistency_type = "consistent"
 
-local db_port = 13895
+local db_port = 14326
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -199,6 +199,11 @@ end
 
 --function get_block: gets a block from the db
 local function get_block(block_n)
+    --safety if: if the block_n is not a number, return with error
+    if type(block_n) ~= "number" then
+        reportlog("FILE_INODE_OP", "get_block: ERROR, block_n not a number", {})
+        return nil
+    end
     --logs entrance
     reportlog("FILE_INODE_OP", "get_block: ENTERED for block_n="..block_n, {})
     --reads the file element from the DB
@@ -455,7 +460,7 @@ if not root_inode then
     root_inode = {
         meta = {
             ino = 1,
-            xattr ={greatest_inode_n=1},
+            xattr ={greatest_inode_n=1, greatest_block_n=0},
             mode  = mk_mode(7,5,5) + S_IFDIR,
             nlink = 2, uid = puid, gid = pgid, size = 0, atime = now(), mtime = now(), ctime = now()
         },
@@ -588,17 +593,17 @@ read = function(self, filename, size, offset, inode)
     --logs entrance
     reportlog("READ_WRITE_OP", "read: ENTERED for filename="..filename..", size="..size..", offset="..offset, {inode=inode})
 
-    local block_idx = get_block_idx(inode.content, offset)
-    local block_n = inode.content[block_idx]
-
-    reportlog("READ_WRITE_OP", "read: block number is="..block_n, {})
-
-    local start_block_idx = floor(offset / block_size)
+    local start_block_idx = math.floor(offset / block_size)+1
     local rem_start_offset = offset % block_size
-    local end_block_idx = floor((offset+size) / block_size)
-    local rem_end_offset = (offset+size) % block_size
+    local end_block_idx = math.floor((offset+size-1) / block_size)+1
+    local rem_end_offset = (offset+size-1) % block_size
 
-    local block = get_block(inode.content[start_block_idx])
+    reportlog("READ_WRITE_OP", "read: offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
+    reportlog("READ_WRITE_OP", "read: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
+
+    reportlog("READ_WRITE_OP", "read: about to get block", {block_n = inode.content[start_block_idx]})
+
+    local block = get_block(inode.content[start_block_idx]) or ""
 
     local data = nil
 
@@ -606,19 +611,20 @@ read = function(self, filename, size, offset, inode)
         reportlog("READ_WRITE_OP", "read: just one block to read", {})
         data = string.sub(block, rem_start_offset+1, rem_end_offset)
     else
+        reportlog("READ_WRITE_OP", "read: several blocks to read", {})
         data = string.sub(block, rem_start_offset+1)
 
         for i=start_block_idx+1,end_block_idx-1 do
             reportlog("READ_WRITE_OP", "read: so far data is="..data, {})
-            block = get_block(inode.content[i])
+            block = get_block(inode.content[i]) or ""
             data = data..block
         end
 
-        block = get_block(inode.content[end_block_idx])
+        block = get_block(inode.content[end_block_idx]) or ""
         data = data..string.sub(block, 1, rem_end_offset)
     end
 
-    reportlog("READ_WRITE_OP", "read: finally data is="..data, {})
+    reportlog("READ_WRITE_OP", "read: finally data is="..data..", size of data="..string.len(data), {})
 
     --local block = floor(offset/block_size) --JV: NOT NEEDED FOR THE MOMENT
     --local o = offset%block_size --JV: NOT NEEDED FOR THE MOMENT
@@ -662,21 +668,86 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     local orig_size = inode.meta.size
     local size = #buf
     
-    local start_block_idx = floor(offset / block_size)
+    local start_block_idx = math.floor(offset / block_size)+1
     local rem_start_offset = offset % block_size
-    local end_block_idx = floor((offset+size) / block_size)
+    local end_block_idx = math.floor((offset+size) / block_size)+1
     local rem_end_offset = (offset+size) % block_size
 
-    local block = get_block(inode.content[start_block_idx])
+    reportlog("READ_WRITE_OP", "write: orig_size="..orig_size..", offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
+    reportlog("READ_WRITE_OP", "write: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
 
-    reportlog("READ_WRITE_OP", "read: buf="..buf, {})
+    reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
 
+    local block = nil
+    local block_n = nil
+    local to_write_in_block = nil
+    local block_offset = rem_start_offset
+    local blocks_created = (end_block_idx > #inode.content)
+    local size_changed = ((offset+size) > orig_size)
+    local root_inode = nil
+    local remaining_buf = buf
+
+    if blocks_created then
+        root_inode = get_inode(1)
+    end
+
+    reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
+
+    reportlog("READ_WRITE_OP", "write: buf="..buf, {})
+
+    for i=start_block_idx, end_block_idx do
+        reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
+        if inode.content[i] then
+            reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
+            block_n = inode.content[i]
+            block = get_block(inode.content[i])
+        else
+            reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
+            reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+            reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
+            root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
+            reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
+            --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
+            block_n = root_inode.meta.xattr.greatest_block_n
+            block = ""
+            table.insert(inode.content, block_n)
+            reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
+        end
+        reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+        reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
+        reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
+        if (#remaining_buf+block_offset) > block_size then
+            to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
+            remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
+        else
+            to_write_in_block = remaining_buf
+        end
+        reportlog("READ_WRITE_OP", "write: block="..block, {})
+        reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
+        reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
+        block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
+        reportlog("READ_WRITE_OP", "write: now block="..block, {})
+        put_block(block_n, block)
+    end
+
+    if size_changed then
+        inode.meta.size = offset+size
+        put_inode(inode.meta.ino, inode)
+        if blocks_created then
+            put_inode(1, root_inode)
+        end
+    end
+
+--[[
     if start_block_idx == end_block_idx then
-        if size >= orig_size then
+        if (offset+size) >= orig_size then
             block = string.sub(block, 1, rem_start_offset)..buf
+            inode.meta.size = offset+size
+            put_inode(inode.meta.ino, inode)
         else
             block = string.sub(block, 1, rem_start_offset)..buf..string.sub(block, rem_end_offset+1) --TODO CHECK IF THE +1 AT THE END IS OK
         end
+        put_block(inode.content[start_block_idx], block)
     else
         block = string.sub(block, 1, rem_start_offset)..buf
         local remaining_buf = string.sub(buf, block_size - rem_start_offset, -1)
@@ -684,10 +755,10 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
 
         if end_block_idx > #inode.content then
             local root_inode = get_inode(1)
-            reportlog("READ_WRITE_OP", "read: new size is bigger", {})
+            reportlog("READ_WRITE_OP", "write: new size is bigger", {})
             local orig_n_blocks = #inode.content
             for i=start_block_idx+1, orig_n_blocks do
-                reportlog("READ_WRITE_OP", "read: remaining_buf="..remaining_buf, {})
+                reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
                 block = string.sub(remaining_buf, 1, block_size)
                 put_block(inode.content[i], block)
                 remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
@@ -696,31 +767,32 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
             local block_n = nil
 
             for i=orig_n_blocks+1, end_block_idx-1 do
-                reportlog("READ_WRITE_OP", "read: remaining_buf="..remaining_buf, {})
+                reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
                 block = string.sub(remaining_buf, 1, block_size)
-                root_inode.meta.xattr[greatest_block_n] = root_inode.meta.xattr[greatest_block_n] + 1
+                root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
                 --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
-                block_n = root_inode.meta.xattr[greatest_block_n]
+                block_n = root_inode.meta.xattr.greatest_block_n
                 put_block(block_n, block)
                 table.insert(inode.content, block_n)
                 remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
             end
 
-            root_inode.meta.xattr[greatest_block_n] = root_inode.meta.xattr[greatest_block_n] + 1
-            block_n = root_inode.meta.xattr[greatest_block_n]
+            root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
+            block_n = root_inode.meta.xattr.greatest_block_n
             block = remainig_buf
             put_block(block_n, block) --TODO CONSISTENT OK = PUT OR JUST PUT
+            put_inode(inode.meta.ino, inode)
             put_inode(1, root_inode)
             
         else
             for i=start_block_idx+1,end_block_idx-1 do
-                reportlog("READ_WRITE_OP", "read: remaining_buf="..remaining_buf, {})
+                reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
                 block = string.sub(remaining_buf, 1, block_size)
                 put_block(inode.content[i], block)
                 remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
             end
 
-            if size >= orig_size then
+            if (offset+size) >= orig_size then
                 block = remainig_buf
             else
                 block = get_block(inode.content[end_block_idx])
@@ -731,7 +803,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         
 
     end
-
+    --]]
 
     --[[
     local o = offset % block_size
@@ -754,7 +826,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
             block = block + 1
         end
     end --JV: NOT NEEDED FOR THE MOMENT
-    --]]
+    
     reportlog("READ_WRITE_OP", "write: CHECKPOINT1",{})
     if not inode.content[1] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
         inode.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
@@ -780,7 +852,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     --if eof > inode.meta.size then inode.meta.size = eof ; inode.meta_changed = true end --JV: REMOVED FOR REPLACEMENT WITH DISTDB
 
     local ok_put_inode = put_inode(inode.meta.ino, inode) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-
+    --]]
     return #buf
 end,
 
