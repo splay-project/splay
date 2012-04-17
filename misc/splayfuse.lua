@@ -32,7 +32,7 @@ local ENOENT = -2
 local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
-local block_size = 1024
+local block_size = 64
 local blank_block=("0"):rep(block_size)
 local open_mode={'rb','wb','rb+'}
 local log_domains = {
@@ -46,7 +46,7 @@ local log_domains = {
 }
 local consistency_type = "consistent"
 
-local db_port = 14326
+local db_port = 14494
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -670,13 +670,13 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     
     local start_block_idx = math.floor(offset / block_size)+1
     local rem_start_offset = offset % block_size
-    local end_block_idx = math.floor((offset+size) / block_size)+1
-    local rem_end_offset = (offset+size) % block_size
+    local end_block_idx = math.floor((offset+size-1) / block_size)+1
+    local rem_end_offset = ((offset+size-1) % block_size)
 
     reportlog("READ_WRITE_OP", "write: orig_size="..orig_size..", offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
     reportlog("READ_WRITE_OP", "write: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
 
-    reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
+    --reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
 
     local block = nil
     local block_n = nil
@@ -691,42 +691,43 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         root_inode = get_inode(1)
     end
 
-    reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
+    --reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
 
-    reportlog("READ_WRITE_OP", "write: buf="..buf, {})
+    --reportlog("READ_WRITE_OP", "write: buf="..buf, {})
 
     for i=start_block_idx, end_block_idx do
-        reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
+        --reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
         if inode.content[i] then
-            reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
+            --reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
             block_n = inode.content[i]
             block = get_block(inode.content[i])
         else
-            reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
-            reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
-            reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
+            --reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
+            --reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+            --reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
             root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
-            reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
+            --reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
             --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
             block_n = root_inode.meta.xattr.greatest_block_n
             block = ""
             table.insert(inode.content, block_n)
-            reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
+            --reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
         end
-        reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
-        reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
-        reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
+        --reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+        --reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
+        --reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
         if (#remaining_buf+block_offset) > block_size then
             to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
             remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
         else
             to_write_in_block = remaining_buf
         end
-        reportlog("READ_WRITE_OP", "write: block="..block, {})
-        reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
-        reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
+        --reportlog("READ_WRITE_OP", "write: block="..block, {})
+        --reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
+        --reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
         block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
-        reportlog("READ_WRITE_OP", "write: now block="..block, {})
+        --reportlog("READ_WRITE_OP", "write: now block="..block, {})
+        block_offset = 0
         put_block(block_n, block)
     end
 
@@ -1259,6 +1260,7 @@ utime = function(self, filename, atime, mtime)
     reportlog("FILE_MISC_OP", "utime: ENTERED for filename="..filename, {atime=atime,mtime=mtime})
 
     local inode = get_inode_from_filename(filename)
+    
     if inode then
         inode.meta.atime = atime
         inode.meta.mtime = mtime
@@ -1271,30 +1273,98 @@ end,
 ftruncate = function(self, filename, size, inode)
     --logs entrance
     reportlog("FILE_MISC_OP", "ftruncate: ENTERED for filename="..filename, {size=size,inode=inode})
-    --TODO: PA DESPUES
-    --local old_size = inode.meta.size
-    --inode.meta.size = size
-    --clear_buffer(inode, floor(size/block_size), floor(old_size/block_size))
+    
+    local orig_size = inode.meta.size
+
+    local block_idx = math.floor((size - 1) / block_size) + 1
+    local rem_offset = size % block_size
+
+    reportlog("FILE_MISC_OP", "ftruncate: orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset, {})
+        
+    for i=#inode.content, block_idx+1,-1 do
+        reportlog("FILE_MISC_OP", "ftruncate: about to remove block number inode.content["..i.."]="..inode.content[i], {})
+        local ok_delete_from_db_block = delete_block(inode.content[i])
+        table.remove(inode.content, i)
+    end
+
+    reportlog("FILE_MISC_OP", "ftruncate: about to change block number inode.content["..block_idx.."]="..inode.content[block_idx], {})
+
+    
+
+    if rem_offset == 0 then
+        reportlog("FILE_MISC_OP", "truncate: last block must be empty, so we delete it", {})
+        local ok_delete_from_db_block = delete_block(inode.content[block_idx])
+        table.remove(inode.content, block_idx)
+    else
+        reportlog("FILE_MISC_OP", "truncate: last block is not empty", {})
+        local last_block = get_block(block_idx)
+        reportlog("FILE_MISC_OP", "truncate: it already has this="..last_block, {})
+        local write_in_last_block = string.sub(last_block, 1, rem_offset)
+        reportlog("FILE_MISC_OP", "truncate: and we change to this="..write_in_last_block, {})
+        local ok_put_block = put_block(inode.content[block_idx], write_in_last_block)
+    end
+
+    inode.meta.size = size
+
+    reportlog("FILE_MISC_OP", "truncate: about to write inode", {})
+
+    local ok_put_inode = put_inode(inode.meta.ino, inode)
+
     return 0
 end,
 
 truncate = function(self, filename, size)
     --logs entrance
     reportlog("FILE_MISC_OP", "truncate: ENTERED for filename="..filename, {size=size})
-    --TODO: PA DESPUES
-    --[[
-    local inode,parent = get_inode_from_filename(filename)
-    if inode then 
-        local old_size = inode.meta.size
+    
+    local inode = get_inode_from_filename(filename)
+    
+    reportlog("FILE_MISC_OP", "truncate: inode was retrieved", {inode=inode})
+
+    if inode then
+
+        local orig_size = inode.meta.size
+
+        local block_idx = math.floor((size - 1) / block_size) + 1
+        local rem_offset = size % block_size
+
+        reportlog("FILE_MISC_OP", "truncate: orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset, {})
+        
+        for i=#inode.content, block_idx+1,-1 do
+            reportlog("FILE_MISC_OP", "truncate: about to remove block number inode.content["..i.."]="..inode.content[i], {})
+            local ok_delete_from_db_block = delete_block(inode.content[i])
+            table.remove(inode.content, i)
+        end
+
+        if block_idx > 0 then
+            reportlog("FILE_MISC_OP", "truncate: about to change block number inode.content["..block_idx.."]="..inode.content[block_idx], {})
+
+            if rem_offset == 0 then
+                reportlog("FILE_MISC_OP", "truncate: last block must be empty, so we delete it", {})
+            
+                local ok_delete_from_db_block = delete_block(inode.content[block_idx])
+                table.remove(inode.content, block_idx)
+            else
+                reportlog("FILE_MISC_OP", "truncate: last block is not empty", {})
+                local last_block = get_block(block_idx)
+                reportlog("FILE_MISC_OP", "truncate: it already has this="..last_block, {})
+                local write_in_last_block = string.sub(last_block, 1, rem_offset)
+                reportlog("FILE_MISC_OP", "truncate: and we change to this="..write_in_last_block, {})
+                local ok_put_block = put_block(inode.content[block_idx], write_in_last_block)
+            end
+        end
+
         inode.meta.size = size
-        clear_buffer(inode, floor(size/block_size), floor(old_size/block_size))
-        if (inode.open or 0) < 1 then mnode.flush_node(inode, filename, true) 
-        else inode.meta_changed = true end
+
+        reportlog("FILE_MISC_OP", "truncate: about to write inode", {})
+
+        local ok_put_inode = put_inode(inode.meta.ino, inode)
+
         return 0
     else
         return ENOENT
     end
-    --]]
+    
     return 0
 end,
 access = function(...)
