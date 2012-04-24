@@ -1,8 +1,8 @@
 <%= link_to 'List', :action => 'list' %>
 
-<h1>New Job Resources Request</h1>
+<h1>Submit a new Splay Job</h1>
 
-<% form_tag({:action => 'create'}, {:multipart => true}) do %>
+<% form_tag({:action => 'create'}, {:multipart => true}, :html=> {:id => 'myform'}) do %>
   <%= render :partial => 'form' %>
   <%= submit_tag "Create" %>
 <% end %>
