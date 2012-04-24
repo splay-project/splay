@@ -146,7 +146,7 @@ f=f()()
 
 - Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
 
-- Add optiont o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a node in a given position is used for well-known reasons (entrypoint)
+- Add option o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a node in a given position is used for well-known reasons (entrypoint)
 
 - Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is shutting down/crashing (perhaps because
   of a churn trace). This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. It requires some modifications to the splay sandbox and core module.
@@ -160,3 +160,5 @@ f=f()()
 - sockets should be provide finer grainer statistics. In particular: 1) total bytes sent/received for TCP/UDP, 2) opening/closing time measurements to obtain a socket
 
 - check files splayweb/app/model/user_observer|notifier as they might be legacy from a very faraway past
+
+- pagination: in SplayWeb, the list of splayds/jobs should allow pagination, to show N results for each page.
