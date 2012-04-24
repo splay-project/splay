@@ -5,6 +5,7 @@ controller 1.4:
 	- Remove deprecated local commands
 	- support for multifile job
 	- support for splayd designation per job: users can choose on which splayds to deploy a job, either by giving the host keys or by asking to 'clone' a previously executed job 
+	- Deprecated old local_commands: removed from release, not in sync with all the new options
 controller 1.3:
 	- support to ship binary libraries (splayd in grid mode)
 controller 1.2.1:
