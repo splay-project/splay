@@ -1,0 +1,67 @@
+Note to install Splayd on FREEBSD (tested on Emulab with their default image  FBSD73-STD )
+- # sudo portsnap fetch
+- # sudo portsnap extract (might take some time)
+
+Install LUA:
+cd /usr/ports/lang/lua && sudo make && sudo make install
+(do not make clean, as sources are needed to compile splayd)
+
+Install LUASOCKET:
+cd /usr/ports/net/luasocket && sudo make && sudo make install && sudo make clean
+
+Install LUASEC:
+cd /usr/ports/security/luasec && sudo make && sudo make install && sudo make clean
+
+wget http://www.splay-project.org/splay/release/splayd_1.1.tar.gz
+
+- vim Makefile to point to the directories of the lua sources:
+INCLUDE= -I/usr/obj/ports/usr/ports/lang/lua/work/lua-5.1.4/src
+LIBS= -L/usr/lib -L/usr/local/lib/lua51 -llua -lm
+
+- todo add a Makefile.fbsd in Splay dist
+
+(to find this out:pkg-config --libs --cflags lua-5.1)
+-L/usr/local/lib/lua51
+
+- add the following include statementin jobd.c, otherwise it won't compile :
+#include <sys/socket.h>
+
+	Without that modification, you should get an error similar to this:
+	gcc -Wall -O2 -pedantic -I/usr/obj/ports/usr/ports/lang/lua/work/lua-5.1.4/src -c -o splayd.o splayd.c
+	gcc -Wall -O2 -pedantic -I/usr/obj/ports/usr/ports/lang/lua/work/lua-5.1.4/src -c -o splay_lib.o splay_lib.c
+	gcc -o splayd splayd.o splay_lib.o -L/usr/lib -L/usr/local/lib/lua51 -llua -lm
+	strip splayd
+	gcc -Wall -O2 -pedantic -I/usr/obj/ports/usr/ports/lang/lua/work/lua-5.1.4/src -c -o jobd.o jobd.c
+	jobd.c: In function 'main':
+	jobd.c:139: warning: implicit declaration of function 'socket'
+	jobd.c:139: error: 'AF_INET' undeclared (first use in this function)
+	jobd.c:139: error: (Each undeclared identifier is reported only once
+	jobd.c:139: error: for each function it appears in.)
+	jobd.c:139: error: 'SOCK_STREAM' undeclared (first use in this function)
+	jobd.c:159: warning: implicit declaration of function 'connect'
+	jobd.c:159: warning: type-punning to incomplete type might break strict-aliasing rules
+	*** Error code 1
+	
+	Stop in /proj/SUS-NEmu/splayd_1.1.
+
+- make
+- run install.sh
+
+- the default paths on FreeBSD are :
+> print(package.path)
+./?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;/usr/local/lib/lua/5.1/?.lua;/usr/local/lib/lua/5.1/?/init.lua
+> print(package.cpath)
+./?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so
+
+- Set the LUA_PATH and LUA_CPATH to include the directories where the splay libs are installed
+- It is possible to use this .bashrc  where the path /users/vschiavo/.. is where the libraries are installed by the install.sh :
+cat ~/.bashrc 
+LUA_PATH="./?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;/usr/local/lib/lua/5.1/?.lua;/usr/local/lib/lua/5.1/?/init.lua;/users/vschiavo/lualibs/lualib/?.lua;"
+LUA_CPATH="/users/vschiavo/lualibs/lualibc/?.so;./?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;"
+export LUA_PATH LUA_CPATH
+
+- at the end, "lua-5.1 check_install.sh"
+
+- use bash
+- path to executable lua: /usr/obj/ports/usr/ports/lang/lua/work/lua-5.1.4/src/./lua
+
