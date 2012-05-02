@@ -24,6 +24,22 @@ $ tar xzvf splayd_1.2.tar.gz
 $ cd splayd_1.2
 $ vim Makefile
 
+$ cd .
+$ wget http://www.inf.puc-rio.br/~brunoos/luasec/download/luasec-0.4.1.tar.gz
+$ tar xzvf luasec-0.4.1.tar.gz
+$ cd luasec-0.4.1
+$ make linux
+$ su
+# make install
+
+$ cd .
+$ wget http://files.luaforge.net/releases/luasocket/luasocket/luasocket-2.0.2/luasocket-2.0.2.tar.gz
+$ tar xzvf luasocket-2.0.2.tar.gz
+$ cd luasocket-2.0.2
+$ make
+$ su
+# make install
+
 and change the INCLUDE statement to:
 INCLUDE= -I/absolute/path/to/lua-5.1.4/src/
 and:
