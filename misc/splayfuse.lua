@@ -46,7 +46,7 @@ local log_domains = {
 }
 local consistency_type = "consistent"
 
-local db_port = 14494
+local db_port = 13127
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -176,15 +176,6 @@ local function decode_acl(s)
     end
 end
 
-
-local function clear_buffer(inode,from,to)
-    --logs entrance
-    reportlog("FILE_INODE_OP", "clear_buffer: ENTERED for inode="..inode..", from="..from..", to="..to, {})
-
-    for i = from, to do inode.content[i] = nil end
-
-    collectgarbage("collect")
-end
 
 --function mk_mode: creates the mode from the owner, group, world rights and the sticky bit
 local function mk_mode(owner, group, world, sticky)
@@ -446,6 +437,24 @@ local function delete_file(filename)
     return true
 end
 
+
+function get_attributes(filename)
+    --logs entrance
+    reportlog("FILE_MISC_OP", "get_attributes: ENTERED for filename="..filename, {})
+    --gets the inode from the DB
+    local inode = get_inode_from_filename(filename)
+    --logs
+    reportlog("FILE_MISC_OP", "get_attributes: for filename="..filename.." get_inode_from_filename returned=",{inode=inode})
+    --if there is no inode returns the error code ENOENT (No such file or directory)
+    if not inode then return ENOENT end
+    local x = inode.meta
+    return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
+end
+
+
+
+
+
 --takes User and Group ID, etc, from FUSE context
 local uid,gid,pid,puid,pgid = fuse.context()
 
@@ -477,21 +486,14 @@ local memfs = {
 pulse = function()
     --logs entrance
     reportlog("FILE_MISC_OP", "pulse: ENTERED", {})
-
+    --TODO change to reportlog
     print "periodic pulse"
 end,
 
 getattr = function(self, filename)
     --logs entrance
     reportlog("FILE_MISC_OP", "getattr: ENTERED for filename="..filename, {})
-    --gets the inode from the DB
-    local inode = get_inode_from_filename(filename)
-    --logs
-    reportlog("FILE_MISC_OP", "getattr: for filename="..filename.." get_inode_from_filename returned=",{inode=inode})
-    --if there is no inode returns the error code ENOENT (No such file or directory)
-    if not inode then return ENOENT end
-    local x = inode.meta
-    return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime    
+    return get_attributes(filename)
 end,
 
 opendir = function(self, filename)
@@ -509,12 +511,18 @@ end,
 
 readdir = function(self, filename, offset, inode)
     --logs entrance
-    reportlog("DIR_OP", "readdir: ENTERED for filename="..filename..", offset="..offset, {inode=inode})
+    reportlog("DIR_OP", "readdir: ENTERED for filename="..filename..", offset="..offset, {})
+    --looks for the inode; we don't care about the inode on memory (sequential operations condition)
+    local inode = get_inode_from_filename(filename)
+    reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
+    if not inode then
+        return 1
+    end
     --starts the file list with "." and ".."
     local out={'.','..'}
     --for each entry in content, adds it in the file list
     for k,v in pairs(inode.content) do
-        if type(k) == "string" then out[#out+1] = k end
+        table.insert(out, k)
     end
     return 0, out
 end,
@@ -593,6 +601,12 @@ read = function(self, filename, size, offset, inode)
     --logs entrance
     reportlog("READ_WRITE_OP", "read: ENTERED for filename="..filename..", size="..size..", offset="..offset, {inode=inode})
 
+    local inode = get_inode_from_filename(filename)
+    reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
+    if not inode then
+        return 1
+    end
+
     local start_block_idx = math.floor(offset / block_size)+1
     local rem_start_offset = offset % block_size
     local end_block_idx = math.floor((offset+size-1) / block_size)+1
@@ -657,14 +671,17 @@ read = function(self, filename, size, offset, inode)
     --reportlog("READ_WRITE_OP", "read: for filename="..filename.." returns", {data=data})
 
     --return 0, tjoin(data,"") --JV: REMOVED FOR REPLACEMENT WITH DISTDB; data IS ALREADY A STRING
-    return 0, data --JV: ADDED FOR REPLACEMENT WITH DISTDB
+    return 0, data
 end,
 
 write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITING
     --logs entrance
     reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {buf=buf,offset=offset,inode=inode})
 
-    --inode.changed = true
+
+    local inode = get_inode_from_filename(filename)
+    reportlog("READ_WRITE_OP", "write: inode retrieved", {inode=inode})
+    
     local orig_size = inode.meta.size
     local size = #buf
     
@@ -676,7 +693,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     reportlog("READ_WRITE_OP", "write: orig_size="..orig_size..", offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
     reportlog("READ_WRITE_OP", "write: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
 
-    --reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
+    reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
 
     local block = nil
     local block_n = nil
@@ -691,42 +708,44 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         root_inode = get_inode(1)
     end
 
-    --reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
+    reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
 
-    --reportlog("READ_WRITE_OP", "write: buf="..buf, {})
+    reportlog("READ_WRITE_OP", "write: buf="..buf, {})
 
     for i=start_block_idx, end_block_idx do
-        --reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
+        reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
         if inode.content[i] then
-            --reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
+            reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
             block_n = inode.content[i]
             block = get_block(inode.content[i])
         else
-            --reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
-            --reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
-            --reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
+            reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
+            reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+            reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
             root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
-            --reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
+            reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
             --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
             block_n = root_inode.meta.xattr.greatest_block_n
             block = ""
             table.insert(inode.content, block_n)
-            --reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
+            reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
         end
-        --reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
-        --reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
-        --reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
+        reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+        reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
+        reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
         if (#remaining_buf+block_offset) > block_size then
+            reportlog("READ_WRITE_OP", "write: more than block size", {})
             to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
             remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
         else
+            reportlog("READ_WRITE_OP", "write: less than block size", {})
             to_write_in_block = remaining_buf
         end
-        --reportlog("READ_WRITE_OP", "write: block="..block, {})
-        --reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
-        --reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
+        reportlog("READ_WRITE_OP", "write: block=", {block=block})
+        reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
+        reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
         block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
-        --reportlog("READ_WRITE_OP", "write: now block="..block, {})
+        reportlog("READ_WRITE_OP", "write: now block="..block, {})
         block_offset = 0
         put_block(block_n, block)
     end
@@ -904,9 +923,7 @@ end,
 fgetattr = function(self, filename, inode, ...) --TODO: CHECK IF fgetattr IS USEFUL, IT IS! TODO: CHECK WITH filename
     --logs entrance
     reportlog("FILE_MISC_OP", "fgetattr: ENTERED for filename="..filename, {inode=inode})
-
-    local x = inode.meta
-    return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime    
+    return get_attributes(filename)
 end,
 
 rmdir = function(self, filename)

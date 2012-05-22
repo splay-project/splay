@@ -59,6 +59,8 @@ mode = "rpc"
 local number = 0
 local call_s = nil
 
+--socket.BLOCKSIZE = 10000000
+
 function stats()
 	return number
 end
