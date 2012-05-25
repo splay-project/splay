@@ -8,10 +8,10 @@
 
 local fuse = require 'fuse'
 local dbclient = require 'distdb-client'
-local json = require'json'
+local serializer = require'splay.lbinenc'
 local crypto = require'crypto'
 local misc = require'splay.misc'
-require'profiler'
+--require'profiler'
 
 local tjoin = table.concat
 local tadd = table.insert
@@ -48,7 +48,9 @@ local log_domains = {
 }
 local consistency_type = "consistent"
 
-local db_port = 15167
+local to_report_t = {}
+
+local db_port = 13877
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -67,17 +69,22 @@ function reportlog(log_domain, message, args)
     end
 end
 
+function fast_reportlog(message)
+    --opens the log file
+    local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log2.txt","a")
+    --writes the message with a timestamp
+    logfile1:write(message)
+    --closes the file
+    logfile1:close()
+end
+
 function reportlog_screen(log_domain, message, args)
     --if logging in the proposed log domain is ON
     if log_domains[log_domain] then
         --writes the message with a timestamp
         print(now()..": "..message)
         --writes the table of arguments
-        logfile1:write(print_tablez("args", 0, args))
-        --writes a new line
-        logfile1:write("\n")
-        --closes the file
-        logfile1:close()
+        print(print_tablez("args", 0, args))
     end
 end
 
@@ -235,8 +242,8 @@ local function get_inode(inode_n)
         return nil
     end
     --reads the inode element from the DB
-    local ok_read_from_db_inode, inode_jsoned = read_from_db("inode:"..inode_n)
-    --reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {ok_read_from_db_inode=ok_read_from_db_inode, inode_jsoned=inode_jsoned})
+    local ok_read_from_db_inode, inode_serialized = read_from_db("inode:"..inode_n)
+    --reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {ok_read_from_db_inode=ok_read_from_db_inode, inode_serialized=inode_serialized})
 
     --if the reading was not successful, report the error and return nil
     if not ok_read_from_db_inode then
@@ -245,14 +252,14 @@ local function get_inode(inode_n)
     end
 
     --if the reading was not successful, report the error and return nil
-    if not inode_jsoned then
+    if not inode_serialized then
         --reportlog("FILE_INODE_OP", "get_inode: inode is nil, returning nil", {})
         return nil
     end
 
-    --reportlog("FILE_INODE_OP", "get_inode: trying to json_decode, type of inode_jsoned="..type(inode_jsoned), {})
+    --reportlog("FILE_INODE_OP", "get_inode: trying to serializer_decode, type of inode_serialized="..type(inode_serialized), {})
 
-    local inode = json.decode(inode_jsoned)
+    local inode = serializer.decode(inode_serialized)
 
     --reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {inode=inode})
     
@@ -329,7 +336,7 @@ local function put_inode(inode_n, inode)
         return nil
     end    
     --writes the inode in the DB
-    local ok_write_in_db_inode = write_in_db("inode:"..inode_n, json.encode(inode))
+    local ok_write_in_db_inode = write_in_db("inode:"..inode_n, serializer.encode(inode))
     --if the writing was not successful, report the error and return nil
     if not ok_write_in_db_inode then
         --reportlog("FILE_INODE_OP", "put_inode: ERROR, write_in_db of inode was not OK", {})
@@ -693,10 +700,16 @@ end,
 write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITING
     --logs entrance
     --reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {buf=buf,offset=offset,inode=inode})
+    --logs entrance without reporting buf
+    --reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {offset=offset,inode=inode})
 
+    table.insert(to_report_t, "write started\telapsed_time=0\n")
+    local start_time = misc.time()
 
     local inode = get_inode_from_filename(filename)
+
     --reportlog("READ_WRITE_OP", "write: inode retrieved", {inode=inode})
+    table.insert(to_report_t, "inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
     
     local orig_size = inode.meta.size
     local size = #buf
@@ -706,10 +719,13 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     local end_block_idx = math.floor((offset+size-1) / block_size)+1
     local rem_end_offset = ((offset+size-1) % block_size)
 
+    
     --reportlog("READ_WRITE_OP", "write: orig_size="..orig_size..", offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
     --reportlog("READ_WRITE_OP", "write: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
 
     --reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
+
+    table.insert(to_report_t, "orig_size et al. calculated\telapsed_time="..(misc.time()-start_time).."\n")
 
     local block = nil
     local block_n = nil
@@ -720,9 +736,13 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     local root_inode = nil
     local remaining_buf = buf
 
+    table.insert(to_report_t, "calculated more stuff\telapsed_time="..(misc.time()-start_time).."\n")
+
     if blocks_created then
         root_inode = get_inode(1)
     end
+
+    table.insert(to_report_t, "root might have been retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
     --reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
 
@@ -763,16 +783,26 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
         --reportlog("READ_WRITE_OP", "write: now block="..block, {})
         block_offset = 0
+        table.insert(to_report_t, "before putting the block\telapsed_time="..(misc.time()-start_time).."\n")
         put_block(block_n, block)
+        table.insert(to_report_t, "timestamp at the end of each cycle\telapsed_time="..(misc.time()-start_time).."\n")
     end
 
     if size_changed then
         inode.meta.size = offset+size
         put_inode(inode.meta.ino, inode)
+        table.insert(to_report_t, "inode was written\telapsed_time="..(misc.time()-start_time).."\n")
         if blocks_created then
             put_inode(1, root_inode)
+            table.insert(to_report_t, "root was written\telapsed_time="..(misc.time()-start_time).."\n")
         end
     end
+
+    table.insert(to_report_t, "\n")
+
+    fast_reportlog(table.concat(to_report_t))
+
+    to_report_t = {}
 
 --[[
     if start_block_idx == end_block_idx then
@@ -1485,14 +1515,14 @@ end,
 
 statfs = function(self,filename)
     local inode,parent = get_inode_from_filename(filename)
-    local o = {bs=1024,blocks=64,bfree=48,bavail=48,bfiles=16,bffree=16}
+    local o = {bs=block_size,blocks=64,bfree=48,bavail=48,bfiles=16,bffree=16}
     return 0, o.bs, o.blocks, o.bfree, o.bavail, o.bfiles, o.bffree
 end
 }
 
-profiler.start()
+--profiler.start()
 
-fuse_opt = { 'memfs', 'mnt', '-f', '-s', '-oallow_other'}
+fuse_opt = { 'memfs', 'mnt', '-f', '-s', '-oallow_other', '-obig_writes'}
 
 if select('#', ...) < 2 then
     print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
@@ -1501,4 +1531,4 @@ end
 
 fuse.main(memfs, {...})
 
-profiler.stop()
+--profiler.stop()

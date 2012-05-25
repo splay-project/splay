@@ -39,7 +39,7 @@ local misc	= require"splay.misc" --TODO look if the use of splay.misc fits here
 -- for handling threads
 local events	= require"splay.events" --TODO look if the use of splay.events fits here
 -- for encoding/decoding the GET answer
-local json	= require"json" --TODO look if the use of json fits here
+local serializer	= require"splay.lbinenc"
 local paxos	= require"splay.paxos"
 
 
@@ -528,8 +528,8 @@ function handle_http_message(socket)
 	if ok then
 		--if answer exists
 		if answer then
-			--encode the response in JSON for HTTP transmision
-			http_response_body = json.encode(answer)
+			--serializes the answer for HTTP transmision
+			http_response_body = serializer.encode(answer)
 		end
 		--response code is 200 OK
 		http_response_code = "200 OK"
@@ -565,7 +565,7 @@ function handle_http_message(socket)
 	if string.sub(header,1,8) == "OPTIONS" then
 		return handle_options_method(socket)
 	else
-		handle_post_method(socket,jsonmsg)
+		handle_post_method(socket,serialized_msg)
 	end
 	--]]
 end

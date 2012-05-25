@@ -12,7 +12,7 @@ local ltn12  = require"ltn12"
 require"crypto"
 --for picking a random port
 misc = require"splay.misc"
-local json = require"json"
+local serializer = require"splay.lbinenc"
 events = require"splay.events"
 
 -- END LIBRARIES
@@ -50,9 +50,9 @@ end
 
 function send_put(port, type_of_transaction, key, value)
 	
-	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+	--local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
 
-    logfile1:write("send_put: started\n")
+    --logfile1:write("send_put: started\n")
     
 
 	local response_body = nil
@@ -77,13 +77,13 @@ function send_put(port, type_of_transaction, key, value)
 
 	if response_status == 200 then
 		--print("PUT done.")
-		logfile1:write("send_put: PUT done.\n")
-		logfile1:close()
+		--logfile1:write("send_put: PUT done.\n")
+		--logfile1:close()
 		return true
 	else
 		--print("Error "..response_status)
-		logfile1:write("send_put: Error "..response_status.."\n")
-		logfile1:close()
+		--logfile1:write("send_put: Error "..response_status.."\n")
+		--logfile1:close()
 		return false
 	end
 
@@ -91,9 +91,9 @@ end
 
 function send_get(port, type_of_transaction, key)
 
-	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
+	--local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
 
-	logfile1:write("send_get: started\n")
+	--logfile1:write("send_get: started\n")
 
 	local response_body = {}
 	local response_to_discard = nil
@@ -113,23 +113,23 @@ function send_get(port, type_of_transaction, key)
 
 	if response_status == 200 then
 		--print("Content of kv-store: "..key.." is:\n"..response_body[1])
-		logfile1:write("send_get: 200 OK received\n")
-		--logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
+		--logfile1:write("send_get: 200 OK received\n")
+		----logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
 	else
 		--print("Error "..response_status..":\n"..response_body[1])
-		--logfile1:write("send_get: Error "..response_status.."\n")
-		logfile1:close()
+		----logfile1:write("send_get: Error "..response_status.."\n")
+		--logfile1:close()
 		return false
 	end
 
-	local answer = json.decode(response_body[1])
+	local answer = serializer.decode(response_body[1])
 
 	local answer_string = print_tablez("answer",0,answer)
-	logfile1:write("send_get: answer decoded: \n"..answer_string)
+	--logfile1:write("send_get: answer decoded: \n"..answer_string)
 
 	if not answer[1] then
-		logfile1:write("send_get: No answer\n")
-		logfile1:close()
+		--logfile1:write("send_get: No answer\n")
+		--logfile1:close()
 		return true, nil
 	end
 
@@ -137,19 +137,19 @@ function send_get(port, type_of_transaction, key)
 
 	if type(answer[1].value) == "string" then
 		chosen_value = ""
-		--logfile1:write("send_get: value is string\n")
+		----logfile1:write("send_get: value is string\n")
 	elseif type(answer[1].value) == "number" then
 		chosen_value = 0
 	elseif type(answer[1].value) == "table" then
-		--logfile1:write("send_get: value is a table\n")
+		----logfile1:write("send_get: value is a table\n")
 	end
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
-		--logfile1:write("send_get: value is "..v2.value.."\n")
-		--logfile1:write("send_get: chosen value is "..chosen_value.."\n")
+		----logfile1:write("send_get: value is "..v2.value.."\n")
+		----logfile1:write("send_get: chosen value is "..chosen_value.."\n")
 		if type(v2.value) == "string" then
 			if string.len(v2.value) > string.len(chosen_value) then --in this case is the max, but it could be other criteria
-				--logfile1:write("send_get: replacing value\n")
+				----logfile1:write("send_get: replacing value\n")
 				chosen_value = v2.value
 			end
 		elseif type(v2.value) == "number" then
@@ -167,12 +167,12 @@ function send_get(port, type_of_transaction, key)
 		end
 	end
 	--print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
-	--logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
+	----logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
 	--for i2,v2 in pairs(max_vc) do
 		--print("", i2, v2)
 	--end
 
-	logfile1:close()
+	--logfile1:close()
 
 	return true, chosen_value, max_vc
 end
@@ -181,7 +181,7 @@ function send_delete(port, type_of_transaction, key)
 
 	local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
 
-	logfile1:write("send_delete: started\n")
+	--logfile1:write("send_delete: started\n")
 
 	local response_body = {}
 	local response_to_discard = nil
@@ -201,13 +201,13 @@ function send_delete(port, type_of_transaction, key)
 
 	if response_status == 200 then
 		--print("PUT done.")
-		logfile1:write("send_delete: DELETE done.\n")
-		logfile1:close()
+		--logfile1:write("send_delete: DELETE done.\n")
+		--logfile1:close()
 		return true
 	else
 		--print("Error "..response_status)
-		logfile1:write("send_delete: Error "..response_status.."\n")
-		logfile1:close()
+		--logfile1:write("send_delete: Error "..response_status.."\n")
+		--logfile1:close()
 		return false
 	end
 
