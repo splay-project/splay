@@ -17,6 +17,8 @@ events = require"splay.events"
 
 -- END LIBRARIES
 
+socket.BLOCKSIZE = 10000000
+
 -- FUNCTIONS
 
 function print_tablez(name, order, input_table)

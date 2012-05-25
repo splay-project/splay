@@ -47,6 +47,8 @@ settings = {
 
 local _s_s = {}
 
+socket.BLOCKSIZE = 10000000
+
 --[[ Runs multiple callbacks for a socket:
 handler[1] => receive(socket [, connect])
 handler[2] => send(socket [, connect])

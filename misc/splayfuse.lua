@@ -10,6 +10,8 @@ local fuse = require 'fuse'
 local dbclient = require 'distdb-client'
 local json = require'json'
 local crypto = require'crypto'
+local misc = require'splay.misc'
+require'profiler'
 
 local tjoin = table.concat
 local tadd = table.insert
@@ -32,7 +34,7 @@ local ENOENT = -2
 local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
-local block_size = 64
+local block_size = 32*1024
 local blank_block=("0"):rep(block_size)
 local open_mode={'rb','wb','rb+'}
 local log_domains = {
@@ -46,7 +48,7 @@ local log_domains = {
 }
 local consistency_type = "consistent"
 
-local db_port = 13127
+local db_port = 15167
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -55,7 +57,21 @@ function reportlog(log_domain, message, args)
         --opens the log file
         local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
         --writes the message with a timestamp
-        logfile1:write(now()..": "..message.."\n")
+        logfile1:write(misc.time()..": "..message.."\n")
+        --writes the table of arguments
+        logfile1:write(print_tablez("args", 0, args))
+        --writes a new line
+        logfile1:write("\n")
+        --closes the file
+        logfile1:close()
+    end
+end
+
+function reportlog_screen(log_domain, message, args)
+    --if logging in the proposed log domain is ON
+    if log_domains[log_domain] then
+        --writes the message with a timestamp
+        print(now()..": "..message)
         --writes the table of arguments
         logfile1:write(print_tablez("args", 0, args))
         --writes a new line
@@ -70,7 +86,7 @@ local function write_in_db(unhashed_key, value)
     --creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
     local db_key = crypto.evp.digest("sha1", unhashed_key)
     --logs
-    reportlog("DB_OP", "write_in_db: about to write in distdb, unhashed_key="..unhashed_key..", db_key="..db_key, {value=value})
+    --reportlog("DB_OP", "write_in_db: about to write in distdb, unhashed_key="..unhashed_key..", db_key="..db_key, {value=value})
     --sends the value
     return send_put(db_port, consistency_type, db_key, value)
 end
@@ -80,7 +96,7 @@ local function read_from_db(unhashed_key)
     --creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
     local db_key = crypto.evp.digest("sha1", unhashed_key)
     --logs
-    reportlog("DB_OP", "read_from_db: about to read from distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
+    --reportlog("DB_OP", "read_from_db: about to read from distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
     --sends a GET command to the DB
     return send_get(db_port, consistency_type, db_key)
 end
@@ -90,7 +106,7 @@ local function delete_from_db(unhashed_key)
     --creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
     local db_key = crypto.evp.digest("sha1", unhashed_key)
     --logs
-    reportlog("DB_OP", "delete_from_db: about to delete from distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
+    --reportlog("DB_OP", "delete_from_db: about to delete from distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
     --sends a GET command to the DB
     return send_delete(db_port, consistency_type, db_key)
 end
@@ -163,7 +179,7 @@ end
 --function decode_acl: TODO check what this does in memfs.lua
 local function decode_acl(s)
 
-    reportlog("FILE_INODE_OP", "decode_acl: ENTERED for s="..s, {})
+    --reportlog("FILE_INODE_OP", "decode_acl: ENTERED for s="..s, {})
 
     local version = s:sub(1,4)
     local n = 5
@@ -180,11 +196,11 @@ end
 --function mk_mode: creates the mode from the owner, group, world rights and the sticky bit
 local function mk_mode(owner, group, world, sticky)
     --logs entrance
-    reportlog("FILE_INODE_OP", "mk_mode: ENTERED for owner="..owner..", group="..group..", world="..world, {sticky=sticky})
+    --reportlog("FILE_INODE_OP", "mk_mode: ENTERED for owner="..owner..", group="..group..", world="..world, {sticky=sticky})
 
     sticky = sticky or 0
     local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID
-    reportlog("_OP", "mk_mode returns result_mode="..result_mode, {})
+    --reportlog("_OP", "mk_mode returns result_mode="..result_mode, {})
     return result_mode
 end
 
@@ -192,16 +208,16 @@ end
 local function get_block(block_n)
     --safety if: if the block_n is not a number, return with error
     if type(block_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "get_block: ERROR, block_n not a number", {})
+        --reportlog("FILE_INODE_OP", "get_block: ERROR, block_n not a number", {})
         return nil
     end
     --logs entrance
-    reportlog("FILE_INODE_OP", "get_block: ENTERED for block_n="..block_n, {})
+    --reportlog("FILE_INODE_OP", "get_block: ENTERED for block_n="..block_n, {})
     --reads the file element from the DB
     local ok_read_from_db_block, data = read_from_db("block:"..block_n)
     --if the reading was not successful, report the error and return nil
     if not ok_read_from_db_block then
-        reportlog("FILE_INODE_OP", "get_block: ERROR, read_from_db of block was not OK", {})
+        --reportlog("FILE_INODE_OP", "get_block: ERROR, read_from_db of block was not OK", {})
         return nil
     end
     --if everything went well return the inode number
@@ -211,34 +227,34 @@ end
 --function get_inode: gets a inode element from the db
 local function get_inode(inode_n)
     --logs entrance
-    reportlog("FILE_INODE_OP", "get_inode: ENTERED for inode_n=", {inode_n=inode_n})
+    --reportlog("FILE_INODE_OP", "get_inode: ENTERED for inode_n=", {inode_n=inode_n})
     
     --safety if: if the inode_n is not a number, return with error
     if type(inode_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "get_inode: ERROR, inode_n not a number", {})
+        --reportlog("FILE_INODE_OP", "get_inode: ERROR, inode_n not a number", {})
         return nil
     end
     --reads the inode element from the DB
     local ok_read_from_db_inode, inode_jsoned = read_from_db("inode:"..inode_n)
-    reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {ok_read_from_db_inode=ok_read_from_db_inode, inode_jsoned=inode_jsoned})
+    --reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {ok_read_from_db_inode=ok_read_from_db_inode, inode_jsoned=inode_jsoned})
 
     --if the reading was not successful, report the error and return nil
     if not ok_read_from_db_inode then
-        reportlog("FILE_INODE_OP", "get_inode: ERROR, read_from_db of inode was not OK", {})
+        --reportlog("FILE_INODE_OP", "get_inode: ERROR, read_from_db of inode was not OK", {})
         return nil
     end
 
     --if the reading was not successful, report the error and return nil
     if not inode_jsoned then
-        reportlog("FILE_INODE_OP", "get_inode: inode is nil, returning nil", {})
+        --reportlog("FILE_INODE_OP", "get_inode: inode is nil, returning nil", {})
         return nil
     end
 
-    reportlog("FILE_INODE_OP", "get_inode: trying to json_decode, type of inode_jsoned="..type(inode_jsoned), {})
+    --reportlog("FILE_INODE_OP", "get_inode: trying to json_decode, type of inode_jsoned="..type(inode_jsoned), {})
 
     local inode = json.decode(inode_jsoned)
 
-    reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {inode=inode})
+    --reportlog("FILE_INODE_OP", "get_inode: read_from_db returned", {inode=inode})
     
     --if everything went well return the inode
     return inode
@@ -247,12 +263,12 @@ end
 --function get_inode_n: gets a inode number from the db, by identifying it with the filename
 local function get_inode_n(filename)
     --logs entrance
-    reportlog("FILE_INODE_OP", "get_inode_n: ENTERED for filename="..filename, {})
+    --reportlog("FILE_INODE_OP", "get_inode_n: ENTERED for filename="..filename, {})
     --reads the file element from the DB
     local ok_read_from_db_file, inode_n = read_from_db("file:"..filename)
     --if the reading was not successful, report the error and return nil
     if not ok_read_from_db_file then
-        reportlog("FILE_INODE_OP", "get_inode_n: ERROR, read_from_db of file was not OK", {})
+        --reportlog("FILE_INODE_OP", "get_inode_n: ERROR, read_from_db of file was not OK", {})
         return nil
     end
     --if everything went well return the inode number
@@ -262,11 +278,11 @@ end
 --function get_inode_from_filename: gets a inode element from the db, by identifying it with the filename
 local function get_inode_from_filename(filename)
     --logs entrance
-    reportlog("FILE_INODE_OP", "get_inode_from_filename: ENTERED for filename="..filename, {})
+    --reportlog("FILE_INODE_OP", "get_inode_from_filename: ENTERED for filename="..filename, {})
     --the inode number is extracted by calling get_inode_n
     local inode_n = get_inode_n(filename)
 
-    reportlog("FILE_INODE_OP", "get_inode_from_filename: inode number retrieved", {inode_n=inode_n})
+    --reportlog("FILE_INODE_OP", "get_inode_from_filename: inode number retrieved", {inode_n=inode_n})
 
     --returns the corresponding inode
     return get_inode(inode_n)
@@ -276,22 +292,22 @@ end
 local function put_block(block_n, data)
     --if block_n is not a number, report an error and return nil
     if type(block_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "put_block: ERROR, block_n not a number", {})
+        --reportlog("FILE_INODE_OP", "put_block: ERROR, block_n not a number", {})
         return nil
     end
     --if data is not a string, report an error and return nil
     if type(data) ~= "string" then
-        reportlog("FILE_INODE_OP", "put_block: ERROR, data not a string", {})
+        --reportlog("FILE_INODE_OP", "put_block: ERROR, data not a string", {})
         return nil
     end
     
     --logs entrance
-    reportlog("FILE_INODE_OP", "put_block: ENTERED for block_n="..block_n..", data size="..string.len(data), {})
+    --reportlog("FILE_INODE_OP", "put_block: ENTERED for block_n="..block_n..", data size="..string.len(data), {})
     --writes the block in the DB
     local ok_write_in_db_block = write_in_db("block:"..block_n, data)
     --if the writing was not successful, report the error and return nil
     if not ok_write_in_db_block then
-        reportlog("FILE_INODE_OP", "put_block: ERROR, write_in_db of block was not OK", {})
+        --reportlog("FILE_INODE_OP", "put_block: ERROR, write_in_db of block was not OK", {})
         return nil
     end
     --if everything went well return true
@@ -301,22 +317,22 @@ end
 --function put_inode: puts a inode element into the db
 local function put_inode(inode_n, inode)
     --logs entrance
-    reportlog("FILE_INODE_OP", "put_inode: ENTERED for inode_n="..inode_n, {inode=inode})
+    --reportlog("FILE_INODE_OP", "put_inode: ENTERED for inode_n="..inode_n, {inode=inode})
     --if inode_n is not a number, report an error and return nil
     if type(inode_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "put_inode: ERROR, inode_n not a number", {})
+        --reportlog("FILE_INODE_OP", "put_inode: ERROR, inode_n not a number", {})
         return nil
     end
     --if inode is not a table, report an error and return nil
     if type(inode) ~= "table" then
-        reportlog("FILE_INODE_OP", "put_inode: ERROR, inode not a table", {})
+        --reportlog("FILE_INODE_OP", "put_inode: ERROR, inode not a table", {})
         return nil
     end    
     --writes the inode in the DB
     local ok_write_in_db_inode = write_in_db("inode:"..inode_n, json.encode(inode))
     --if the writing was not successful, report the error and return nil
     if not ok_write_in_db_inode then
-        reportlog("FILE_INODE_OP", "put_inode: ERROR, write_in_db of inode was not OK", {})
+        --reportlog("FILE_INODE_OP", "put_inode: ERROR, write_in_db of inode was not OK", {})
         return nil
     end
     --if everything went well return true
@@ -327,22 +343,22 @@ end
 local function put_file(filename, inode_n)
     --if filename is not a string, report an error and return nil
     if type(filename) ~= "string" then
-        reportlog("FILE_INODE_OP", "put_file: ERROR, filename not a string", {})
+        --reportlog("FILE_INODE_OP", "put_file: ERROR, filename not a string", {})
         return nil
     end
 
     --logs entrance
-    reportlog("FILE_INODE_OP", "put_file: ENTERED for filename="..filename..", inode_n="..inode_n, {})
+    --reportlog("FILE_INODE_OP", "put_file: ENTERED for filename="..filename..", inode_n="..inode_n, {})
     --if inode_n is not a number, report an error and return nil
     if type(inode_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "put_file: ERROR, inode_n not a number", {})
+        --reportlog("FILE_INODE_OP", "put_file: ERROR, inode_n not a number", {})
         return nil
     end
     --writes the file in the DB
     local ok_write_in_db_file = write_in_db("file:"..filename, inode_n)
     --if the writing was not successful, report the error and return nil
     if not ok_write_in_db_file then
-        reportlog("FILE_INODE_OP", "put_file: ERROR, write_in_db of file was not OK", {})
+        --reportlog("FILE_INODE_OP", "put_file: ERROR, write_in_db of file was not OK", {})
         return nil
     end
     --if everything went well return true
@@ -352,17 +368,17 @@ end
 local function delete_block(block_n)
 
     if type(block_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "delete_block: ERROR, block_n not a number", {})
+        --reportlog("FILE_INODE_OP", "delete_block: ERROR, block_n not a number", {})
         return nil
     end
 
     --logs entrance
-    reportlog("FILE_INODE_OP", "delete_block: ENTERED for block_n="..block_n, {})
+    --reportlog("FILE_INODE_OP", "delete_block: ENTERED for block_n="..block_n, {})
     
     local ok_delete_from_db_block = delete_from_db("block:"..block_n)
 
     if not ok_delete_from_db_block then
-        reportlog("FILE_INODE_OP", "delete_block: ERROR, delete_from_db of inode was not OK", {})
+        --reportlog("FILE_INODE_OP", "delete_block: ERROR, delete_from_db of inode was not OK", {})
         return nil
     end
 
@@ -373,12 +389,12 @@ local function delete_inode(inode_n)
 --TODOS: WEIRD LATENCY IN DELETE_LOCAL
 --I THINK THE INODE DOES NOT GET DELETED.
     if type(inode_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "delete_inode: ERROR, inode_n not a number", {})
+        --reportlog("FILE_INODE_OP", "delete_inode: ERROR, inode_n not a number", {})
         return nil
     end
 
     --logs entrance
-    reportlog("FILE_INODE_OP", "delete_inode: ENTERED for inode_n="..inode_n, {})
+    --reportlog("FILE_INODE_OP", "delete_inode: ENTERED for inode_n="..inode_n, {})
     
     --[[
     for i,v in ipairs(inode.content) do
@@ -390,7 +406,7 @@ local function delete_inode(inode_n)
     local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
 
     if not ok_delete_from_db_inode then
-        reportlog("_OP", "delete_inode: ERROR, delete_from_db of inode was not OK", {})
+        --reportlog("_OP", "delete_inode: ERROR, delete_from_db of inode was not OK", {})
         return nil
     end
     
@@ -399,10 +415,10 @@ end
 
 local function delete_dir_inode(inode_n)
     --logs entrance
-    reportlog("FILE_INODE_OP", "delete_dir_inode: ENTERED for inode_n="..inode_n, {})
+    --reportlog("FILE_INODE_OP", "delete_dir_inode: ENTERED for inode_n="..inode_n, {})
     
     if type(inode_n) ~= "number" then
-        reportlog("FILE_INODE_OP", "delete_inode: ERROR, inode_n not a number", {})
+        --reportlog("FILE_INODE_OP", "delete_inode: ERROR, inode_n not a number", {})
         return nil
     end
 
@@ -410,7 +426,7 @@ local function delete_dir_inode(inode_n)
     local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
 
     if not ok_delete_from_db_inode then
-        reportlog("_OP", "delete_dir_inode: ERROR, delete_from_db of inode was not OK", {})
+        --reportlog("_OP", "delete_dir_inode: ERROR, delete_from_db of inode was not OK", {})
         return nil
     end
 
@@ -420,17 +436,17 @@ end
 local function delete_file(filename)
 
     if type(filename) ~= "string" then
-        reportlog("FILE_INODE_OP", "delete_file: ERROR, filename not a string", {})
+        --reportlog("FILE_INODE_OP", "delete_file: ERROR, filename not a string", {})
         return nil
     end
 
     --logs entrance
-    reportlog("FILE_INODE_OP", "delete_file: ENTERED for filename="..filename, {})
+    --reportlog("FILE_INODE_OP", "delete_file: ENTERED for filename="..filename, {})
     
     local ok_delete_from_db_file = delete_from_db("file:"..filename)
 
     if not ok_delete_from_db_file then
-        reportlog("FILE_INODE_OP", "delete_file: ERROR, delete_from_db of inode was not OK", {})
+        --reportlog("FILE_INODE_OP", "delete_file: ERROR, delete_from_db of inode was not OK", {})
         return nil
     end
 
@@ -440,11 +456,11 @@ end
 
 function get_attributes(filename)
     --logs entrance
-    reportlog("FILE_MISC_OP", "get_attributes: ENTERED for filename="..filename, {})
+    --reportlog("FILE_MISC_OP", "get_attributes: ENTERED for filename="..filename, {})
     --gets the inode from the DB
     local inode = get_inode_from_filename(filename)
     --logs
-    reportlog("FILE_MISC_OP", "get_attributes: for filename="..filename.." get_inode_from_filename returned=",{inode=inode})
+    --reportlog("FILE_MISC_OP", "get_attributes: for filename="..filename.." get_inode_from_filename returned=",{inode=inode})
     --if there is no inode returns the error code ENOENT (No such file or directory)
     if not inode then return ENOENT end
     local x = inode.meta
@@ -464,7 +480,7 @@ local root_inode = get_inode(1)
 --if there is any, create it
 if not root_inode then
 
-    reportlog("FILE_INODE_OP", "creating root",{})
+    --reportlog("FILE_INODE_OP", "creating root",{})
     
     root_inode = {
         meta = {
@@ -485,24 +501,24 @@ local memfs = {
 
 pulse = function()
     --logs entrance
-    reportlog("FILE_MISC_OP", "pulse: ENTERED", {})
+    --reportlog("FILE_MISC_OP", "pulse: ENTERED", {})
     --TODO change to reportlog
     print "periodic pulse"
 end,
 
 getattr = function(self, filename)
     --logs entrance
-    reportlog("FILE_MISC_OP", "getattr: ENTERED for filename="..filename, {})
+    --reportlog("FILE_MISC_OP", "getattr: ENTERED for filename="..filename, {})
     return get_attributes(filename)
 end,
 
 opendir = function(self, filename)
     --logs entrance
-    reportlog("DIR_OP", "opendir: ENTERED for filename="..filename, {})
+    --reportlog("DIR_OP", "opendir: ENTERED for filename="..filename, {})
     --gets the inode from the DB
     local inode = get_inode_from_filename(filename)
     --logs
-    reportlog("DIR_OP", "opendir: for filename="..filename.." get_inode_from_filename returned",{inode=inode})
+    --reportlog("DIR_OP", "opendir: for filename="..filename.." get_inode_from_filename returned",{inode=inode})
     --if there is no inode returns the error code ENOENT (No such file or directory)
     if not inode then return ENOENT end
     --else, returns 0, and the inode object
@@ -511,10 +527,10 @@ end,
 
 readdir = function(self, filename, offset, inode)
     --logs entrance
-    reportlog("DIR_OP", "readdir: ENTERED for filename="..filename..", offset="..offset, {})
+    --reportlog("DIR_OP", "readdir: ENTERED for filename="..filename..", offset="..offset, {})
     --looks for the inode; we don't care about the inode on memory (sequential operations condition)
     local inode = get_inode_from_filename(filename)
-    reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
+    --reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
     if not inode then
         return 1
     end
@@ -529,7 +545,7 @@ end,
 
 releasedir = function(self, filename, inode)
     --logs entrance
-    reportlog("DIR_OP", "releasedir: ENTERED for filename="..filename, {inode=inode})
+    --reportlog("DIR_OP", "releasedir: ENTERED for filename="..filename, {inode=inode})
 
     return 0
 end,
@@ -537,7 +553,7 @@ end,
 --function mknod: not sure what it does, it creates a generic node? when is this called
 mknod = function(self, filename, mode, rdev)
     --logs entrance
-    reportlog("FILE_MISC_OP", "mknod: ENTERED for filename="..filename, {mode=mode,rdev=rdev})
+    --reportlog("FILE_MISC_OP", "mknod: ENTERED for filename="..filename, {mode=mode,rdev=rdev})
     --gets the inode from the DB
     local inode = get_inode_from_filename(filename)
     --if the inode does not exist, we can create it
@@ -580,7 +596,7 @@ mknod = function(self, filename, mode, rdev)
         }
         
         --logs
-        reportlog("FILE_MISC_OP", "mknod: what is parent_parent?", {parent_parent=parent.parent})
+        --reportlog("FILE_MISC_OP", "mknod: what is parent_parent?", {parent_parent=parent.parent})
         --add the entry in the parent's inode
         parent.content[base]=true
 
@@ -599,10 +615,10 @@ end,
 
 read = function(self, filename, size, offset, inode)
     --logs entrance
-    reportlog("READ_WRITE_OP", "read: ENTERED for filename="..filename..", size="..size..", offset="..offset, {inode=inode})
+    --reportlog("READ_WRITE_OP", "read: ENTERED for filename="..filename..", size="..size..", offset="..offset, {inode=inode})
 
     local inode = get_inode_from_filename(filename)
-    reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
+    --reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
     if not inode then
         return 1
     end
@@ -612,24 +628,24 @@ read = function(self, filename, size, offset, inode)
     local end_block_idx = math.floor((offset+size-1) / block_size)+1
     local rem_end_offset = (offset+size-1) % block_size
 
-    reportlog("READ_WRITE_OP", "read: offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
-    reportlog("READ_WRITE_OP", "read: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
+    --reportlog("READ_WRITE_OP", "read: offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
+    --reportlog("READ_WRITE_OP", "read: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
 
-    reportlog("READ_WRITE_OP", "read: about to get block", {block_n = inode.content[start_block_idx]})
+    --reportlog("READ_WRITE_OP", "read: about to get block", {block_n = inode.content[start_block_idx]})
 
     local block = get_block(inode.content[start_block_idx]) or ""
 
     local data = nil
 
     if start_block_idx == end_block_idx then
-        reportlog("READ_WRITE_OP", "read: just one block to read", {})
+        --reportlog("READ_WRITE_OP", "read: just one block to read", {})
         data = string.sub(block, rem_start_offset+1, rem_end_offset)
     else
-        reportlog("READ_WRITE_OP", "read: several blocks to read", {})
+        --reportlog("READ_WRITE_OP", "read: several blocks to read", {})
         data = string.sub(block, rem_start_offset+1)
 
         for i=start_block_idx+1,end_block_idx-1 do
-            reportlog("READ_WRITE_OP", "read: so far data is="..data, {})
+            --reportlog("READ_WRITE_OP", "read: so far data is="..data, {})
             block = get_block(inode.content[i]) or ""
             data = data..block
         end
@@ -638,7 +654,7 @@ read = function(self, filename, size, offset, inode)
         data = data..string.sub(block, 1, rem_end_offset)
     end
 
-    reportlog("READ_WRITE_OP", "read: finally data is="..data..", size of data="..string.len(data), {})
+    --reportlog("READ_WRITE_OP", "read: finally data is="..data..", size of data="..string.len(data), {})
 
     --local block = floor(offset/block_size) --JV: NOT NEEDED FOR THE MOMENT
     --local o = offset%block_size --JV: NOT NEEDED FOR THE MOMENT
@@ -662,13 +678,13 @@ read = function(self, filename, size, offset, inode)
     end --JV: NOT NEEDED FOR THE MOMENT
     --]]
 
-    --reportlog("READ_WRITE_OP", "read: for filename="..filename.." the full content of inode:", {inode_content=inode.content})
+    ----reportlog("READ_WRITE_OP", "read: for filename="..filename.." the full content of inode:", {inode_content=inode.content})
 
     --if size + offset < string.len(inode.content[1]) then -- JV: CREO QUE ESTO NO SE USA
     --local data = string.sub(inode.content[1], offset, (offset+size)) --JV: WATCH OUT WITH THE LOCAL STUFF... WHEN PUT INSIDE THE IF
     --end --JV: CORRESPONDS TO THE IF ABOVE
 
-    --reportlog("READ_WRITE_OP", "read: for filename="..filename.." returns", {data=data})
+    ----reportlog("READ_WRITE_OP", "read: for filename="..filename.." returns", {data=data})
 
     --return 0, tjoin(data,"") --JV: REMOVED FOR REPLACEMENT WITH DISTDB; data IS ALREADY A STRING
     return 0, data
@@ -676,11 +692,11 @@ end,
 
 write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITING
     --logs entrance
-    reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {buf=buf,offset=offset,inode=inode})
+    --reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {buf=buf,offset=offset,inode=inode})
 
 
     local inode = get_inode_from_filename(filename)
-    reportlog("READ_WRITE_OP", "write: inode retrieved", {inode=inode})
+    --reportlog("READ_WRITE_OP", "write: inode retrieved", {inode=inode})
     
     local orig_size = inode.meta.size
     local size = #buf
@@ -690,10 +706,10 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     local end_block_idx = math.floor((offset+size-1) / block_size)+1
     local rem_end_offset = ((offset+size-1) % block_size)
 
-    reportlog("READ_WRITE_OP", "write: orig_size="..orig_size..", offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
-    reportlog("READ_WRITE_OP", "write: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
+    --reportlog("READ_WRITE_OP", "write: orig_size="..orig_size..", offset="..offset..", size="..size..", start_block_idx="..start_block_idx, {})
+    --reportlog("READ_WRITE_OP", "write: rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset, {})
 
-    reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
+    --reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
 
     local block = nil
     local block_n = nil
@@ -708,44 +724,44 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         root_inode = get_inode(1)
     end
 
-    reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
+    --reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
 
-    reportlog("READ_WRITE_OP", "write: buf="..buf, {})
+    --reportlog("READ_WRITE_OP", "write: buf="..buf, {})
 
     for i=start_block_idx, end_block_idx do
-        reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
+        --reportlog("READ_WRITE_OP", "write: im in the for loop, i="..i, {})
         if inode.content[i] then
-            reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
+            --reportlog("READ_WRITE_OP", "write: block exists, so get the block", {})
             block_n = inode.content[i]
             block = get_block(inode.content[i])
         else
-            reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
-            reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
-            reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
+            --reportlog("READ_WRITE_OP", "write: block doesnt exists, so create the block", {})
+            --reportlog("READ_WRITE_OP", "write: root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+            --reportlog("READ_WRITE_OP", "write: greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
             root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
-            reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
+            --reportlog("READ_WRITE_OP", "write: greatest block number="..root_inode.meta.xattr.greatest_block_n, {})
             --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
             block_n = root_inode.meta.xattr.greatest_block_n
             block = ""
             table.insert(inode.content, block_n)
-            reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
+            --reportlog("READ_WRITE_OP", "write: new inode with block", {inode=inode})
         end
-        reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
-        reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
-        reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
+        --reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+        --reportlog("READ_WRITE_OP", "write: (#remaining_buf+block_offset)="..(#remaining_buf+block_offset), {})
+        --reportlog("READ_WRITE_OP", "write: block_size="..block_size, {})
         if (#remaining_buf+block_offset) > block_size then
-            reportlog("READ_WRITE_OP", "write: more than block size", {})
+            --reportlog("READ_WRITE_OP", "write: more than block size", {})
             to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
             remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
         else
-            reportlog("READ_WRITE_OP", "write: less than block size", {})
+            --reportlog("READ_WRITE_OP", "write: less than block size", {})
             to_write_in_block = remaining_buf
         end
-        reportlog("READ_WRITE_OP", "write: block=", {block=block})
-        reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
-        reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
+        --reportlog("READ_WRITE_OP", "write: block=", {block=block})
+        --reportlog("READ_WRITE_OP", "write: to_write_in_block="..to_write_in_block, {})
+        --reportlog("READ_WRITE_OP", "write: block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block, {})
         block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
-        reportlog("READ_WRITE_OP", "write: now block="..block, {})
+        --reportlog("READ_WRITE_OP", "write: now block="..block, {})
         block_offset = 0
         put_block(block_n, block)
     end
@@ -775,10 +791,10 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
 
         if end_block_idx > #inode.content then
             local root_inode = get_inode(1)
-            reportlog("READ_WRITE_OP", "write: new size is bigger", {})
+            --reportlog("READ_WRITE_OP", "write: new size is bigger", {})
             local orig_n_blocks = #inode.content
             for i=start_block_idx+1, orig_n_blocks do
-                reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+                --reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
                 block = string.sub(remaining_buf, 1, block_size)
                 put_block(inode.content[i], block)
                 remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
@@ -787,7 +803,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
             local block_n = nil
 
             for i=orig_n_blocks+1, end_block_idx-1 do
-                reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+                --reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
                 block = string.sub(remaining_buf, 1, block_size)
                 root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
                 --TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
@@ -806,7 +822,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
             
         else
             for i=start_block_idx+1,end_block_idx-1 do
-                reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
+                --reportlog("READ_WRITE_OP", "write: remaining_buf="..remaining_buf, {})
                 block = string.sub(remaining_buf, 1, block_size)
                 put_block(inode.content[i], block)
                 remaining_buf = string.sub(remaining_buf, block_size+1, -1) --TODO CHECK ABOUT +1
@@ -847,22 +863,22 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         end
     end --JV: NOT NEEDED FOR THE MOMENT
     
-    reportlog("READ_WRITE_OP", "write: CHECKPOINT1",{})
+    --reportlog("READ_WRITE_OP", "write: CHECKPOINT1",{})
     if not inode.content[1] then --JV: ADDED FOR REPLACEMENT WITH DISTDB
         inode.content[1] = "" --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("READ_WRITE_OP", "write: CHECKPOINT1a",{})
+        --reportlog("READ_WRITE_OP", "write: CHECKPOINT1a",{})
     end --JV: ADDED FOR REPLACEMENT WITH DISTDB
-    reportlog("READ_WRITE_OP", "write: CHECKPOINT2",{})
+    --reportlog("READ_WRITE_OP", "write: CHECKPOINT2",{})
     local old_content = inode.content[1] --JV: ADDED FOR REPLACEMENT WITH DISTDB
     local old_size = string.len(inode.content[1])
     if (offset+size) < old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
         inode.content[1] = string.sub(old_content, 1, offset)..buf..string.sub(old_content, (offset+size+1), -1) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("READ_WRITE_OP", "write: CHECKPOINT3a",{})
+        --reportlog("READ_WRITE_OP", "write: CHECKPOINT3a",{})
     else --JV: ADDED FOR REPLACEMENT WITH DISTDB
-        reportlog("READ_WRITE_OP", "write: CHECKPOINT3b",{})
+        --reportlog("READ_WRITE_OP", "write: CHECKPOINT3b",{})
         inode.content[1] = string.sub(old_content, 1, offset)..buf --JV: ADDED FOR REPLACEMENT WITH DISTDB
         if (offset+size) > old_size then --JV: ADDED FOR REPLACEMENT WITH DISTDB
-            reportlog("READ_WRITE_OP", "write: CHECKPOINT3c",{})
+            --reportlog("READ_WRITE_OP", "write: CHECKPOINT3c",{})
             inode.meta.size = offset+size --JV: ADDED FOR REPLACEMENT WITH DISTDB
             --inode.meta_changed = true --JV: ADDED FOR REPLACEMENT WITH DISTDB
         end --JV: ADDED FOR REPLACEMENT WITH DISTDB
@@ -880,7 +896,7 @@ open = function(self, filename, mode) --NOTE: MAYBE OPEN DOESN'T DO ANYTHING BEC
 --LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
 --TODO: CHECK ABOUT MODE AND USER RIGHTS.
     --logs entrance
-    reportlog("FILE_MISC_OP", "open: ENTERED for filename="..filename, {mode=mode})
+    --reportlog("FILE_MISC_OP", "open: ENTERED for filename="..filename, {mode=mode})
 
     local m = mode % 4
     local inode = get_inode_from_filename(filename)
@@ -896,24 +912,24 @@ end,
 
 release = function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MUCH SENSE
     --logs entrance
-    reportlog("FILE_MISC_OP", "release: ENTERED for filename="..filename, {inode=inode})
+    --reportlog("FILE_MISC_OP", "release: ENTERED for filename="..filename, {inode=inode})
 
     --[[
     inode.open = inode.open - 1
-    reportlog("_OP", "release: for filename="..filename, {inode_open=inode.open})
+    --reportlog("_OP", "release: for filename="..filename, {inode_open=inode.open})
     if inode.open < 1 then
-        reportlog("_OP", "release: open < 1", {})
+        --reportlog("_OP", "release: open < 1", {})
         if inode.changed then
-            reportlog("_OP", "release: gonna put", {})
+            --reportlog("_OP", "release: gonna put", {})
             local ok_put_inode = put_inode(inode.ino, inode)
         end
         if inode.meta_changed then
-            reportlog("_OP", "release: gonna put", {})
+            --reportlog("_OP", "release: gonna put", {})
             local ok_put_inode = put_inode(inode.ino, inode)
         end
-        reportlog("_OP", "release: meta_changed = nil", {})
+        --reportlog("_OP", "release: meta_changed = nil", {})
         inode.meta_changed = nil
-        reportlog("_OP", "release: changed = nil", {})
+        --reportlog("_OP", "release: changed = nil", {})
         inode.changed = nil
     end
     --]]
@@ -922,13 +938,13 @@ end,
 
 fgetattr = function(self, filename, inode, ...) --TODO: CHECK IF fgetattr IS USEFUL, IT IS! TODO: CHECK WITH filename
     --logs entrance
-    reportlog("FILE_MISC_OP", "fgetattr: ENTERED for filename="..filename, {inode=inode})
+    --reportlog("FILE_MISC_OP", "fgetattr: ENTERED for filename="..filename, {inode=inode})
     return get_attributes(filename)
 end,
 
 rmdir = function(self, filename)
     --logs entrance
-    reportlog("DIR_OP", "rmdir: ENTERED for filename="..filename, {})
+    --reportlog("DIR_OP", "rmdir: ENTERED for filename="..filename, {})
 
     local inode_n = get_inode_n(filename)
 
@@ -937,7 +953,7 @@ rmdir = function(self, filename)
 
         --local inode = get_inode_from_filename(filename)
         --TODO: CHECK WHAT HAPPENS WHEN TRYING TO ERASE A NON-EMPTY DIR
-        --reportlog("_OP", "rmdir: got inode", {inode, inode})
+        ----reportlog("_OP", "rmdir: got inode", {inode, inode})
 
         local parent = get_inode_from_filename(dir)
         parent.content[base] = nil
@@ -953,7 +969,7 @@ end,
 mkdir = function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
 --TODO: MERGE THESE CODES (MKDIR, MKNODE, CREATE) ON 1 FUNCTION
     --logs entrance
-    reportlog("DIR_OP", "mkdir: ENTERED for filename="..filename, {mode=mode})
+    --reportlog("DIR_OP", "mkdir: ENTERED for filename="..filename, {mode=mode})
 
     local inode = get_inode_from_filename(filename)
 
@@ -1007,7 +1023,7 @@ end,
 
 create = function(self, filename, mode, flag, ...)
     --logs entrance
-    reportlog("FILE_MISC_OP", "create: ENTERED for filename="..filename,{mode=mode,flag=flag})
+    --reportlog("FILE_MISC_OP", "create: ENTERED for filename="..filename,{mode=mode,flag=flag})
 
     local inode = get_inode_from_filename(filename)
 
@@ -1055,7 +1071,7 @@ end,
 
 flush = function(self, filename, inode)
     --logs entrance
-    reportlog("FILE_MISC_OP", "flush: ENTERED for filename="..filename, {inode=inode})
+    --reportlog("FILE_MISC_OP", "flush: ENTERED for filename="..filename, {inode=inode})
 
     if inode.changed then
         --TODO: CHECK WHAT TO DO HERE, IT WAS MNODE.FLUSH, AN EMPTY FUNCTION
@@ -1065,7 +1081,7 @@ end,
 
 readlink = function(self, filename)
     --logs entrance
-    reportlog("LINK_OP", "readlink: ENTERED for filename="..filename, {})
+    --reportlog("LINK_OP", "readlink: ENTERED for filename="..filename, {})
 
     local inode = get_inode_from_filename(filename)
     if inode then
@@ -1076,7 +1092,7 @@ end,
 
 symlink = function(self, from, to)
     --logs entrance
-    reportlog("LINK_OP", "symlink: ENTERED",{from=from,to=to})
+    --reportlog("LINK_OP", "symlink: ENTERED",{from=from,to=to})
 
     local to_dir, to_base = to:splitfilename()
     local to_parent = get_inode_from_filename(to_dir)
@@ -1088,7 +1104,7 @@ symlink = function(self, from, to)
         root_inode = get_inode(1)
     end
 
-    reportlog("LINK_OP", "symlink: root_inode retrieved",{root_inode=root_inode})
+    --reportlog("LINK_OP", "symlink: root_inode retrieved",{root_inode=root_inode})
 
     root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
     local greatest_ino = root_inode.meta.xattr.greatest_inode_n
@@ -1121,7 +1137,7 @@ end,
 
 rename = function(self, from, to)
     --logs entrance
-    reportlog("MV_CP_OP", "rename: ENTERED, from="..from..", to="..to, {})
+    --reportlog("MV_CP_OP", "rename: ENTERED, from="..from..", to="..to, {})
 
     if from == to then return 0 end
 
@@ -1129,7 +1145,7 @@ rename = function(self, from, to)
     
     if from_inode then
 
-        reportlog("MV_CP_OP", "rename: entered in IF", {from_inode=from_inode})
+        --reportlog("MV_CP_OP", "rename: entered in IF", {from_inode=from_inode})
         
         local from_dir, from_base = from:splitfilename()
         local to_dir, to_base = to:splitfilename()
@@ -1144,7 +1160,7 @@ rename = function(self, from, to)
         to_parent.content[to_base] = true
         from_parent.content[from_base] = nil
         
-        reportlog("MV_CP_OP", "rename: changes made", {to_parent=to_parent, from_parent=from_parent})
+        --reportlog("MV_CP_OP", "rename: changes made", {to_parent=to_parent, from_parent=from_parent})
         --TODO: CHECK IF IT IS A DIR
 
         --only if to and from are different (avoids writing on parent's inode twice, for the sake of efficiency)
@@ -1174,25 +1190,25 @@ end,
 
 link = function(self, from, to, ...)
     --logs entrance
-    reportlog("LINK_OP", "link: ENTERED, from="..from..", to="..to, {})
+    --reportlog("LINK_OP", "link: ENTERED, from="..from..", to="..to, {})
    
     if from == to then return 0 end
 
     local from_inode = get_inode_from_filename(from)
     
-    reportlog("LINK_OP", "link: from_inode", {from_inode=from_inode})
+    --reportlog("LINK_OP", "link: from_inode", {from_inode=from_inode})
 
     if from_inode then
-        reportlog("LINK_OP", "link: entered in IF", {})
+        --reportlog("LINK_OP", "link: entered in IF", {})
         local to_dir, to_base = to:splitfilename()
-        reportlog("LINK_OP", "link: to_dir="..to_dir..", to_base="..to_base, {})
+        --reportlog("LINK_OP", "link: to_dir="..to_dir..", to_base="..to_base, {})
         local to_parent = get_inode_from_filename(to_dir)
-        reportlog("LINK_OP", "link: to_parent", {to_parent=to_parent})
+        --reportlog("LINK_OP", "link: to_parent", {to_parent=to_parent})
         
         to_parent.content[to_base] = true
-        reportlog("LINK_OP", "link: added file in to_parent", {to_parent=to_parent})
+        --reportlog("LINK_OP", "link: added file in to_parent", {to_parent=to_parent})
         from_inode.meta.nlink = from_inode.meta.nlink + 1
-        reportlog("LINK_OP", "link: incremented nlink in from_inode", {from_inode=from_inode})
+        --reportlog("LINK_OP", "link: incremented nlink in from_inode", {from_inode=from_inode})
 
         --put the to_parent's inode, because the contents changed
         local ok_put_to_parent = put_inode(to_parent.meta.ino, to_parent)
@@ -1206,7 +1222,7 @@ end,
 
 unlink = function(self, filename, ...)
     --logs entrance
-    reportlog("LINK_OP", "unlink: ENTERED for filename="..filename, {})
+    --reportlog("LINK_OP", "unlink: ENTERED for filename="..filename, {})
 
     local inode = get_inode_from_filename(filename)
     
@@ -1214,15 +1230,15 @@ unlink = function(self, filename, ...)
         local dir, base = filename:splitfilename()
         local parent = get_inode_from_filename(dir)
 
-        reportlog("LINK_OP", "unlink: parent retrieved:", {parent=parent})
+        --reportlog("LINK_OP", "unlink: parent retrieved:", {parent=parent})
         
         parent.content[base] = nil
 
-        reportlog("LINK_OP", "unlink: link to file in parent removed", {parent=parent})
+        --reportlog("LINK_OP", "unlink: link to file in parent removed", {parent=parent})
 
         inode.meta.nlink = inode.meta.nlink - 1
 
-        reportlog("LINK_OP", "unlink: now inode has less links", {inode=inode})
+        --reportlog("LINK_OP", "unlink: now inode has less links", {inode=inode})
         
         --delete the file, because it's being unlinked
         local ok_delete_file = delete_file(filename)
@@ -1230,7 +1246,7 @@ unlink = function(self, filename, ...)
         local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
         --if the inode has no more links
         if inode.meta.nlink == 0 then
-            reportlog("LINK_OP", "unlink: i have to delete the inode too", {})
+            --reportlog("LINK_OP", "unlink: i have to delete the inode too", {})
             --delete the inode, since it's not linked anymore
             delete_inode(inode.meta.ino)
         else
@@ -1238,14 +1254,14 @@ unlink = function(self, filename, ...)
         end
         return 0
     else
-        reportlog("_OP", "unlink: ERROR no inode", {})
+        --reportlog("_OP", "unlink: ERROR no inode", {})
         return ENOENT
     end
 end,
 
 chown = function(self, filename, uid, gid)
     --logs entrance
-    reportlog("FILE_MISC_OP", "chown: ENTERED for filename="..filename..", uid="..uid..", gid="..gid, {})
+    --reportlog("FILE_MISC_OP", "chown: ENTERED for filename="..filename..", uid="..uid..", gid="..gid, {})
 
     local inode = get_inode_from_filename(filename)
     if inode then
@@ -1260,7 +1276,7 @@ end,
 
 chmod = function(self, filename, mode)
     --logs entrance
-    reportlog("FILE_MISC_OP", "chmod: ENTERED for filename="..filename, {mode=mode})
+    --reportlog("FILE_MISC_OP", "chmod: ENTERED for filename="..filename, {mode=mode})
 
     local inode = get_inode_from_filename(filename)
     if inode then
@@ -1274,7 +1290,7 @@ end,
 
 utime = function(self, filename, atime, mtime)
     --logs entrance
-    reportlog("FILE_MISC_OP", "utime: ENTERED for filename="..filename, {atime=atime,mtime=mtime})
+    --reportlog("FILE_MISC_OP", "utime: ENTERED for filename="..filename, {atime=atime,mtime=mtime})
 
     local inode = get_inode_from_filename(filename)
     
@@ -1289,41 +1305,41 @@ utime = function(self, filename, atime, mtime)
 end,
 ftruncate = function(self, filename, size, inode)
     --logs entrance
-    reportlog("FILE_MISC_OP", "ftruncate: ENTERED for filename="..filename, {size=size,inode=inode})
+    --reportlog("FILE_MISC_OP", "ftruncate: ENTERED for filename="..filename, {size=size,inode=inode})
     
     local orig_size = inode.meta.size
 
     local block_idx = math.floor((size - 1) / block_size) + 1
     local rem_offset = size % block_size
 
-    reportlog("FILE_MISC_OP", "ftruncate: orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset, {})
+    --reportlog("FILE_MISC_OP", "ftruncate: orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset, {})
         
     for i=#inode.content, block_idx+1,-1 do
-        reportlog("FILE_MISC_OP", "ftruncate: about to remove block number inode.content["..i.."]="..inode.content[i], {})
+        --reportlog("FILE_MISC_OP", "ftruncate: about to remove block number inode.content["..i.."]="..inode.content[i], {})
         local ok_delete_from_db_block = delete_block(inode.content[i])
         table.remove(inode.content, i)
     end
 
-    reportlog("FILE_MISC_OP", "ftruncate: about to change block number inode.content["..block_idx.."]="..inode.content[block_idx], {})
+    --reportlog("FILE_MISC_OP", "ftruncate: about to change block number inode.content["..block_idx.."]="..inode.content[block_idx], {})
 
     
 
     if rem_offset == 0 then
-        reportlog("FILE_MISC_OP", "truncate: last block must be empty, so we delete it", {})
+        --reportlog("FILE_MISC_OP", "truncate: last block must be empty, so we delete it", {})
         local ok_delete_from_db_block = delete_block(inode.content[block_idx])
         table.remove(inode.content, block_idx)
     else
-        reportlog("FILE_MISC_OP", "truncate: last block is not empty", {})
+        --reportlog("FILE_MISC_OP", "truncate: last block is not empty", {})
         local last_block = get_block(block_idx)
-        reportlog("FILE_MISC_OP", "truncate: it already has this="..last_block, {})
+        --reportlog("FILE_MISC_OP", "truncate: it already has this="..last_block, {})
         local write_in_last_block = string.sub(last_block, 1, rem_offset)
-        reportlog("FILE_MISC_OP", "truncate: and we change to this="..write_in_last_block, {})
+        --reportlog("FILE_MISC_OP", "truncate: and we change to this="..write_in_last_block, {})
         local ok_put_block = put_block(inode.content[block_idx], write_in_last_block)
     end
 
     inode.meta.size = size
 
-    reportlog("FILE_MISC_OP", "truncate: about to write inode", {})
+    --reportlog("FILE_MISC_OP", "truncate: about to write inode", {})
 
     local ok_put_inode = put_inode(inode.meta.ino, inode)
 
@@ -1332,11 +1348,11 @@ end,
 
 truncate = function(self, filename, size)
     --logs entrance
-    reportlog("FILE_MISC_OP", "truncate: ENTERED for filename="..filename, {size=size})
+    --reportlog("FILE_MISC_OP", "truncate: ENTERED for filename="..filename, {size=size})
     
     local inode = get_inode_from_filename(filename)
     
-    reportlog("FILE_MISC_OP", "truncate: inode was retrieved", {inode=inode})
+    --reportlog("FILE_MISC_OP", "truncate: inode was retrieved", {inode=inode})
 
     if inode then
 
@@ -1345,35 +1361,35 @@ truncate = function(self, filename, size)
         local block_idx = math.floor((size - 1) / block_size) + 1
         local rem_offset = size % block_size
 
-        reportlog("FILE_MISC_OP", "truncate: orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset, {})
+        --reportlog("FILE_MISC_OP", "truncate: orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset, {})
         
         for i=#inode.content, block_idx+1,-1 do
-            reportlog("FILE_MISC_OP", "truncate: about to remove block number inode.content["..i.."]="..inode.content[i], {})
+            --reportlog("FILE_MISC_OP", "truncate: about to remove block number inode.content["..i.."]="..inode.content[i], {})
             local ok_delete_from_db_block = delete_block(inode.content[i])
             table.remove(inode.content, i)
         end
 
         if block_idx > 0 then
-            reportlog("FILE_MISC_OP", "truncate: about to change block number inode.content["..block_idx.."]="..inode.content[block_idx], {})
+            --reportlog("FILE_MISC_OP", "truncate: about to change block number inode.content["..block_idx.."]="..inode.content[block_idx], {})
 
             if rem_offset == 0 then
-                reportlog("FILE_MISC_OP", "truncate: last block must be empty, so we delete it", {})
+                --reportlog("FILE_MISC_OP", "truncate: last block must be empty, so we delete it", {})
             
                 local ok_delete_from_db_block = delete_block(inode.content[block_idx])
                 table.remove(inode.content, block_idx)
             else
-                reportlog("FILE_MISC_OP", "truncate: last block is not empty", {})
+                --reportlog("FILE_MISC_OP", "truncate: last block is not empty", {})
                 local last_block = get_block(block_idx)
-                reportlog("FILE_MISC_OP", "truncate: it already has this="..last_block, {})
+                --reportlog("FILE_MISC_OP", "truncate: it already has this="..last_block, {})
                 local write_in_last_block = string.sub(last_block, 1, rem_offset)
-                reportlog("FILE_MISC_OP", "truncate: and we change to this="..write_in_last_block, {})
+                --reportlog("FILE_MISC_OP", "truncate: and we change to this="..write_in_last_block, {})
                 local ok_put_block = put_block(inode.content[block_idx], write_in_last_block)
             end
         end
 
         inode.meta.size = size
 
-        reportlog("FILE_MISC_OP", "truncate: about to write inode", {})
+        --reportlog("FILE_MISC_OP", "truncate: about to write inode", {})
 
         local ok_put_inode = put_inode(inode.meta.ino, inode)
 
@@ -1386,13 +1402,13 @@ truncate = function(self, filename, size)
 end,
 access = function(...)
     --logs entrance
-    reportlog("FILE_MISC_OP", "access: ENTERED",{})
+    --reportlog("FILE_MISC_OP", "access: ENTERED",{})
 
     return 0
 end,
 fsync = function(self, filename, isdatasync, inode)
     --logs entrance
-    reportlog("FILE_MISC_OP", "fsync: ENTERED for filename="..filename, {isdatasync=isdatasync,inode=inode})
+    --reportlog("FILE_MISC_OP", "fsync: ENTERED for filename="..filename, {isdatasync=isdatasync,inode=inode})
     --TODO: PA DESPUES
     --[[
     mnode.flush_node(inode, filename, false) 
@@ -1404,13 +1420,13 @@ fsync = function(self, filename, isdatasync, inode)
 end,
 fsyncdir = function(self, filename, isdatasync, inode)
     --logs entrance
-    reportlog("FILE_MISC_OP", "fsyncdir: ENTERED for filename="..filename, {isdatasync=isdatasync,inode=inode})
+    --reportlog("FILE_MISC_OP", "fsyncdir: ENTERED for filename="..filename, {isdatasync=isdatasync,inode=inode})
 
     return 0
 end,
 listxattr = function(self, filename, size)
     --logs entrance
-    reportlog("FILE_MISC_OP", "listxattr: ENTERED for filename="..filename, {size=size})
+    --reportlog("FILE_MISC_OP", "listxattr: ENTERED for filename="..filename, {size=size})
 
     local inode = get_inode_from_filename(filename)
     if inode then
@@ -1426,7 +1442,7 @@ end,
 
 removexattr = function(self, filename, name)
     --logs entrance
-    reportlog("FILE_MISC_OP", "removexattr: ENTERED for filename="..filename, {name=name})
+    --reportlog("FILE_MISC_OP", "removexattr: ENTERED for filename="..filename, {name=name})
 
     local inode = get_inode_from_filename(filename)
     if inode then
@@ -1440,7 +1456,7 @@ end,
 
 setxattr = function(self, filename, name, val, flags)
     --logs entrance
-    reportlog("FILE_MISC_OP", "setxattr: ENTERED for filename="..filename, {name=name,val=val,flags=flags})
+    --reportlog("FILE_MISC_OP", "setxattr: ENTERED for filename="..filename, {name=name,val=val,flags=flags})
 
     --string.hex = function(s) return s:gsub(".", function(c) return format("%02x", string.byte(c)) end) end
     local inode = get_inode_from_filename(filename)
@@ -1455,12 +1471,12 @@ end,
 
 getxattr = function(self, filename, name, size)
     --logs entrance
-    reportlog("FILE_MISC_OP", "getxattr: ENTERED for filename="..filename, {name=name,size=size})
+    --reportlog("FILE_MISC_OP", "getxattr: ENTERED for filename="..filename, {name=name,size=size})
 
     local inode = get_inode_from_filename(filename)
-    reportlog("FILE_MISC_OP", "getxattr: get_inode was successful", {inode=inode})
+    --reportlog("FILE_MISC_OP", "getxattr: get_inode was successful", {inode=inode})
     if inode then
-        reportlog("FILE_MISC_OP", "getxattr: retrieving xattr["..name.."]=", {inode_meta_xattr=inode.meta.xattr[name]})
+        --reportlog("FILE_MISC_OP", "getxattr: retrieving xattr["..name.."]=", {inode_meta_xattr=inode.meta.xattr[name]})
         return 0, inode.meta.xattr[name] or "" --not found is empty string
     else
         return ENOENT
@@ -1474,6 +1490,8 @@ statfs = function(self,filename)
 end
 }
 
+profiler.start()
+
 fuse_opt = { 'memfs', 'mnt', '-f', '-s', '-oallow_other'}
 
 if select('#', ...) < 2 then
@@ -1482,3 +1500,5 @@ if select('#', ...) < 2 then
 end
 
 fuse.main(memfs, {...})
+
+profiler.stop()
