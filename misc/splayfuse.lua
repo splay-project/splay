@@ -50,7 +50,7 @@ local consistency_type = "consistent"
 
 local to_report_t = {}
 
-local db_port = 13877
+local db_port = 13622
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -503,8 +503,8 @@ if not root_inode then
     put_inode(1, root_inode)
 end
 
---the memfs object, with all the FUSE methods
-local memfs = {
+--the splayfuse object, with all the FUSE methods
+local splayfuse = {
 
 pulse = function()
     --logs entrance
@@ -725,7 +725,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
 
     --reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
 
-    table.insert(to_report_t, "orig_size et al. calculated\telapsed_time="..(misc.time()-start_time).."\n")
+    table.insert(to_report_t, "orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
 
     local block = nil
     local block_n = nil
@@ -1522,13 +1522,13 @@ end
 
 --profiler.start()
 
-fuse_opt = { 'memfs', 'mnt', '-f', '-s', '-oallow_other', '-obig_writes'}
+fuse_opt = { 'splayfuse', 'mnt', '-f', '-s', '-oallow_other'}
 
 if select('#', ...) < 2 then
     print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
     os.exit(1)
 end
 
-fuse.main(memfs, {...})
+fuse.main(splayfuse, {...})
 
 --profiler.stop()

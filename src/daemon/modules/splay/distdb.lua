@@ -500,6 +500,11 @@ local forward_request = {
 
 --function handle_http_message: handles the incoming messages (HTTP requests)
 function handle_http_message(socket)
+
+	local start_time = misc.time()
+
+	local to_report_t = {misc.time()..":handle_http_message started\telapsed_time=0\n"}
+
 	--gets the client IP address and port from the socket
 	local client_ip, client_port = socket:getpeername()
 	--parses the HTTP message and extracts the HTTP method, the requested resource, etc.
@@ -509,6 +514,7 @@ function handle_http_message(socket)
 	--logs
 	----log:print(n.short_id..": resource is "..resource)
 	----log:print(n.short_id..": requesting for "..key)
+	table.insert(to_report_t, misc.time().."http message parsed\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--the value is the body if it exists
 	local value = body
@@ -519,6 +525,8 @@ function handle_http_message(socket)
 	--log:print(n.short_id..":handle_http_message: key="..shorten_id(key)..", value=", value)
 	--forwards the request to a node that is responsible for this key
 	local ok, answer = forward_request[method](type_of_transaction, key, value)
+
+	table.insert(to_report_t, misc.time().."method was performed\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--initializes the response body, code and content type as nil
 	local http_response_body = nil
@@ -545,6 +553,8 @@ function handle_http_message(socket)
 		end
 	end
 
+	table.insert(to_report_t, misc.time().."answer was encoded\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
 	--if there is a response body
@@ -559,8 +569,14 @@ function handle_http_message(socket)
 		http_response = http_response.."\r\n"
 	end
 
+	table.insert(to_report_t, misc.time().."all work is done, ready to send\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--send the HTTP response
 	socket:send(http_response)
+
+	table.insert(to_report_t, misc.time().."sent\telapsed_time="..(misc.time() - start_time))
+
+	log:print(table.concat(to_report_t))
 	--[[
 	if string.sub(header,1,8) == "OPTIONS" then
 		return handle_options_method(socket)
@@ -650,9 +666,17 @@ end
 function consistent_put(key, value)
 	--log:print(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--initializes boolean not_responsible
+	
+	local start_time = misc.time()
+
+	local to_report_t = {misc.time()..":consistent_put: started\telapsed_time=0\n"}
+
 	local not_responsible = true
 	--gets all responsibles for the key
 	local responsibles = get_responsibles(key)
+	
+	table.insert(to_report_t, misc.time().."consistent_put: responsible nodes are retrieved\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--for all responsibles
 	for i,v in ipairs(responsibles) do
 		--if the ID of the node matches, make not_responsible false
@@ -670,6 +694,8 @@ function consistent_put(key, value)
 	--initialize successful as false
 	local successful = false
 
+	table.insert(to_report_t, misc.time().."consistent_put: lookup to see if im responsible finished\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--TODO consider min replicas and neighborhood
 
 	--if the key is not being modified right now
@@ -686,6 +712,9 @@ function consistent_put(key, value)
 			else
 				put_local_result = put_local(key, value, n)
 			end
+
+			table.insert(to_report_t, misc.time().."consistent_put: local put done\telapsed_time="..(misc.time() - start_time).."\n")
+
 			--if the "put" action is successful
 			if put_local_result then
 				--increment answers
@@ -700,16 +729,22 @@ function consistent_put(key, value)
 		--for all responsibles
 		for i,v in ipairs(responsibles) do
 			--if node ID is not the same as the node itself (avoids RPC calling itself)
+			table.insert(to_report_t, misc.time().."consistent_put: starting the loop for "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 			if v.id ~= n.id then
 				--execute in parallel
 				events.thread(function()
 					--puts the key remotely on the others responsibles, if the put is successful
 					local rpc_ok, rpc_answer = nil, nil
+
+					table.insert(to_report_t, misc.time().."consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
+
 					if value == nil then
 						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
 					else
 						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
 					end
+
+					table.insert(to_report_t, misc.time().."consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
 
 					--if the RPC call was OK
 					if rpc_ok then
@@ -734,6 +769,11 @@ function consistent_put(key, value)
 		successful = events.wait(key, rpc_timeout) --TODO match this with settings
 		--unlocks the key
 		locked_keys[key] = nil
+
+		table.insert(to_report_t, misc.time().."consistent_put: finished\telapsed_time="..(misc.time() - start_time).."\n")
+
+		log:print(table.concat(to_report_t))
+
 	end
 	--returns the value of the variable successful
 	return successful
@@ -1305,25 +1345,40 @@ function put_local(key, value, src_write)
 	--adding a random waiting time to simulate different response times
 	--events.sleep(math.random(100)/100)
 	--if key is not a string, dont accept the transaction
+
+	local start_time = misc.time()
+
+	local to_report_t = {misc.time()..": put_local for "..n.id..": started\telapsed_time=0\n"}
+
 	if type(key) ~= "string" then
 		--log:print(n.short_id..":put_local: NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
+
+	table.insert(to_report_t, misc.time().."put_local for "..n.id..": check key type done\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
 		--log:print(n.short_id..":put_local: NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
 
+	table.insert(to_report_t, misc.time().."put_local for "..n.id..": check value type done\telapsed_time="..(misc.time() - start_time).."\n")
+
 	if not src_write then
 		src_write = {id="version"} --for compatibility with consistent_put
 	end
+
+	table.insert(to_report_t, misc.time().."put_local for "..n.id..": setting up src_write when there isnt done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
 	if not db_table[key] then
 		db_table[key] = {value=value, enabled=true, vector_clock={}}
 		db_table[key].vector_clock[src_write.id] = 1
 	else
+
+	table.insert(to_report_t, misc.time().."put_local for "..n.id..": creation of the vector clock done\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--else, replace the value and increase the version
 		db_table[key].value=value
 		if db_table[key].vector_clock[src_write.id] then
@@ -1334,10 +1389,18 @@ function put_local(key, value, src_write)
 		--TODO handle enabled
 		--TODO add timestamps
 	end
+
+	table.insert(to_report_t, misc.time().."put_local for "..n.id..": k,v record written\telapsed_time="..(misc.time() - start_time).."\n")
+
 	--log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", db_table[key].enabled)
 	for i,v in pairs(db_table[key].vector_clock) do
 		--log:print(n.short_id..":put_local: vector_clock=",i,v)
 	end
+
+	table.insert(to_report_t, misc.time().."put_local for "..n.id..": finished\telapsed_time="..(misc.time() - start_time).."\n")
+
+	log:print(table.concat(to_report_t))
+
 	return true
 end
 
