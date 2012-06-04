@@ -34,7 +34,7 @@ local ENOENT = -2
 local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
-local block_size = 32*1024
+local block_size = 256*1024
 local blank_block=("0"):rep(block_size)
 local open_mode={'rb','wb','rb+'}
 local log_domains = {
@@ -50,7 +50,7 @@ local consistency_type = "consistent"
 
 local to_report_t = {}
 
-local db_port = 13622
+local db_port = 13598
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -624,11 +624,16 @@ read = function(self, filename, size, offset, inode)
     --logs entrance
     --reportlog("READ_WRITE_OP", "read: ENTERED for filename="..filename..", size="..size..", offset="..offset, {inode=inode})
 
+    table.insert(to_report_t, "read: started\telapsed_time=0\n")
+    local start_time = misc.time()
+
     local inode = get_inode_from_filename(filename)
     --reportlog("DIR_OP", "readdir: inode retrieved", {inode=inode})
     if not inode then
         return 1
     end
+
+    table.insert(to_report_t, "read: inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
     local start_block_idx = math.floor(offset / block_size)+1
     local rem_start_offset = offset % block_size
@@ -640,25 +645,34 @@ read = function(self, filename, size, offset, inode)
 
     --reportlog("READ_WRITE_OP", "read: about to get block", {block_n = inode.content[start_block_idx]})
 
+    table.insert(to_report_t, "read: orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
+
     local block = get_block(inode.content[start_block_idx]) or ""
 
-    local data = nil
+    local data_t = {}
+
+    table.insert(to_report_t, "read: first block retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
     if start_block_idx == end_block_idx then
         --reportlog("READ_WRITE_OP", "read: just one block to read", {})
-        data = string.sub(block, rem_start_offset+1, rem_end_offset)
+        table.insert(data_t, string.sub(block, rem_start_offset+1, rem_end_offset))
     else
         --reportlog("READ_WRITE_OP", "read: several blocks to read", {})
-        data = string.sub(block, rem_start_offset+1)
+        table.insert(data_t, string.sub(block, rem_start_offset+1))
 
         for i=start_block_idx+1,end_block_idx-1 do
             --reportlog("READ_WRITE_OP", "read: so far data is="..data, {})
+        
+            table.insert(to_report_t, "read: getting new block\telapsed_time="..(misc.time()-start_time).."\n")
+        
             block = get_block(inode.content[i]) or ""
-            data = data..block
+            table.insert(data_t, block)
         end
 
+        table.insert(to_report_t, "read: getting new block\telapsed_time="..(misc.time()-start_time).."\n")
+
         block = get_block(inode.content[end_block_idx]) or ""
-        data = data..string.sub(block, 1, rem_end_offset)
+        table.insert(data_t, string.sub(block, 1, rem_end_offset))
     end
 
     --reportlog("READ_WRITE_OP", "read: finally data is="..data..", size of data="..string.len(data), {})
@@ -694,7 +708,12 @@ read = function(self, filename, size, offset, inode)
     ----reportlog("READ_WRITE_OP", "read: for filename="..filename.." returns", {data=data})
 
     --return 0, tjoin(data,"") --JV: REMOVED FOR REPLACEMENT WITH DISTDB; data IS ALREADY A STRING
-    return 0, data
+    
+    table.insert(to_report_t, "read: finished\telapsed_time="..(misc.time()-start_time).."\n")
+
+    fast_reportlog(table.concat(to_report_t))
+
+    return 0, table.concat(data_t)
 end,
 
 write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITING
@@ -703,13 +722,13 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     --logs entrance without reporting buf
     --reportlog("READ_WRITE_OP", "write: ENTERED for filename="..filename, {offset=offset,inode=inode})
 
-    table.insert(to_report_t, "write started\telapsed_time=0\n")
+    table.insert(to_report_t, "write: started\telapsed_time=0\n")
     local start_time = misc.time()
 
     local inode = get_inode_from_filename(filename)
 
     --reportlog("READ_WRITE_OP", "write: inode retrieved", {inode=inode})
-    table.insert(to_report_t, "inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
+    table.insert(to_report_t, "write: inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
     
     local orig_size = inode.meta.size
     local size = #buf
@@ -725,7 +744,7 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
 
     --reportlog("READ_WRITE_OP", "write: about to get block", {block_n = inode.content[start_block_idx]})
 
-    table.insert(to_report_t, "orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
+    table.insert(to_report_t, "write: orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
 
     local block = nil
     local block_n = nil
@@ -736,13 +755,13 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
     local root_inode = nil
     local remaining_buf = buf
 
-    table.insert(to_report_t, "calculated more stuff\telapsed_time="..(misc.time()-start_time).."\n")
+    table.insert(to_report_t, "write: calculated more stuff\telapsed_time="..(misc.time()-start_time).."\n")
 
     if blocks_created then
         root_inode = get_inode(1)
     end
 
-    table.insert(to_report_t, "root might have been retrieved\telapsed_time="..(misc.time()-start_time).."\n")
+    table.insert(to_report_t, "write: root might have been retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
     --reportlog("READ_WRITE_OP", "write: blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
 
@@ -783,18 +802,18 @@ write = function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRI
         block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
         --reportlog("READ_WRITE_OP", "write: now block="..block, {})
         block_offset = 0
-        table.insert(to_report_t, "before putting the block\telapsed_time="..(misc.time()-start_time).."\n")
+        table.insert(to_report_t, "write: before putting the block\telapsed_time="..(misc.time()-start_time).."\n")
         put_block(block_n, block)
-        table.insert(to_report_t, "timestamp at the end of each cycle\telapsed_time="..(misc.time()-start_time).."\n")
+        table.insert(to_report_t, "write: timestamp at the end of each cycle\telapsed_time="..(misc.time()-start_time).."\n")
     end
 
     if size_changed then
         inode.meta.size = offset+size
         put_inode(inode.meta.ino, inode)
-        table.insert(to_report_t, "inode was written\telapsed_time="..(misc.time()-start_time).."\n")
+        table.insert(to_report_t, "write: inode was written\telapsed_time="..(misc.time()-start_time).."\n")
         if blocks_created then
             put_inode(1, root_inode)
-            table.insert(to_report_t, "root was written\telapsed_time="..(misc.time()-start_time).."\n")
+            table.insert(to_report_t, "write: root was written\telapsed_time="..(misc.time()-start_time).."\n")
         end
     end
 
