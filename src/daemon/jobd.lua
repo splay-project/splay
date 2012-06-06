@@ -266,6 +266,8 @@ sandbox.protect_env({
 			"splay.socket_events",
 			"splay.luasocket",
 			"splay.async_dns",
+			"splay.lbinenc",
+			"luabins",
 			native_from_job
 		},
 		inits = {}
