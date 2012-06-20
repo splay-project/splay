@@ -46,7 +46,7 @@ local consistency_type = "consistent"
 
 local to_report_t = {}
 
-local db_port = 17094
+local db_port = 14407
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
