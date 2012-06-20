@@ -1,5 +1,10 @@
 #!/usr/bin/env lua
 --[[
+    SplayFUSE: Distributed FS in FUSE using the LUA bindings
+    Copyright 2011-2012 José Valerio (University of Neuchâtel)
+
+    Based on:
+    
     Memory FS in FUSE using the lua binding
     Copyright 2007 (C) gary ng <linux@garyng.com>
 
@@ -409,14 +414,11 @@ function delete_inode(inode_n)
     --logs entrance
     reportlog("FILE_INODE_OP", "delete_inode: ENTERED", {})
     --reportlog("FILE_INODE_OP", "delete_inode: ENTERED for inode_n="..inode_n, {})
-    
-    --[[
+        
     for i,v in ipairs(inode.content) do
         delete_from_db("block:"..v) --TODO: NOT CHECKING IF SUCCESSFUL
     end
-    --]]
-
-    
+        
     local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
 
     if not ok_delete_from_db_inode then

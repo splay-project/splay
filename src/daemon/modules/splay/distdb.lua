@@ -102,6 +102,11 @@ local prop_ids = {}
 --paxos_max_retries is the maximum number of times a Proposer can try a Proposal
 local paxos_max_retries = 5 --TODO maybe this should match with some distdb settings object
 
+--Testers:
+local test_delay = false
+local test_fail = false
+local test_wrong_node = false
+
 
 --LOCAL FUNCTIONS
 
@@ -320,8 +325,11 @@ function receive_gossip(message, neighbor_about)
 		--else, it removes it from the neighbordhood table
 		remove_node_from_neighborhood(neighbor_about_pos)
 	end
-	--sleep for a random time between 0 and 2sec
-	--events.sleep(math.random(100)/50)
+	
+	if test_delay then
+		--sleep for a random time between 0 and 2sec
+		events.sleep(math.random(100)/50)
+	end
 
 	--forward the gossip to the previous node
 	events.thread(function()
@@ -460,13 +468,15 @@ function handle_put(type_of_transaction, key, value) --TODO check about setting 
 		chosen_node = responsibles[chosen_node_id]
 	end
 	----log:print(n.short_id..":handle_put: Chosen node="..chosen_node.short_id)
-	--[[TESTING WRONG NODE
-	if math.random(5) == 1 then
-		local new_node_id = math.random(#job.nodes)
-		chosen_node = job.nodes[new_node_id]
-		--log:print(n.short_id..": Chosen node changed")
+	--Testing wrong node
+	if test_wrong_node then
+		if math.random(5) == 1 then
+			local new_node_id = math.random(#job.nodes)
+			chosen_node = job.nodes[new_node_id]
+			log:print(n.short_id..": Chosen node changed")
+		end
 	end
-	]]--
+
 	--log:print()
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_put"
@@ -1173,13 +1183,19 @@ end
 
 function receive_paxos_proposal(prop_id, key)
 	--log:print(n.short_id..":receive_paxos_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
-	--adding a random failure to simulate failed local transactions
-	if math.random(5) == 1 then
-		log:print("receive_paxos_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
-		return false
+	
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(5) == 1 then
+			log:print("receive_paxos_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
+			return false
+		end
 	end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print("receive_paxos_proposal: NOT accepting Propose for key, wrong key type")
@@ -1201,8 +1217,12 @@ end
 
 function receive_paxos_accept(prop_id, peers, value, key)
 	--log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		log:print(" NOT accepting Accept! wrong key type")
@@ -1253,13 +1273,20 @@ end
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
 function receive_proposal(prop_id, key)
 	--log:print(n.short_id..":receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
-	--adding a random failure to simulate failed local transactions
-	if math.random(5) == 1 then
-		--log:print(n.short_id..":receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
-		return false
+	
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(5) == 1 then
+			log:print(n.short_id..":receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
+			return false
+		end
 	end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		--log:print(n.short_id..":receive_proposal: NOT accepting Propose for key, wrong key type")
@@ -1282,8 +1309,12 @@ end
 --function receive_accept: receives and answers to a "Accept!" message, used in Paxos
 function receive_accept(prop_id, value, key)
 	--log:print(n.short_id..":receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		--log:print(n.short_id..": NOT accepting Accept! wrong key type")
@@ -1337,19 +1368,25 @@ end
 function put_local(key, value, src_write)
 	--log:print(n.short_id..":put_local: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--TODO how to check if the source node is valid?
-	--adding a random failure to simulate failed local transactions
-	--if math.random(5) == 1 then
-	--	--log:print(n.short_id..": NOT writing key: "..key)
-	--	return false, "404"
-	--end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
-	--if key is not a string, dont accept the transaction
+	
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(5) == 1 then
+			log:print(n.short_id..": NOT writing key: "..key)
+			return false, "404"
+		end
+	end
+
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
 
 	local start_time = misc.time()
 
 	local to_report_t = {misc.time()..": put_local for "..n.id..": started\telapsed_time=0\n"}
 
+	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		--log:print(n.short_id..":put_local: NOT writing key, wrong key type")
 		return false, "wrong key type"
@@ -1408,13 +1445,20 @@ end
 function delete_local(key, src_write) --TODO: Consider this fucking src_write and if the data is ever deleted NOTE: enabled is a field meant to handle this
 	--log:print(n.short_id..":delete_local: ENTERED, for key="..shorten_id(key))
 	--TODO how to check if the source node is valid?
-	--adding a random failure to simulate failed local transactions
-	--if math.random(5) == 1 then
-	--	--log:print(n.short_id..": NOT writing key: "..key)
-	--	return false, "404"
-	--end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(5) == 1 then
+			log:print(n.short_id..": NOT writing key: "..key)
+			return false, "404"
+		end
+	end
+
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		--log:print(n.short_id..":delete_local: NOT writing key, wrong key type")
@@ -1433,12 +1477,18 @@ end
 --function get_local: returns v from a k,v pair.
 function get_local(key)
 	--log:print(n.short_id..":get_local: ENTERED, for key="..shorten_id(key))
-	--adding a random failure to simulate failed local transactions
-	--if math.random(10) == 1 then
-	--	return nil
-	--end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(10) == 1 then
+			return nil
+		end
+	end
+
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	return db_table[key]
 end
 

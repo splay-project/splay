@@ -33,6 +33,10 @@ local events	= require"splay.events"
 --for logging
 local log = require"splay.log"
 
+--Testers:
+local test_delay = false
+local test_fail = false
+
 
 --REQUIRED FUNCTIONS AND OBJECTS
 
@@ -285,13 +289,19 @@ end
 --function receive_proposal: receives and answers to a "Propose" message, used in Paxos
 function receive_proposal(prop_id, key)
 	l_o:print("receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
-	--adding a random failure to simulate failed local transactions
-	--if math.random(5) == 1 then
-		--l_o:print("receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
-		--return false
-	--end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(5) == 1 then
+			l_o:print("receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
+			return false
+		end
+	end
+
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:print("receive_proposal: NOT accepting Propose for key, wrong key type")
@@ -314,8 +324,12 @@ end
 --function receive_accept: receives and answers to a "Accept!" message, used in Paxos
 function receive_accept(prop_id, peers, value, key)
 	l_o:print("receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:print(" NOT accepting Accept! wrong key type")
@@ -351,13 +365,20 @@ end
 --to be replaced with app function
 function receive_learn(value, key)
 	l_o:print("receive_learn: ENTERED, for key="..shorten_id(key)..", value="..value)
-	--adding a random failure to simulate failed local transactions
-	--if math.random(5) == 1 then
-	--	l_o:print(n.short_id..": NOT writing key: "..key)
-	--	return false, "404"
-	--end
-	--adding a random waiting time to simulate different response times
-	--events.sleep(math.random(100)/100)
+	
+	if test_fail then
+		--adding a random failure to simulate failed local transactions
+		if math.random(5) == 1 then
+			l_o:print(n.short_id..": NOT writing key: "..key)
+			return false, "404"
+		end
+	end
+	
+	if test_delay then
+		--adding a random waiting time to simulate different response times
+		events.sleep(math.random(100)/100)
+	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:print("receive_learn: NOT writing key, wrong key type")
