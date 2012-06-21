@@ -268,6 +268,7 @@ sandbox.protect_env({
 			"splay.async_dns",
 			"splay.lbinenc",
 			"luabins",
+			"splay.restricted_db",
 			native_from_job
 		},
 		inits = {}

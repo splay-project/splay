@@ -30,6 +30,8 @@ Provides a sandboxed version of the Kyoto Cabinet DB v2.24
 permitted APIs:
 
 db.open(table_name, mode) --mode: hash, tree
+db.exists(table_name)
+db.check(table_name, key)
 db.size(table_name)
 db.remove(table_name)
 db.get(table_name, key)
@@ -155,6 +157,10 @@ end
 
 function exists(table_name)
 	if dbs[table_name] then return true else return false end
+end
+
+function check(table_name, key)
+	if not dbs[table_name] then return -1 else return dbs[table_name]:check(key) end
 end
 
 function size(table_name)

@@ -42,6 +42,63 @@ local events	= require"splay.events" --TODO look if the use of splay.events fits
 local serializer	= require"splay.lbinenc"
 local paxos	= require"splay.paxos"
 
+local USE_KYOTO = false
+
+local local_db = nil
+local dbs = nil
+
+
+if USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
+	--for local db handling, when using kyoto
+	local_db = require"splay.restricted_db"
+else
+	--for local db handling, when using memory-based db (a simple table): dbs and local_db
+	local_db = {
+		init = function(settings)
+			dbs = {}
+		end,
+
+		open = function(table_name)
+			dbs[table_name] = {}
+		end,
+
+		get = function(table_name, key)
+			if not dbs[table_name] then return nil end
+			return dbs[table_name][key]
+		end,
+
+		set = function(table_name, key, value)
+			if dbs[table_name] then
+				dbs[table_name][key] = value
+			end
+		end,
+
+		remove = function(table_name, key)
+			if dbs[table_name] then
+				dbs[table_name][key] = nil
+			end
+		end,
+
+		exists = function(table_name)
+			if dbs[table_name] then return true else return false end
+		end,
+
+		check = function(table_name, key)
+			if not dbs[table_name] then
+				return -1
+			end
+			if not dbs[table_name][key] then
+				return -1
+			end
+			return 0
+		end,
+
+		close = function(table_name)
+			dbs[table_name] = nil
+		end
+	}
+end
+
 
 --REQUIRED FUNCTIONS AND OBJECTS
 
@@ -69,10 +126,9 @@ _VERSION     = "0.99.0"
 
 --LOCAL VARIABLES
 
---db_table holds all records that are locally handled by the node
-local db_table = {}
---locked_keys contains all the keys that are being modified, thus are locked
+--locked_keys contains all the keys that are being modified, thus are locked; stored in RAM, i don't think there is need to store in disk - not so big
 local locked_keys = {}
+
 --n_replicas is the number of nodes that store a k,v record
 local n_replicas = 0 --TODO maybe this should match with some distdb settings object
 --min_replicas_write is the minimum number of nodes that must write a k,v to be considered
@@ -617,7 +673,9 @@ function init(job)
 		net.server(http_server_port, handle_http_message)
 
 		--initializes db_table
-		db_table = {}
+		local_db.init()
+		local_db.open(db_table)
+
 		--initializes the variable holding the number of replicas
 		n_replicas = 5 --TODO this should be configurable
 		min_replicas_write = 3 --TODO this should be configurable
@@ -1203,9 +1261,10 @@ function receive_paxos_proposal(prop_id, key)
 	end
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	if not db_table[key] then
-		db_table[key] = {enabled=true, vector_clock={}} --check how to make compatible with vector_clock
+	if local_db.check(db_table, key) ~= -1 then
+		local_db.set(db_table, key, {enabled=true, vector_clock={}}) --check how to make compatible with vector_clock
 	--if it exists
+	--AQUIMEQUEDEEE
 	elseif db_table[key].prop_id and db_table[key].prop_id >= prop_id then
 		--TODO maybe to send the value on a negative answer is not necessary
 		return false, db_table[key].prop_id, db_table[key]
