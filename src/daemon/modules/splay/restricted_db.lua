@@ -57,6 +57,7 @@ local kc = require"kyotocabinet"
 local io = require"io"
 local crypto = require"crypto"
 local evp = crypto.evp
+local log = require"splay.log"
 --local rio = require"splay.restricted_io" NOT FOR THE MOMENT
 
 module("splay.restricted_db")
@@ -65,6 +66,8 @@ _COPYRIGHT   = "Copyright 2010 José Valerio (University of Neuchâtel)"
 _DESCRIPTION = "Restricted DB"
 _VERSION     = 0.1
 
+--[[ DEBUG ]]--
+l_o = log.new(1, "[".._NAME.."]")
 
 --TODO
 
@@ -78,12 +81,14 @@ local prefix = "pdb_"
 --[[ Init ]]--
 
 local init_done = false
-function init(settings)
+function init(directory)
 	if not init_done then
 		init_done = true
-		if not settings then return false, "no settings" end
+		if not directory then l_o:debug("no directory") end
 
-		local l_dir = settings.directory
+		l_o:debug("directory="..directory)
+
+		local l_dir = directory
 		if not l_dir then
 			return false, "no dir"
 		end
@@ -96,15 +101,14 @@ function init(settings)
 			return false, "dir must not end with a /"
 		end
 
-		local f = io.open(l_dir, "r")
+		local f = io.open(l_dir, "r") --ESTE ES EL PEO, AQUI ME QUEDE. NO PUEDE ABRIRLO PORQUE YA RESTRICTED_IO LO ABRIO
 
 		if f then -- Dir is OK
 			dir = l_dir
 		end
 		--TODO possible initialization of variables
-		return true
 	else
-		return false, "init() already called"
+		l_o:debug("init() already called")
 	end
 end
 
@@ -122,9 +126,10 @@ function open(table_name, mode) --mode: hash, tree
 	print(rio.stats())
 	print("restricted_io limits")
 	print(rio.limits())
-	]]
+	--]]
 	local d = evp.new("md5")
 	local dbf_name = prefix..d:digest(table_name)
+	l_o:debug("creating DB="..dir.."/"..dbf_name)
 	dbs[table_name] = kc.DB:new()
 	if mode == "tree" then
 		--dbs[table_name]:open(dir.."/"..dbf_name..".kct", flags)

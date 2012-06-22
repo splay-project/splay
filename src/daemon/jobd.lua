@@ -156,7 +156,7 @@ print("", "max "..job.disk.max_files.." files")
 print("", "max "..job.disk.max_file_descriptors.." file descriptors")
 print("", "max "..job.disk.max_size.." size in bytes")
 
-print("", "lib directoy ".. job.disk.lib_directory)
+print("", "lib directory ".. job.disk.lib_directory)
 print("", "cpath : "..package.cpath)
 print("Mem "..job.max_mem.." bytes of memory")
 print("Network:")
@@ -269,9 +269,10 @@ sandbox.protect_env({
 			"splay.lbinenc",
 			"luabins",
 			"splay.restricted_db",
+			"kyotocabinet",
 			native_from_job
 		},
-		inits = {}
+		inits = {["splay.restricted_db"]=job.disk.directory}
 	})
 
 collectgarbage()

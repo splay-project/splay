@@ -74,7 +74,7 @@ _DESCRIPTION = "Sandbox"
 _VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+l_o = log.new(1, "[".._NAME.."]") --JV Changed from 3 (default)
 
 --[[ CODE ]]--
 

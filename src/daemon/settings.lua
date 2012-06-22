@@ -39,14 +39,14 @@ splayd.settings.protocol = "grid"
 
 -- all sizes are in bytes
 splayd.settings.job.max_number = 16
-splayd.settings.job.max_mem = 12 * 1024 * 1024 -- 12 Mo
-splayd.settings.job.disk.max_size = 1024 * 1024 * 1024 -- 1 Go
+splayd.settings.job.max_mem = 64 * 1024 * 1024 -- 64 MiB
+splayd.settings.job.disk.max_size = 1024 * 1024 * 1024 -- 1 GiB
 splayd.settings.job.disk.max_files = 1024
 splayd.settings.job.disk.max_file_descriptors = 64
 splayd.settings.job.network.max_send = 1024 * 1024 * 1024
 splayd.settings.job.network.max_receive = 1024 * 1024 * 1024
 splayd.settings.job.network.max_sockets = 64
-splayd.settings.job.network.max_ports = 2
+splayd.settings.job.network.max_ports = 10
 splayd.settings.job.network.start_port = 22000
 splayd.settings.job.network.end_port = 32000
 
