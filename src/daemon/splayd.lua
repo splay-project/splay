@@ -92,6 +92,7 @@ function init_job_dir(dir)
 	return true
 end
 
+--JV: PROBABLY NOT NEEDED
 function init_job_lib_dir(dir)
 	if string.sub(dir, #dir, #dir) == "/" then
 		print("Job directory must not end with a /")
@@ -99,6 +100,7 @@ function init_job_lib_dir(dir)
 	end
 	prepare_dir(dir)
 end
+
 --[[ Common functions ]]--
 
 -- called after a fork
@@ -526,6 +528,10 @@ function register(so)
 		assert(so:send("DEPENDENCIES NOT OK"))
 		return
 	end
+
+	job.disk.db_directory = job.disk.directory.."/".."db" --JV: added for restricted_db
+	splay.mkdir(job.disk.db_directory) --JV: added for restricted_db
+
 	job.status = "waiting"
 
 	-- We give the blacklist to the job.

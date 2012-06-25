@@ -89,7 +89,11 @@ function init(directory)
 		l_o:debug("directory="..directory)
 
 		local l_dir = directory
+
+		l_o:debug("l_dir="..l_dir)
+
 		if not l_dir then
+			l_o:debug("l_dir=nil, no dir")
 			return false, "no dir"
 		end
 
@@ -101,11 +105,17 @@ function init(directory)
 			return false, "dir must not end with a /"
 		end
 
-		local f = io.open(l_dir, "r") --ESTE ES EL PEO, AQUI ME QUEDE. NO PUEDE ABRIRLO PORQUE YA RESTRICTED_IO LO ABRIO
-
+		--[[ TODO: HOW TO CHECK L_DIR
+		local f, error_msg1 = io.open(l_dir, "r")
+		
 		if f then -- Dir is OK
+			l_o:debug("dir is OK")
 			dir = l_dir
+		else
+			l_o:debug("dir is not OK:"..error_msg1)
 		end
+		--]]
+		dir = l_dir
 		--TODO possible initialization of variables
 	else
 		l_o:debug("init() already called")
