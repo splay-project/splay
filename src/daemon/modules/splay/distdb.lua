@@ -1261,17 +1261,21 @@ function receive_paxos_proposal(prop_id, key)
 	end
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	if local_db.check(db_table, key) ~= -1 then
+	local kv_record = local_db.get(db_table, key)
+
+	if not kv_record then
 		local_db.set(db_table, key, {enabled=true, vector_clock={}}) --check how to make compatible with vector_clock
-	--if it exists
-	--AQUIMEQUEDEEE
-	elseif db_table[key].prop_id and db_table[key].prop_id >= prop_id then
+	--if it exists and if prop_id is bigger than the proposed
+	elseif kv_record.prop_id and kv_record.prop_id >= prop_id then
 		--TODO maybe to send the value on a negative answer is not necessary
-		return false, db_table[key].prop_id, db_table[key]
+		return false, kv_record.prop_id, kv_record --TODO: CHECK IF I CAN JUST PUT THE VALUE
 	end
-	local old_prop_id = db_table[key].prop_id
-	db_table[key].prop_id = prop_id
-	return true, old_prop_id, db_table[key]
+	local old_prop_id = kv_record.prop_id
+	kv_record.prop_id = prop_id
+
+	local_db.set(db_table, key, kv_record)
+	
+	return true, old_prop_id, kv_record
 end
 
 function receive_paxos_accept(prop_id, peers, value, key)
@@ -1289,23 +1293,25 @@ function receive_paxos_accept(prop_id, peers, value, key)
 	end
 
 	--if the k,v pair doesnt exist
-	if not db_table[key] then
+	local kv_record = local_db.get(db_table, key)
+
+	if not kv_record then
 		--BIZARRE: because this is not meant to happen (an Accept comes after a Propose, and a record for the key
 		--is always created at a Propose)
 		log:print("receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
 		return false, "BIZARRE! wrong key, key does not exist"
 	--if it exists, and the locally stored prop_id is bigger than the proposed prop_id
-	elseif db_table[key].prop_id > prop_id then
+	elseif kv_record.prop_id > prop_id then
 		--reject the Accept! message
 		log:print("receive_accept: REJECTED, higher prop_id")
 		return false, "higher prop_id"
 	--if the locally stored prop_id is smaller than the proposed prop_id
-	elseif db_table[key].prop_id < prop_id then
+	elseif kv_record.prop_id < prop_id then
 		--BIZARRE: again, Accept comes after Propose, and a later Propose can only increase the prop_id
 		log:print("receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
-	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", db_table[key].enabled, "propID="..prop_id)
+	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", kv_record.enabled, "propID="..prop_id)
 	for i,v in ipairs(peers) do
 		if v.id == n.id then
 			events.thread(function()
@@ -1328,100 +1334,6 @@ end
 
 
 --BACK-END FUNCTIONS
-
---function receive_proposal: receives and answers to a "Propose" message, used in Paxos
-function receive_proposal(prop_id, key)
-	--log:print(n.short_id..":receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
-	
-	if test_fail then
-		--adding a random failure to simulate failed local transactions
-		if math.random(5) == 1 then
-			log:print(n.short_id..":receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
-			return false
-		end
-	end
-	
-	if test_delay then
-		--adding a random waiting time to simulate different response times
-		events.sleep(math.random(100)/100)
-	end
-
-	--if key is not a string, dont accept the transaction
-	if type(key) ~= "string" then
-		--log:print(n.short_id..":receive_proposal: NOT accepting Propose for key, wrong key type")
-		return false, "wrong key type"
-	end
-
-	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	if not db_table[key] then
-		db_table[key] = {enabled=true, vector_clock={}} --check how to make compatible with vector_clock
-	--if it exists
-	elseif db_table[key].prop_id and db_table[key].prop_id >= prop_id then
-		--TODO maybe to send the value on a negative answer is not necessary
-		return false, db_table[key].prop_id, db_table[key]
-	end
-	local old_prop_id = db_table[key].prop_id
-	db_table[key].prop_id = prop_id
-	return true, old_prop_id, db_table[key]
-end
-
---function receive_accept: receives and answers to a "Accept!" message, used in Paxos
-function receive_accept(prop_id, value, key)
-	--log:print(n.short_id..":receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
-	
-	if test_delay then
-		--adding a random waiting time to simulate different response times
-		events.sleep(math.random(100)/100)
-	end
-
-	--if key is not a string, dont accept the transaction
-	if type(key) ~= "string" then
-		--log:print(n.short_id..": NOT accepting Accept! wrong key type")
-		return false, "wrong key type"
-	end
-
-	--if the k,v pair doesnt exist
-	if not db_table[key] then
-		--BIZARRE: because this is not meant to happen (an Accept comes after a Propose, and a record for the key
-		--is always created at a Propose)
-		--log:print(n.short_id..":receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
-		return false, "BIZARRE! wrong key, key does not exist"
-	--if it exists, and the locally stored prop_id is bigger than the proposed prop_id
-	elseif db_table[key].prop_id > prop_id then
-		--reject the Accept! message
-		--log:print(n.short_id..":receive_accept: REJECTED, higher prop_id")
-		return false, "higher prop_id"
-	--if the locally stored prop_id is smaller than the proposed prop_id
-	elseif db_table[key].prop_id < prop_id then
-		--BIZARRE: again, Accept comes after Propose, and a later Propose can only increase the prop_id
-		--log:print(n.short_id..":receive_accept: BIZARRE! lower prop_id")
-		return false, "BIZARRE! lower prop_id"
-	end
-	--log:print(n.short_id..":receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", db_table[key].enabled, "propID="..prop_id)
-	local responsibles = get_responsibles(key)
-	for i,v in ipairs(responsibles) do
-		if v.id == n.id then
-			events.thread(function()
-				if value == nil then
-					delete_local(key)
-				else
-					put_local(key, value)
-				end
-			end)
-		else
-			--Normally this will be replaced in order to not make a WRITE in RAM/Disk everytime an Acceptor
-			--sends put_local to a Learner
-			events.thread(function()
-				if value == nil then
-					rpc.call(v, {"distdb.delete_local", key})
-				else
-					rpc.call(v, {"distdb.put_local", key, value})
-				end
-			end)
-		end
-	end
-	return true
-end
 
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
 function put_local(key, value, src_write)
@@ -1468,19 +1380,21 @@ function put_local(key, value, src_write)
 	table.insert(to_report_t, misc.time().."put_local for "..n.id..": setting up src_write when there isnt done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	if not db_table[key] then
-		db_table[key] = {value=value, enabled=true, vector_clock={}}
-		db_table[key].vector_clock[src_write.id] = 1
+	local kv_record = local_db.get(db_table, key)
+
+	if not kv_record then
+		kv_record = {value=value, enabled=true, vector_clock={}}
+		kv_record.vector_clock[src_write.id] = 1
 	else
 
 	table.insert(to_report_t, misc.time().."put_local for "..n.id..": creation of the vector clock done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--else, replace the value and increase the version
-		db_table[key].value=value
-		if db_table[key].vector_clock[src_write.id] then
-			db_table[key].vector_clock[src_write.id] = db_table[key].vector_clock[src_write.id] + 1
+		kv_record.value=value
+		if kv_record.vector_clock[src_write.id] then
+			kv_record.vector_clock[src_write.id] = kv_record.vector_clock[src_write.id] + 1
 		else
-			db_table[key].vector_clock[src_write.id] = 1
+			kv_record.vector_clock[src_write.id] = 1
 		end
 		--TODO handle enabled
 		--TODO add timestamps
@@ -1488,8 +1402,10 @@ function put_local(key, value, src_write)
 
 	table.insert(to_report_t, misc.time().."put_local for "..n.id..": k,v record written\telapsed_time="..(misc.time() - start_time).."\n")
 
-	--log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", db_table[key].enabled)
-	for i,v in pairs(db_table[key].vector_clock) do
+	local_db.set(db_table, key, kv_record)
+
+	--log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", kv_record.enabled)
+	for i,v in pairs(kv_record.vector_clock) do
 		--log:print(n.short_id..":put_local: vector_clock=",i,v)
 	end
 
@@ -1524,10 +1440,10 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 		return false, "wrong key type"
 	end
 	
-	--if the k,v pair exists, delete it
-	if db_table[key] then
+	--if the k,v pair exists, delete it, TODO maybe can be improved with only db:remove, just 1 DB op
+	if local_db.check(db_table, key) ~= -1 then
 	--else, replace the value and increase the version
-		db_table[key]=nil
+		local_db.remove(db_table, key)
 	end
 	--log:print(n.short_id..":delete_local: deleting key="..shorten_id(key))
 	return true
@@ -1548,6 +1464,6 @@ function get_local(key)
 		events.sleep(math.random(100)/100)
 	end
 
-	return db_table[key]
+	return local_db.get(db_table, key)
 end
 
