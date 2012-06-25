@@ -69,11 +69,11 @@ end
 
 --[[ Local FS functions ]]--
 
-function clean_dir(dir, rec)
-	if not rec then
-		rec = false
-	end
-	if rec then
+function clean_dir(dir, rec, remove_dir)
+	print("cleaning dir = "..dir..", rec =", rec, "remove_dir =", remove_dir)
+	if remove_dir then
+		os.execute("rm -fr "..dir.." > /dev/null 2>&1")
+	elseif rec then
 		os.execute("rm -fr "..dir.."/* > /dev/null 2>&1")
 	else
 		os.execute("rm -f "..dir.."/* > /dev/null 2>&1")
@@ -233,7 +233,7 @@ function stop(ref, free)
 		splayd.jobs[ref].execution_time = os.time() - splayd.jobs[ref].start_time
 	end
 	splayd.jobs[ref].status = "waiting"
-	clean_dir(splayd.jobs[ref].disk.directory)
+	clean_dir(splayd.jobs[ref].disk.directory, true, true)
 
 	if not free then
 		-- try to reserve ports again (best effort)
@@ -528,9 +528,6 @@ function register(so)
 		assert(so:send("DEPENDENCIES NOT OK"))
 		return
 	end
-
-	job.disk.db_directory = job.disk.directory.."/".."db" --JV: added for restricted_db
-	splay.mkdir(job.disk.db_directory) --JV: added for restricted_db
 
 	job.status = "waiting"
 

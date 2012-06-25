@@ -272,7 +272,7 @@ sandbox.protect_env({
 			"kyotocabinet",
 			native_from_job
 		},
-		inits = {["splay.restricted_db"]=job.disk.db_directory}
+		inits = {["splay.restricted_db"]=job.disk.directory}
 	})
 
 collectgarbage()
