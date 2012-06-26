@@ -42,10 +42,10 @@ local events	= require"splay.events" --TODO look if the use of splay.events fits
 local serializer	= require"splay.lbinenc"
 local paxos	= require"splay.paxos"
 
-local USE_KYOTO = false
+local USE_KYOTO = true
 
 local local_db = nil
-local dbs = nil
+local dbs = {}
 
 
 if USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
@@ -58,7 +58,7 @@ else
 			dbs = {}
 		end,
 
-		open = function(table_name)
+		open = function(table_name, mode)
 			dbs[table_name] = {}
 		end,
 
@@ -111,7 +111,7 @@ local pcall = pcall
 local type = type
 local tonumber = tonumber
 local tostring = tostring
-local log = log
+local log = require"splay.log"
 local base = _G
 
 
@@ -119,9 +119,12 @@ local base = _G
 module("splay.distdb")
 
 --authoring info
-_COPYRIGHT   = "Copyright 2011 José Valerio (University of Neuchâtel)"
+_COPYRIGHT   = "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
 _DESCRIPTION = "Distributed DB functions."
-_VERSION     = "0.99.0"
+_VERSION     = 1.0
+
+--[[ DEBUG ]]--
+l_o = log.new(1, "[".._NAME.."]")
 
 
 --LOCAL VARIABLES
@@ -259,7 +262,7 @@ local function get_master(key)
 		end
 	end
 	--prints the master ID
-	--log:print("master --> "..master.id)
+	--l_o:debug("master --> "..master.id)
 	--returns the master
 	return master, master_pos
 end
@@ -299,25 +302,25 @@ end
 
 --function print_me: prints the IP address, port and position of the node
 local function print_me()
-	log:print(n.short_id..":print_me: ME! IP:port=", n.ip..":"..n.port, "position=", n.position)
+	l_o:debug(n.short_id..":print_me: ME! IP:port=", n.ip..":"..n.port, "position=", n.position)
 end
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function print_node(node)
-	log:print(n.short_id..":print_node: neighbor=", node.ip, node.port, node.id)
+	l_o:debug(n.short_id..":print_node: neighbor=", node.ip, node.port, node.id)
 end
 
 --function print_all: prints the node itself and its neighbors
 function print_all()
 	print_me()
-	log:print()
+	l_o:debug()
 	--for the conf file "ports.lua" of the client test file
 	local for_ports_lua = "for ports.lua "
 	for _,v in ipairs(neighborhood) do
 		print_node(v)
 		for_ports_lua = for_ports_lua..", "..(v.port+1)
 	end
-	log:print(n.short_id..":print_all: "..for_ports_lua)
+	l_o:debug(n.short_id..":print_all: "..for_ports_lua)
 
 end
 
@@ -338,7 +341,7 @@ function add_node_to_neighborhood(node)
 	--updates the "pointer" to the previous node
 	previous_node = get_previous_node()
 	--logs
-	--log:print(n.short_id..":add_node_to_neighborhood: adding node="..node.short_id.." to my list")
+	--l_o:debug(n.short_id..":add_node_to_neighborhood: adding node="..node.short_id.." to my list")
 
 end
 
@@ -356,7 +359,7 @@ function remove_node_from_neighborhood(node_pos)
 	--updates the "pointer" to the previous node
 	previous_node = get_previous_node()
 	--logs
-	--log:print(n.short_id..":remove_node_from_neighborhood: removing node="..node.short_id.." of my list")
+	--l_o:debug(n.short_id..":remove_node_from_neighborhood: removing node="..node.short_id.." of my list")
 end
 
 --function receive_gossip: updates the table if necessary and forwards the gossip
@@ -389,7 +392,7 @@ function receive_gossip(message, neighbor_about)
 
 	--forward the gossip to the previous node
 	events.thread(function()
-		--log:print(n.short_id..":receive_gossip: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
+		--l_o:debug(n.short_id..":receive_gossip: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
 		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
@@ -400,7 +403,7 @@ local function gossip_changes(message, neighbor_about)
 	if previous_node then
 		--create the gossip to the previous node
 		events.thread(function()
-			--log:print(n.short_id..":gossip_changes: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
+			--l_o:debug(n.short_id..":gossip_changes: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
 			rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
 		end)
 	end
@@ -411,11 +414,11 @@ local function ping_others()
 	--if there is a next_node (it could be the case of a 1-node ring, where the node will not ping anyone)
 	if next_node then
 		--logs
-		----log:print(n.short_id..":ping_others: pinging "..next_node.short_id)
+		----l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
 		--pings, and if the response is not ok
 		if not rpc.ping(next_node) then --TODO should be after several tries
 			--logs that it lost a neighbor
-			--log:print(n.short_id..":ping_others: i lost neighbor="..next_node.short_id)
+			--l_o:debug(n.short_id..":ping_others: i lost neighbor="..next_node.short_id)
 			--creates an object node_about to insert it into the message to be gossipped
 			local node_about = {id = next_node.id}
 			--calculates the position of the next node
@@ -495,10 +498,10 @@ end
 
 --function handle_get_bucket: handles a GET request as the Coordinator of the Access Key ID
 function handle_get(type_of_transaction, key)
-	--log:print(n.short_id.."handle_get: for key="..shorten_id(key))
+	--l_o:debug(n.short_id.."handle_get: for key="..shorten_id(key))
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
-	----log:print(n.short_id..": choosing responsible n. "..chosen_node_id)
+	----l_o:debug(n.short_id..": choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_get"
@@ -511,7 +514,7 @@ end
 
 --function handle_put_bucket: handles a PUT request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
-	--log:print(n.short_id..":handle_put: for key="..shorten_id(key)..", value=", value) -- TODO: key better be hashed here?
+	--l_o:debug(n.short_id..":handle_put: for key="..shorten_id(key)..", value=", value) -- TODO: key better be hashed here?
 	
 	local chosen_node = nil
 	
@@ -520,31 +523,31 @@ function handle_put(type_of_transaction, key, value) --TODO check about setting 
 	else
 		local responsibles = get_responsibles(key)
 		local chosen_node_id = math.random(#responsibles)
-		----log:print(n.short_id..": choosing responsible n. "..chosen_node_id)
+		----l_o:debug(n.short_id..": choosing responsible n. "..chosen_node_id)
 		chosen_node = responsibles[chosen_node_id]
 	end
-	----log:print(n.short_id..":handle_put: Chosen node="..chosen_node.short_id)
+	----l_o:debug(n.short_id..":handle_put: Chosen node="..chosen_node.short_id)
 	--Testing wrong node
 	if test_wrong_node then
 		if math.random(5) == 1 then
 			local new_node_id = math.random(#job.nodes)
 			chosen_node = job.nodes[new_node_id]
-			log:print(n.short_id..": Chosen node changed")
+			l_o:debug(n.short_id..": Chosen node changed")
 		end
 	end
 
-	--log:print()
+	--l_o:debug()
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_put"
 	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
 		--if something went wrong
 		if not rpc_answer[1] then
-			--log:print(n.short_id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
+			--l_o:debug(n.short_id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
 		return rpc_answer[1], rpc_answer[2]
 	end
-	--log:print(n.short_id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
+	--l_o:debug(n.short_id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
 	return nil, "network problem"
 end
 
@@ -578,8 +581,8 @@ function handle_http_message(socket)
 	--the resource has the format /key
 	local key = string.sub(resource, 2)
 	--logs
-	----log:print(n.short_id..": resource is "..resource)
-	----log:print(n.short_id..": requesting for "..key)
+	----l_o:debug(n.short_id..": resource is "..resource)
+	----l_o:debug(n.short_id..": requesting for "..key)
 	table.insert(to_report_t, misc.time().."http message parsed\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--the value is the body if it exists
@@ -587,8 +590,8 @@ function handle_http_message(socket)
 	--the header Type tells if the transaction is strongly consistent or eventually consistent
 	local type_of_transaction = headers["Type"] or headers["type"]
 	--logs
-	--log:print(n.short_id..":handle_http_message: http request parsed, a "..method.." request will be forwarded")
-	--log:print(n.short_id..":handle_http_message: key="..shorten_id(key)..", value=", value)
+	--l_o:debug(n.short_id..":handle_http_message: http request parsed, a "..method.." request will be forwarded")
+	--l_o:debug(n.short_id..":handle_http_message: key="..shorten_id(key)..", value=", value)
 	--forwards the request to a node that is responsible for this key
 	local ok, answer = forward_request[method](type_of_transaction, key, value)
 
@@ -642,7 +645,7 @@ function handle_http_message(socket)
 
 	table.insert(to_report_t, misc.time().."sent\telapsed_time="..(misc.time() - start_time))
 
-	log:print(table.concat(to_report_t))
+	--l_o:debug(table.concat(to_report_t))
 	--[[
 	if string.sub(header,1,8) == "OPTIONS" then
 		return handle_options_method(socket)
@@ -673,8 +676,7 @@ function init(job)
 		net.server(http_server_port, handle_http_message)
 
 		--initializes db_table
-		local_db.init()
-		local_db.open(db_table)
+		local_db.open("db_table", "hash")
 
 		--initializes the variable holding the number of replicas
 		n_replicas = 5 --TODO this should be configurable
@@ -715,7 +717,7 @@ function init(job)
 
 		--PRINTING STUFF
 		--prints a initialization message
-		--log:print(n.short_id..":init: HTTP server started on port="..http_server_port)
+		--l_o:debug(n.short_id..":init: HTTP server started on port="..http_server_port)
 
 		print_all()
 
@@ -732,7 +734,7 @@ end
 
 --function consistent_put: puts a k,v and waits until all the replicas assure they have a copy
 function consistent_put(key, value)
-	--log:print(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
+	--l_o:debug(n.short_id..":consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--initializes boolean not_responsible
 	
 	local start_time = misc.time()
@@ -774,7 +776,7 @@ function consistent_put(key, value)
 		--checks the version and writes the k,v, then it writes to others
 		events.thread(function()
 			local put_local_result = nil
-			--log:print(n.short_id..":consistent_put: value_type="..type(value))
+			--l_o:debug(n.short_id..":consistent_put: value_type="..type(value))
 			if value == nil then
 				put_local_result = delete_local(key)
 			else
@@ -828,7 +830,7 @@ function consistent_put(key, value)
 					--else (maybe network problem, dropped message) TODO also consider timeouts!
 					else
 						--WTF
-						--log:print(n.short_id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
+						--l_o:debug(n.short_id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
 					end
 				end)
 			end
@@ -840,7 +842,7 @@ function consistent_put(key, value)
 
 		table.insert(to_report_t, misc.time().."consistent_put: finished\telapsed_time="..(misc.time() - start_time).."\n")
 
-		log:print(table.concat(to_report_t))
+		--l_o:debug(table.concat(to_report_t))
 
 	end
 	--returns the value of the variable successful
@@ -849,7 +851,7 @@ end
 
 --function evtl_consistent_put: puts a k,v and waits until a minimum of the replicas assure they have a copy
 function evtl_consistent_put(key, value)
-	--log:print(n.short_id..":evtl_consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
+	--l_o:debug(n.short_id..":evtl_consistent_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -925,7 +927,7 @@ function evtl_consistent_put(key, value)
 					--else (maybe network problem, dropped message) TODO also consider timeouts!
 					else
 						--WTF
-						--log:print(n.short_id..":evtl_consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
+						--l_o:debug(n.short_id..":evtl_consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
 					end
 				end)
 			end
@@ -941,7 +943,7 @@ end
 
 --function paxos_put: performs a Basic Paxos protocol in order to put a k,v pair
 function paxos_put(key, value)
-	--log:print(n.short_id..":paxos_put: ENTERED, for key="..shorten_id(key)..", value=",value)
+	--l_o:debug(n.short_id..":paxos_put: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--if no previous proposals have been done for this key
 	--TODO why does it always start always with 1???
 	if not prop_ids[key] then
@@ -949,7 +951,7 @@ function paxos_put(key, value)
 		prop_ids[key] = 1
 	end
 	--logs the propID
-	--log:print(n.short_id..":paxos_put:key="..shorten_id(key)..", propID="..prop_ids[key])
+	--l_o:debug(n.short_id..":paxos_put:key="..shorten_id(key)..", propID="..prop_ids[key])
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -985,7 +987,7 @@ end
 --function consistent_get: returns the value of a certain key; reads the value only from the node itself (matches with
 --the behavior of consistent_put, where all replicas write always all values)
 function consistent_get(key)
-	--log:print(n.short_id..":consistent_get: ENTERED, for key="..shorten_id(key))
+	--l_o:debug(n.short_id..":consistent_get: ENTERED, for key="..shorten_id(key))
 	--gets the responsibles of the key
 	local responsibles = get_responsibles(key)
 	--for all responsibles
@@ -1002,7 +1004,7 @@ end
 
 --function consistent_get: returns the value of a certain key; reads the value from a minimum of replicas
 function evtl_consistent_get(key)
-	--log:print(n.short_id..":evtl_consistent_get: ENTERED, for key="..shorten_id(key))
+	--l_o:debug(n.short_id..":evtl_consistent_get: ENTERED, for key="..shorten_id(key))
 	--initializes not_responsible as false
 	local not_responsible = true
 	--gets the responsibles of the key
@@ -1046,16 +1048,16 @@ function evtl_consistent_get(key)
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--WTF
-					--log:print(n.short_id..":evtl_consistent_get: SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL TO NODE="..v.short_id)
+					--l_o:debug(n.short_id..":evtl_consistent_get: SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL TO NODE="..v.short_id)
 				end
 			end
 			--if there is an answer
 			if answer_data[v.id] then
 				--logs
-				--log:print(n.short_id..":evtl_consistent_get: received from node="..v.short_id..", key="..shorten_id(key)..", value="..answer_data[v.id].value..", enabled=", answer_data[v.id].enabled)
+				--l_o:debug(n.short_id..":evtl_consistent_get: received from node="..v.short_id..", key="..shorten_id(key)..", value="..answer_data[v.id].value..", enabled=", answer_data[v.id].enabled)
 				--prints the vector clock
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
-					--log:print(n.short_id..":evtl_consistent_get: vector_clock=",i2,v2)
+					--l_o:debug(n.short_id..":evtl_consistent_get: vector_clock=",i2,v2)
 				end
 				--increments answers
 				answers = answers + 1
@@ -1083,7 +1085,7 @@ function evtl_consistent_get(key)
 			comparison_table[i][i2] = 0
 			--if the IDs to be compared are different
 			if i2 ~= i then
-				--log:print("comparing "..i.." and "..i2)
+				--l_o:debug("comparing "..i.." and "..i2)
 				--checks whether the comparison was already done
 				local do_comparison = false
 				if not comparison_table[i2] then
@@ -1098,12 +1100,12 @@ function evtl_consistent_get(key)
 					--writes first the first vector to be merged as the winner (max = 1)
 					for i3,v3 in pairs(v.vector_clock) do
 						merged_vector[i3] = {value=v3, max=1}
-						--log:print(i3, v3)
+						--l_o:debug(i3, v3)
 					end
-					--log:print("then "..i2)
+					--l_o:debug("then "..i2)
 					--then, for all elements of the second vector
 					for i4,v4 in pairs(v2.vector_clock) do
-						--log:print(i4, v4)
+						--l_o:debug(i4, v4)
 						--if there is already an element like this in the vector
 						if merged_vector[i4] then
 							--compares both, if the second is bigger, max is 2
@@ -1124,7 +1126,7 @@ function evtl_consistent_get(key)
 						--if all elements are =2, the second is fresher
 						--if all are equal, vectors are equal
 						--if some are 2 and some are 1, nothing can be said (comparison_table=3)
-						--log:print(i5, v5.value, v5.max)
+						--l_o:debug(i5, v5.value, v5.max)
 						if v5.max == 1 then
 							if comparison_table[i][i2] == 0 then
 								comparison_table[i][i2] = 1
@@ -1141,7 +1143,7 @@ function evtl_consistent_get(key)
 					end
 				end
 				--logs
-				--log:print("comparison_table: "..comparison_table[i][i2])
+				--l_o:debug("comparison_table: "..comparison_table[i][i2])
 			end
 		end
 	end
@@ -1151,18 +1153,18 @@ function evtl_consistent_get(key)
 			--if the comparison = 1, deletes the second answer
 			if v2 == 1 then
 				answer_data[i2] = nil
-				--log:print("deleting answer from "..i2.." because "..i.." is fresher")
+				--l_o:debug("deleting answer from "..i2.." because "..i.." is fresher")
 			--if the comparison = 2, deletes the first answer
 			elseif v2 == 2 then
 				answer_data[i] = nil
-				--log:print("deleting answer from "..i.." because "..i2.." is fresher")
+				--l_o:debug("deleting answer from "..i.." because "..i2.." is fresher")
 			end
 			--TODO WHAT IF they are equal? i think im not considering this case
 		end
 	end
 	--insert the info in the return data
 	for i,v in pairs(answer_data) do
-		--log:print(n.short_id..":evtl_consistent_get: remaining answer=", i, v.value)
+		--l_o:debug(n.short_id..":evtl_consistent_get: remaining answer=", i, v.value)
 		table.insert(return_data, v)
 	end
 	--returns
@@ -1171,7 +1173,7 @@ end
 
 --function paxos_get: performs a Basic Paxos protocol in order to get v from a k,v pair
 function paxos_get(key)
-	--log:print(n.short_id..":paxos_get: ENTERED, for key="..shorten_id(key))
+	--l_o:debug(n.short_id..":paxos_get: ENTERED, for key="..shorten_id(key))
 	--if no previous proposals have been done for this key
 	--TODO why does it always start always with 1???
 	if not prop_ids[key] then
@@ -1179,7 +1181,7 @@ function paxos_get(key)
 		prop_ids[key] = 1
 	end
 	--logs the propID
-	--log:print(n.short_id..":paxos_get:key="..shorten_id(key)..", propID="..prop_ids[key])
+	--l_o:debug(n.short_id..":paxos_get:key="..shorten_id(key)..", propID="..prop_ids[key])
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -1216,36 +1218,36 @@ end
 
 --REPLACEMENTS OF PAXOS FUNCTIONS
 function send_paxos_proposal(v, prop_id, key)
-	--log:print(n.short_id..":send_paxos_proposal: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id)
+	--l_o:debug(n.short_id..":send_paxos_proposal: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id)
 	return rpc.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
 end
 
 function send_paxos_accept(v, prop_id, peers, value, key)
-	--log:print(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value=",value)
+	--l_o:debug(n.short_id..":send_paxos_accept: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", propID="..prop_id..", value=",value)
 	for i2,v2 in ipairs(peers) do
-		--log:print(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
+		--l_o:debug(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
 	end
 	return rpc.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
 end
 
 function send_paxos_learn(v, value, key)
-	--log:print(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value=",value)
+	--l_o:debug(n.short_id..":send_paxos_learn: ENTERED, for node="..shorten_id(v.id)..", key="..shorten_id(key)..", value=",value)
 	local ret_put_local = nil
 	if value == nil then
-		ret_put_local = rpc.call(v, {"distdb.delete_local", value})
+		ret_put_local = rpc.call(v, {"distdb.delete_local", key})
 	else
-		ret_put_local = rpc.call(v, {"distdb.put_local", value, key})
+		ret_put_local = rpc.call(v, {"distdb.put_local", key, value})
 	end
 	return ret_put_local
 end
 
 function receive_paxos_proposal(prop_id, key)
-	--log:print(n.short_id..":receive_paxos_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
+	--l_o:debug(n.short_id..":receive_paxos_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
 	
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(5) == 1 then
-			log:print("receive_paxos_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
+			l_o:debug("receive_paxos_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
 			return false
 		end
 	end
@@ -1256,15 +1258,20 @@ function receive_paxos_proposal(prop_id, key)
 	end
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print("receive_paxos_proposal: NOT accepting Propose for key, wrong key type")
+		l_o:debug("receive_paxos_proposal: NOT accepting Propose for key, wrong key type")
 		return false, "wrong key type"
 	end
 
-	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	local kv_record = local_db.get(db_table, key)
+	--if the k,v pair doesnt exist --BIG TODO: WHEN USING RAM DB, I SHOULD NOT SERIALIZE, IT'S A WASTE OF TIME
+	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record = nil
+	if kv_record_serialized then
+		kv_record = serializer.decode(kv_record_serialized)
+	end
 
+	--create it with a new vector clock, enabled=true
 	if not kv_record then
-		local_db.set(db_table, key, {enabled=true, vector_clock={}}) --check how to make compatible with vector_clock
+		kv_record = {enabled=true, vector_clock={}}
 	--if it exists and if prop_id is bigger than the proposed
 	elseif kv_record.prop_id and kv_record.prop_id >= prop_id then
 		--TODO maybe to send the value on a negative answer is not necessary
@@ -1273,13 +1280,13 @@ function receive_paxos_proposal(prop_id, key)
 	local old_prop_id = kv_record.prop_id
 	kv_record.prop_id = prop_id
 
-	local_db.set(db_table, key, kv_record)
+	local_db.set("db_table", key, serializer.encode(kv_record))
 	
 	return true, old_prop_id, kv_record
 end
 
 function receive_paxos_accept(prop_id, peers, value, key)
-	--log:print(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
+	--l_o:debug(n.short_id..":receive_paxos_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value=",value)
 	
 	if test_delay then
 		--adding a random waiting time to simulate different response times
@@ -1288,30 +1295,34 @@ function receive_paxos_accept(prop_id, peers, value, key)
 
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		log:print(" NOT accepting Accept! wrong key type")
+		l_o:debug(" NOT accepting Accept! wrong key type")
 		return false, "wrong key type"
 	end
 
 	--if the k,v pair doesnt exist
-	local kv_record = local_db.get(db_table, key)
+	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record = nil
+	if kv_record_serialized then
+		kv_record = serializer.decode(kv_record_serialized)
+	end
 
 	if not kv_record then
 		--BIZARRE: because this is not meant to happen (an Accept comes after a Propose, and a record for the key
 		--is always created at a Propose)
-		log:print("receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
+		l_o:debug("receive_accept: BIZARRE! wrong key="..shorten_id(key)..", key does not exist")
 		return false, "BIZARRE! wrong key, key does not exist"
 	--if it exists, and the locally stored prop_id is bigger than the proposed prop_id
 	elseif kv_record.prop_id > prop_id then
 		--reject the Accept! message
-		log:print("receive_accept: REJECTED, higher prop_id")
+		l_o:debug("receive_accept: REJECTED, higher prop_id")
 		return false, "higher prop_id"
 	--if the locally stored prop_id is smaller than the proposed prop_id
 	elseif kv_record.prop_id < prop_id then
 		--BIZARRE: again, Accept comes after Propose, and a later Propose can only increase the prop_id
-		log:print("receive_accept: BIZARRE! lower prop_id")
+		l_o:debug("receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
-	log:print("receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", kv_record.enabled, "propID="..prop_id)
+	l_o:debug("receive_accept: Telling learners about key="..shorten_id(key)..", value=",value,", enabled=", kv_record.enabled, "propID="..prop_id)
 	for i,v in ipairs(peers) do
 		if v.id == n.id then
 			events.thread(function()
@@ -1337,13 +1348,13 @@ end
 
 --function put_local: writes a k,v pair. TODO should be atomic? is it?
 function put_local(key, value, src_write)
-	--log:print(n.short_id..":put_local: ENTERED, for key="..shorten_id(key)..", value=",value)
+	--l_o:debug(n.short_id..":put_local: ENTERED, for key="..shorten_id(key)..", value=",value)
 	--TODO how to check if the source node is valid?
 	
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(5) == 1 then
-			log:print(n.short_id..": NOT writing key: "..key)
+			l_o:debug(n.short_id..": NOT writing key: "..key)
 			return false, "404"
 		end
 	end
@@ -1359,7 +1370,7 @@ function put_local(key, value, src_write)
 
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		--log:print(n.short_id..":put_local: NOT writing key, wrong key type")
+		--l_o:debug(n.short_id..":put_local: NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 
@@ -1367,7 +1378,7 @@ function put_local(key, value, src_write)
 
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
-		--log:print(n.short_id..":put_local: NOT writing key, wrong value type")
+		--l_o:debug(n.short_id..":put_local: NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
 
@@ -1380,7 +1391,11 @@ function put_local(key, value, src_write)
 	table.insert(to_report_t, misc.time().."put_local for "..n.id..": setting up src_write when there isnt done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
-	local kv_record = local_db.get(db_table, key)
+	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record = nil
+	if kv_record_serialized then
+		kv_record = serializer.decode(kv_record_serialized)
+	end
 
 	if not kv_record then
 		kv_record = {value=value, enabled=true, vector_clock={}}
@@ -1402,29 +1417,33 @@ function put_local(key, value, src_write)
 
 	table.insert(to_report_t, misc.time().."put_local for "..n.id..": k,v record written\telapsed_time="..(misc.time() - start_time).."\n")
 
-	local_db.set(db_table, key, kv_record)
+	local kv_record_serialized = serializer.encode(kv_record)
 
-	--log:print(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", kv_record.enabled)
+	l_o:debug(n.short_id..":put_local: type(key)="..type(key)..", type(kv_record_serialized)="..type(kv_record_serialized))
+
+	local set_ok = local_db.set("db_table", key, kv_record_serialized)
+
+	l_o:debug(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", kv_record.enabled, "writing was ok?", set_ok)
 	for i,v in pairs(kv_record.vector_clock) do
-		--log:print(n.short_id..":put_local: vector_clock=",i,v)
+		l_o:debug(n.short_id..":put_local: vector_clock=",i,v)
 	end
 
 	table.insert(to_report_t, misc.time().."put_local for "..n.id..": finished\telapsed_time="..(misc.time() - start_time).."\n")
 
-	log:print(table.concat(to_report_t))
+	--l_o:debug(table.concat(to_report_t))
 
 	return true
 end
 
 --function delete_local: deletes a k,v pair. TODO should be atomic? is it?
 function delete_local(key, src_write) --TODO: Consider this fucking src_write and if the data is ever deleted NOTE: enabled is a field meant to handle this
-	--log:print(n.short_id..":delete_local: ENTERED, for key="..shorten_id(key))
+	--l_o:debug(n.short_id..":delete_local: ENTERED, for key="..shorten_id(key))
 	--TODO how to check if the source node is valid?
 	
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(5) == 1 then
-			log:print(n.short_id..": NOT writing key: "..key)
+			l_o:debug(n.short_id..": NOT writing key: "..key)
 			return false, "404"
 		end
 	end
@@ -1436,22 +1455,22 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		--log:print(n.short_id..":delete_local: NOT writing key, wrong key type")
+		--l_o:debug(n.short_id..":delete_local: NOT writing key, wrong key type")
 		return false, "wrong key type"
 	end
 	
 	--if the k,v pair exists, delete it, TODO maybe can be improved with only db:remove, just 1 DB op
-	if local_db.check(db_table, key) ~= -1 then
+	if local_db.check("db_table", key) ~= -1 then
 	--else, replace the value and increase the version
-		local_db.remove(db_table, key)
+		local_db.remove("db_table", key)
 	end
-	--log:print(n.short_id..":delete_local: deleting key="..shorten_id(key))
+	--l_o:debug(n.short_id..":delete_local: deleting key="..shorten_id(key))
 	return true
 end
 
 --function get_local: returns v from a k,v pair.
 function get_local(key)
-	--log:print(n.short_id..":get_local: ENTERED, for key="..shorten_id(key))
+	l_o:debug(n.short_id..":get_local: ENTERED, for key="..shorten_id(key))
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(10) == 1 then
@@ -1464,6 +1483,13 @@ function get_local(key)
 		events.sleep(math.random(100)/100)
 	end
 
-	return local_db.get(db_table, key)
+	local kv_record_serialized = local_db.get("db_table", key)
+
+	if not kv_record_serialized then
+		l_o:debug(n.short_id..":get_local: record is nil")
+		return nil
+	end
+
+	return serializer.decode(kv_record_serialized)
 end
 

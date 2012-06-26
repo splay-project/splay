@@ -70,7 +70,6 @@ end
 --[[ Local FS functions ]]--
 
 function clean_dir(dir, rec, remove_dir)
-	print("cleaning dir = "..dir..", rec =", rec, "remove_dir =", remove_dir)
 	if remove_dir then
 		os.execute("rm -fr "..dir.." > /dev/null 2>&1")
 	elseif rec then

@@ -56,7 +56,7 @@ module("splay.paxos")
 --authoring info
 _COPYRIGHT   = "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
 _DESCRIPTION = "Paxos functions."
-_VERSION     = "0.99.1"
+_VERSION     = 1.0
 
 
 l_o = log.new(3, "[".._NAME.."]")

@@ -15,6 +15,8 @@ misc = require"splay.misc"
 local serializer = require"splay.lbinenc"
 events = require"splay.events"
 
+AS_LIB = false
+
 -- END LIBRARIES
 
 socket.BLOCKSIZE = 10000000
@@ -116,7 +118,7 @@ function send_get(port, type_of_transaction, key)
 		--logfile1:write("send_get: 200 OK received\n")
 		----logfile1:write("Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
 	else
-		--print("Error "..response_status..":\n"..response_body[1])
+		print("Error "..response_status..":\n"..response_body[1])
 		----logfile1:write("send_get: Error "..response_status.."\n")
 		--logfile1:close()
 		return false
@@ -124,7 +126,8 @@ function send_get(port, type_of_transaction, key)
 
 	local answer = serializer.decode(response_body[1])
 
-	local answer_string = print_tablez("answer",0,answer)
+	local answer_string = print_tablez("answer", 0, answer)
+	--print("send_get: answer decoded: \n"..answer_string)
 	--logfile1:write("send_get: answer decoded: \n"..answer_string)
 
 	if not answer[1] then
@@ -166,11 +169,14 @@ function send_get(port, type_of_transaction, key)
 			end
 		end
 	end
-	--print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
-	----logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
-	--for i2,v2 in pairs(max_vc) do
-		--print("", i2, v2)
-	--end
+
+	if not AS_LIB then
+		print("key: "..key..", value: "..chosen_value..", merged vector_clock:")
+		----logfile1:write("send_get: key: "..key..", value: "..chosen_value.."\n")
+		for i2,v2 in pairs(max_vc) do
+			print("", i2, v2)
+		end
+	end
 
 	--logfile1:close()
 
@@ -213,28 +219,28 @@ function send_delete(port, type_of_transaction, key)
 
 end
 
---[[
-events.run(function()
-	dofile("ports.lua")
-	math.randomseed(os.time())
-	local key = crypto.evp.digest("sha1",math.random(100000))
+if not AS_LIB then
+	events.run(function()
+		dofile("ports.lua")
+		math.randomseed(os.time())
+		local key = crypto.evp.digest("sha1",math.random(100000))
 
-	for i=1, 4 do
-		local port = misc.random_pick(ports)
-		print("Key is "..key)
---		send_put(port, "evtl_consistent", key, i*10)
---		send_put(port, "consistent", key, i*10)
-		send_put(port, "paxos", key, i*10)
-		events.sleep(1)
-	end
+		for i=1, 4 do
+			local port = misc.random_pick(ports)
+			print("Key is "..key)
+	--		send_put(port, "evtl_consistent", key, i*10)
+	--		send_put(port, "consistent", key, i*10)
+			send_put(port, "paxos", key, i*10)
+			events.sleep(1)
+		end
 
-	for i=1, 1 do
-		local port = misc.random_pick(ports)
---		send_get(port, "evtl_consistent", key)
---		send_get(port, "consistent", key)
-		send_get(port, "paxos", key)
-		events.sleep(1)
-	end
-end)
-
+		for i=1, 1 do
+			local port = misc.random_pick(ports)
+	--		send_get(port, "evtl_consistent", key)
+	--		send_get(port, "consistent", key)
+			send_get(port, "paxos", key)
+			events.sleep(1)
+		end
+	end)
+end
 --]]

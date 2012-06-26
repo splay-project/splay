@@ -64,10 +64,10 @@ module("splay.restricted_db")
 
 _COPYRIGHT   = "Copyright 2010 José Valerio (University of Neuchâtel)"
 _DESCRIPTION = "Restricted DB"
-_VERSION     = 0.1
+_VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(1, "[".._NAME.."]")
+l_o = log.new(3, "[".._NAME.."]")
 
 --TODO
 
@@ -143,12 +143,10 @@ function open(table_name, mode) --mode: hash, tree
 	dbs[table_name] = kc.DB:new()
 	if mode == "tree" then
 		--dbs[table_name]:open(dir.."/"..dbf_name..".kct", flags)
-		dbs[table_name]:open(dir.."/"..dbf_name..".kct")
-		return true
+		return dbs[table_name]:open(dir.."/"..dbf_name..".kct")
 	elseif mode == "hash" then
 		--dbs[table_name]:open(dir.."/"..dbf_name..".kch", flags)
-		dbs[table_name]:open(dir.."/"..dbf_name..".kch")
-		return true
+		return dbs[table_name]:open(dir.."/"..dbf_name..".kch")
 	else
 		return false, "incorrect mode"
 	end
@@ -211,7 +209,7 @@ function get(table_name, key)
 end
 
 function set(table_name, key, value)
-	dbs[table_name]:set(key, value)
+	return dbs[table_name]:set(key, value)
 end
 
 function close(table_name)
