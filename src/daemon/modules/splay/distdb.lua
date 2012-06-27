@@ -124,7 +124,7 @@ _DESCRIPTION = "Distributed DB functions."
 _VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(1, "[".._NAME.."]")
+l_o = log.new(2, "[".._NAME.."]")
 
 
 --LOCAL VARIABLES
@@ -320,7 +320,7 @@ function print_all()
 		print_node(v)
 		for_ports_lua = for_ports_lua..", "..(v.port+1)
 	end
-	l_o:debug(n.short_id..":print_all: "..for_ports_lua)
+	l_o:info(n.short_id..":print_all: "..for_ports_lua)
 
 end
 

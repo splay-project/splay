@@ -15,7 +15,7 @@ misc = require"splay.misc"
 local serializer = require"splay.lbinenc"
 events = require"splay.events"
 
-AS_LIB = false
+AS_LIB = true
 
 -- END LIBRARIES
 
