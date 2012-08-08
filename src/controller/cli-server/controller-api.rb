@@ -283,7 +283,7 @@ if SplayControllerConfig::AllowNativeLibs
 	end
 end
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt)
+	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, turbo)
 	 	#initializes the return variable
 		ret = Hash.new
 		
@@ -332,6 +332,11 @@ end
 			# strict job
 			if strict == "TRUE" then
 				options['strict'] = strict
+			end
+
+			# turbo mode - JV ADDED
+			if turbo == "TRUE" then
+				options['turbo'] = turbo
 			end
 
 			if churn_trace == "" then

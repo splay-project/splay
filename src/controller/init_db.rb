@@ -86,7 +86,7 @@ def init_db(db)
 			last_contact_time INT,
 			INDEX ip (ip),
 			INDEX `key` (`key`)
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_availabilities (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -143,6 +143,8 @@ def init_db(db)
 			scheduler ENUM('standard','trace','tracealt','grid') DEFAULT 'standard',
 			scheduler_description TEXT,
 
+			turbo ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+
 			list_type ENUM('HEAD','RANDOM') DEFAULT 'HEAD',
 			list_size INT NOT NULL DEFAULT '0',
 
@@ -166,6 +168,7 @@ def init_db(db)
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
 			job_id INT NOT NULL,
+			instance_id INT NOT NULL,
 			status ENUM('RESERVED','WAITING','RUNNING') DEFAULT 'RESERVED',
 			INDEX splayd_id (splayd_id)
 			)")
@@ -174,6 +177,7 @@ def init_db(db)
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
 			job_id INT NOT NULL,
+			instance_id INT NOT NULL,
 			selected ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 			trace_number INT,
 			trace_status ENUM('RUNNING', 'WAITING') DEFAULT 'WAITING',
@@ -182,7 +186,8 @@ def init_db(db)
 			reply_time DECIMAL(8, 5) NULL,
 			port INT NOT NULL,
 			INDEX splayd_id (splayd_id),
-			INDEX job_id (job_id)
+			INDEX job_id (job_id),
+			INDEX instance_id (instance_id)
 			)")
 
 	db.do("CREATE TABLE IF NOT EXISTS blacklist_hosts (
@@ -194,6 +199,7 @@ def init_db(db)
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
 			job_id INT NOT NULL,
+			nb_instances INT,
 			command VARCHAR(255),
 			data TEXT,
 			status ENUM('TEMP', 'WAITING', 'SENDING', 'FAILURE') DEFAULT 'WAITING',
@@ -214,7 +220,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS locks (
 			id INT NOT NULL,
 			job_reservation INT NOT NULL DEFAULT '0'
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("INSERT INTO locks SET
 			id='1',

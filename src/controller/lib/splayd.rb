@@ -290,6 +290,7 @@ class SplaydProtocol
 					reply_code = @so.read
 					if reply_code == "OK"
 						if action['command'] == "REGISTER"
+							#aqui está el register
 							port = addslashes(@so.read)
 							reply_data = port
 						end

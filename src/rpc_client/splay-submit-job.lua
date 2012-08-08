@@ -43,6 +43,7 @@ common_lib()
 function add_usage_options()
 	table.insert(usage_options, "-c, --churn=CHURN_TRACE_FILE\tcommands the SPLAY controller to follow the trace in CHURN_TRACE_FILE")
 	table.insert(usage_options, "-o, --options=OPT1:VAL,OPT2:VAL\tpermits to add constraints to the execution of the job, like maximum number of sockets, maximum storage, etc.")
+	table.insert(usage_options, "-t, --turbo\t\t\tin turbo mode a splayd can run several instances of the same job.")
 	table.insert(usage_options, "-n, --nb-splayds=NB_SPLAYDS\tthe job will be performed on NB_SPLAYDS splayds, default is 1")
 	table.insert(usage_options, "-N, --name\t\t\tthe program will ask for a short name of the job")
 	table.insert(usage_options, "-d, --description\t\tthe program will ask for a description of the job")
@@ -88,6 +89,9 @@ function parse_arguments()
 		elseif arg[i] == "--verbose" or arg[i] == "-v" then
 			--the print mode is "verbose"
 			print_mode = VERBOSE
+		--if argument is "-t" or "--turbo"
+		elseif arg[i] == "--turbo" or arg[i] == "-t" then
+			turbo = "TRUE"
 		--if argument is "-n"
 		elseif arg[i] == "-n" then
 			i = i + 1
@@ -289,6 +293,10 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 		print_line(VERBOSE, "STRICT MODE   	  = "..strict)
 	end
 
+	if turbo then
+		print_line(VERBOSE, "TURBO MODE   	  = "..turbo)
+	end
+
 	if trace_alt then
 		print_line(VERBOSE, "TRACE ALT MODE	  = "..trace_alt)
 	end
@@ -346,7 +354,7 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
-		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt}
+		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, turbo}
 	})
 
 	--prints that it is sending the message
@@ -383,6 +391,7 @@ ask_for_name = false
 scheduled_at = nil
 strict = "FALSE"
 trace_alt = "FALSE"
+turbo = "FALSE"
 command_name = "splay_submit_job"
 other_mandatory_args = "CODE_FILE "
 

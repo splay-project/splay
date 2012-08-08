@@ -442,6 +442,7 @@ class Jobd
 			# Do not take only AVAILABLE splayds here because new ones can become
 			# AVAILABLE before the next filters.
 			$db.select_all "SELECT id, max_number FROM splayds" do |m|
+				$log.info("select_splayds: m['id']="+m['id'].to_s()+" m['max_number']="+m['max_number'].to_s())
 				c_splayd['max_number'][m['id']] = m['max_number']
 				c_splayd['nb_nodes'][m['id']] = 0
 			end
@@ -449,6 +450,7 @@ class Jobd
 			$db.select_all "SELECT splayd_id, COUNT(job_id) as nb_nodes
 					FROM splayd_jobs
 					GROUP BY splayd_id" do |ms|
+				$log.info("select_splayds: ms['splay_id']="+ms['splay_id'].to_s()+" ms['nb_nodes']="+ms['nb_nodes'].to_s())
 				c_splayd['nb_nodes'][ms['splayd_id']] = ms['nb_nodes']
 			end
 		end
@@ -464,10 +466,11 @@ class Jobd
 					job['network_send_speed'] and
 					m['network_receive_speed'] / c_splayd['max_number'][m['id']] >=
 					job['network_receive_speed']
-
+				$log.info("select_splayds: c_splayd['nb_nodes']["+m['id'].to_s()+"]="+c_splayd['nb_nodes'][m['id']].to_s()+" c_splayd['max_number']["+m['id'].to_s()+"]="+c_splayd['max_number'][m['id']].to_s())
 				if c_splayd['nb_nodes'][m['id']] < c_splayd['max_number'][m['id']]
 					occupation[m['id']] =
 					c_splayd['nb_nodes'][m['id']] / c_splayd['max_number'][m['id']].to_f
+					$log.info("select_splayds: occupation["+m['id'].to_s()+"]="+occupation[m['id']].to_s())
 				end
 			end
 		end
@@ -478,8 +481,11 @@ class Jobd
 		if occupation.size < job['nb_splayds']
         		nb_total = 0
         		$db.select_all(filter_query) do |m|
-          			nb_total = nb_total + 1
+          			#nb_total = nb_total + 1
+          			nb_total = nb_total + c_splayd['max_number'][m['id']] - c_splayd['nb_nodes'][m['id']]
         		end
+
+        		
 
 			# Set flag if not enough splayds are available
         		if nb_total < job['nb_splayds']

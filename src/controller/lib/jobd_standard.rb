@@ -58,14 +58,23 @@ class JobdStandard < Jobd
 			count = 0
 			occupation.sort {|a, b| a[1] <=> b[1]}
 			occupation.each do |splayd_id, occ|
-				q_sel = q_sel + "('#{splayd_id}','#{job['id']}'),"
-				q_job = q_job + "('#{splayd_id}','#{job['id']}','RESERVED'),"
-				q_act = q_act + "('#{splayd_id}','#{job['id']}','REGISTER', 'TEMP'),"
+				$log.info("splayd_id="+splayd_id.to_s()+", occ="+occ.to_s())
+				$log.info("c_splayd['max_number']["+splayd_id.to_s()+"]="+c_splayd['max_number'][splayd_id].to_s()+", c_splayd['nb_nodes']["+splayd_id.to_s()+"]="+c_splayd['nb_nodes'][splayd_id].to_s()+", splayd_id="+splayd_id.to_s()+", occ="+occ.to_s())
+				nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
+				if nodes_assigned > nb_selected_splayds - count then
+					nodes_assigned = nb_selected_splayds - count
+				end
+				for instance_id in 1..nodes_assigned
+					q_sel = q_sel + "('#{splayd_id}','#{job['id']}','#{instance_id}'),"
+					q_job = q_job + "('#{splayd_id}','#{job['id']}','#{instance_id}','RESERVED'),"
+				end
+				q_act = q_act + "('#{splayd_id}','#{job['id']}','#{nodes_assigned}','REGISTER', 'TEMP'),"
 	
 				# We update the cache
 				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
 
-				count += 1
+				count += nodes_assigned
+
 				if count >= nb_selected_splayds then break end
 			end
 
@@ -84,10 +93,11 @@ class JobdStandard < Jobd
 			q_sel = q_sel[0, q_sel.length - 1]
 			q_job = q_job[0, q_job.length - 1]
 			q_act = q_act[0, q_act.length - 1]
-			$db.do "INSERT INTO splayd_selections (splayd_id, job_id) VALUES #{q_sel}"
-			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"
-
-			$db.do "INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"
+			$db.do "INSERT INTO splayd_selections (splayd_id, job_id, instance_id) VALUES #{q_sel}"
+			# por el momento escribiendo cada splayd+jobid+instanceid como un record separado en splayd_jobs
+			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, instance_id, status) VALUES #{q_job}"
+#aqui me quedé, estoy tratando de enviar REGISTER N
+			$db.do "INSERT INTO actions (splayd_id, job_id, nb_instances, command, status) VALUES #{q_act}"
 			$db.do "UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
 					WHERE job_id='#{job['id']}' AND command='REGISTER' AND status='TEMP'"
 
