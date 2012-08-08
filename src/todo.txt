@@ -134,10 +134,6 @@ f=f()()
   PlanetLab deployments to students or visitors: they can not do a DDOS to a
   third-party web site.
 
-- Extend splayd RPC module to take into account ModelNet like topologies, at
-  least for latencies between pairs of nodes and for dropped packets
-  ==> VALERIO, in progress
-	
 - Write a developer's guide to make programs more 'splay friendly': better explain which Lua features can be used, how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
 
 - in controller, check if the size of the actions table can be significantly reduce (why do we keep all splayd actions all the time?)
