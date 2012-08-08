@@ -77,8 +77,8 @@ class JobdStandard < Jobd
 
 				if count >= nb_selected_splayds then break end
 			end
-
-			$db.select_all "SELECT * FROM job_mandatory_splayds
+			#TODO faltaría esta parte con madatory splayds
+			$db.select_all "SELECT * FROM job_mandatory_splayds 
 					WHERE job_id='#{job['id']}'" do |mm|
 
 				splay_id = mm['splayd_id']
@@ -96,7 +96,7 @@ class JobdStandard < Jobd
 			$db.do "INSERT INTO splayd_selections (splayd_id, job_id, instance_id) VALUES #{q_sel}"
 			# por el momento escribiendo cada splayd+jobid+instanceid como un record separado en splayd_jobs
 			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, instance_id, status) VALUES #{q_job}"
-#aqui me quedé, estoy tratando de enviar REGISTER N
+
 			$db.do "INSERT INTO actions (splayd_id, job_id, nb_instances, command, status) VALUES #{q_act}"
 			$db.do "UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
 					WHERE job_id='#{job['id']}' AND command='REGISTER' AND status='TEMP'"

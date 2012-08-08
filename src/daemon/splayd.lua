@@ -368,6 +368,8 @@ function register(so)
 		return
 	end
 
+
+	--TODO esto hay que hacerlo en un loop
 	-- Check for max_number
 	local nb_jobs = 0
 	for _, _  in pairs(splayd.jobs) do

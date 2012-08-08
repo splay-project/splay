@@ -244,7 +244,7 @@ class SplaydProtocol
 				if @so.read != "OK" then raise ProtocolError, "LOG not OK" end
 				$log.info("#{@splayd}: Log port: #{logv['port']}")
 			end
-			$log.info("#{@splayd}: Auth OK")
+			$log.info("#{@splayd}: SSSSS")
 			@splayd.available
 		rescue => e
 			# restore previous status (REGISTER, UNAVAILABLE or RESET)
@@ -277,7 +277,7 @@ class SplaydProtocol
 					sleep(rand(@@sleep_time * 2 * 100).to_f / 100)
 				else
 
-					$log.debug("#{@splayd}: Action #{action['command']}")
+					$log.info("#{@splayd}: Action #{action['command']}")
 
 					start_time = Time.now.to_f
 					@so.write action['command']
@@ -285,12 +285,16 @@ class SplaydProtocol
 						if action['command'] == 'LIST' and action['position']
 							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
 						end
+						if action['command'] == 'REGISTER'
+							$log.info("#{@splayd}: Action data #{action['data']}")
+							#AQUI ME QUEDE
+							#action['data'] = action['data']
+						end
 						@so.write action['data']
 					end
 					reply_code = @so.read
 					if reply_code == "OK"
 						if action['command'] == "REGISTER"
-							#aqui está el register
 							port = addslashes(@so.read)
 							reply_data = port
 						end
