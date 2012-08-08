@@ -5,3 +5,5 @@ GeoLiteCity.dat
 geoip.so
 splay-controller-template.gemspec
 GOOGLE_MAP_KEY.txt
+unit_tests/
+test_cases/
