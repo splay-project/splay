@@ -340,7 +340,7 @@ class Jobd
 			hm_t = job['hostmasks'].gsub(/\*/, "%")
 			hostmasks_filter = " AND (ip LIKE '#{hm_t}' OR hostname LIKE '#{hm_t}') "
 		end
-
+#TODO CHECK
 		resources_filter = "AND (splayds.status='AVAILABLE') AND
 					max_mem >= '#{job['max_mem']}' AND
 					disk_max_size >= '#{job['disk_max_size']}' AND
@@ -381,6 +381,7 @@ class Jobd
 			new_job['code'] = job['code']
 			new_job['lib_name'] = job['lib_name']
 			new_job['script'] = job['script']
+			new_job['nb_instances'] = "_NBINSTANCES_"
 			new_job['network'] = {}
 			new_job['network']['max_send'] = job['network_max_send']
 			new_job['network']['max_receive'] = job['network_max_receive']

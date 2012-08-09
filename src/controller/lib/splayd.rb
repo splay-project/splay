@@ -285,18 +285,22 @@ class SplaydProtocol
 						if action['command'] == 'LIST' and action['position']
 							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
 						end
-						if action['command'] == 'REGISTER'
-							$log.info("#{@splayd}: Action data #{action['data']}")
-							#AQUI ME QUEDE
-							#action['data'] = action['data']
+						if action['command'] == 'REGISTER' and action['nb_instances']
+							action['data'] = action['data'].sub(/_NBINSTANCES_/, action['nb_instances'].to_s)
 						end
 						@so.write action['data']
 					end
 					reply_code = @so.read
+					$log.info("REPLY READ")
 					if reply_code == "OK"
+						$log.info("ITS OK")
 						if action['command'] == "REGISTER"
-							port = addslashes(@so.read)
-							reply_data = port
+							$log.info("COMES FROM REGISTER, GONNA READ THE PORTS")
+							ports_json = addslashes(@so.read)
+							$log.info("PORTS READ")
+							$log.info("ports json:"+ports_json)
+							ports = JSON.parse(ports_json)
+							reply_data = ports
 						end
 						if action['command'] == "STATUS"
 							reply_data = @so.read # no addslashes (json)
@@ -453,10 +457,13 @@ class SplaydGridProtocol < SplaydProtocol
 					end
 					reply_code = @so.read
 					if reply_code == "OK"
+						
 						if action['command'] == "REGISTER"
+						  
 						  if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
-							port = addslashes(@so.read)
-							reply_data = port
+						  port = addslashes(@so.read)
+						  reply_data = port
+							
 						end
 						if action['command'] == "STATUS"
 							reply_data = @so.read # no addslashes (json)
@@ -938,11 +945,14 @@ class Splayd
 	
 	# NOTE then corresponding entry may already have been deleted if the reply
 	# comes after the job has finished his registration, but no problem.
-	def s_sel_reply(job_id, port, reply_time)
-		$db.do "UPDATE splayd_selections SET
+	def s_sel_reply(job_id, ports, reply_time)
+		instance_id = 1
+		ports.each do |port|
+			$db.do "UPDATE splayd_selections SET
 				replied='TRUE',
 				reply_time='#{reply_time}',
 				port='#{port}'
-				WHERE splayd_id='#{@id}' AND job_id='#{job_id}'"
+				WHERE splayd_id='#{@id}' AND job_id='#{job_id}' AND instance_id='#{instance_id}'"
+		end
 	end
 end

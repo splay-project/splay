@@ -359,16 +359,18 @@ function register(so)
 	-- blocking socket
 	so:settimeout(nil)
 	local s = splayd.settings.job
-
+	print("CHECKPOINT1")
 	local job = json.decode(assert(so:receive()))
+	print("CHECKPOINT2")
 	local ref = job.ref
-
+	print("CHECKPOINT3")
 	if splayd.jobs[ref] then
 		assert(so:send("EXISTING_REF"))
 		return
 	end
-
-
+	print("CHECKPOINT4")
+	job.nb_instances = tonumber(job.nb_instances)
+	
 	--TODO esto hay que hacerlo en un loop
 	-- Check for max_number
 	local nb_jobs = 0
@@ -480,31 +482,42 @@ function register(so)
 	if not job.network.ip then
 		job.network.ip = "127.0.0.1"
 	end
-
-	job.me = {
-		ip = splayd.ip,
-		port = 0
-	}
+	print("CHECKPOINT5")
+	job.instances = {}
+	print("CHECKPOINT6")
+	for i=1,job.nb_instances do
+		job.instances[i] = {
+			me = {
+				ip = splayd.ip,
+				port = 0
+			}
+		}
+	end
 
 	-- We find nb_ports free ports
 	if not job.network.nb_ports then
 		job.network.nb_ports = 0
 	else
 		if job.network.nb_ports > 0 then
-			if job.network.nb_ports > s.network.max_ports then
+			print("CHECKPOINT7")
+			if job.network.nb_ports*job.nb_instances > s.network.max_ports then
 				assert(so:send("INVALID_PORTS"))
 				return
 			end
-			local port = find_reserve_rand_ports(job.network.nb_ports)
-			if port then
-				job.me.port = port
-			else
-				assert(so:send("BUSY_PORTS"))
-				return
+			print("CHECKPOINT8")
+			for i=1,job.nb_instances do
+				local port = find_reserve_rand_ports(job.network.nb_ports)
+				print("CHECKPOINT9, port type="..type(port))
+				if port then
+					job.instances[i].me.port = port
+				else
+					assert(so:send("BUSY_PORTS"))
+					return
+				end
 			end
 		end
 	end
-
+	print("CHECKPOINT10")
 	job.execution_time = 0
 
 	if not job.die_free then
@@ -521,15 +534,17 @@ function register(so)
 
 	-- corrections finished, we will now add some extra informations to the
 	-- job description
-
-	job.disk.directory = s.disk.directory.."/"..ref
-	splay.mkdir(job.disk.directory)
-
-	if not prepare_lib_directory(job) then
-		assert(so:send("DEPENDENCIES NOT OK"))
-		return
+	print("CHECKPOINT11")
+	for i=1,job.nb_instances do
+		job.instances[i].disk_directory = s.disk.directory.."/"..ref.."_"..i
+		splay.mkdir(job.instances[i].disk_directory)
 	end
 
+	--if not prepare_lib_directory(job) then
+	--	assert(so:send("DEPENDENCIES NOT OK"))
+	--	return
+	--end
+	print("CHECKPOINT12")
 	job.status = "waiting"
 
 	-- We give the blacklist to the job.
@@ -538,8 +553,23 @@ function register(so)
 	-- Settings fnished
 	splayd.jobs[ref] = job
 
+	ports_used = {}
+	print("CHECKPOINT13")
+	for i=1,job.nb_instances do
+		print("CHECKPOINT13_"..i)
+		table.insert(ports_used, job.instances[i].me.port)
+	end
+	print("CHECKPOINT14")
+	for i,v in ipairs(ports_used) do
+		print(i, v)
+	end
+
+	ports_json = json.encode(ports_used)
+
+	print(ports_json)
+
 	assert(so:send("OK"))
-	assert(so:send(job.me.port))
+	assert(so:send(ports_json))
 	-- restablish timeout
 	so:settimeout(so_timeout)
 end
@@ -1297,7 +1327,7 @@ jobs_lib_dir = jobs_fs_dir.."/lib"
 
 
 lua_version = "Lua 5.1" -- Do not run without this version.
-SSL = true -- Use SSL instead of plain text connection.
+SSL = false -- Use SSL instead of plain text connection.
 connect_retry_timeout = 180 -- Average reconnect time when connection loose.
 max_disconnection_time = 3600 -- Reset jobs in case of a very long disconnection.
 always_run = true -- Try to reconnect even if rejected by the controller.

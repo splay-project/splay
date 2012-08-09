@@ -29,7 +29,7 @@ class SplayControllerConfig
 	SQL_USER = DBConfig::SQL_USER
 	SQL_PASS = DBConfig::SQL_PASS
 
-	SSL = true
+	SSL = false
 	Production = false # Put true in prod, remove some tests to permit local testing.
 	AutoAddSplayds = true # In production must be false
 
