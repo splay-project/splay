@@ -64,14 +64,6 @@ I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Log po
 I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Auth OK
 I, [10:43:11 #679]  INFO -- : 9
 
-- Bug with controller v.0_854: some of the nodes reported strange ports during the submission of a job:
-    ..
-    403 host_4_26 10.0.2.4 0 - 0
-    ..
-    1700 host_23_62 10.0.2.23 0 - 0
-    1961 host_2_77 10.0.2.2 0 - 0
-
-
 
 - Possible bug in Splay Controller API server (1.1):
 [2011-09-29 20:38:48] ERROR `/robots.txt' not found.
@@ -99,10 +91,6 @@ I, [10:43:11 #679]  INFO -- : 9
        cli-server.rb:80
 66.249.71.139 - - [29/Sep/2011:20:38:48 CEST] "GET /json-rpc HTTP/1.1" 500 326
 - -> /json-rpc
-
-
-
-
 	
 **********	
 Feature requests/new features:
@@ -156,7 +144,6 @@ f=f()()
 - sockets should be provide finer grainer statistics. In particular: 1) total bytes sent/received for TCP/UDP, 2) opening/closing time measurements to obtain a socket
 
 - check files splayweb/app/model/user_observer|notifier as they might be legacy from a very faraway past
-
 
 - pagination: in SplayWeb, the list of splayds/jobs should allow pagination, to show N results for each page.
 
