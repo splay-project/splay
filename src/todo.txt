@@ -122,30 +122,55 @@ f=f()()
   PlanetLab deployments to students or visitors: they can not do a DDOS to a
   third-party web site.
 
-- Write a developer's guide to make programs more 'splay friendly': better explain which Lua features can be used, how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
+- Write a developer guide to make programs more splay friendly: better explain which Lua features can be used, 
+  how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
 
 - in controller, check if the size of the actions table can be significantly reduce (why do we keep all splayd actions all the time?)
 
-- add an option to the job creation panel / command to print or not print the header in the logs (useful for demos and when one needs to visually process a log)
+- add an option to the job creation panel / command to print or not print the header in the logs 
+  (useful for demos and when one needs to visually process a log)
 
 - Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
 
-- Add option o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a node in a given position is used for well-known reasons (entrypoint)
+- Add option o the churn-trace generator to explicitely exclude one node from the trace: this is useful when a node in a given position
+  is used for well-known reasons (entrypoint)
 
-- Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is shutting down/crashing (perhaps because
-  of a churn trace). This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. It requires some modifications to the splay sandbox and core module.
+- Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is 
+  shutting down/crashing (perhaps because of a churn trace). 
+  This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. 
+  It requires some modifications to the splay sandbox and core module.
 
-- the CLI client/server should allow to specify the restrictions on the splayds selected for a job. As it is 
-  done on the SplayWeb, where we can specify for example which version of the Splayd we want for the job, the same
-  should be made possible via the CLI options. 
+- the CLI client/server should allow to specify the restrictions on the splayds selected for a job. 
+  As it is done on the SplayWeb, where we can specify for example which version of the Splayd we want for the job, 
+  the same should be made possible via the CLI options. 
 
 - integrate the text editor of http://repl.it/ in the SplayWeb page for job submission
 
-- sockets should be provide finer grainer statistics. In particular: 1) total bytes sent/received for TCP/UDP, 2) opening/closing time measurements to obtain a socket
+- sockets should be provide finer grainer statistics. 
+  In particular: 
+  1) total bytes sent/received for TCP/UDP, 
+  2) opening/closing time measurements to obtain a socket
 
 - check files splayweb/app/model/user_observer|notifier as they might be legacy from a very faraway past
 
 - pagination: in SplayWeb, the list of splayds/jobs should allow pagination, to show N results for each page.
 
-- ajax-ification of the SplayWeb interface. In particular, the list of jobs visible to each user currently require a refresh of complete page to get the updated
-  status of the jobs. Instead, it would be nice click on refresh for a single job to get its latest status. When the splayweb interface is ported to the APIs, this will be trivial.
+- ajax-ification of the SplayWeb interface. 
+  In particular, the list of jobs visible to each user currently require a refresh of complete page to get the updated
+  status of the jobs. Instead, it would be nice click on refresh for a single job to get its latest status. 
+  When the splayweb interface is ported to the APIs, this will be trivial.
+
+- File-system prepulation. Provide each of the selected splayds for a given job with some content already available
+  in their virtual file-system. At first, the system should allow the submission of some content (single files or zipped content).
+  Users can submit/list/delete contents to/from the controller (splay-list-content).
+  When submitting a job, users can:
+  1) specify the content_id(s) to be included in the virtualfs: in this case, a copy of the file is shipped to ALL the selected splayds
+  2) specify a content_id_map, a simple text file where it is specified to which splayd send which content_id. Example:
+  
+  13 abc
+  123 def
+  200 ghi,lmn
+
+  This file says that the file whose content_id is 'abc' must be shipped to splayd 13, while content_id 'def' is for 123. 
+  Finally, splayd 200 must receive two files, whose content_ids are 'ghi' and 'lmn'.
+  Only these two splayds should then receive their own files
