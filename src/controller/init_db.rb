@@ -203,7 +203,7 @@ def init_db(db)
 			command VARCHAR(255),
 			data TEXT,
 			status ENUM('TEMP', 'WAITING', 'SENDING', 'FAILURE') DEFAULT 'WAITING',
-			position INT,
+			positions TEXT,
 			INDEX splayd_id (splayd_id),
 			INDEX job_id (job_id)
 			)")

@@ -54,6 +54,22 @@ do
 	end
 end
 
+
+function print_tablez(t, prefix)
+	for i,v in pairs(t) do
+		type_v = type(v)
+		header_print = prefix.."."..i
+		if type_v == "function" then
+			print(header_print.."=","(function)")
+		elseif type_v == "table" then
+			print_tablez(v, header_print)
+		else
+			print(header_print.."=",v)
+		end
+	end
+end
+
+
 --[[ Logs ]]--
 
 function prepare_dir(dir)
@@ -103,7 +119,7 @@ end
 --[[ Common functions ]]--
 
 -- called after a fork
-function start_job(job, ref, script)
+function start_job(job, ref, instance_nb, script) --TODO NOT SURE IF TO PUT INSTANCE_NB HERE OR NOT
 
 	if not script then
 		job._SPLAYD_VERSION = _SPLAYD_VERSION
@@ -114,10 +130,29 @@ function start_job(job, ref, script)
 		end
 	end
 
-	local job_file = jobs_dir.."/"..ref.."_"..splayd.settings.key
+	local job_file = jobs_dir.."/"..ref.."_"..instance_nb.."_"..splayd.settings.key
 	if script then job_file = job_file.."_script" end
 
-	local content = json.encode(job)
+	local job_for_instance = {}
+
+	--copies the job table: it assumes 1-level depth for job table except for the instances branch. each instances[i] branch is assumed to be also 1-level depth
+
+	for i,v in pairs(job) do
+		if i ~= "instances" then
+			job_for_instance[i] = v
+		end
+	end
+
+	for i,v in pairs(job.instances[instance_nb]) do
+		job_for_instance[i] = v
+	end
+
+	print("GONNA PRINT JOB")
+	print_tablez(job, "job")
+	print("GONNA PRINT JOB FOR INSTANCE")
+	print_tablez(job_for_instance, "job_for_instance")
+
+	local content = json.encode(job_for_instance)
 	if script then content = job.script end
 
 	local f, err = io.open(job_file, "w")
@@ -128,7 +163,7 @@ function start_job(job, ref, script)
 	f:write(content)
 	f:close()
 
-	local log_file = "-" -- default = no log file
+	local log_file = "-" -- default = no log file --TODO LET'S SEE HOW IT WORKS WITH ALL INSTANCES WRITING TO THE SAME FILE
 	if jobs_log then
 		log_file = jobs_logs_dir.."/"..ref.."_"..splayd.settings.key
 		if script then log_file = log_file.."_script" end
@@ -147,14 +182,14 @@ function start_job(job, ref, script)
 	os.exit()
 end
 
-function start(ref)
+function start(ref, instance_nb)
 
 	local job = splayd.jobs[ref]
 
 	-- we release the ports we have locked for this job
 	if job.network.nb_ports > 0 then
-		splay.release_ports(job.me.port,
-				job.me.port + job.network.nb_ports - 1)
+		splay.release_ports(job.instances[instance_nb].me.port,
+				job.instances[instance_nb].me.port + job.network.nb_ports - 1)
 	end
 
 	local pid, err, err_code = splay.fork()
@@ -163,9 +198,9 @@ function start(ref)
 
 		if pid > 0 then -- splayd
 
-			job.pid = pid
-			job.status = "running"
-			job.start_time = os.time()
+			job.instances[instance_nb].pid = pid
+			job.instances[instance_nb].status = "running"
+			job.instances[instance_nb].start_time = os.time()
 
 		else -- jailer (forked)
 
@@ -178,9 +213,9 @@ function start(ref)
 					if pid > 0 then
 						-- Important to run the job here because splayd is watching only
 						-- this pid !
-						start_job(job, ref)
+						start_job(job, ref, instance_nb)
 					else
-						start_job(job, ref, true)
+						start_job(job, ref, instance_nb, true)
 					end
 				else
 					print("2nd fork error: "..err, err_code)
@@ -188,10 +223,10 @@ function start(ref)
 				end
 			else -- or not
 				if job.code then
-					start_job(job, ref)
+					start_job(job, ref, instance_nb)
 				end
 				if job.script and exec_script then
-					start_job(job, ref, true)
+					start_job(job, ref, instance_nb, true)
 				end
 			end
 			-- In any case, this process will die (security)
@@ -405,6 +440,9 @@ function register(so)
 		job.code = ""
 	end
 
+	--TODO: ALL THIS CHECKING MUST BE DONE TAKING IN CONSIDERATION THE INSTANCES
+
+
 	if not job.max_mem then
 		job.max_mem = s.max_mem
 	else
@@ -535,15 +573,17 @@ function register(so)
 	-- corrections finished, we will now add some extra informations to the
 	-- job description
 	print("CHECKPOINT11")
+	job.disk.directory = s.disk.directory.."/"..ref
+	splay.mkdir(job.disk.directory)
 	for i=1,job.nb_instances do
 		job.instances[i].disk_directory = s.disk.directory.."/"..ref.."_"..i
 		splay.mkdir(job.instances[i].disk_directory)
 	end
 
-	--if not prepare_lib_directory(job) then
-	--	assert(so:send("DEPENDENCIES NOT OK"))
-	--	return
-	--end
+	if not prepare_lib_directory(job) then
+		assert(so:send("DEPENDENCIES NOT OK"))
+		return
+	end
 	print("CHECKPOINT12")
 	job.status = "waiting"
 
@@ -575,9 +615,13 @@ function register(so)
 end
 
 function prepare_lib_directory(job)
+	print("CHECKPOINT11.LIB1")
 	if job.disk then
+		print("CHECKPOINT11.LIB2")
 		job.disk.lib_directory = job.disk.directory.."/".."lib"
+		print("CHECKPOINT11.LIB3")
 		splay.mkdir(job.disk.lib_directory)
+		print("CHECKPOINT11.LIB4")
 		if job.lib_code and job.lib_code ~= "" then
 			local lib_file = io.open(libs_cache_dir.."/".. job.lib_sha1, "w+")
 			local lib_code = base64.decode(job.lib_code)
@@ -594,6 +638,7 @@ function prepare_lib_directory(job)
 				return false
 			end
 		end
+		print("CHECKPOINT11.LIB5")
 		if job.lib_name and job.lib_name ~= "" then
 			os.execute("ln "..libs_cache_dir.."/"..job.lib_sha1.. " " .. job.disk.lib_directory.."/"..job.lib_name)
 		end
@@ -642,8 +687,16 @@ function list(so)
 	end
 	job = splayd.jobs[ref]
 
+	print("GONNA PRINT LIST")
+
+	print_tablez(list, "")
+
 	-- We append the list to the job configuration.
 	list.ref = nil
+	for i=1,job.nb_instances do
+		job.instances[i].position = list.positions[i]
+	end
+	list.positions = nil
 	job.network.list = list
 	assert(so:send("OK"))
 	-- restablish timeout
@@ -762,8 +815,10 @@ function n_start(so)
 				co_churn = coroutine.create(churn_mgmt)
 			end
 		else
-			--if the job doesn't have timeline, simply start (normal job)
-			start(ref)
+			for i=1,splayd.jobs[ref].nb_instances do
+				--if the job doesn't have timeline, simply start (normal job)
+				start(ref, i)
+			end
 		end
 		assert(so:send("OK"))
 	else
@@ -802,7 +857,7 @@ function restart(so)
 			return
 		end
 		stop(ref)
-		start(ref)
+		start(ref) --TODO WHAT TO DO WITH INSTANCES AND THIS?
 		assert(so:send("OK"))
 	else
 		assert(so:send("UNKNOWN_REF"))
@@ -863,7 +918,7 @@ function local_log(so)
 	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if splayd.jobs[ref] then
-		local log_file = jobs_logs_dir.."/"..ref.."_"..splayd.settings.key
+		local log_file = jobs_logs_dir.."/"..ref.."_"..splayd.settings.key --TODO CAMBIAR A INSTANCE
 		local f = io.open(log_file)
 		if f then
 			assert(so:send("OK"))

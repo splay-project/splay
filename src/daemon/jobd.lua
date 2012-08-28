@@ -91,7 +91,7 @@ end
 
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
-	job.position = job.network.list.position
+	--job.position = job.network.list.position
 
 
 	-- now job.nodes is a function that gives an updated view of the nodes
@@ -145,6 +145,7 @@ if job.network.list then
 
 	job.list_type = job.network.list.type -- head, random
 end
+
 package.cpath = package.cpath..";"..job.disk.lib_directory.."/?.so"
 
 print(">> Job settings:")

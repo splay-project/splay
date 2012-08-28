@@ -282,8 +282,8 @@ class SplaydProtocol
 					start_time = Time.now.to_f
 					@so.write action['command']
 					if action['data']
-						if action['command'] == 'LIST' and action['position']
-							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
+						if action['command'] == 'LIST' and action['positions']
+							action['data'] = action['data'].sub(/_POSITIONS_/, action['positions'])
 						end
 						if action['command'] == 'REGISTER' and action['nb_instances']
 							action['data'] = action['data'].sub(/_NBINSTANCES_/, action['nb_instances'].to_s)
@@ -432,8 +432,8 @@ class SplaydGridProtocol < SplaydProtocol
 					start_time = Time.now.to_f
 					@so.write action['command']
 					if action['data']
-						if action['command'] == 'LIST' and action['position']
-							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
+						if action['command'] == 'LIST' and action['positions']
+							action['data'] = action['data'].sub(/_POSITIONS_/, action['positions'])
 						elsif action['command'] == "REGISTER"
 						  job = action['data']
 						  job = JSON.parse(job)
@@ -953,6 +953,7 @@ class Splayd
 				reply_time='#{reply_time}',
 				port='#{port}'
 				WHERE splayd_id='#{@id}' AND job_id='#{job_id}' AND instance_id='#{instance_id}'"
+			instance_id = instance_id + 1
 		end
 	end
 end

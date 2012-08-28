@@ -89,10 +89,10 @@ class Jobd
 	def self.my_json(list)
 		out = '{"ref":"' + list['ref'] + '"'
 
-		if not list['position']
-			out += ',"position":_POSITION_'
+		if not list['positions']
+			out += ',"positions":_POSITIONS_'
 		else
-			out += ',"position":' + list['position'].to_s
+			out += ',"positions":' + list['position'].to_s
 		end
 
 		if list['type']
@@ -175,9 +175,14 @@ class Jobd
 			end
 			res = $db.select_one "SELECT ip FROM splayds WHERE id='#{m_s['splayd_id']}'"
 			el = {}
+			#$log.info("id=#{m_s['splayd_id']}")
 			el['id'] = m_s['splayd_id']
+			#$log.info("ip=#{res['ip']}")
 			el['ip'] = res['ip']
+			#$log.info("port=#{m_s['port']}")
 			el['port'] = m_s['port']
+			#$log.info("instance_id=#{m_s['instance_id']}")
+			el['instance_id'] =m_s['instance_id']
 			list['nodes'] << el
 		end
 		return list
@@ -237,19 +242,29 @@ class Jobd
 
 		case job['list_type']
 		when 'HEAD' # simple head list of job['list_size'] element
-
+			$log.info("HEADMODE")
 			list_json = head_list(job, m_s_s)
 			q_act = ""
 			pos = 1
+			m_s_s_positions = {}
 			m_s_s.each do |m_s|
-				q_act = q_act + "('#{m_s['splayd_id']}','#{job['id']}','LIST','#{pos}','TEMP'),"
+				splayd_id_list = m_s['splayd_id']
+				if not m_s_s_positions[splayd_id_list]
+					m_s_s_positions[splayd_id_list] = []
+				end
+				m_s_s_positions[splayd_id_list] << pos
 				pos = pos + 1
 			end
+			m_s_s_positions.each do |m_s_splayd_id, m_s_positions|
+				json_pos = m_s_positions.to_json
+				q_act = q_act + "('#{m_s_splayd_id}','#{job['id']}','LIST','#{json_pos}','TEMP'),"
+			end
 			q_act = q_act[0, q_act.length - 1]
-			$db.do "INSERT INTO actions (splayd_id, job_id, command, position, status)
+			$db.do "INSERT INTO actions (splayd_id, job_id, command, positions, status)
 					VALUES #{q_act}"
 			$db.do "UPDATE actions SET data='#{list_json}', status='WAITING'
 					WHERE job_id='#{job['id']}' AND command='LIST' AND status='TEMP'"
+
 		when 'RANDOM' # random list of job['list_size'] element
 
 			lists = random_lists(job, m_s_s)
@@ -272,8 +287,13 @@ class Jobd
 	def self.send_start(job, query)
 		m_s_s = $db.select_all query
 		q_act = ""
+		m_s_s_distincts = {}
 		m_s_s.each do |m_s|
-			q_act = q_act + "('#{m_s['splayd_id']}','#{job['id']}','START', '#{job['ref']}'),"
+			m_s_splayd_id = m_s['splayd_id']
+			if not m_s_s_distincts[m_s_splayd_id] then
+				m_s_s_distincts[m_s_splayd_id] = true
+				q_act = q_act + "('#{m_s['splayd_id']}','#{job['id']}','START', '#{job['ref']}'),"
+			end
 		end
 		q_act = q_act[0, q_act.length - 1]
 		$db.do "INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}"
