@@ -3,21 +3,21 @@
 ## Splay Controller ### v1.3 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
-##
-##
-##
+## 
+## 
+## 
 ## This file is part of Splay.
-##
-## Splayd is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published
-## by the Free Software Foundation, either version 3 of the License,
+## 
+## Splayd is free software: you can redistribute it and/or modify 
+## it under the terms of the GNU General Public License as published 
+## by the Free Software Foundation, either version 3 of the License, 
 ## or (at your option) any later version.
-##
-## Splayd is distributed in the hope that it will be useful,but
+## 
+## Splayd is distributed in the hope that it will be useful,but 
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 ## See the GNU General Public License for more details.
-##
+## 
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
@@ -26,11 +26,28 @@
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
+#function check_version checks if version is 5.5 or not (version 5.5 has a change of syntax from type=innodb to engine=innodb)
+#TODO for the moment, it works with version 5.5, but it does not check above that
+def check_version(db)
+	db_version = db.select_one("SELECT VERSION()")
+	db_version_big = db_version.to_s.match("^[0-9]+\.[0-9]+")
+	if not db_version_big then
+		abort("ERROR: Problem checking DB version")
+	end
+	db_version_nb = db_version_big[0].to_f
+	if (db_version_nb < 5.5) then
+		return "type"
+	else
+		return "engine"
+	end
+end
+
 def drop_db(db)
 	db.do("DROP TABLE IF EXISTS splayds")
 	db.do("DROP TABLE IF EXISTS splayd_availabilities")
 	db.do("DROP TABLE IF EXISTS jobs")
 	db.do("DROP TABLE IF EXISTS job_mandatory_splayds")
+	db.do("DROP TABLE IF EXISTS job_designated_splayds")
 	db.do("DROP TABLE IF EXISTS splayd_jobs")
 	db.do("DROP TABLE IF EXISTS splayd_selections")
 	db.do("DROP TABLE IF EXISTS blacklist_hosts")
@@ -86,7 +103,7 @@ def init_db(db)
 			last_contact_time INT,
 			INDEX ip (ip),
 			INDEX `key` (`key`)
-			) engine=innodb")
+			) #{$type_or_engine}=innodb")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_availabilities (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -101,9 +118,10 @@ def init_db(db)
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
 			created_at datetime default NULL,
-                        scheduled_at datetime default NULL,
-                        strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
-
+            scheduled_at datetime default NULL,
+            strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+			multifile ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+			
 			name VARCHAR(255),
 			description VARCHAR(255),
 
@@ -136,6 +154,7 @@ def init_db(db)
 			min_uptime INT NOT NULL DEFAULT '0',
 			hostmasks VARCHAR(255),
 			max_time INT DEFAULT '10000',
+			queue_timeout INT DEFAULT NULL,
 
 			die_free ENUM('TRUE','FALSE') DEFAULT 'TRUE',
 			keep_files ENUM('TRUE','FALSE') DEFAULT 'FALSE',
@@ -151,7 +170,7 @@ def init_db(db)
 			command VARCHAR(255),
 			command_msg TEXT,
 
-			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED') DEFAULT 'LOCAL',
+			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED','QUEUE_TIMEOUT') DEFAULT 'LOCAL',
 			status_time INT NOT NULL,
 			status_msg TEXT,
 
@@ -163,6 +182,13 @@ def init_db(db)
 			job_id INT NOT NULL,
 			splayd_id INT NOT NULL
 			)")
+
+	db.do("CREATE TABLE IF NOT EXISTS job_designated_splayds (
+			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+			job_id INT NOT NULL,
+			splayd_id INT NOT NULL
+			)")
+
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_jobs (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -220,7 +246,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS locks (
 			id INT NOT NULL,
 			job_reservation INT NOT NULL DEFAULT '0'
-			) engine=innodb")
+			) #{$type_or_engine}=innodb")
 
 	db.do("INSERT INTO locks SET
 			id='1',
@@ -256,7 +282,7 @@ def init_db(db)
 end
 
 db = DBUtils::get_new
+$type_or_engine = check_version(db)
 drop_db(db)
 init_db(db)
 db.disconnect
-

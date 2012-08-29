@@ -68,6 +68,7 @@ class SplayControllerConfig
 
 	# Jobd
 	RegisterTimeout = 30
+	MaxQueueTimeout = 3600
 	JobPollTime = 1
 	# Allow native lib/jobs to be submitted
 	AllowNativeLibs = true

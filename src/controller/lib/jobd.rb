@@ -27,6 +27,7 @@ class Jobd
 	@@dlock_jr = DistributedLock.new('job_reservation')
 
 	@@register_timeout = SplayControllerConfig::RegisterTimeout
+	@@max_queue_timeout = SplayControllerConfig::MaxQueueTimeout
 	@@poll_time = SplayControllerConfig::JobPollTime
 	@@link_log_dir = SplayControllerConfig::LinkLogDir
 	@@log_dir = SplayControllerConfig::LogDir
@@ -66,7 +67,7 @@ class Jobd
 	end
 
  	def self.status_queued
-	end
+  	end
 
 	def self.kill_max_time
 	end
@@ -92,7 +93,7 @@ class Jobd
 		if not list['positions']
 			out += ',"positions":_POSITIONS_'
 		else
-			out += ',"positions":' + list['position'].to_s
+			out += ',"positions":' + list['positions'].to_json
 		end
 
 		if list['type']
@@ -175,13 +176,9 @@ class Jobd
 			end
 			res = $db.select_one "SELECT ip FROM splayds WHERE id='#{m_s['splayd_id']}'"
 			el = {}
-			#$log.info("id=#{m_s['splayd_id']}")
 			el['id'] = m_s['splayd_id']
-			#$log.info("ip=#{res['ip']}")
 			el['ip'] = res['ip']
-			#$log.info("port=#{m_s['port']}")
 			el['port'] = m_s['port']
-			#$log.info("instance_id=#{m_s['instance_id']}")
 			el['instance_id'] =m_s['instance_id']
 			list['nodes'] << el
 		end
@@ -226,7 +223,7 @@ class Jobd
 			(1..size).each do
 				list['nodes'] << nodes.slice!(rand(nodes.size))
 			end
-
+			
 			lists[me['id']] = my_json(list)
 			pos += 1
 		end
@@ -239,32 +236,36 @@ class Jobd
 	# (query should return values with splayd_id)
 	def self.send_all_list(job, query)
 		m_s_s = $db.select_all query
-
+		
 		case job['list_type']
+		#TODO: turbo mode not considered when using Random List
 		when 'HEAD' # simple head list of job['list_size'] element
-			$log.info("HEADMODE")
+
 			list_json = head_list(job, m_s_s)
 			q_act = ""
 			pos = 1
-			m_s_s_positions = {}
+			pos_list = {} #initializes the list of positions for all instances in the splayds
 			m_s_s.each do |m_s|
-				splayd_id_list = m_s['splayd_id']
-				if not m_s_s_positions[splayd_id_list]
-					m_s_s_positions[splayd_id_list] = []
+				splayd_id = m_s['splayd_id'] #extracts the unique splayd ID
+				if not pos_list[splayd_id] #if there is not a record for this splayd ID
+					pos_list[splayd_id] = [] #creates an empty array to store the positions for each instance
 				end
-				m_s_s_positions[splayd_id_list] << pos
-				pos = pos + 1
+				pos_list[splayd_id] << pos #adds the current position to the list of positions
+				pos = pos + 1 #increments pos by 1
 			end
-			m_s_s_positions.each do |m_s_splayd_id, m_s_positions|
-				json_pos = m_s_positions.to_json
-				q_act = q_act + "('#{m_s_splayd_id}','#{job['id']}','LIST','#{json_pos}','TEMP'),"
+
+			#TODO WATCH OUT SCOPE OF splayd_id
+
+			pos_list.each do |splayd_id, positions| #for each element in the positions list
+				json_pos = positions.to_json #turn the list of positions into a JSON string
+				q_act = q_act + "('#{splayd_id}','#{job['id']}','LIST','#{json_pos}','TEMP')," #concatenate the LIST action
 			end
+
 			q_act = q_act[0, q_act.length - 1]
 			$db.do "INSERT INTO actions (splayd_id, job_id, command, positions, status)
 					VALUES #{q_act}"
 			$db.do "UPDATE actions SET data='#{list_json}', status='WAITING'
 					WHERE job_id='#{job['id']}' AND command='LIST' AND status='TEMP'"
-
 		when 'RANDOM' # random list of job['list_size'] element
 
 			lists = random_lists(job, m_s_s)
@@ -287,12 +288,14 @@ class Jobd
 	def self.send_start(job, query)
 		m_s_s = $db.select_all query
 		q_act = ""
-		m_s_s_distincts = {}
+		splayd_list = {} #initializes the list of splayds
 		m_s_s.each do |m_s|
-			m_s_splayd_id = m_s['splayd_id']
-			if not m_s_s_distincts[m_s_splayd_id] then
-				m_s_s_distincts[m_s_splayd_id] = true
-				q_act = q_act + "('#{m_s['splayd_id']}','#{job['id']}','START', '#{job['ref']}'),"
+			splayd_id = m_s['splayd_id'] #retrieves the splayd ID
+			if not splayd_list[splayd_id] then #if the record for that splayd ID does not exist
+				splayd_list[splayd_id] = true #create it and
+				q_act = q_act + "('#{splayd_id}','#{job['id']}','START', '#{job['ref']}')," #concatenate the START action
+				#like this, the START command will be sent once per splayd
+				#TODO add in data the instances to START
 			end
 		end
 		q_act = q_act[0, q_act.length - 1]
@@ -360,7 +363,7 @@ class Jobd
 			hm_t = job['hostmasks'].gsub(/\*/, "%")
 			hostmasks_filter = " AND (ip LIKE '#{hm_t}' OR hostname LIKE '#{hm_t}') "
 		end
-#TODO CHECK
+
 		resources_filter = "AND (splayds.status='AVAILABLE') AND
 					max_mem >= '#{job['max_mem']}' AND
 					disk_max_size >= '#{job['disk_max_size']}' AND
@@ -383,6 +386,22 @@ class Jobd
 			mandatory_filter += " AND splayds.id!=#{mm['splayd_id']} "
 		end
 
+		
+		designated_filter = ""
+		pos = 0
+		$db.select_all "SELECT * FROM job_designated_splayds
+				WHERE job_id='#{job['id']}'" do |jds|
+			if pos == 0
+				designated_filter += " AND (splayds.id=#{jds['splayd_id']}"
+			else
+				designated_filter += " OR splayds.id=#{jds['splayd_id']}"
+			end
+			pos=pos+1
+		end
+		if designated_filter != ""
+			designated_filter += ")"
+		end
+
 		return "SELECT * FROM splayds WHERE
 				1=1
 				#{version_filter}
@@ -390,6 +409,7 @@ class Jobd
 				#{localization_filter}
 				#{bytecode_filter}
 				#{mandatory_filter}
+				#{designated_filter}
 				#{hostmasks_filter}
 				#{distance_filter}
 				ORDER BY RAND()"
@@ -401,7 +421,6 @@ class Jobd
 			new_job['code'] = job['code']
 			new_job['lib_name'] = job['lib_name']
 			new_job['script'] = job['script']
-			new_job['nb_instances'] = "_NBINSTANCES_"
 			new_job['network'] = {}
 			new_job['network']['max_send'] = job['network_max_send']
 			new_job['network']['max_receive'] = job['network_max_receive']
@@ -417,6 +436,7 @@ class Jobd
 			new_job['max_mem'] = job['max_mem']
 			new_job['keep_files'] = job['keep_files']
 			new_job['die_free'] = job['die_free']
+			new_job['nb_instances'] = "_NBINSTANCES_" # generic string to be replaced by splayd.rb at the time of registration
 			return new_job.to_json
 	end
 
@@ -463,7 +483,6 @@ class Jobd
 			# Do not take only AVAILABLE splayds here because new ones can become
 			# AVAILABLE before the next filters.
 			$db.select_all "SELECT id, max_number FROM splayds" do |m|
-				$log.info("select_splayds: m['id']="+m['id'].to_s()+" m['max_number']="+m['max_number'].to_s())
 				c_splayd['max_number'][m['id']] = m['max_number']
 				c_splayd['nb_nodes'][m['id']] = 0
 			end
@@ -471,7 +490,6 @@ class Jobd
 			$db.select_all "SELECT splayd_id, COUNT(job_id) as nb_nodes
 					FROM splayd_jobs
 					GROUP BY splayd_id" do |ms|
-				$log.info("select_splayds: ms['splay_id']="+ms['splay_id'].to_s()+" ms['nb_nodes']="+ms['nb_nodes'].to_s())
 				c_splayd['nb_nodes'][ms['splayd_id']] = ms['nb_nodes']
 			end
 		end
@@ -487,42 +505,58 @@ class Jobd
 					job['network_send_speed'] and
 					m['network_receive_speed'] / c_splayd['max_number'][m['id']] >=
 					job['network_receive_speed']
-				$log.info("select_splayds: c_splayd['nb_nodes']["+m['id'].to_s()+"]="+c_splayd['nb_nodes'][m['id']].to_s()+" c_splayd['max_number']["+m['id'].to_s()+"]="+c_splayd['max_number'][m['id']].to_s())
+
 				if c_splayd['nb_nodes'][m['id']] < c_splayd['max_number'][m['id']]
 					occupation[m['id']] =
 					c_splayd['nb_nodes'][m['id']] / c_splayd['max_number'][m['id']].to_f
-					$log.info("select_splayds: occupation["+m['id'].to_s()+"]="+occupation[m['id']].to_s())
 				end
 			end
 		end
 
-      		no_resources = false
+		# Designated splayds filter
+		designated_ok = true
+		$db.select_all("SELECT * FROM job_designated_splayds
+				WHERE job_id='#{job['id']}'") do |jds|
+			ds = $db.select_one "SELECT id FROM splayds WHERE
+					id='#{jds['splayd_id']}'"
+			if ds
+				if c_splayd['nb_nodes'][ds['id']] == c_splayd['max_number'][ds['id']]
+					status_msg += "Designated splayd: #{ds['id']} " +
+							"has no free slot.\n"
+					designated_ok = false
+				end
+			else
+				status_msg += "Designated splayd: #{jds['splayd_id']}" + 
+					" does not have the requested ressources or is not available.\n"
+				designated_ok = false # redundant???
+				no_resources = true
+			end
+		end
+
+		no_resources = false
 
 		# Compute the number of splayds with the required characteristics
 		if occupation.size < job['nb_splayds']
         		nb_total = 0
         		$db.select_all(filter_query) do |m|
-          			#nb_total = nb_total + 1
-          			nb_total = nb_total + c_splayd['max_number'][m['id']] - c_splayd['nb_nodes'][m['id']]
+          			nb_total = nb_total + c_splayd['max_number'][m['id']] - c_splayd['nb_nodes'][m['id']] #substracts the maximum number of instances that can be deployed
         		end
-
-        		
 
 			# Set flag if not enough splayds are available
-        		if nb_total < job['nb_splayds']
-          			no_resources = true
-        		end
+			if nb_total < job['nb_splayds']
+				no_resources = true
+			end
 
 			status_msg += "Not enough splayds found with the requested ressources " +
-					"(only #{occupation.size} instead of #{job['nb_splayds']})"
+					"(only #{occupation.size} instead of #{job['nb_splayds']}) \n"
 				normal_ok = false
 			 end
 
-			 ### Mandatory splayds
-			 mandatory_ok = true
+			### Mandatory splayds
+			mandatory_ok = true
 
-			 $db.select_all("SELECT * FROM job_mandatory_splayds
-			  		 WHERE job_id='#{job['id']}'") do |mm|
+			$db.select_all("SELECT * FROM job_mandatory_splayds
+					 WHERE job_id='#{job['id']}'") do |mm|
 
 				m = $db.select_one "SELECT id, ref FROM splayds WHERE
 						id='#{mm['splayd_id']}'
@@ -544,46 +578,41 @@ class Jobd
 			 end
 
 			 # Set status to NO_RESOURCES
-			 if not mandatory_ok or (not normal_ok and no_resources)
+			 if no_resources #(not normal_ok and no_resources) or (not designated_ok and no_resources) 
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-			  	#next
-				return c_splayd, occupation, status_msg, normal_ok, mandatory_ok, no_resources, true
+				return c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, true
 			 end
 
-		return c_splayd, occupation, status_msg, normal_ok, mandatory_ok, no_resources, false
+		return c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, false
 	end
 
 	# Splayds selection for JobdStandard and JobdTrace
 	def self.status_local_common(job)
 
-		c_splayd, occupation, status_msg, normal_ok, mandatory_ok, no_resources, do_next = self.select_splayds(job)
+		c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, do_next = self.select_splayds(job)
 		if do_next == true
-			# next
 			return c_splayd, occupation, 0, nil, true
 		end
 
 		# Queue scheduled jobs
-      		time_now = Time.new().strftime("%Y-%m-%d %T")
-      		if job['scheduled_at'] && job['scheduled_at'].strftime("%Y-%m-%d %T") > time_now
+		time_now = Time.new().strftime("%Y-%m-%d %T")
+		if job['scheduled_at'] && job['scheduled_at'].strftime("%Y-%m-%d %T") > time_now
 			set_job_status(job['id'], 'QUEUED', status_msg)
-        		#next
 			return c_splayd, occupation, 0, nil, true
-      		end
+		end
 
-      		if not normal_ok and not no_resources
+		if(not normal_ok or not designated_ok) and not no_resources
 			if job['strict'] == "FALSE"
-        			set_job_status(job['id'], 'QUEUED', status_msg)
-        			#next
+				set_job_status(job['id'], 'QUEUED', status_msg)
 				return c_splayd, occupation, 0, nil, true
 			else
-				status_msg = "Cannot be submitted immediately: " +
-					     "Not enough splayds found with the requested resources " +
-					     "(only #{occupation.size} instead of #{job['nb_splayds']})"
+				status_msg = "Cannot be submitted immediately: " + 
+					"Not enough splayds found with the requested resources " + 
+					"(only #{occupation.size} instead of #{job['nb_splayds']}) \n"
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-        			#next
 				return c_splayd, occupation, 0, nil, true
 			end
-      		end
+		end
 
 		# We will send the job !
 		new_job = create_job_json(job)
@@ -619,28 +648,41 @@ class Jobd
 
 	def self.status_queued_common(job)
 
-		c_splayd, occupation, status_msg, normal_ok, mandatory_ok, no_resources, do_next = self.select_splayds(job)
+		queue_timeout = job['queue_timeout']
+		status_time = job['status_time']
+		if queue_timeout != 0 && queue_timeout < @@max_queue_timeout then
+			# take into account user-defined timeout
+			if Time.now.to_i > status_time + queue_timeout then
+				set_job_status(job['id'], 'QUEUE_TIMEOUT')
+			end
+		else
+			# take into account administrator-defined timeout
+			if Time.now.to_i > status_time + @@max_queue_timeout then
+				set_job_status(job['id'], 'QUEUE_TIMEOUT')
+			end
+		end
+
+		c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, do_next = self.select_splayds(job)
 		if do_next == true
-			# next
 			return c_splayd, occupation, 0, nil, true
 		end
 
-		if not mandatory_ok or (not normal_ok and no_resources)
+		if (not normal_ok or not designated_ok) and no_resources
 			set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-			return c_splayd, occupation, 0, nil, true #next
+			return c_splayd, occupation, 0, nil, true
 		end
 
-                if not normal_ok and not no_resources
+		if (not normal_ok or not designated_ok) and not no_resources
 			if job['strict'] == "FALSE"
-        			return c_splayd, occupation, 0, nil, true #next
+				return c_splayd, occupation, 0, nil, true
 			else
-				status_msg = "Cannot be submitted immediately: " +
-					     "Not enough splayds found with the requested resources " +
-					     "(only #{occupation.size} instead of #{job['nb_splayds']})"
+				status_msg = "Cannot be submitted immediately: " + 
+					"Not enough splayds found with the requested resources " + 
+					"(only #{occupation.size} instead of #{job['nb_splayds']}) \n"
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-        			return c_splayd, occupation, 0, nil, true #next
+				return c_splayd, occupation, 0, nil, true
 			end
-      		end
+		end
 
 		# We will send the job !
 
@@ -678,4 +720,3 @@ class Jobd
 	end
 
 end
-

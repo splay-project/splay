@@ -38,12 +38,12 @@ class Ctrl_api
 		#checks the validity of the session ID and stores the returning value in the variable user
 		user = check_session_id(session_id)
 		#check_session_id returns false if the session ID is not valid; if user is not false (the session ID
-		# is valid)
+		#is valid)
 		if (user) then
 			#user_id is taken from the field 'id' from variable user
 			user_id = user['id']
 			#if the user is admin (can see all the jobs) or the job belongs to her
-			if ((user['admin'] == 1) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
+			if (($db.select_one("SELECT * FROM jobs WHERE id=#{job_id}") and (user['admin'] == 1)) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
 				#opens the log file of the requested job
 				log_file = File.open("../logs/"+job_id)
 				#ok is true
@@ -56,11 +56,15 @@ class Ctrl_api
 				return ret
 			end
 			#if the 'if (user)' statement was true, the function would have ended with the return on the line above,
-			# if not, the following lines are processed
+			#if not, the following lines are processed
 			#ok is false
 			ret['ok'] = false
-			#error says that the job doesn't exist
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 			#returns ret
 			return ret
 		end
@@ -72,8 +76,8 @@ class Ctrl_api
 		return ret
 	end
 
-#function get_job_code: triggered when a "GET JOB CODE" message is received, returns the corresponding
-# source code as a string
+	#function get_job_code: triggered when a "GET JOB CODE" message is received, returns the corresponding
+	#source code as a string
 	def get_job_code(job_id, session_id)
 		#initializes the return variable
 		ret = Hash.new
@@ -98,11 +102,16 @@ class Ctrl_api
 				end
 			end
 			#if the 'if (user)' statement was true, the function would have ended with the return on the line above,
-			# if not, the following lines are processed
+			#if not, the following lines are processed
 			#ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 			#returns ret
 			return ret
 		end
@@ -127,7 +136,7 @@ class Ctrl_api
 			#if the user is admin (can see all the jobs) or the job belongs to her
 			if ((user['admin'] == 1) or ($db.select_one("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
 				#writes KILL in the field 'command' of table 'jobs'; the contoller takes this command as an order
-				# to kill the job
+				#to kill the job
 				$db.do("UPDATE jobs SET command='KILL' WHERE id='#{job_id}'")
 				#ok is true
 				ret['ok'] = true
@@ -137,7 +146,12 @@ class Ctrl_api
 			#if the user is not admin and the job doesn't belong to her, ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist for the given user (if user is admin, the job doesn't exist at all)
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 		end
 		#if the session was not valid, ok is false
 		ret['ok'] = false
@@ -167,26 +181,31 @@ if SplayControllerConfig::AllowNativeLibs
 		return ret
 	end
 	
-	def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id)
+	#def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id)
+	def submit_lib(lib_name, lib_version, lib_os, lib_arch, lib_sha1, lib_code, session_id, admin_username, admin_hashedpassword)
+	 
 	#if we are here there is no lib with the given hash, but there might be one that we want to update with the same name.
+		
 		ret = Hash.new
-		#puts "writing lib : #{lib_name}, V= #{lib_version}, os=#{lib_os}, arch=#{lib_arch}"   
-		user = check_session_id(session_id)
-		if user then
-			existing_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_name}' AND lib_os='#{lib_os}' AND lib_arch='#{lib_arch}'")
-			if existing_lib then
-				$db.do("UPDATE libs SET lib_version='#{lib_version}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}' WHERE id='#{existing_lib['id']}'")
-				ret['ok'] = true
-				ret['message'] = "existing_lib updated"
-			else
-				$db.do("INSERT INTO libs SET lib_name='#{lib_name}', lib_version='#{lib_version}', lib_os='#{lib_os}', lib_arch='#{lib_arch}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}'")
-				ret['ok'] = true
-				ret['message'] = "new lib inserted"
-				ret['os'] = lib_os  
+		#puts "writing lib : #{lib_name}, V= #{lib_version}, os=#{lib_os}, arch=#{lib_arch}"
+		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
+		if admin then
+			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
+				existing_lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{lib_name}' AND lib_os='#{lib_os}' AND lib_arch='#{lib_arch}'")
+				if existing_lib then
+					$db.do("UPDATE libs SET lib_version='#{lib_version}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}' WHERE id='#{existing_lib['id']}'")
+					ret['ok'] = true
+					ret['message'] = "EXISTING NATIVE LIBRARY UPDATED"
+				else
+					$db.do("INSERT INTO libs SET lib_name='#{lib_name}', lib_version='#{lib_version}', lib_os='#{lib_os}', lib_arch='#{lib_arch}', lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}'")
+					ret['ok'] = true
+					ret['message'] = "NEW NATIVE LIBRARY INSTALLED"
+					ret['os'] = lib_os  
+				end
 			end
 		else
-		ret['ok'] = false
-		ret['error'] = "Invalid or expired Session ID"  
+			ret['ok'] = false
+			ret['error'] = "Not authenticated as admin"  
 		end
 		return ret
 	end
@@ -218,14 +237,14 @@ if SplayControllerConfig::AllowNativeLibs
 		if user then
 			libs_list = Array.new
 			if lib_name and lib_name != "" then
-			#list libs with the given name. for now show only the versions and platforms.
 			#TODO give a detailed presentation of the libs, and possibly the splayds they are deployed on
 				$db.select_all("SELECT * FROM libs WHERE lib_name='#{lib_name}'") do |a_lib|
 				lib = Hash.new
 				lib['lib_name'] = a_lib['lib_name']
 				lib['lib_version'] = a_lib['lib_version']
 				lib['lib_os'] = a_lib['lib_os']
-				lib['lib_arch'] = a_lib['lib_arch']   
+				lib['lib_arch'] = a_lib['lib_arch'] 
+				lib['lib_sha1'] = a_lib['lib_sha1']  
 				libs_list.push(lib)
 			end
 		else
@@ -249,49 +268,52 @@ if SplayControllerConfig::AllowNativeLibs
 		return ret
 	end
 
-	def remove_lib(lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id)
+	def remove_lib(lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id, admin_username, admin_hashedpassword)
 		ret = Hash.new
 		user = check_session_id(session_id)
-		if user then
-			if lib_name and lib_name != ""
-				where_clause = "WHERE lib_name='#{lib_name}' "
-				if lib_version and lib_version != ""
- 						where_clause += "AND lib_version='#{lib_version}'"
+		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
+		if admin then
+			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
+				if lib_name and lib_name != ""
+					where_clause = "WHERE lib_name='#{lib_name}' "
+					if lib_version and lib_version != ""
+	 						where_clause += "AND lib_version='#{lib_version}'"
+					end
+					if lib_arch and lib_arch != ""
+						where_clause += "AND lib_arch='#{lib_arch}'"
+				    end
+					if lib_os and lib_os != ""
+						where_clause += "AND lib_os='#{lib_os}'"
+					end
+					if lib_sha1 and lib_sha1 != ""
+						where_clause += "AND lib_sha1='#{lib_sha1}'"
+					end
+					#puts where_clause
+					$db.do("DELETE FROM libs #{where_clause}")
+					ret['ok'] = true
+					ret['message'] = "Lib deleted"
+				else
+					ret['ok'] = false
+					ret['error'] = "Cannot use an empty string for lib_name"
 				end
-				if lib_arch and lib_arch != ""
-					where_clause += "AND lib_arch='#{lib_arch}'"
-			    end
-				if lib_os and lib_os != ""
-					where_clause += "AND lib_os='#{lib_os}'"
-				end
-				if lib_sha1 and lib_sha1 != ""
-					where_clause += "AND lib_sha1='#{lib_sha1}'"
-				end
-				#puts where_clause
-				$db.do("DELETE FROM libs #{where_clause}")
-				ret['ok'] = true
-				ret['message'] = "Lib deleted"
-			else
-				ret['ok'] = false
-				ret['error'] = "Cannot use an empty string for lib_name"
 			end
 		else
 			ret['ok'] = false
-			ret['error'] = "Invalid or expired Session ID"
+			ret['error'] = "Not authenticated as admin"
 		end
 		return ret
 	end
 end
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, turbo)
+	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, turbo, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job)
 	 	#initializes the return variable
 		ret = Hash.new
 		
 		if  !SplayControllerConfig::AllowNativeLibs and lib_filename !=""
-		  ret['ok'] = false
-  		ret['error'] = "Submitting jobs for native libs forbidden"
-  		return ret
-	  end
+		 	ret['ok'] = false
+  			ret['error'] = "Submitting jobs for native libs forbidden"
+  			return ret
+	  	end
 		#checks the validity of the session ID and stores the returning value in the variable user
 		user = check_session_id(session_id)
 		#check_session_id returns false if the session ID is not valid; if user is not false (the session ID is valid)
@@ -334,7 +356,6 @@ end
 				options['strict'] = strict
 			end
 
-			# turbo mode - JV ADDED
 			if turbo == "TRUE" then
 				options['turbo'] = turbo
 			end
@@ -354,20 +375,73 @@ end
 			if lib_filename != "" then
 				options['scheduler'] = 'grid'
 			end
+
+			if queue_timeout then
+				options['queue_timeout'] = queue_timeout
+			end
+			
+			#multifile job
+			if multiple_code_files == true then
+				options['multifile'] = multiple_code_files
+				code, ret = LuaMerger.new.merge_lua_files(code, ret)
+				if code == "" then
+					return ret
+				end
+			end
+
+
+
 			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', lib_name='#{lib_filename}', lib_version='#{lib_version}', user_id=#{user_id}, created_at='#{time_now}'")
+			
+			#designated splayds
+			if designated_splayds_string != "" then
+				#eliminate white spaces
+				job_id = $db.select_one("SELECT id FROM jobs WHERE ref='#{ref}'")
+				designated_splayds_string.delete(' ')
+				#prepare query
+				q_jds = ""
+				designated_splayds_string.split(',').each { |splayd_id|
+					q_jds = q_jds + "('#{job_id}','#{splayd_id}'),"
+				}
+				q_jds = q_jds[0, q_jds.length - 1]
+				$db.do("INSERT INTO job_designated_splayds (job_id, splayd_id) VALUES #{q_jds}")
+			end
+
+			#use the same splayds as another job
+			if splayds_as_job != "" then
+				job_id = $db.select_one("SELECT id FROM jobs WHERE ref='#{ref}'")
+				other_job_id = splayds_as_job
+
+				# check if the other job 
+				# 1. was killed before execution (and splayds booking)
+				# 2. is currently queued 
+				# 3. it was rejected because of the lack of resources 
+				other_job_splayds = $db.select_one("SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'")
+				other_job_status = $db.select_one("SELECT status FROM jobs WHERE id='#{other_job_id}' AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')")
+
+				if (other_job_status != nil && other_job_splayds == nil) then
+					$db.do "INSERT INTO job_designated_splayds (job_id,other_job_status) VALUES ('#{job_id}','#{other_job_status}')"
+				else
+					# find the number of splayds used by the other job
+					other_job_nb_splayds = $db.select_one("SELECT nb_splayds FROM jobs WHERE id='#{other_job_id}'")
+					$db.do "UPDATE jobs SET nb_splayds='#{other_job_nb_splayds}' WHERE id='#{job_id}'"
+
+					# find the splayds used by the other job
+					q_jds = ""
+					$db.select_all "SELECT * FROM splayd_selections
+							WHERE job_id='#{other_job_id}' AND selected='TRUE'" do |jds|
+						q_jds = q_jds + "('#{job_id}','#{jds['splayd_id']}'),"
+					end
+					q_jds = q_jds[0, q_jds.length - 1]
+					$db.do "INSERT INTO job_designated_splayds (job_id,splayd_id) VALUES #{q_jds}"
+				end
+			end
 
 			timeout = 30
 			while timeout > 0
 				sleep(1)
 				timeout = timeout - 1
 				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
-				# queued job behavior
-				if job['status'] == "QUEUED" then
-					ret['ok'] = true
-					ret['job_id'] = job['id']
-					ret['ref'] = ref
-					return ret
-				end
 				if job['status'] == "RUNNING" then
 					ret['ok'] = true
 					ret['job_id'] = job['id']
@@ -379,7 +453,7 @@ end
 					ret['error'] = "JOB " + job['id'].to_s + ": " + job['status_msg']
 					return ret
 				end
-                                # queued job behavior
+				#queued job behavior
 				if job['status'] == "QUEUED" then
 					ret['ok'] = true
 					ret['job_id'] = job['id']
@@ -426,6 +500,7 @@ end
 				ret['host_list'] = host_list
 				ret['status'] = job['status']
 				ret['ref'] = job['ref']
+				ret['name'] = job['name']
 				ret['description'] = job['description']
 				if (user['admin'] == 1) then
 					ret['user_id'] = job['user_id']
@@ -433,7 +508,12 @@ end
 				return ret
 			end
 			ret['ok'] = false
-			ret['error'] = "Job does not exist for this user"
+			if user['admin'] == 1 then
+				ret['error'] = "Job does not exist"
+			else
+				#error says that the job doesn't exist
+				ret['error'] = "Job does not exist for this user"
+			end
 			return ret
 		end
 		ret['ok'] = false
@@ -580,11 +660,13 @@ end
 		#initializes the return variable
 		ret = Hash.new
 		user = $db.select_one "SELECT * FROM users WHERE login='#{username}'"
-		hashed_password_from_db = user['crypted_password']
-		if (hashed_currentpassword == hashed_password_from_db) then
-			$db.do("UPDATE users SET crypted_password='#{hashed_newpassword}' WHERE login='#{username}'")
-			ret['ok'] = true
-			return ret
+		if user then
+			hashed_password_from_db = user['crypted_password']
+			if (hashed_currentpassword == hashed_password_from_db) then
+				$db.do("UPDATE users SET crypted_password='#{hashed_newpassword}' WHERE login='#{username}'")
+				ret['ok'] = true
+				return ret
+			end
 		end
 		ret['ok'] = false
 		ret['error'] = "Not authenticated"
@@ -598,8 +680,14 @@ end
 		admin = $db.select_one("SELECT * FROM users WHERE login='#{admin_username}'")
 		if admin then
 			if ((admin['crypted_password'] == admin_hashedpassword) and (admin['admin'] == 1)) then
-				$db.do("DELETE FROM users WHERE login='#{username}'")
-				ret['ok'] = true
+				user = $db.select_one("SELECT * FROM users WHERE login='#{username}'")
+				if user then
+					$db.do("DELETE FROM users WHERE login='#{username}'")
+					ret['ok'] = true
+					return ret
+				end
+				ret['ok'] = false
+				ret['error'] = "User does not exist"
 				return ret
 			end
 		end
@@ -632,4 +720,3 @@ end
 		end
 	end
 end
-

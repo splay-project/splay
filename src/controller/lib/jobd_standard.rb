@@ -57,28 +57,33 @@ class JobdStandard < Jobd
 
 			count = 0
 			occupation.sort {|a, b| a[1] <=> b[1]}
+			#for each of the selected splayds
 			occupation.each do |splayd_id, occ|
-				$log.info("splayd_id="+splayd_id.to_s()+", occ="+occ.to_s())
-				$log.info("c_splayd['max_number']["+splayd_id.to_s()+"]="+c_splayd['max_number'][splayd_id].to_s()+", c_splayd['nb_nodes']["+splayd_id.to_s()+"]="+c_splayd['nb_nodes'][splayd_id].to_s()+", splayd_id="+splayd_id.to_s()+", occ="+occ.to_s())
+				#the number of nodes assigned is the maximum of the splayd minus the nodes already used
 				nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
+				#if nodes_assigned already surpasses the remaining number of nodes to assign, it gets lowered to that
 				if nodes_assigned > nb_selected_splayds - count then
 					nodes_assigned = nb_selected_splayds - count
 				end
+				#concatenates SQL commands to add the nodes to the tables "splayd_selections" and "splayd_jobs"
 				for instance_id in 1..nodes_assigned
 					q_sel = q_sel + "('#{splayd_id}','#{job['id']}','#{instance_id}'),"
 					q_job = q_job + "('#{splayd_id}','#{job['id']}','#{instance_id}','RESERVED'),"
 				end
+				#concatenates REGISTER commands to the actions table
 				q_act = q_act + "('#{splayd_id}','#{job['id']}','#{nodes_assigned}','REGISTER', 'TEMP'),"
-	
+
 				# We update the cache
 				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
 
+				#count gets incremented by the number of nodes assigned
 				count += nodes_assigned
 
 				if count >= nb_selected_splayds then break end
 			end
-			#TODO faltaría esta parte con madatory splayds
-			$db.select_all "SELECT * FROM job_mandatory_splayds 
+
+			#TODO adapt mandatory part to turbo
+			$db.select_all "SELECT * FROM job_mandatory_splayds
 					WHERE job_id='#{job['id']}'" do |mm|
 
 				splay_id = mm['splayd_id']
@@ -94,7 +99,6 @@ class JobdStandard < Jobd
 			q_job = q_job[0, q_job.length - 1]
 			q_act = q_act[0, q_act.length - 1]
 			$db.do "INSERT INTO splayd_selections (splayd_id, job_id, instance_id) VALUES #{q_sel}"
-			# por el momento escribiendo cada splayd+jobid+instanceid como un record separado en splayd_jobs
 			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, instance_id, status) VALUES #{q_job}"
 
 			$db.do "INSERT INTO actions (splayd_id, job_id, nb_instances, command, status) VALUES #{q_act}"
@@ -117,6 +121,23 @@ class JobdStandard < Jobd
 					WHERE job_id='#{job['id']}'" do |mm|
 				mandatory_filter += " AND splayd_id!=#{mm['splayd_id']} "
 			end
+
+			# Designated filter
+			designated_filter = ""
+			pos = 0
+			$db.select_all "SELECT * FROM job_designated_splayds
+					WHERE job_id='#{job['id']}'" do |jds|
+				if pos == 0
+					designated_filter += " AND (splayds.id=#{jds['splayd_id']}"
+				else
+					designated_filter += " OR splayds.id=#{jds['splayd_id']}"
+				end
+				pos=pos+1
+			end
+			if designated_filter != ""
+				designated_filter += ")"
+			end
+
 
 			# NOTE ORDER BY reply_time can not be an excellent idea in that sense that
 			# it could advantage splayd near of the controller.

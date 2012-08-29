@@ -91,11 +91,11 @@ end
 
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
-	--job.position = job.network.list.position
-
+	--job.position = job.network.list.position --ALREADY UPDATED IN SPLAYD.LUA
+	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
-	job.nodes = function()
+	job.get_live_nodes = function()
 		-- if there is a timeline (trace_alt type of job)
 		if job.network.list.timeline then
 			-- look how much time has passed already
@@ -145,7 +145,6 @@ if job.network.list then
 
 	job.list_type = job.network.list.type -- head, random
 end
-
 package.cpath = package.cpath..";"..job.disk.lib_directory.."/?.so"
 
 print(">> Job settings:")
@@ -157,7 +156,7 @@ print("", "max "..job.disk.max_files.." files")
 print("", "max "..job.disk.max_file_descriptors.." file descriptors")
 print("", "max "..job.disk.max_size.." size in bytes")
 
-print("", "lib directory ".. job.disk.lib_directory)
+print("", "lib directoy ".. job.disk.lib_directory)
 print("", "cpath : "..package.cpath)
 print("Mem "..job.max_mem.." bytes of memory")
 print("Network:")
@@ -219,11 +218,12 @@ require"splay.coxpcall"
 _sand_check = true
 sandbox = require"splay.sandbox"
 local sd=sandbox.sandboxed_denied --stub for sand'ed functions
+local native_from_job = nil
 if job.lib_name ~= nil and job.lib_name ~= "" then
-local native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
-	print("Allow lib "..native_from_job,job.lib_version)
-else
-	print("no lib to add")
+	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
+	print("Using native lib: ",native_from_job,job.lib_version)
+--else
+--	print("no lib to add")
 end
 
 
@@ -250,8 +250,6 @@ sandbox.protect_env({
 			"splay.rpcq",
 			"splay.socket",
 			"splay.urpc",
-			"splay.distdb",
-			"splay.paxos",
 			"crypto",
 			"socket",
 			"socket.ftp",
@@ -267,13 +265,15 @@ sandbox.protect_env({
 			"splay.socket_events",
 			"splay.luasocket",
 			"splay.async_dns",
+			"splay.distdb",
+			"splay.paxos",
 			"splay.lbinenc",
 			"luabins",
 			"splay.restricted_db",
 			"kyotocabinet",
 			native_from_job
 		},
-		inits = {["splay.restricted_db"]=job.disk.directory}
+		inits = {}
 	})
 
 collectgarbage()

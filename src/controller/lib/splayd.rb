@@ -229,6 +229,7 @@ class SplaydProtocol
 				infos = @so.read # no addslashes (json)
 				
 				@splayd.insert_splayd_infos(infos)
+				@splayd.update_splayd_infos()
 
 				bl = Splayd.blacklist
 				@so.write "BLACKLIST"
@@ -244,7 +245,7 @@ class SplaydProtocol
 				if @so.read != "OK" then raise ProtocolError, "LOG not OK" end
 				$log.info("#{@splayd}: Log port: #{logv['port']}")
 			end
-			$log.info("#{@splayd}: SSSSS")
+			$log.info("#{@splayd}: Auth OK")
 			@splayd.available
 		rescue => e
 			# restore previous status (REGISTER, UNAVAILABLE or RESET)
@@ -277,30 +278,24 @@ class SplaydProtocol
 					sleep(rand(@@sleep_time * 2 * 100).to_f / 100)
 				else
 
-					$log.info("#{@splayd}: Action #{action['command']}")
+					$log.debug("#{@splayd}: Action #{action['command']}")
 
 					start_time = Time.now.to_f
 					@so.write action['command']
 					if action['data']
-						if action['command'] == 'LIST' and action['positions']
+						if action['command'] == 'LIST' and action['positions'] #replaces the generic _POSITIONS_ with the real list of positions, already JSONed
 							action['data'] = action['data'].sub(/_POSITIONS_/, action['positions'])
 						end
-						if action['command'] == 'REGISTER' and action['nb_instances']
+						if action['command'] == 'REGISTER' and action['nb_instances'] #replaces the generic _NBINSTANCES_ with the real number of instances
 							action['data'] = action['data'].sub(/_NBINSTANCES_/, action['nb_instances'].to_s)
 						end
 						@so.write action['data']
 					end
 					reply_code = @so.read
-					$log.info("REPLY READ")
 					if reply_code == "OK"
-						$log.info("ITS OK")
 						if action['command'] == "REGISTER"
-							$log.info("COMES FROM REGISTER, GONNA READ THE PORTS")
 							ports_json = addslashes(@so.read)
-							$log.info("PORTS READ")
-							$log.info("ports json:"+ports_json)
-							ports = JSON.parse(ports_json)
-							reply_data = ports
+							reply_data = JSON.parse(ports_json)
 						end
 						if action['command'] == "STATUS"
 							reply_data = @so.read # no addslashes (json)
@@ -427,43 +422,38 @@ class SplaydGridProtocol < SplaydProtocol
 					end
 					sleep(rand(@@sleep_time * 2 * 100).to_f / 100)
 				else
-
-          lib_id = nil
+					lib_id = nil
 					start_time = Time.now.to_f
 					@so.write action['command']
 					if action['data']
-						if action['command'] == 'LIST' and action['positions']
-							action['data'] = action['data'].sub(/_POSITIONS_/, action['positions'])
+						if action['command'] == 'LIST' and action['position']
+							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
 						elsif action['command'] == "REGISTER"
-						  job = action['data']
-						  job = JSON.parse(job)
-						  if job['lib_name'] != ""
-               				lib = $db.select_one("SELECT * FROM splayd_libs, libs WHERE splayd_libs.lib_id=libs.id AND splayd_libs.splayd_id=#{@splayd.row['id']} 
-                                      AND libs.lib_name='#{job['lib_name']}' AND libs.lib_version='#{job['lib_version']}'")
-                if not lib
-                  #$log.debug("Send the lib to the splayd and add it in splayd_libs #{@splayd.row['architecture']} AND lib_os=#{@splayd['os']}")
-                  lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{job['lib_name']}' AND lib_version='#{job['lib_version']}' 
-                                        AND lib_arch='#{@splayd.row['architecture']}' AND lib_os='#{@splayd.row['os']}'")
-                  job['lib_code'] = lib['lib_blob']
-                  job['lib_sha1'] = lib['lib_sha1']
-                  lib_id = lib['id']
-                end
-                job['lib_sha1'] = lib['lib_sha1']
-                job = job.to_json
-                action['data'] = job
-              end
+							job = action['data']
+							job = JSON.parse(job)
+							if job['lib_name' ] && job['lib_name'] != ""
+								lib = $db.select_one("SELECT * FROM splayd_libs, libs WHERE splayd_libs.lib_id=libs.id AND splayd_libs.splayd_id=#{@splayd.row['id']} 
+	                                      AND libs.lib_name='#{job['lib_name']}' AND libs.lib_version='#{job['lib_version']}'")
+	                			if not lib #$log.debug("Send the lib to the splayd and add it in splayd_libs #{@splayd.row['architecture']} AND lib_os=#{@splayd['os']}")
+	                  				lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{job['lib_name']}' AND lib_version='#{job['lib_version']}' 
+	                                        AND lib_arch='#{@splayd.row['architecture']}' AND lib_os='#{@splayd.row['os']}'")
+	                  				job['lib_code'] = lib['lib_blob']
+	                				job['lib_sha1'] = lib['lib_sha1']
+	                				lib_id = lib['id']
+	                			end
+	                			job['lib_sha1'] = lib['lib_sha1']
+	                			job = job.to_json
+	                			action['data'] = job
+	              			end
 						end
 						@so.write action['data']
 					end
 					reply_code = @so.read
 					if reply_code == "OK"
-						
 						if action['command'] == "REGISTER"
-						  
 						  if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
-						  port = addslashes(@so.read)
-						  reply_data = port
-							
+							port = addslashes(@so.read)
+							reply_data = port
 						end
 						if action['command'] == "STATUS"
 							reply_data = @so.read # no addslashes (json)
@@ -732,6 +722,10 @@ class Splayd
 		parse_loadavg(infos['status']['loadavg'])
 	end
 
+	def update_splayd_infos
+		@row = $db.select_one "SELECT * FROM splayds WHERE id='#{@id}'"
+	end
+
 	def localize
 		if @row['ip'] and
 				not @row['ip'] == "127.0.0.1" and
@@ -947,7 +941,7 @@ class Splayd
 	# comes after the job has finished his registration, but no problem.
 	def s_sel_reply(job_id, ports, reply_time)
 		instance_id = 1
-		ports.each do |port|
+		ports.each do |port| #for each of the ports returned by the splayd
 			$db.do "UPDATE splayd_selections SET
 				replied='TRUE',
 				reply_time='#{reply_time}',

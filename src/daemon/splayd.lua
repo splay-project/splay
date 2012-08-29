@@ -54,22 +54,6 @@ do
 	end
 end
 
-
-function print_tablez(t, prefix)
-	for i,v in pairs(t) do
-		type_v = type(v)
-		header_print = prefix.."."..i
-		if type_v == "function" then
-			print(header_print.."=","(function)")
-		elseif type_v == "table" then
-			print_tablez(v, header_print)
-		else
-			print(header_print.."=",v)
-		end
-	end
-end
-
-
 --[[ Logs ]]--
 
 function prepare_dir(dir)
@@ -107,7 +91,6 @@ function init_job_dir(dir)
 	return true
 end
 
---JV: PROBABLY NOT NEEDED
 function init_job_lib_dir(dir)
 	if string.sub(dir, #dir, #dir) == "/" then
 		print("Job directory must not end with a /")
@@ -115,11 +98,10 @@ function init_job_lib_dir(dir)
 	end
 	prepare_dir(dir)
 end
-
 --[[ Common functions ]]--
 
 -- called after a fork
-function start_job(job, ref, instance_nb, script) --TODO NOT SURE IF TO PUT INSTANCE_NB HERE OR NOT
+function start_job(job, ref, instance_nb, script)
 
 	if not script then
 		job._SPLAYD_VERSION = _SPLAYD_VERSION
@@ -134,7 +116,6 @@ function start_job(job, ref, instance_nb, script) --TODO NOT SURE IF TO PUT INST
 	if script then job_file = job_file.."_script" end
 
 	local job_for_instance = {}
-
 	--copies the job table: it assumes 1-level depth for job table except for the instances branch. each instances[i] branch is assumed to be also 1-level depth
 
 	for i,v in pairs(job) do
@@ -146,11 +127,6 @@ function start_job(job, ref, instance_nb, script) --TODO NOT SURE IF TO PUT INST
 	for i,v in pairs(job.instances[instance_nb]) do
 		job_for_instance[i] = v
 	end
-
-	print("GONNA PRINT JOB")
-	print_tablez(job, "job")
-	print("GONNA PRINT JOB FOR INSTANCE")
-	print_tablez(job_for_instance, "job_for_instance")
 
 	local content = json.encode(job_for_instance)
 	if script then content = job.script end
@@ -267,7 +243,7 @@ function stop(ref, free)
 		splayd.jobs[ref].execution_time = os.time() - splayd.jobs[ref].start_time
 	end
 	splayd.jobs[ref].status = "waiting"
-	clean_dir(splayd.jobs[ref].disk.directory, true, true)
+	clean_dir(splayd.jobs[ref].disk.directory)
 
 	if not free then
 		-- try to reserve ports again (best effort)
@@ -394,19 +370,17 @@ function register(so)
 	-- blocking socket
 	so:settimeout(nil)
 	local s = splayd.settings.job
-	print("CHECKPOINT1")
+
 	local job = json.decode(assert(so:receive()))
-	print("CHECKPOINT2")
 	local ref = job.ref
-	print("CHECKPOINT3")
+
 	if splayd.jobs[ref] then
 		assert(so:send("EXISTING_REF"))
 		return
 	end
-	print("CHECKPOINT4")
-	job.nb_instances = tonumber(job.nb_instances)
-	
-	--TODO esto hay que hacerlo en un loop
+
+	job.nb_instances = tonumber(job.nb_instances) --converts the string nb_instances into a number
+
 	-- Check for max_number
 	local nb_jobs = 0
 	for _, _  in pairs(splayd.jobs) do
@@ -439,9 +413,6 @@ function register(so)
 	if not job.code and not job.script then
 		job.code = ""
 	end
-
-	--TODO: ALL THIS CHECKING MUST BE DONE TAKING IN CONSIDERATION THE INSTANCES
-
 
 	if not job.max_mem then
 		job.max_mem = s.max_mem
@@ -520,11 +491,10 @@ function register(so)
 	if not job.network.ip then
 		job.network.ip = "127.0.0.1"
 	end
-	print("CHECKPOINT5")
+
 	job.instances = {}
-	print("CHECKPOINT6")
-	for i=1,job.nb_instances do
-		job.instances[i] = {
+	for i=1,job.nb_instances do --for each of the instances
+		job.instances[i] = {--configures the table me = {ip, port}
 			me = {
 				ip = splayd.ip,
 				port = 0
@@ -537,15 +507,12 @@ function register(so)
 		job.network.nb_ports = 0
 	else
 		if job.network.nb_ports > 0 then
-			print("CHECKPOINT7")
-			if job.network.nb_ports*job.nb_instances > s.network.max_ports then
+			if job.network.nb_ports*job.nb_instances > s.network.max_ports then --if there are less than nb_ports * nb_instances
 				assert(so:send("INVALID_PORTS"))
 				return
 			end
-			print("CHECKPOINT8")
-			for i=1,job.nb_instances do
+			for i=1,job.nb_instances do --for each of the instances, reserve ports
 				local port = find_reserve_rand_ports(job.network.nb_ports)
-				print("CHECKPOINT9, port type="..type(port))
 				if port then
 					job.instances[i].me.port = port
 				else
@@ -555,8 +522,8 @@ function register(so)
 			end
 		end
 	end
-	print("CHECKPOINT10")
-	job.execution_time = 0
+
+	job.execution_time = 0 --TODO this can be passed to instances[i] domain
 
 	if not job.die_free then
 		job.die_free = true -- default
@@ -572,7 +539,7 @@ function register(so)
 
 	-- corrections finished, we will now add some extra informations to the
 	-- job description
-	print("CHECKPOINT11")
+
 	job.disk.directory = s.disk.directory.."/"..ref
 	splay.mkdir(job.disk.directory)
 	for i=1,job.nb_instances do
@@ -584,7 +551,6 @@ function register(so)
 		assert(so:send("DEPENDENCIES NOT OK"))
 		return
 	end
-	print("CHECKPOINT12")
 	job.status = "waiting"
 
 	-- We give the blacklist to the job.
@@ -593,35 +559,23 @@ function register(so)
 	-- Settings fnished
 	splayd.jobs[ref] = job
 
-	ports_used = {}
-	print("CHECKPOINT13")
-	for i=1,job.nb_instances do
-		print("CHECKPOINT13_"..i)
-		table.insert(ports_used, job.instances[i].me.port)
+	local ports_used = {} --initializes the list of used ports as empty
+	for i=1,job.nb_instances do --for each of the instances
+		table.insert(ports_used, job.instances[i].me.port) --insert the first port of the used ports
 	end
-	print("CHECKPOINT14")
-	for i,v in ipairs(ports_used) do
-		print(i, v)
-	end
-
-	ports_json = json.encode(ports_used)
-
-	print(ports_json)
+	
+	ports_json = json.encode(ports_used) --encodes the port list with JSON
 
 	assert(so:send("OK"))
-	assert(so:send(ports_json))
+ 	assert(so:send(ports_json))
 	-- restablish timeout
 	so:settimeout(so_timeout)
 end
 
 function prepare_lib_directory(job)
-	print("CHECKPOINT11.LIB1")
 	if job.disk then
-		print("CHECKPOINT11.LIB2")
 		job.disk.lib_directory = job.disk.directory.."/".."lib"
-		print("CHECKPOINT11.LIB3")
 		splay.mkdir(job.disk.lib_directory)
-		print("CHECKPOINT11.LIB4")
 		if job.lib_code and job.lib_code ~= "" then
 			local lib_file = io.open(libs_cache_dir.."/".. job.lib_sha1, "w+")
 			local lib_code = base64.decode(job.lib_code)
@@ -638,7 +592,6 @@ function prepare_lib_directory(job)
 				return false
 			end
 		end
-		print("CHECKPOINT11.LIB5")
 		if job.lib_name and job.lib_name ~= "" then
 			os.execute("ln "..libs_cache_dir.."/"..job.lib_sha1.. " " .. job.disk.lib_directory.."/"..job.lib_name)
 		end
@@ -687,16 +640,12 @@ function list(so)
 	end
 	job = splayd.jobs[ref]
 
-	print("GONNA PRINT LIST")
-
-	print_tablez(list, "")
-
 	-- We append the list to the job configuration.
 	list.ref = nil
-	for i=1,job.nb_instances do
+	for i=1,job.nb_instances do --passes the positions to the instances[i] domain
 		job.instances[i].position = list.positions[i]
 	end
-	list.positions = nil
+	list.positions = nil --clears the positions atribute
 	job.network.list = list
 	assert(so:send("OK"))
 	-- restablish timeout
@@ -857,7 +806,7 @@ function restart(so)
 			return
 		end
 		stop(ref)
-		start(ref) --TODO WHAT TO DO WITH INSTANCES AND THIS?
+		start(ref) --TODO ADAPT TO INSTANCES
 		assert(so:send("OK"))
 	else
 		assert(so:send("UNKNOWN_REF"))
@@ -918,7 +867,7 @@ function local_log(so)
 	so:settimeout(nil)
 	local ref = assert(so:receive())
 	if splayd.jobs[ref] then
-		local log_file = jobs_logs_dir.."/"..ref.."_"..splayd.settings.key --TODO CAMBIAR A INSTANCE
+		local log_file = jobs_logs_dir.."/"..ref.."_"..splayd.settings.key --TODO CHANGE TO INSTANCES MAYBE
 		local f = io.open(log_file)
 		if f then
 			assert(so:send("OK"))

@@ -114,7 +114,7 @@ class JobdGrid < JobdStandard
                   libs.lib_arch=splayds.architecture AND
                   libs.lib_os=splayds.os AND
                   splayds.protocol='grid'"
-    puts "LibFilter: #{lib_filter}"
+
 		return "SELECT splayds.* FROM splayds,libs WHERE
 				1=1
 				#{version_filter}

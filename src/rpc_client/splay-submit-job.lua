@@ -36,6 +36,8 @@ sha1_lib = loadfile("./lib/sha1.lua")
 sha1_lib()
 common_lib = loadfile("./lib/common.lua")
 common_lib()
+-- for multiple Lua code files (.tar.gz) transfer encoding
+local mime = require("mime")
 -- END LIBRARIES
 
 -- FUNCTIONS
@@ -52,7 +54,11 @@ function add_usage_options()
 	table.insert(usage_options, "    --relative-time \t\tthe job will be submitted after HH:MM:SS")
 	table.insert(usage_options, "    --strict \t\t\tthe job will be submitted now / at the scheduled time or rejected with NO_RESSOURCES message")
 	table.insert(usage_options, "    --trace_alt\t\t\tthe churn is managed on the splayd side (alternative way)")
-	table.insert(usage_options, "-l  --lib=LIB_FILE\ttdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
+	table.insert(usage_options, "-l  --lib=LIB_FILE\t\tdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
+	table.insert(usage_options, "-qt --queue-timeout\t\tthe job will timeout after the given time (in seconds)")
+    table.insert(usage_options, "    --tar=lua-files.tar.gz\tsubmit a job that consists of multiple Lua files")
+	table.insert(usage_options, "    --splayds=[id1,id2,id3]\trun job only on the designated splayds")
+	table.insert(usage_options, "    --splayds-as-job JOB_ID\trun job with the same designated splayds as for job JOB_ID")
 end
 
 function parse_arguments()
@@ -61,19 +67,39 @@ function parse_arguments()
 		--if argument is "-c"
 		if arg[i] == "-c" then
 			i = i + 1
-			--the churn trace file is the next argument
+			--the churn trace file is the other part of the argument
 			churn_trace_filename = arg[i]
+			--print warning messages if used with options "--splayds" or "--splayds-as-job"
+			if nb_designated_splayds > 0 then
+				print("Warning: Cannot run a churn job on designated splayds. The \"--splayds\" option will be ignored.\n")
+				nb_designated_splayds = 0
+				designated_splayds_string = ""
+			end
+			if string.len(splayds_as_job) > 0 then
+				print("Warning: Cannot specify on which splayds to run a churn job. The \"--splayds-as-job\" option will be ignored.\n")
+				splayds_as_job = ""
+			end
 		--if argument contains "--churn=" at the beginning
-		elseif string.find(arg[i], "^--churn=") then
+		elseif string.find(arg[i], "--churn=",1,true) then
 			--the churn trace file is the other part of the argument
 			churn_trace_filename = string.sub(arg[i], 9)
+			--print warning messages if used with options "--splayds" or "--splayds-as-job"
+			if nb_designated_splayds > 0 then
+				print("Warning: Cannot run a churn job on designated splayds. The \"--splayds\" option will be ignored.\n")
+				nb_designated_splayds = 0
+				designated_splayds_string = ""
+			end
+			if string.len(splayds_as_job) > 0 then
+				print("Warning: Cannot specify on which splayds to run a churn job. The \"--splayds-as-job\" option will be ignored.\n")
+				splayds_as_job = ""
+			end
 		--if argument is "-o"
 		elseif arg[i] == "-o" then
 			i = i + 1
 			--the string "options" is the next argument
 			options_string = arg[i]
 		--if argument contains "--options=" at the beginning
-		elseif string.find(arg[i], "^--options=") then
+		elseif string.find(arg[i], "--options=",1,true) then
 			--the string "options" is extracted from the rest of the argument
 			options_string = string.sub(arg[i], 11)
 		--if argument is "-h" or "--help"
@@ -92,15 +118,54 @@ function parse_arguments()
 		--if argument is "-t" or "--turbo"
 		elseif arg[i] == "--turbo" or arg[i] == "-t" then
 			turbo = "TRUE"
+		--if argument is "--splayds=[id1,id2,id3]"
+		elseif string.find(arg[i], "--splayds=",1,true) then
+			if nb_splayds then
+				print("Warning: The \"-n\" and \"--nb_splayds\" options are redundant when using designated splayds. The job will be executed on the designated splayds.\n")
+			end
+			--prints warning message if the --churn or -c option is already used
+			if churn_trace_filename then
+				print("Warning: Cannot run a churn job on designated splayds. The \"--splayds\" option will be ignored.\n")
+			else
+				designated_splayds_string = string.sub(arg[i], 12, string.len(arg[i])-1)
+				--compute the number of splayds
+				if nb_splayds == nil then
+					nb_designated_splayds = 0
+					for s in string.gmatch(designated_splayds_string, "%d+") do
+						nb_designated_splayds = nb_designated_splayds + 1
+					end
+					nb_splayds = nb_designated_splayds
+				end
+			end
+		--if argument is "--splayds-as-job"
+		elseif arg[i] == "--splayds-as-job" then
+			i = i + 1
+			if nb_splayds then
+				print("Warning: The \"-n\" and \"--nb_splayds\" options are redundant when using designated splayds. The job will be executed on the designated splayds.\n")
+			end
+			if churn_trace_filename then
+				print("Warning: Cannot specify on which splayds to run a churn job. The \"--splayds-as-job\" option will be ignored.\n")
+			else
+				splayds_as_job = tonumber(arg[i])
+				nb_splayds = 1
+			end
 		--if argument is "-n"
 		elseif arg[i] == "-n" then
 			i = i + 1
-			--the number of splayds is the next argument
-			nb_splayds = tonumber(arg[i])
+			if nb_designated_splayds > 0 or string.len(splayds_as_job) > 0 then
+				print("Warning: The \"-n\" option is redundant when using designated splayds. The job will be executed on the designated splayds.\n")
+			else
+				--the number of splayds is the next argument
+				nb_splayds = tonumber(arg[i])
+			end
 		--if argument contains "--nb_splayds=" at the beginning
-		elseif string.find(arg[i], "^--nb-splayds=") then
-			--the number of splayds is extracted from the rest of the argument
-			nb_splayds = tonumber(string.sub(arg[i], 14))
+		elseif string.find(arg[i], "--nb-splayds=",1,true) then
+			if nb_designated_splayds > 0 or string.len(splayds_as_job) > 0 then
+				print("Warning: The \"--nb-splayds\" option is redundant when using designated splayds. The job will be executed on the designated splayds.\n")
+			else
+				--the number of splayds is extracted from the rest of the argument
+				nb_splayds = tonumber(string.sub(arg[i], 14))
+			end
 		--if argument is "-i" or "--cli_server_as_ip_addr"
 		elseif arg[i] == "-i" or arg[i] == "--cli_server_as_ip_addr" then
 			--Flag cli_server_as_ip_addr is true
@@ -111,31 +176,33 @@ function parse_arguments()
 		elseif arg[i] == "-N" or arg[i] == "--name" then
 			--Flag ask_for_name is true
 			ask_for_name = true
-		elseif string.find(arg[i], "^--args=") then
-			job_args= string.sub(arg[i], 8)
+		elseif string.find(arg[i], "--args=",1,true) then
+			job_args= string.sub(arg[i], 8)		
 		elseif 	arg[i] == "-a" then
 			i = i + 1
 			job_args= arg[i]
-		--if argument is "--absolute-time YYYY-MM-DD HH:MM:SS"
+		--if argument is "--absolute-time [YYYY-MM-DD] HH:MM:SS"
 		elseif arg[i] == "--absolute-time" then
 			-- get the current time
 			crt_time = os.time()
+			-- next argument is YYYY-MM-DD or directly HH:MM:SS
 			i = i + 1
 			sch_year = ""
 			sch_month = ""
 			sch_day = ""
 			if string.len(arg[i]) == 10 then
-				-- next argument is YYYY-MM-DD
 				sch_year = string.sub(arg[i], 1, 4)
 				sch_month = string.sub(arg[i], 6, 7)
 				sch_day = string.sub(arg[i], 9, 10)
+				-- next argument is HH:MM:SS
+				i = i + 1
 			else
 				-- get current year, month, day
 				t = os.date('*t')
 				sch_year = t.year
 				sch_month = t.month
-				sch_day = t.day			
-			end     
+				sch_day = t.day
+			end
 			-- next argument is HH:MM:SS
 			i = i + 1
 			sch_hour = string.sub(arg[i], 1, 2)
@@ -145,11 +212,11 @@ function parse_arguments()
 			scheduled_at = os.time{year=sch_year, month=sch_month, day=sch_day, hour=sch_hour, min=sch_min, sec=sch_sec}
 			-- if YYYY-MM-DD HH:MM:SS is in the past, show a warning message
 			if scheduled_at < crt_time then
-				print_line(NORMAL, "WARNING: Cannot schedule a job in the past! ")
+				print("WARNING: Cannot schedule a job in the past! ")
 			end
 			-- if YYYY-MM-DD HH:MM:SS is more than 30 days away, show a warning message
 			if scheduled_at > (crt_time + 2592000) then
-				print_line(NORMAL, "WARNING: Job was scheduled over 30 days from now. ")
+				print("WARNING: Job was scheduled over 30 days from now. ")
 			end
 		-- if argument is "--relative-time HH:MM:SS"
 		elseif arg[i] == "--relative-time" then
@@ -173,9 +240,25 @@ function parse_arguments()
 		elseif arg[i] == "-lv" then
 			i = i + 1
 			lib_version = arg[i]
+		elseif arg[i] == "-qt" or arg[i] == "--queue-timeout" then
+			i = i + 1
+			queue_timeout = arg[i]
+		-- if argument is "--tar=LUA1,LUA2"
+		elseif string.find(arg[i], "--tar=",1,true) then
+			-- the rest of this argument consists of Lua tarball
+			job_tar = string.sub(arg[i],7)
+			-- set code file name
+			code_filename = job_tar
+			-- signal that the job has multiple lua code files
+			multiple_code_files = true
+			--if the cli_server_url was filled on the config file
+			if cli_server_url_from_conf_file then
+				--all the required arguments have been filled
+				min_arg_ok = true
+			end
 		--if code_filename is not yet filled and the argument has not matched any of the other rules
 		elseif not code_filename then
-			--the code file is the argument
+			-- the code file is the current argument
 			code_filename = arg[i]
 			--if the cli_server_url was filled on the config file
 			if cli_server_url_from_conf_file then
@@ -220,8 +303,13 @@ function submit_job_extra_checks()
 	end
 
 	-- if not scheduled
-	if not scheduled_at then
+	if (not scheduled_at) then
 		scheduled_at = 0
+	end
+
+	-- if queue timeout not provided
+	if not queue_timeout then
+		queue_timeout = 0
 	end
 
 	--contructs options table from the options string
@@ -242,8 +330,7 @@ function submit_job_extra_checks()
 end
 
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
-function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
-	--prints the arguments
+function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job, turbo)	--prints the arguments
 	print_line(VERBOSE, "NAME              = "..name)
 	print_line(VERBOSE, "DESCRIPTION       = "..description)
 	print_line(VERBOSE, "CODE_FILE         = "..code_filename)
@@ -301,10 +388,14 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 		print_line(VERBOSE, "TRACE ALT MODE	  = "..trace_alt)
 	end
 
+	if queue_timeout then
+		print_line(VERBOSE, "QUEUE_TIMEOUT		  = "..queue_timeout)
+	end
+
 	--initializes the string that holds the code as empty
 	local code = ""
 	--opens the file that contains the code
-	local code_file = io.open(code_filename)
+	local code_file = io.open(code_filename, "rb")
 	--if the file exists
 	if code_file then
 		--flushes the whole file into the string "code"
@@ -349,12 +440,16 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 		end
 		code = args_code..code
 	end
-
-
+	
+	-- in the case of multiple lua files, use Base64 encoding
+	if multiple_code_files == true then
+		code = mime.b64(code)
+	end
+	
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
-		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, turbo}
+		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, turbo, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job}
 	})
 
 	--prints that it is sending the message
@@ -390,10 +485,15 @@ ask_for_description = false
 ask_for_name = false
 scheduled_at = nil
 strict = "FALSE"
+multiple_code_files = false
+designated_splayds_string = ""
+nb_designated_splayds = 0
+splayds_as_job = ""
 trace_alt = "FALSE"
 turbo = "FALSE"
 command_name = "splay_submit_job"
 other_mandatory_args = "CODE_FILE "
+queue_timeout = nil
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
@@ -415,4 +515,4 @@ check_session_id()
 submit_job_extra_checks()
 
 --calls send_submit_job
-send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt)
+send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout,multiple_code_files, designated_splayds_string, splayds_as_job, turbo)

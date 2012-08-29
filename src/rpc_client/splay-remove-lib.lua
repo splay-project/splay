@@ -64,6 +64,12 @@ function parse_arguments()
 		elseif arg[i] == "-s" then
 			i = i + 1
 			lib_sha1 = arg[i]
+		elseif arg[i] == "-u" then
+			i = i + 1
+			admin_username = arg[i]
+		elseif arg[i] == "-p" then
+			i = i + 1
+			admin_password = arg[i]
 		end
 		i = i + 1
 	end
@@ -72,15 +78,16 @@ function parse_arguments()
 	end
 end
 
-function send_remove_lib(cli_server_url, lib_name, session_id)
+function send_remove_lib(cli_server_url, lib_name, session_id, admin_username, admin_password)
 	
 	print("SESSION_ID     = "..session_id)
 	print("CLI SERVER URL = "..cli_server_url)
 	print("LIB NAME = "..lib_name)
+	local admin_hashedpassword = sha1(admin_password)
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.remove_lib",
-		params = {lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id}
+		params = {lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id,admin_username, admin_hashedpassword}
 	})
 	
 	--prints that it is sending the message
@@ -135,5 +142,8 @@ check_cli_server()
 
 check_session_id()
 
+admin_username = check_username(admin_username, "Administrator's username")
+
+admin_password = check_password(admin_password, "Administrator's password")
 --calls send_list_splayds
-send_remove_lib(cli_server_url, lib_name, session_id)
+send_remove_lib(cli_server_url, lib_name, session_id, admin_username, admin_password)
