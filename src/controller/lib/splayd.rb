@@ -331,7 +331,8 @@ class SplaydProtocol
 
 					if action['command'] == "START"
 						if reply_code == "OK" or reply_code == "RUNNING"
-							@splayd.s_j_start(action['job_id'])
+							action_data = JSON.parse(action['data'])
+							@splayd.s_j_start(action['job_id'], action_data['instances'])
 						else
 							raise ProtocolError, "START not OK: #{reply_code}"
 						end
@@ -339,14 +340,16 @@ class SplaydProtocol
 
 					if action['command'] == "STOP"
 						if reply_code == "OK" or reply_code == "NOT_RUNNING"
-							@splayd.s_j_stop(action['job_id'])
+							action_data = JSON.parse(action['data'])
+							@splayd.s_j_stop(action['job_id'], action_data['instances'])
 						else
 							raise ProtocolError, "STOP not OK: #{reply_code}"
 						end
 					end
 
 					if action['command'] == "FREE"
-						@splayd.s_j_free(action['job_id'])
+						action_data = JSON.parse(action['data'])
+						@splayd.s_j_free(action['job_id'], action_data['instances'])
 					end
 
 					if action['command'] == "STATUS"
@@ -859,7 +862,7 @@ class Splayd
 		nil
 	end
 
-	def s_j_register job_id
+	def s_j_register(job_id)
 		$db.do "UPDATE splayd_jobs SET
 				status='WAITING'
 				WHERE
@@ -868,26 +871,35 @@ class Splayd
 				status='RESERVED'"
 	end
 
-	def s_j_free job_id
-		$db.do "DELETE FROM splayd_jobs WHERE
+	def s_j_free(job_id, instance_list)
+		instance_list.each do |instance_id|
+			$db.do "DELETE FROM splayd_jobs WHERE
 				splayd_id='#{@id}' AND
-				job_id='#{job_id}'"
+				job_id='#{job_id}' AND
+				instance_id='#{instance_id}'"
+		end
 	end
 
-	def s_j_start job_id
-		$db.do "UPDATE splayd_jobs SET
-			  status='RUNNING'
-			  WHERE
-			  splayd_id='#{@id}' AND
-			  job_id='#{job_id}'"
+	def s_j_start(job_id, instance_list)
+		instance_list.each do |instance_id|
+			$db.do "UPDATE splayd_jobs SET
+				status='RUNNING'
+				WHERE
+				splayd_id='#{@id}' AND
+				job_id='#{job_id}' AND
+				instance_id='#{instance_id}'"
+		end
 	end
 
-	def s_j_stop job_id
-		$db.do "UPDATE splayd_jobs SET
-			  status='WAITING'
-			  WHERE
-			  splayd_id='#{@id}' AND
-			  job_id='#{job_id}'"
+	def s_j_stop(job_id, instance_list)
+		instance_list.each do |instance_id|
+			$db.do "UPDATE splayd_jobs SET
+				status='WAITING'
+				WHERE
+				splayd_id='#{@id}' AND
+				job_id='#{job_id}' AND
+				instance_id='#{instance_id}'"
+		end
 	end
 
 	def s_j_status data

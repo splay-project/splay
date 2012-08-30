@@ -59,11 +59,14 @@ class JobdStandard < Jobd
 			occupation.sort {|a, b| a[1] <=> b[1]}
 			#for each of the selected splayds
 			occupation.each do |splayd_id, occ|
-				#the number of nodes assigned is the maximum of the splayd minus the nodes already used
-				nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
-				#if nodes_assigned already surpasses the remaining number of nodes to assign, it gets lowered to that
-				if nodes_assigned > nb_selected_splayds - count then
-					nodes_assigned = nb_selected_splayds - count
+				nodes_assigned = 1
+				if job['turbo'] == "TRUE" then
+					#the number of nodes assigned is the maximum of the splayd minus the nodes already used
+					nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
+					#if nodes_assigned already surpasses the remaining number of nodes to assign, it gets lowered to that
+					if nodes_assigned > nb_selected_splayds - count then
+						nodes_assigned = nb_selected_splayds - count
+					end
 				end
 				#concatenates SQL commands to add the nodes to the tables "splayd_selections" and "splayd_jobs"
 				for instance_id in 1..nodes_assigned
@@ -74,7 +77,7 @@ class JobdStandard < Jobd
 				q_act = q_act + "('#{splayd_id}','#{job['id']}','#{nodes_assigned}','REGISTER', 'TEMP'),"
 
 				# We update the cache
-				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
+				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + nodes_assigned
 
 				#count gets incremented by the number of nodes assigned
 				count += nodes_assigned

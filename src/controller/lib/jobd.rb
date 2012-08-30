@@ -541,11 +541,31 @@ class Jobd
 
 		no_resources = false
 
+		$log.info("is occupation.size=#{occupation.size} < job['nb_splayds']=#{job['nb_splayds']}")
+
+		#normally, it is 1 instance per splayd
+		nb_instances = occupation.size
+
+		#if mode turbo, the number of instances is calculated by accumulating the max number of instances that each splayd can exec.
+		if job['turbo'] == "TRUE" then
+			nb_instances = 0
+			$db.select_all(filter_query) do |m|
+				nb_instances += c_splayd['max_number'][m['id']] - c_splayd['nb_nodes'][m['id']]
+			end
+		end
+
+		$log.info("is nb_instances=#{nb_instances} < job['nb_splayds']=#{job['nb_splayds']}")
+
 		# Compute the number of splayds with the required characteristics
-		if occupation.size < job['nb_splayds']
+		if nb_instances < job['nb_splayds']
         		nb_total = 0
+        		$log.info("turbo is #{job['turbo']}")
         		$db.select_all(filter_query) do |m|
-          			nb_total = nb_total + c_splayd['max_number'][m['id']] - c_splayd['nb_nodes'][m['id']] #substracts the maximum number of instances that can be deployed
+          			if job['turbo'] == "TRUE" then
+          				nb_total = nb_total + c_splayd['max_number'][m['id']] - c_splayd['nb_nodes'][m['id']] #adds the maximum number of instances that can be deployed
+          			else
+          				nb_total = nb_total + 1 #adds 1
+          			end
         		end
 
 			# Set flag if not enough splayds are available
@@ -554,9 +574,9 @@ class Jobd
 			end
 
 			status_msg += "Not enough splayds found with the requested ressources " +
-					"(only #{occupation.size} instead of #{job['nb_splayds']}) \n"
+					"(only #{nb_instances} instead of #{job['nb_splayds']}) \n"
 				normal_ok = false
-			 end
+			end
 
 			### Mandatory splayds
 			mandatory_ok = true
