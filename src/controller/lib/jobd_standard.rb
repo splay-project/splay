@@ -142,12 +142,18 @@ class JobdStandard < Jobd
 			# NOTE ORDER BY reply_time can not be an excellent idea in that sense that
 			# it could advantage splayd near of the controller.
 			selected_splayds = []
-			$db.select_all "SELECT splayd_id FROM splayd_selections WHERE
+			$db.select_all "SELECT splayd_id, instance_id FROM splayd_selections WHERE
 					job_id='#{job['id']}' AND
 					replied='TRUE'
 					#{mandatory_filter}
 					ORDER BY reply_time LIMIT #{job['nb_splayds']}" do |m|
-				selected_splayds << m['splayd_id']
+					#considers both splayd_id and instance_id
+					selected_sp = {
+						"splayd_id" => m['splayd_id'],
+						"instance_id" => m['instance_id']
+					}
+					$log.info("printing splayd_id=#{selected_sp['splayd_id']} AND instance_id=#{selected_sp['instance_id']}")
+				selected_splayds << selected_sp
 			end
 
 			# check if enough splayds have responded
@@ -168,12 +174,13 @@ class JobdStandard < Jobd
 			
 			if normal_ok and mandatory_ok
 
-				selected_splayds.each do |splayd_id|
+				selected_splayds.each do |sel_sp|
+					$log.info("selecting splayd_id=#{sel_sp['splayd_id']} AND instance_id=#{sel_sp['instance_id']}")
 					$db.do("UPDATE splayd_selections SET
 							selected='TRUE'
 							WHERE
-							splayd_id='#{splayd_id}' AND
-							job_id='#{job['id']}'")
+							splayd_id='#{sel_sp['splayd_id']}' AND
+							job_id='#{job['id']}' AND instance_id='#{sel_sp['instance_id']}'")
 				end
 				$db.select_all "SELECT * FROM job_mandatory_splayds
 						WHERE job_id='#{job['id']}'" do |mm|
@@ -187,10 +194,24 @@ class JobdStandard < Jobd
 
 				# We need to unregister the job on the non selected splayds.
 				q_act = ""
+				sp_to_free = {}
 				$db.select_all "SELECT * FROM splayd_selections WHERE
 						job_id='#{job['id']}' AND
 						selected='FALSE'" do |m_s|
-					q_act = q_act + "('#{m_s['splayd_id']}','#{job['id']}','FREE', '#{job['ref']}'),"
+					sp_id = m_s['splayd_id']
+					inst_id = m_s['instance_id']
+					if not sp_to_free[sp_id] then
+						sp_to_free[sp_id] = []
+					end
+					sp_to_free[sp_id] << inst_id
+				end
+				sp_to_free.each do |sp_id, inst_list|
+					free_act_data = {
+						"ref" => job['ref'],
+						"instances" => inst_list
+					}
+					json_data = free_act_data.to_json
+					q_act = q_act + "('#{sp_id}','#{job['id']}','FREE', '#{json_data}'),"
 				end
 				if q_act != ""
 					q_act = q_act[0, q_act.length - 1]

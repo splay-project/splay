@@ -54,6 +54,21 @@ do
 	end
 end
 
+
+function print_tablez(t, prefix)
+	for i,v in pairs(t) do
+		type_v = type(v)
+		header_print = prefix.."."..i
+		if type_v == "function" then
+			print(header_print.."=","(function)")
+		elseif type_v == "table" then
+			print_tablez(v, header_print)
+		else
+			print(header_print.."=",v)
+		end
+	end
+end
+
 --[[ Logs ]]--
 
 function prepare_dir(dir)
@@ -215,41 +230,55 @@ function start(ref, instance_nb)
 end
 
 -- Free a job slot
-function free(ref)
-	stop(ref, true)
+function free(ref, instance_nb)
+	print("free ref="..ref..", instance="..instance_nb.." ENTERED")
+	stop(ref, instance_nb, true)
 
 	-- we release the ports we have locked for this job
 	-- it's a security, if the job has never run
 	if splayd.jobs[ref].network.nb_ports > 0 then
-		splay.release_ports(splayd.jobs[ref].me.port,
-				splayd.jobs[ref].me.port + splayd.jobs[ref].network.nb_ports - 1)
+		splay.release_ports(splayd.jobs[ref].instances[instance_nb].me.port,
+				splayd.jobs[ref].instances[instance_nb].me.port + splayd.jobs[ref].network.nb_ports - 1)
 	end
 
 	-- if the job had a "trace_alt" churn trace
 	if splayd.churn_mgmt_jobs[ref] then
+		print("free enters here? churn_mgmt")
 		-- remove the job from the list of churn jobs
 		splayd.churn_mgmt_jobs[ref] = nil
 	end
 
-	splayd.jobs[ref] = nil
+	--deletes the instance
+	splayd.jobs[ref].instances[instance_nb] = nil
+	--counts the active instances
+	local active_instances = 0
+	for i,v in pairs(splayd.jobs[ref].instances) do
+		active_instances = active_instances + 1
+	end
+	--if there are no more active instances, deletes the job
+	if active_instances == 0 then
+		splayd.jobs[ref] = nil
+	end
 end
 
 -- Stop a job
-function stop(ref, free)
+function stop(ref, instance_nb, free)
+	print("stop ref="..ref..", instance="..instance_nb.." ENTERED")
 	-- If called on a really running job, compute the execution time
-	if splayd.jobs[ref].status == "running" then
-		splay.kill(splayd.jobs[ref].pid)
-		splayd.jobs[ref].pid = 0
-		splayd.jobs[ref].execution_time = os.time() - splayd.jobs[ref].start_time
+	if splayd.jobs[ref].instances[instance_nb].status == "running" then
+		print("free ref="..ref..", instance="..instance_nb.." instance was running")
+		splay.kill(splayd.jobs[ref].instances[instance_nb].pid)
+		splayd.jobs[ref].instances[instance_nb].pid = 0
+		splayd.jobs[ref].instances[instance_nb].execution_time = os.time() - splayd.jobs[ref].instances[instance_nb].start_time
 	end
-	splayd.jobs[ref].status = "waiting"
-	clean_dir(splayd.jobs[ref].disk.directory)
+	splayd.jobs[ref].instances[instance_nb].status = "waiting"
+	clean_dir(splayd.jobs[ref].instances[instance_nb].disk_directory)
 
 	if not free then
 		-- try to reserve ports again (best effort)
 		if splayd.jobs[ref].network.nb_ports > 0 then
-			splay.reserve_ports(splayd.jobs[ref].me.port,
-					splayd.jobs[ref].me.port + splayd.jobs[ref].network.nb_ports - 1)
+			splay.reserve_ports(splayd.jobs[ref].instances[instance_nb].me.port,
+					splayd.jobs[ref].instances[instance_nb].me.port + splayd.jobs[ref].network.nb_ports - 1)
 		end
 	end
 end
@@ -265,16 +294,19 @@ function reset()
 end
 
 function free_ended_jobs()
+	print("free_ended_jobs ENTERED")
 	for ref, job in pairs(splayd.jobs) do
-		if job.status == "running" then
-			if not splay.alive(job.pid) then
-				if job.die_free then
-					free(ref)
-				else
-					if job_trace_ended[ref] == true then
-						free(ref)
+		for inst_id, instance in pairs(job.instances) do
+			if instance.status == "running" then
+				if not splay.alive(instance.pid) then
+					if job.die_free then
+						free(ref, inst_id)
 					else
-						stop(ref)
+						if job_trace_ended[ref] == true then --TODO TAKE CARE OF TRACES
+							free(ref, inst_id)
+						else
+							stop(ref, inst_id)
+						end
 					end
 				end
 			end
@@ -498,7 +530,8 @@ function register(so)
 			me = {
 				ip = splayd.ip,
 				port = 0
-			}
+			},
+			execution_time = 0
 		}
 	end
 
@@ -522,8 +555,6 @@ function register(so)
 			end
 		end
 	end
-
-	job.execution_time = 0 --TODO this can be passed to instances[i] domain
 
 	if not job.die_free then
 		job.die_free = true -- default
@@ -605,9 +636,13 @@ end
 function n_free(so)
 	-- blocking socket
 	so:settimeout(nil)
-	local ref = assert(so:receive())
+	local data = json.decode(assert(so:receive()))
+	local ref = data['ref']
+	local instances = data['instances']
 	if splayd.jobs[ref] then
-		free(ref)
+		for i,v in ipairs(instances) do
+			free(ref, v)
+		end
 		assert(so:send("OK"))
 	else
 		assert(so:send("UNKNOWN_REF"))
@@ -639,11 +674,10 @@ function list(so)
 		return
 	end
 	job = splayd.jobs[ref]
-
 	-- We append the list to the job configuration.
 	list.ref = nil
-	for i=1,job.nb_instances do --passes the positions to the instances[i] domain
-		job.instances[i].position = list.positions[i]
+	for i,v in pairs(list.positions) do --passes the positions to the instances[i] domain
+		job.instances[i].position = v --TODO CHECK IF HANDLING OF POSITIONS / INSTANCES IS CORRECT, TEST WITH 2 SPLAYDS
 	end
 	list.positions = nil --clears the positions atribute
 	job.network.list = list
@@ -742,7 +776,14 @@ end
 function n_start(so)
 	-- blocking socket
 	so:settimeout(nil)
-	local ref = assert(so:receive())
+	local data = json.decode(assert(so:receive()))
+	local ref = data['ref']
+	local instances = data['instances']
+
+	print_tablez(data, "data")
+	print("gonna print SPLAYJOBS")
+	print_tablez(splayd.jobs, "splay_jobs")
+
 	if splayd.jobs[ref] then
 		if splayd.jobs[ref].status == "running" then
 			assert(so:send("RUNNING"))
@@ -764,9 +805,9 @@ function n_start(so)
 				co_churn = coroutine.create(churn_mgmt)
 			end
 		else
-			for i=1,splayd.jobs[ref].nb_instances do
+			for i,v in ipairs(instances) do
 				--if the job doesn't have timeline, simply start (normal job)
-				start(ref, i)
+				start(ref, v)
 			end
 		end
 		assert(so:send("OK"))
@@ -786,7 +827,7 @@ function n_stop(so)
 			assert(so:send("NOT_RUNNING"))
 			return
 		end
-		stop(ref)
+		stop(ref) --TODO TAKE CARE OF INSTANCES
 		assert(so:send("OK"))
 	else
 		assert(so:send("UNKNOWN_REF"))
@@ -933,7 +974,7 @@ function trace_end(so)
 	assert(so:send("OK"))
 
 	if splayd.jobs[ref].status == "waiting" then
-		free(ref)
+		free(ref) --TODO watch instances
 	end
 	-- restablish timeout
 	so:settimeout(so_timeout)

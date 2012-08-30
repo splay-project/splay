@@ -292,11 +292,17 @@ class Jobd
 		m_s_s.each do |m_s|
 			splayd_id = m_s['splayd_id'] #retrieves the splayd ID
 			if not splayd_list[splayd_id] then #if the record for that splayd ID does not exist
-				splayd_list[splayd_id] = true #create it and
-				q_act = q_act + "('#{splayd_id}','#{job['id']}','START', '#{job['ref']}')," #concatenate the START action
-				#like this, the START command will be sent once per splayd
-				#TODO add in data the instances to START
+				splayd_list[splayd_id] = [] #create it, like this, the START command will be sent once per splayd
 			end
+			splayd_list[splayd_id] << m_s['instance_id']
+		end
+
+		splayd_list.each do |sp_id, sp_list|
+			data_to_json = {}
+			data_to_json['ref'] = job['ref']
+			data_to_json['instances'] = sp_list
+			data = data_to_json.to_json
+			q_act = q_act + "('#{sp_id}','#{job['id']}','START', '#{data}')," #concatenate the START action
 		end
 		q_act = q_act[0, q_act.length - 1]
 		$db.do "INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}"
