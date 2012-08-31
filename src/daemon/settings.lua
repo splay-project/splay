@@ -46,7 +46,7 @@ splayd.settings.job.disk.max_file_descriptors = 64
 splayd.settings.job.network.max_send = 1024 * 1024 * 1024
 splayd.settings.job.network.max_receive = 1024 * 1024 * 1024
 splayd.settings.job.network.max_sockets = 64
-splayd.settings.job.network.max_ports = 10
+splayd.settings.job.network.max_ports = 20
 splayd.settings.job.network.start_port = 22000
 splayd.settings.job.network.end_port = 32000
 

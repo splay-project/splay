@@ -285,8 +285,7 @@ class SplaydProtocol
 					if action['data']
 						if action['command'] == 'LIST' and action['positions'] #replaces the generic _POSITIONS_ with the real list of positions, already JSONed
 							action['data'] = action['data'].sub(/_POSITIONS_/, action['positions'])
-						end
-						if action['command'] == 'REGISTER' and action['nb_instances'] #replaces the generic _NBINSTANCES_ with the real number of instances
+						elsif action['command'] == 'REGISTER' and action['nb_instances'] #replaces the generic _NBINSTANCES_ with the real number of instances
 							action['data'] = action['data'].sub(/_NBINSTANCES_/, action['nb_instances'].to_s)
 						end
 						@so.write action['data']
@@ -379,6 +378,7 @@ end
 # This class may appear in its own file or not.
 # Passing the protocol as an argument in SplaydServerß could allow 
 # better reusability
+# better to factorize the code of MAIN and change only that little part that changes (related to lib_id and if action == REGISTER)
 class SplaydGridProtocol < SplaydProtocol
   
   def auth_update_lib
@@ -434,6 +434,7 @@ class SplaydGridProtocol < SplaydProtocol
 						elsif action['command'] == "REGISTER"
 							job = action['data']
 							job = JSON.parse(job)
+							#TODO convert this as a function that returns lib, lib_id
 							if job['lib_name' ] && job['lib_name'] != ""
 								lib = $db.select_one("SELECT * FROM splayd_libs, libs WHERE splayd_libs.lib_id=libs.id AND splayd_libs.splayd_id=#{@splayd.row['id']} 
 	                                      AND libs.lib_name='#{job['lib_name']}' AND libs.lib_version='#{job['lib_version']}'")
@@ -454,6 +455,8 @@ class SplaydGridProtocol < SplaydProtocol
 					reply_code = @so.read
 					if reply_code == "OK"
 						if action['command'] == "REGISTER"
+						#tentatively put lib_id in the original class SplaydProtocol, and since the original code does not change it,
+						#the "if" statement below will not be effective
 						  if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
 							port = addslashes(@so.read)
 							reply_data = port

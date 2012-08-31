@@ -63,6 +63,7 @@ class JobdStandard < Jobd
 				if job['turbo'] == "TRUE" then
 					#the number of nodes assigned is the maximum of the splayd minus the nodes already used
 					nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
+					#TODO in turbo mode, max-mem x nb-instances and nb-ports x nb-instances should be calculated.
 					#if nodes_assigned already surpasses the remaining number of nodes to assign, it gets lowered to that
 					if nodes_assigned > nb_selected_splayds - count then
 						nodes_assigned = nb_selected_splayds - count
@@ -155,7 +156,6 @@ class JobdStandard < Jobd
 						"splayd_id" => m['splayd_id'],
 						"instance_id" => m['instance_id']
 					}
-					$log.info("printing splayd_id=#{selected_sp['splayd_id']} AND instance_id=#{selected_sp['instance_id']}")
 				selected_splayds << selected_sp
 			end
 
@@ -178,7 +178,6 @@ class JobdStandard < Jobd
 			if normal_ok and mandatory_ok
 
 				selected_splayds.each do |sel_sp|
-					$log.info("selecting splayd_id=#{sel_sp['splayd_id']} AND instance_id=#{sel_sp['instance_id']}")
 					$db.do("UPDATE splayd_selections SET
 							selected='TRUE'
 							WHERE
