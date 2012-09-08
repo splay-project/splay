@@ -22,6 +22,7 @@
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
 #require 'lib/common'
+require 'rubygems'
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/common'))
 # We force only one log daemon and one splayd daemon
 SplayControllerConfig::NumLogd = 1
