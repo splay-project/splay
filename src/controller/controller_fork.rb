@@ -32,6 +32,7 @@
 # computers.
 
 #require 'lib/all'
+require 'rubygems'
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 $log.level = Logger::INFO
