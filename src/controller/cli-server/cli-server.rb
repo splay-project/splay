@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 ## Splay Controller ### v1.3 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
@@ -19,6 +20,7 @@
 # Light JSON-RPC over HTTP Service for SPLAY controller in Ruby
 # Created by Valerio Schiavoni
 
+require 'rubygems'
 require 'webrick'
 require 'json'
 require File.expand_path(File.join(File.dirname(__FILE__), 'controller-api'))
