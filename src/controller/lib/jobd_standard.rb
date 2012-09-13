@@ -58,12 +58,14 @@ class JobdStandard < Jobd
 			count = 0
 			occupation.sort {|a, b| a[1] <=> b[1]}
 			#for each of the selected splayds
+			puts "should enter in occupation"
 			occupation.each do |splayd_id, occ|
+			puts "enters in occupation"
 				nodes_assigned = 1
 				if job['turbo'] == "TRUE" then
 					#the number of nodes assigned is the maximum of the splayd minus the nodes already used
 					nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
-					
+			puts "nodes assigned: #{nodes_assigned}"
 					#if nodes_assigned already surpasses the remaining number of nodes to assign, it gets lowered to that
 					if nodes_assigned > nb_selected_splayds - count then
 						nodes_assigned = nb_selected_splayds - count
@@ -105,6 +107,7 @@ class JobdStandard < Jobd
 			q_sel = q_sel[0, q_sel.length - 1]
 			q_job = q_job[0, q_job.length - 1]
 			q_act = q_act[0, q_act.length - 1]
+			puts "SEL: '#{q_sel}'"
 			$db.do "INSERT INTO splayd_selections (splayd_id, job_id, instance_id) VALUES #{q_sel}"
 			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, instance_id, status) VALUES #{q_job}"
 

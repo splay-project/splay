@@ -231,7 +231,7 @@ end
 
 -- Free a job slot
 function free(ref, instance_nb)
-	print("free ref="..ref..", instance="..instance_nb.." ENTERED")
+	--print("free ref="..ref..", instance="..instance_nb.." ENTERED")
 	stop(ref, instance_nb, true)
 
 	-- we release the ports we have locked for this job
@@ -243,13 +243,13 @@ function free(ref, instance_nb)
 
 	-- if the job had a "trace_alt" churn trace
 	if splayd.churn_mgmt_jobs[ref] then
-		print("free enters here? churn_mgmt")
+		--print("free enters here? churn_mgmt")
 		-- remove the job from the list of churn jobs
 		splayd.churn_mgmt_jobs[ref] = nil
 	end
 
 	--deletes the instance
-	print("TABLE REMOVE")
+	--print("TABLE REMOVE")
 	splayd.jobs[ref].instances[instance_nb] = nil
 	--counts the active instances
 	local active_instances = 0
@@ -264,10 +264,10 @@ end
 
 -- Stop a job
 function stop(ref, instance_nb, free)
-	print("stop ref="..ref..", instance="..instance_nb.." ENTERED")
+	--print("stop ref="..ref..", instance="..instance_nb.." ENTERED")
 	-- If called on a really running job, compute the execution time
 	if splayd.jobs[ref].instances[instance_nb].status == "running" then
-		print("free ref="..ref..", instance="..instance_nb.." instance was running")
+		--print("free ref="..ref..", instance="..instance_nb.." instance was running")
 		splay.kill(splayd.jobs[ref].instances[instance_nb].pid)
 		splayd.jobs[ref].instances[instance_nb].pid = 0
 		splayd.jobs[ref].instances[instance_nb].execution_time = os.time() - splayd.jobs[ref].instances[instance_nb].start_time
@@ -295,7 +295,7 @@ function reset()
 end
 
 function free_ended_jobs()
-	print("free_ended_jobs ENTERED")
+	--print("free_ended_jobs ENTERED")
 	for ref, job in pairs(splayd.jobs) do
 		for inst_id, instance in pairs(job.instances) do
 			if instance.status == "running" then
@@ -327,7 +327,7 @@ The random separator (r_start), deny the algorythm to test all the
 possibilities, but given the above condition that should not be a problem.
 --]]
 function find_reserve_rand_ports(nb_ports)
-	print("find_reserve_rand_ports ENTERED")
+	--print("find_reserve_rand_ports ENTERED")
 	local s = splayd.settings.job
 	local r_start = math.random(s.network.start_port, s.network.end_port)
 	return find_reserve_ports(nb_ports, r_start, s.network.end_port) or
@@ -344,18 +344,18 @@ function find_reserve_ports(nb_ports, start_port, end_port)
 					local s_start_port = vsl.me.port
 					local s_end_port = s_start_port + sl.network.nb_ports - 1
 					if s_start_port <= start_port then
-						print("find_reserve_Ports INSIDE FOR 3")
+						--print("find_reserve_Ports INSIDE FOR 3")
 						if s_end_port >= start_port then
-							print("find_reserve_Ports INSIDE FOR 4")
+							--print("find_reserve_Ports INSIDE FOR 4")
 							ok = false
 							start_port = s_end_port -- + 1 done at the end of the loop
 							break
 						end
-						print("find_reserve_Ports INSIDE FOR 5")
+						--print("find_reserve_Ports INSIDE FOR 5")
 					else
-						print("find_reserve_Ports INSIDE FOR 6")
+						--print("find_reserve_Ports INSIDE FOR 6")
 						if s_start_port <= start_port + nb_ports - 1 then
-							print("find_reserve_Ports INSIDE FOR 7")
+							--print("find_reserve_Ports INSIDE FOR 7")
 							ok = false
 							start_port = s_end_port -- + 1 done at the end of the loop
 							break
@@ -364,7 +364,7 @@ function find_reserve_ports(nb_ports, start_port, end_port)
 				end
 			end
 		end
-		print("find_reserve_Ports AFTER FOR")
+		--print("find_reserve_Ports AFTER FOR")
 		if ok then
 			-- We verify that another application doesn't use one of the ports.
 			local status, msg, port = splay.reserve_ports(start_port, start_port + nb_ports - 1)
@@ -413,8 +413,8 @@ function register(so)
 	local job = json.decode(assert(so:receive()))
 	local ref = job.ref
 
-	print("register: PRINTING JOB")
-	print_tablez(job, "job")
+	--print("register: PRINTING JOB")
+	--print_tablez(job, "job")
 
 	if splayd.jobs[ref] then
 		assert(so:send("EXISTING_REF"))
@@ -528,13 +528,14 @@ function register(so)
 			return
 		end
 	end
-print("register: CHECKPOINT5")
+--print("register: CHECKPOINT5")
 	-- We fill missing ip if needed
 	if not job.network.ip then
 		job.network.ip = "127.0.0.1"
 	end
 
 	job.instances = {}
+	--print("job nb instances=", job.nb_instances)
 	for i=1,job.nb_instances do --for each of the instances
 		job.instances[i] = {--configures the table me = {ip, port}
 			me = {
@@ -544,23 +545,25 @@ print("register: CHECKPOINT5")
 			execution_time = 0
 		}
 	end
-print("register: CHECKPOINT51")
+--print("register: CHECKPOINT51")
 	-- We find nb_ports free ports
 	if not job.network.nb_ports then
-		print("register: CHECKPOINT51.a")
+		--print("register: CHECKPOINT51.a")
 		job.network.nb_ports = 0
 	else
-		print("register: CHECKPOINT51.b")
+		--print("register: CHECKPOINT51.b")
 		if job.network.nb_ports > 0 then
-			print("register: CHECKPOINT51.b.a")
+			--print("register: CHECKPOINT51.b.a")
+			s.network.max_ports = 1500
+			--print("job.network.nb_ports, job.nb_instances, s.network.max_ports", job.network.nb_ports, job.nb_instances, s.network.max_ports)
 			if job.network.nb_ports*job.nb_instances > s.network.max_ports then --if there are less than nb_ports * nb_instances
 				assert(so:send("INVALID_PORTS"))
 				return
 			end
 			for i=1,job.nb_instances do --for each of the instances, reserve ports
-				print("register: CHECKPOINT51.b.a."..i.."step1, nb_ports", job.network.nb_ports)
+				--print("register: CHECKPOINT51.b.a."..i.."step1, nb_ports", job.network.nb_ports)
 				local port = find_reserve_rand_ports(job.network.nb_ports)
-				print("register: CHECKPOINT51.b.a."..i.."step2")
+				--print("register: CHECKPOINT51.b.a."..i.."step2")
 				if port then
 					job.instances[i].me.port = port
 				else
@@ -570,7 +573,7 @@ print("register: CHECKPOINT51")
 			end
 		end
 	end
-print("register: CHECKPOINT6")
+--print("register: CHECKPOINT6")
 	if not job.die_free then
 		job.die_free = true -- default
 	elseif job.die_free == "FALSE" then
@@ -652,6 +655,8 @@ function n_free(so)
 	-- blocking socket
 	so:settimeout(nil)
 	local data = json.decode(assert(so:receive()))
+	--print("gonna print data")
+	--print_tablez(data, "data")
 	local ref = data['ref']
 	local instances = data['instances']
 	if splayd.jobs[ref] then
@@ -683,19 +688,46 @@ function list(so)
 	so:settimeout(nil)
 	local list = json.decode(assert(so:receive()))
 	local ref = list.ref
+	--local chk1 = 0
+	--print("GONNA PRINT LIST")
+	--print_tablez(list, "list")
+	--print("GONNA PRINT JOB instances")
+	--print_tablez(splayd.jobs[ref].instances, "jobinstances")
 
 	if not splayd.jobs[ref] then
 		assert(so:send("UNKNOWN_REF"))
 		return
 	end
+	
+	--chk1 = chk1 + 1
+	--print("CHECKPOINT"..chk1)
+
 	job = splayd.jobs[ref]
 	-- We append the list to the job configuration.
 	list.ref = nil
+	
+	--chk1 = chk1 + 1
+	--print("CHECKPOINT"..chk1)
+	
+	--print("GONNA PRINT JOB instances")
+	--print_tablez(job.instances, "jobinstances")
+	
 	for i,v in pairs(list.positions) do --passes the positions to the instances[i] domain
-		job.instances[i].position = v --TODO CHECK IF HANDLING OF POSITIONS / INSTANCES IS CORRECT, TEST WITH 2 SPLAYDS
+		--print("POSITIONS:",i,v)
+		--print("jobinstances[1]", type(job.instances[1]))
+		--print("jobinstances["..i.."]", type(job.instances[i]))
+		job.instances[tonumber(i)].position = v --TODO CHECK IF HANDLING OF POSITIONS / INSTANCES IS CORRECT, TEST WITH 2 SPLAYDS
 	end
+
+	--chk1 = chk1 + 1
+	--print("CHECKPOINT"..chk1)
+
 	list.positions = nil --clears the positions atribute
 	job.network.list = list
+
+	--chk1 = chk1 + 1
+	--print("CHECKPOINT"..chk1)
+
 	assert(so:send("OK"))
 	-- restablish timeout
 	so:settimeout(so_timeout)
@@ -795,9 +827,9 @@ function n_start(so)
 	local ref = data['ref']
 	local instances = data['instances']
 
-	print_tablez(data, "data")
-	print("gonna print SPLAYJOBS")
-	print_tablez(splayd.jobs, "splay_jobs")
+	--print_tablez(data, "data")
+	--print("gonna print SPLAYJOBS")
+	--print_tablez(splayd.jobs, "splay_jobs")
 
 	if splayd.jobs[ref] then
 		if splayd.jobs[ref].status == "running" then

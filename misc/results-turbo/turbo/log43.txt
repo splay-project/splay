@@ -1,0 +1,1800 @@
+23:45:12.76 (1)  START_LOG
+23:45:12.96 (1)  SPLAYD LUA EXEC
+23:45:13.08 (1)  >> Job settings:
+23:45:13.21 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:13.32 (1)  Name: 
+23:45:13.40 (1)  Description: 
+23:45:13.56 (1)  Disk:
+23:45:13.66 (1)  	max 512 files
+23:45:13.77 (1)  	max 32 file descriptors
+23:45:13.96 (1)  	max 67108864 size in bytes
+23:45:14.09 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:14.19 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:14.27 (1)  Mem 2097152 bytes of memory
+23:45:14.33 (1)  Network:
+23:45:14.38 (1)  	max 134217728/134217728 send/receive bytes
+23:45:14.44 (1)  	max 32 tcp sockets
+23:45:14.50 (1)  	ip 127.0.0.1
+23:45:14.59 (1)  	ports 13546-13546
+23:45:14.71 (1)  
+23:45:14.86 (1)  START_LOG
+23:45:14.96 (1)  SPLAYD LUA EXEC
+23:45:15.06 (1)  >> Job settings:
+23:45:15.14 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:15.28 (1)  Name: 
+23:45:15.36 (1)  Description: 
+23:45:15.53 (1)  Disk:
+23:45:15.64 (1)  	max 512 files
+23:45:15.73 (1)  	max 32 file descriptors
+23:45:15.86 (1)  	max 67108864 size in bytes
+23:45:15.96 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:16.06 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:16.12 (1)  Mem 2097152 bytes of memory
+23:45:16.21 (1)  Network:
+23:45:16.31 (1)  	max 134217728/134217728 send/receive bytes
+23:45:16.41 (1)  	max 32 tcp sockets
+23:45:16.52 (1)  	ip 127.0.0.1
+23:45:16.58 (1)  	ports 13866-13866
+23:45:16.64 (1)  
+23:45:16.77 (1)  >> Into sandbox !!!
+23:45:16.86 (1)  > Memory: 159.86328125 KBytes
+23:45:16.97 (1)  > Checking sandbox...
+23:45:17.05 (1)     > passed
+23:45:17.11 (1)  
+23:45:17.23 (1)  START_LOG
+23:45:17.23 (1)  SPLAYD LUA EXEC
+23:45:17.23 (1)  >> Job settings:
+23:45:17.23 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.23 (1)  Name: 
+23:45:17.23 (1)  Description: 
+23:45:17.23 (1)  Disk:
+23:45:17.23 (1)  	max 512 files
+23:45:17.23 (1)  	max 32 file descriptors
+23:45:17.23 (1)  	max 67108864 size in bytes
+23:45:17.23 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.23 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.23 (1)  Mem 2097152 bytes of memory
+23:45:17.23 (1)  Network:
+23:45:17.23 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.23 (1)  	max 32 tcp sockets
+23:45:17.23 (1)  	ip 127.0.0.1
+23:45:17.23 (1)  	ports 13689-13689
+23:45:17.23 (1)  
+23:45:17.23 (1)  >> Into sandbox !!!
+23:45:17.23 (1)  > Memory: 159.916015625 KBytes
+23:45:17.23 (1)  > Checking sandbox...
+23:45:17.23 (1)     > passed
+23:45:17.23 (1)  
+23:45:17.26 (1)  START_LOG
+23:45:17.26 (1)  SPLAYD LUA EXEC
+23:45:17.26 (1)  >> Job settings:
+23:45:17.26 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.26 (1)  Name: 
+23:45:17.26 (1)  Description: 
+23:45:17.26 (1)  Disk:
+23:45:17.26 (1)  	max 512 files
+23:45:17.26 (1)  	max 32 file descriptors
+23:45:17.26 (1)  	max 67108864 size in bytes
+23:45:17.26 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.26 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.26 (1)  Mem 2097152 bytes of memory
+23:45:17.26 (1)  Network:
+23:45:17.26 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.26 (1)  	max 32 tcp sockets
+23:45:17.26 (1)  	ip 127.0.0.1
+23:45:17.26 (1)  	ports 13038-13038
+23:45:17.26 (1)  
+23:45:17.26 (1)  >> Into sandbox !!!
+23:45:17.27 (1)  > Memory: 159.86328125 KBytes
+23:45:17.27 (1)  > Checking sandbox...
+23:45:17.27 (1)     > passed
+23:45:17.27 (1)  
+23:45:17.30 (1)  START_LOG
+23:45:17.38 (1)  SPLAYD LUA EXEC
+23:45:17.41 (1)  >> Job settings:
+23:45:17.41 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.41 (1)  Name: 
+23:45:17.41 (1)  Description: 
+23:45:17.41 (1)  Disk:
+23:45:17.41 (1)  	max 512 files
+23:45:17.41 (1)  	max 32 file descriptors
+23:45:17.41 (1)  	max 67108864 size in bytes
+23:45:17.41 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.41 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.41 (1)  Mem 2097152 bytes of memory
+23:45:17.41 (1)  Network:
+23:45:17.41 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.41 (1)  	max 32 tcp sockets
+23:45:17.41 (1)  	ip 127.0.0.1
+23:45:17.41 (1)  	ports 13796-13796
+23:45:17.41 (1)  
+23:45:17.41 (1)  >> Into sandbox !!!
+23:45:17.41 (1)  > Memory: 159.86328125 KBytes
+23:45:17.41 (1)  > Checking sandbox...
+23:45:17.41 (1)     > passed
+23:45:17.41 (1)  
+23:45:17.44 (1)  START_LOG
+23:45:17.44 (1)  SPLAYD LUA EXEC
+23:45:17.44 (1)  >> Job settings:
+23:45:17.44 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.44 (1)  Name: 
+23:45:17.44 (1)  Description: 
+23:45:17.44 (1)  Disk:
+23:45:17.44 (1)  	max 512 files
+23:45:17.44 (1)  	max 32 file descriptors
+23:45:17.44 (1)  	max 67108864 size in bytes
+23:45:17.44 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.44 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.44 (1)  Mem 2097152 bytes of memory
+23:45:17.44 (1)  Network:
+23:45:17.44 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.44 (1)  	max 32 tcp sockets
+23:45:17.44 (1)  	ip 127.0.0.1
+23:45:17.44 (1)  	ports 13469-13469
+23:45:17.44 (1)  
+23:45:17.44 (1)  >> Into sandbox !!!
+23:45:17.44 (1)  > Memory: 159.86328125 KBytes
+23:45:17.44 (1)  > Checking sandbox...
+23:45:17.44 (1)     > passed
+23:45:17.44 (1)  
+23:45:17.47 (1)  START_LOG
+23:45:17.47 (1)  SPLAYD LUA EXEC
+23:45:17.47 (1)  >> Job settings:
+23:45:17.47 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.47 (1)  Name: 
+23:45:17.47 (1)  Description: 
+23:45:17.47 (1)  Disk:
+23:45:17.47 (1)  	max 512 files
+23:45:17.47 (1)  	max 32 file descriptors
+23:45:17.47 (1)  	max 67108864 size in bytes
+23:45:17.47 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.47 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.47 (1)  Mem 2097152 bytes of memory
+23:45:17.47 (1)  Network:
+23:45:17.47 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.47 (1)  	max 32 tcp sockets
+23:45:17.47 (1)  	ip 127.0.0.1
+23:45:17.47 (1)  	ports 13849-13849
+23:45:17.47 (1)  
+23:45:17.47 (1)  >> Into sandbox !!!
+23:45:17.47 (1)  > Memory: 159.86328125 KBytes
+23:45:17.47 (1)  > Checking sandbox...
+23:45:17.47 (1)     > passed
+23:45:17.47 (1)  
+23:45:17.50 (1)  START_LOG
+23:45:17.50 (1)  SPLAYD LUA EXEC
+23:45:17.50 (1)  >> Job settings:
+23:45:17.50 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.50 (1)  Name: 
+23:45:17.50 (1)  Description: 
+23:45:17.50 (1)  Disk:
+23:45:17.50 (1)  	max 512 files
+23:45:17.50 (1)  	max 32 file descriptors
+23:45:17.50 (1)  	max 67108864 size in bytes
+23:45:17.50 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.50 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.50 (1)  Mem 2097152 bytes of memory
+23:45:17.50 (1)  Network:
+23:45:17.50 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.50 (1)  	max 32 tcp sockets
+23:45:17.50 (1)  	ip 127.0.0.1
+23:45:17.50 (1)  	ports 13909-13909
+23:45:17.50 (1)  
+23:45:17.50 (1)  >> Into sandbox !!!
+23:45:17.50 (1)  > Memory: 159.86328125 KBytes
+23:45:17.50 (1)  > Checking sandbox...
+23:45:17.50 (1)     > passed
+23:45:17.50 (1)  
+23:45:17.53 (1)  START_LOG
+23:45:17.53 (1)  SPLAYD LUA EXEC
+23:45:17.53 (1)  >> Job settings:
+23:45:17.53 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.53 (1)  Name: 
+23:45:17.53 (1)  Description: 
+23:45:17.53 (1)  Disk:
+23:45:17.53 (1)  	max 512 files
+23:45:17.53 (1)  	max 32 file descriptors
+23:45:17.53 (1)  	max 67108864 size in bytes
+23:45:17.53 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.53 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.53 (1)  Mem 2097152 bytes of memory
+23:45:17.53 (1)  Network:
+23:45:17.53 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.53 (1)  	max 32 tcp sockets
+23:45:17.53 (1)  	ip 127.0.0.1
+23:45:17.53 (1)  	ports 13690-13690
+23:45:17.53 (1)  
+23:45:17.53 (1)  >> Into sandbox !!!
+23:45:17.53 (1)  > Memory: 159.86328125 KBytes
+23:45:17.53 (1)  > Checking sandbox...
+23:45:17.53 (1)     > passed
+23:45:17.53 (1)  
+23:45:17.59 (1)  START_LOG
+23:45:17.59 (1)  SPLAYD LUA EXEC
+23:45:17.59 (1)  >> Job settings:
+23:45:17.59 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.59 (1)  Name: 
+23:45:17.59 (1)  Description: 
+23:45:17.59 (1)  Disk:
+23:45:17.59 (1)  	max 512 files
+23:45:17.59 (1)  	max 32 file descriptors
+23:45:17.59 (1)  	max 67108864 size in bytes
+23:45:17.59 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.59 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.59 (1)  Mem 2097152 bytes of memory
+23:45:17.59 (1)  Network:
+23:45:17.59 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.59 (1)  	max 32 tcp sockets
+23:45:17.59 (1)  	ip 127.0.0.1
+23:45:17.59 (1)  	ports 13057-13057
+23:45:17.59 (1)  
+23:45:17.59 (1)  >> Into sandbox !!!
+23:45:17.59 (1)  > Memory: 159.86328125 KBytes
+23:45:17.59 (1)  > Checking sandbox...
+23:45:17.59 (1)     > passed
+23:45:17.59 (1)  
+23:45:17.65 (1)  START_LOG
+23:45:17.65 (1)  SPLAYD LUA EXEC
+23:45:17.65 (1)  >> Job settings:
+23:45:17.65 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.65 (1)  Name: 
+23:45:17.65 (1)  Description: 
+23:45:17.65 (1)  Disk:
+23:45:17.65 (1)  	max 512 files
+23:45:17.65 (1)  	max 32 file descriptors
+23:45:17.65 (1)  	max 67108864 size in bytes
+23:45:17.65 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.65 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.65 (1)  Mem 2097152 bytes of memory
+23:45:17.65 (1)  Network:
+23:45:17.65 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.65 (1)  	max 32 tcp sockets
+23:45:17.65 (1)  	ip 127.0.0.1
+23:45:17.65 (1)  	ports 13710-13710
+23:45:17.65 (1)  
+23:45:17.65 (1)  >> Into sandbox !!!
+23:45:17.65 (1)  > Memory: 159.86328125 KBytes
+23:45:17.65 (1)  > Checking sandbox...
+23:45:17.65 (1)     > passed
+23:45:17.65 (1)  
+23:45:17.71 (1)  START_LOG
+23:45:17.71 (1)  SPLAYD LUA EXEC
+23:45:17.71 (1)  >> Job settings:
+23:45:17.71 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.71 (1)  Name: 
+23:45:17.71 (1)  Description: 
+23:45:17.71 (1)  Disk:
+23:45:17.71 (1)  	max 512 files
+23:45:17.71 (1)  	max 32 file descriptors
+23:45:17.71 (1)  	max 67108864 size in bytes
+23:45:17.71 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.71 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.71 (1)  Mem 2097152 bytes of memory
+23:45:17.71 (1)  Network:
+23:45:17.71 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.71 (1)  	max 32 tcp sockets
+23:45:17.71 (1)  	ip 127.0.0.1
+23:45:17.71 (1)  	ports 13883-13883
+23:45:17.71 (1)  
+23:45:17.71 (1)  >> Into sandbox !!!
+23:45:17.71 (1)  > Memory: 159.86328125 KBytes
+23:45:17.71 (1)  > Checking sandbox...
+23:45:17.71 (1)     > passed
+23:45:17.71 (1)  
+23:45:17.77 (1)  START_LOG
+23:45:17.77 (1)  SPLAYD LUA EXEC
+23:45:17.77 (1)  >> Job settings:
+23:45:17.77 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.77 (1)  Name: 
+23:45:17.77 (1)  Description: 
+23:45:17.77 (1)  Disk:
+23:45:17.77 (1)  	max 512 files
+23:45:17.77 (1)  	max 32 file descriptors
+23:45:17.77 (1)  	max 67108864 size in bytes
+23:45:17.77 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.77 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.77 (1)  Mem 2097152 bytes of memory
+23:45:17.77 (1)  Network:
+23:45:17.77 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.77 (1)  	max 32 tcp sockets
+23:45:17.77 (1)  	ip 127.0.0.1
+23:45:17.77 (1)  	ports 14457-14457
+23:45:17.77 (1)  
+23:45:17.77 (1)  >> Into sandbox !!!
+23:45:17.77 (1)  > Memory: 159.86328125 KBytes
+23:45:17.77 (1)  > Checking sandbox...
+23:45:17.77 (1)     > passed
+23:45:17.77 (1)  
+23:45:17.83 (1)  START_LOG
+23:45:17.83 (1)  SPLAYD LUA EXEC
+23:45:17.83 (1)  >> Job settings:
+23:45:17.83 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.83 (1)  Name: 
+23:45:17.83 (1)  Description: 
+23:45:17.83 (1)  Disk:
+23:45:17.83 (1)  	max 512 files
+23:45:17.83 (1)  	max 32 file descriptors
+23:45:17.83 (1)  	max 67108864 size in bytes
+23:45:17.83 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.83 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.83 (1)  Mem 2097152 bytes of memory
+23:45:17.83 (1)  Network:
+23:45:17.83 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.83 (1)  	max 32 tcp sockets
+23:45:17.83 (1)  	ip 127.0.0.1
+23:45:17.83 (1)  	ports 14493-14493
+23:45:17.83 (1)  
+23:45:17.83 (1)  >> Into sandbox !!!
+23:45:17.83 (1)  > Memory: 159.86328125 KBytes
+23:45:17.83 (1)  > Checking sandbox...
+23:45:17.83 (1)     > passed
+23:45:17.83 (1)  
+23:45:17.89 (1)  START_LOG
+23:45:17.89 (1)  SPLAYD LUA EXEC
+23:45:17.89 (1)  >> Job settings:
+23:45:17.89 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.89 (1)  Name: 
+23:45:17.89 (1)  Description: 
+23:45:17.89 (1)  Disk:
+23:45:17.89 (1)  	max 512 files
+23:45:17.89 (1)  	max 32 file descriptors
+23:45:17.89 (1)  	max 67108864 size in bytes
+23:45:17.89 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.89 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.89 (1)  Mem 2097152 bytes of memory
+23:45:17.89 (1)  Network:
+23:45:17.89 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.89 (1)  	max 32 tcp sockets
+23:45:17.89 (1)  	ip 127.0.0.1
+23:45:17.89 (1)  	ports 14021-14021
+23:45:17.89 (1)  
+23:45:17.89 (1)  >> Into sandbox !!!
+23:45:17.89 (1)  > Memory: 159.86328125 KBytes
+23:45:17.89 (1)  > Checking sandbox...
+23:45:17.89 (1)     > passed
+23:45:17.89 (1)  
+23:45:17.95 (1)  START_LOG
+23:45:17.95 (1)  SPLAYD LUA EXEC
+23:45:17.95 (1)  >> Job settings:
+23:45:17.95 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:17.95 (1)  Name: 
+23:45:17.95 (1)  Description: 
+23:45:17.95 (1)  Disk:
+23:45:17.95 (1)  	max 512 files
+23:45:17.95 (1)  	max 32 file descriptors
+23:45:17.95 (1)  	max 67108864 size in bytes
+23:45:17.95 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:17.95 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:17.95 (1)  Mem 2097152 bytes of memory
+23:45:17.95 (1)  Network:
+23:45:17.95 (1)  	max 134217728/134217728 send/receive bytes
+23:45:17.95 (1)  	max 32 tcp sockets
+23:45:17.95 (1)  	ip 127.0.0.1
+23:45:17.95 (1)  	ports 13482-13482
+23:45:17.95 (1)  
+23:45:17.95 (1)  >> Into sandbox !!!
+23:45:17.95 (1)  > Memory: 159.86328125 KBytes
+23:45:17.95 (1)  > Checking sandbox...
+23:45:17.95 (1)     > passed
+23:45:17.95 (1)  
+23:45:18.01 (1)  START_LOG
+23:45:18.01 (1)  SPLAYD LUA EXEC
+23:45:18.01 (1)  >> Job settings:
+23:45:18.01 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:18.01 (1)  Name: 
+23:45:18.01 (1)  Description: 
+23:45:18.01 (1)  Disk:
+23:45:18.01 (1)  	max 512 files
+23:45:18.01 (1)  	max 32 file descriptors
+23:45:18.01 (1)  	max 67108864 size in bytes
+23:45:18.01 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:18.01 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:18.01 (1)  Mem 2097152 bytes of memory
+23:45:18.01 (1)  Network:
+23:45:18.01 (1)  	max 134217728/134217728 send/receive bytes
+23:45:18.01 (1)  	max 32 tcp sockets
+23:45:18.01 (1)  	ip 127.0.0.1
+23:45:18.01 (1)  	ports 13846-13846
+23:45:18.01 (1)  
+23:45:18.01 (1)  >> Into sandbox !!!
+23:45:18.01 (1)  > Memory: 159.86328125 KBytes
+23:45:18.01 (1)  > Checking sandbox...
+23:45:18.01 (1)     > passed
+23:45:18.02 (1)  
+23:45:18.07 (1)  START_LOG
+23:45:18.07 (1)  SPLAYD LUA EXEC
+23:45:18.07 (1)  >> Job settings:
+23:45:18.07 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:18.07 (1)  Name: 
+23:45:18.07 (1)  Description: 
+23:45:18.07 (1)  Disk:
+23:45:18.07 (1)  	max 512 files
+23:45:18.07 (1)  	max 32 file descriptors
+23:45:18.07 (1)  	max 67108864 size in bytes
+23:45:18.07 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:18.07 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:18.07 (1)  Mem 2097152 bytes of memory
+23:45:18.07 (1)  Network:
+23:45:18.07 (1)  	max 134217728/134217728 send/receive bytes
+23:45:18.07 (1)  	max 32 tcp sockets
+23:45:18.07 (1)  	ip 127.0.0.1
+23:45:18.07 (1)  	ports 14474-14474
+23:45:18.07 (1)  
+23:45:18.07 (1)  >> Into sandbox !!!
+23:45:18.07 (1)  > Memory: 159.86328125 KBytes
+23:45:18.07 (1)  > Checking sandbox...
+23:45:18.08 (1)     > passed
+23:45:18.08 (1)  
+23:45:18.14 (1)  START_LOG
+23:45:18.22 (1)  SPLAYD LUA EXEC
+23:45:18.33 (1)  >> Job settings:
+23:45:18.44 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:18.54 (1)  Name: 
+23:45:18.66 (1)  Description: 
+23:45:18.75 (1)  Disk:
+23:45:18.90 (1)  	max 512 files
+23:45:18.99 (1)  	max 32 file descriptors
+23:45:19.05 (1)  	max 67108864 size in bytes
+23:45:19.11 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.11 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.11 (1)  Mem 2097152 bytes of memory
+23:45:19.11 (1)  Network:
+23:45:19.11 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.11 (1)  	max 32 tcp sockets
+23:45:19.11 (1)  	ip 127.0.0.1
+23:45:19.11 (1)  	ports 13120-13120
+23:45:19.11 (1)  
+23:45:19.11 (1)  >> Into sandbox !!!
+23:45:19.11 (1)  > Memory: 159.86328125 KBytes
+23:45:19.12 (1)  > Checking sandbox...
+23:45:19.12 (1)     > passed
+23:45:19.12 (1)  
+23:45:19.14 (1)  START_LOG
+23:45:19.14 (1)  SPLAYD LUA EXEC
+23:45:19.14 (1)  >> Job settings:
+23:45:19.14 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.14 (1)  Name: 
+23:45:19.14 (1)  Description: 
+23:45:19.14 (1)  Disk:
+23:45:19.14 (1)  	max 512 files
+23:45:19.14 (1)  	max 32 file descriptors
+23:45:19.14 (1)  	max 67108864 size in bytes
+23:45:19.14 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.14 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.14 (1)  Mem 2097152 bytes of memory
+23:45:19.14 (1)  Network:
+23:45:19.14 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.14 (1)  	max 32 tcp sockets
+23:45:19.14 (1)  	ip 127.0.0.1
+23:45:19.14 (1)  	ports 13408-13408
+23:45:19.14 (1)  
+23:45:19.14 (1)  >> Into sandbox !!!
+23:45:19.14 (1)  > Memory: 159.86328125 KBytes
+23:45:19.14 (1)  > Checking sandbox...
+23:45:19.14 (1)     > passed
+23:45:19.14 (1)  
+23:45:19.20 (1)  START_LOG
+23:45:19.20 (1)  SPLAYD LUA EXEC
+23:45:19.20 (1)  >> Job settings:
+23:45:19.20 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.20 (1)  Name: 
+23:45:19.20 (1)  Description: 
+23:45:19.20 (1)  Disk:
+23:45:19.20 (1)  	max 512 files
+23:45:19.20 (1)  	max 32 file descriptors
+23:45:19.20 (1)  	max 67108864 size in bytes
+23:45:19.20 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.20 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.20 (1)  Mem 2097152 bytes of memory
+23:45:19.20 (1)  Network:
+23:45:19.20 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.20 (1)  	max 32 tcp sockets
+23:45:19.20 (1)  	ip 127.0.0.1
+23:45:19.20 (1)  	ports 13266-13266
+23:45:19.20 (1)  
+23:45:19.20 (1)  >> Into sandbox !!!
+23:45:19.20 (1)  > Memory: 159.86328125 KBytes
+23:45:19.20 (1)  > Checking sandbox...
+23:45:19.20 (1)     > passed
+23:45:19.20 (1)  
+23:45:19.26 (1)  START_LOG
+23:45:19.26 (1)  SPLAYD LUA EXEC
+23:45:19.26 (1)  >> Job settings:
+23:45:19.26 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.26 (1)  Name: 
+23:45:19.26 (1)  Description: 
+23:45:19.26 (1)  Disk:
+23:45:19.26 (1)  	max 512 files
+23:45:19.26 (1)  	max 32 file descriptors
+23:45:19.26 (1)  	max 67108864 size in bytes
+23:45:19.26 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.26 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.26 (1)  Mem 2097152 bytes of memory
+23:45:19.26 (1)  Network:
+23:45:19.26 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.26 (1)  	max 32 tcp sockets
+23:45:19.26 (1)  	ip 127.0.0.1
+23:45:19.26 (1)  	ports 14006-14006
+23:45:19.26 (1)  
+23:45:19.26 (1)  >> Into sandbox !!!
+23:45:19.26 (1)  > Memory: 159.86328125 KBytes
+23:45:19.26 (1)  > Checking sandbox...
+23:45:19.26 (1)     > passed
+23:45:19.26 (1)  
+23:45:19.32 (1)  START_LOG
+23:45:19.32 (1)  SPLAYD LUA EXEC
+23:45:19.32 (1)  >> Job settings:
+23:45:19.32 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.32 (1)  Name: 
+23:45:19.32 (1)  Description: 
+23:45:19.32 (1)  Disk:
+23:45:19.32 (1)  	max 512 files
+23:45:19.32 (1)  	max 32 file descriptors
+23:45:19.32 (1)  	max 67108864 size in bytes
+23:45:19.32 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.32 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.32 (1)  Mem 2097152 bytes of memory
+23:45:19.32 (1)  Network:
+23:45:19.32 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.32 (1)  	max 32 tcp sockets
+23:45:19.32 (1)  	ip 127.0.0.1
+23:45:19.32 (1)  	ports 13855-13855
+23:45:19.32 (1)  
+23:45:19.32 (1)  >> Into sandbox !!!
+23:45:19.32 (1)  > Memory: 159.86328125 KBytes
+23:45:19.32 (1)  > Checking sandbox...
+23:45:19.32 (1)     > passed
+23:45:19.32 (1)  
+23:45:19.38 (1)  START_LOG
+23:45:19.38 (1)  SPLAYD LUA EXEC
+23:45:19.38 (1)  >> Job settings:
+23:45:19.38 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.38 (1)  Name: 
+23:45:19.38 (1)  Description: 
+23:45:19.38 (1)  Disk:
+23:45:19.38 (1)  	max 512 files
+23:45:19.38 (1)  	max 32 file descriptors
+23:45:19.38 (1)  	max 67108864 size in bytes
+23:45:19.38 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.38 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.38 (1)  Mem 2097152 bytes of memory
+23:45:19.38 (1)  Network:
+23:45:19.38 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.38 (1)  	max 32 tcp sockets
+23:45:19.38 (1)  	ip 127.0.0.1
+23:45:19.38 (1)  	ports 14307-14307
+23:45:19.38 (1)  
+23:45:19.38 (1)  >> Into sandbox !!!
+23:45:19.38 (1)  > Memory: 159.86328125 KBytes
+23:45:19.38 (1)  > Checking sandbox...
+23:45:19.38 (1)     > passed
+23:45:19.38 (1)  
+23:45:19.44 (1)  START_LOG
+23:45:19.44 (1)  SPLAYD LUA EXEC
+23:45:19.44 (1)  >> Job settings:
+23:45:19.44 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.44 (1)  Name: 
+23:45:19.44 (1)  Description: 
+23:45:19.44 (1)  Disk:
+23:45:19.44 (1)  	max 512 files
+23:45:19.44 (1)  	max 32 file descriptors
+23:45:19.44 (1)  	max 67108864 size in bytes
+23:45:19.44 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.44 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.44 (1)  Mem 2097152 bytes of memory
+23:45:19.44 (1)  Network:
+23:45:19.44 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.44 (1)  	max 32 tcp sockets
+23:45:19.44 (1)  	ip 127.0.0.1
+23:45:19.44 (1)  	ports 14462-14462
+23:45:19.44 (1)  
+23:45:19.44 (1)  >> Into sandbox !!!
+23:45:19.44 (1)  > Memory: 159.86328125 KBytes
+23:45:19.44 (1)  > Checking sandbox...
+23:45:19.44 (1)     > passed
+23:45:19.44 (1)  
+23:45:19.50 (1)  START_LOG
+23:45:19.50 (1)  SPLAYD LUA EXEC
+23:45:19.50 (1)  >> Job settings:
+23:45:19.50 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.50 (1)  Name: 
+23:45:19.50 (1)  Description: 
+23:45:19.50 (1)  Disk:
+23:45:19.50 (1)  	max 512 files
+23:45:19.50 (1)  	max 32 file descriptors
+23:45:19.50 (1)  	max 67108864 size in bytes
+23:45:19.50 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.50 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.50 (1)  Mem 2097152 bytes of memory
+23:45:19.50 (1)  Network:
+23:45:19.50 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.50 (1)  	max 32 tcp sockets
+23:45:19.50 (1)  	ip 127.0.0.1
+23:45:19.50 (1)  	ports 14303-14303
+23:45:19.50 (1)  
+23:45:19.50 (1)  >> Into sandbox !!!
+23:45:19.50 (1)  > Memory: 159.86328125 KBytes
+23:45:19.50 (1)  > Checking sandbox...
+23:45:19.50 (1)     > passed
+23:45:19.50 (1)  
+23:45:19.56 (1)  START_LOG
+23:45:19.56 (1)  SPLAYD LUA EXEC
+23:45:19.56 (1)  >> Job settings:
+23:45:19.56 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.56 (1)  Name: 
+23:45:19.56 (1)  Description: 
+23:45:19.56 (1)  Disk:
+23:45:19.56 (1)  	max 512 files
+23:45:19.56 (1)  	max 32 file descriptors
+23:45:19.56 (1)  	max 67108864 size in bytes
+23:45:19.56 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.56 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.56 (1)  Mem 2097152 bytes of memory
+23:45:19.56 (1)  Network:
+23:45:19.56 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.56 (1)  	max 32 tcp sockets
+23:45:19.56 (1)  	ip 127.0.0.1
+23:45:19.56 (1)  	ports 13331-13331
+23:45:19.56 (1)  
+23:45:19.56 (1)  >> Into sandbox !!!
+23:45:19.56 (1)  > Memory: 159.86328125 KBytes
+23:45:19.56 (1)  > Checking sandbox...
+23:45:19.56 (1)     > passed
+23:45:19.56 (1)  
+23:45:19.62 (1)  START_LOG
+23:45:19.62 (1)  SPLAYD LUA EXEC
+23:45:19.62 (1)  >> Job settings:
+23:45:19.62 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.62 (1)  Name: 
+23:45:19.62 (1)  Description: 
+23:45:19.62 (1)  Disk:
+23:45:19.62 (1)  	max 512 files
+23:45:19.62 (1)  	max 32 file descriptors
+23:45:19.62 (1)  	max 67108864 size in bytes
+23:45:19.62 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.62 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.62 (1)  Mem 2097152 bytes of memory
+23:45:19.62 (1)  Network:
+23:45:19.62 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.62 (1)  	max 32 tcp sockets
+23:45:19.62 (1)  	ip 127.0.0.1
+23:45:19.62 (1)  	ports 13617-13617
+23:45:19.62 (1)  
+23:45:19.62 (1)  >> Into sandbox !!!
+23:45:19.62 (1)  > Memory: 159.86328125 KBytes
+23:45:19.62 (1)  > Checking sandbox...
+23:45:19.62 (1)     > passed
+23:45:19.62 (1)  
+23:45:19.68 (1)  START_LOG
+23:45:19.68 (1)  SPLAYD LUA EXEC
+23:45:19.68 (1)  >> Job settings:
+23:45:19.68 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.68 (1)  Name: 
+23:45:19.68 (1)  Description: 
+23:45:19.68 (1)  Disk:
+23:45:19.68 (1)  	max 512 files
+23:45:19.68 (1)  	max 32 file descriptors
+23:45:19.68 (1)  	max 67108864 size in bytes
+23:45:19.68 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.68 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.68 (1)  Mem 2097152 bytes of memory
+23:45:19.68 (1)  Network:
+23:45:19.68 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.68 (1)  	max 32 tcp sockets
+23:45:19.68 (1)  	ip 127.0.0.1
+23:45:19.68 (1)  	ports 13989-13989
+23:45:19.68 (1)  
+23:45:19.68 (1)  >> Into sandbox !!!
+23:45:19.68 (1)  > Memory: 159.9169921875 KBytes
+23:45:19.68 (1)  > Checking sandbox...
+23:45:19.68 (1)     > passed
+23:45:19.68 (1)  
+23:45:19.74 (1)  START_LOG
+23:45:19.74 (1)  SPLAYD LUA EXEC
+23:45:19.74 (1)  >> Job settings:
+23:45:19.74 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.74 (1)  Name: 
+23:45:19.74 (1)  Description: 
+23:45:19.74 (1)  Disk:
+23:45:19.74 (1)  	max 512 files
+23:45:19.74 (1)  	max 32 file descriptors
+23:45:19.74 (1)  	max 67108864 size in bytes
+23:45:19.74 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.74 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.74 (1)  Mem 2097152 bytes of memory
+23:45:19.74 (1)  Network:
+23:45:19.74 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.74 (1)  	max 32 tcp sockets
+23:45:19.74 (1)  	ip 127.0.0.1
+23:45:19.74 (1)  	ports 14059-14059
+23:45:19.74 (1)  
+23:45:19.74 (1)  >> Into sandbox !!!
+23:45:19.74 (1)  > Memory: 159.86328125 KBytes
+23:45:19.74 (1)  > Checking sandbox...
+23:45:19.74 (1)     > passed
+23:45:19.74 (1)  
+23:45:19.80 (1)  START_LOG
+23:45:19.80 (1)  SPLAYD LUA EXEC
+23:45:19.80 (1)  >> Job settings:
+23:45:19.80 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.80 (1)  Name: 
+23:45:19.80 (1)  Description: 
+23:45:19.80 (1)  Disk:
+23:45:19.80 (1)  	max 512 files
+23:45:19.80 (1)  	max 32 file descriptors
+23:45:19.80 (1)  	max 67108864 size in bytes
+23:45:19.80 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.80 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.80 (1)  Mem 2097152 bytes of memory
+23:45:19.80 (1)  Network:
+23:45:19.80 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.80 (1)  	max 32 tcp sockets
+23:45:19.80 (1)  	ip 127.0.0.1
+23:45:19.80 (1)  	ports 13369-13369
+23:45:19.80 (1)  
+23:45:19.80 (1)  >> Into sandbox !!!
+23:45:19.80 (1)  > Memory: 159.86328125 KBytes
+23:45:19.80 (1)  > Checking sandbox...
+23:45:19.80 (1)     > passed
+23:45:19.80 (1)  
+23:45:19.84 (1)  START_LOG
+23:45:19.85 (1)  SPLAYD LUA EXEC
+23:45:19.86 (1)  START_LOG
+23:45:19.86 (1)  SPLAYD LUA EXEC
+23:45:19.86 (1)  >> Job settings:
+23:45:19.86 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:19.86 (1)  Name: 
+23:45:19.86 (1)  Description: 
+23:45:19.86 (1)  Disk:
+23:45:19.86 (1)  	max 512 files
+23:45:19.86 (1)  	max 32 file descriptors
+23:45:19.86 (1)  	max 67108864 size in bytes
+23:45:19.86 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:19.86 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:19.86 (1)  Mem 2097152 bytes of memory
+23:45:19.86 (1)  Network:
+23:45:19.86 (1)  	max 134217728/134217728 send/receive bytes
+23:45:19.86 (1)  	max 32 tcp sockets
+23:45:19.86 (1)  	ip 127.0.0.1
+23:45:19.86 (1)  	ports 13465-13465
+23:45:19.86 (1)  
+23:45:19.86 (1)  >> Into sandbox !!!
+23:45:19.86 (1)  > Memory: 159.86328125 KBytes
+23:45:19.86 (1)  > Checking sandbox...
+23:45:19.86 (1)     > passed
+23:45:19.86 (1)  
+23:45:19.87 (1)  START_LOG
+23:45:19.87 (1)  SPLAYD LUA EXEC
+23:45:19.93 (1)  >> Job settings:
+23:45:19.98 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:20.05 (1)  Name: 
+23:45:20.11 (1)  Description: 
+23:45:20.19 (1)  Disk:
+23:45:20.24 (1)  	max 512 files
+23:45:20.33 (1)  	max 32 file descriptors
+23:45:20.47 (1)  	max 67108864 size in bytes
+23:45:20.57 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:20.63 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:20.72 (1)  Mem 2097152 bytes of memory
+23:45:20.85 (1)  Network:
+23:45:20.94 (1)  	max 134217728/134217728 send/receive bytes
+23:45:20.94 (1)  	max 32 tcp sockets
+23:45:20.94 (1)  	ip 127.0.0.1
+23:45:20.94 (1)  	ports 13443-13443
+23:45:20.94 (1)  
+23:45:20.94 (1)  >> Into sandbox !!!
+23:45:20.94 (1)  > Memory: 159.86328125 KBytes
+23:45:20.94 (1)  > Checking sandbox...
+23:45:20.94 (1)     > passed
+23:45:20.94 (1)  
+23:45:21.00 (1)  START_LOG
+23:45:21.01 (1)  SPLAYD LUA EXEC
+23:45:21.01 (1)  >> Job settings:
+23:45:21.01 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.01 (1)  Name: 
+23:45:21.01 (1)  Description: 
+23:45:21.01 (1)  Disk:
+23:45:21.01 (1)  	max 512 files
+23:45:21.01 (1)  	max 32 file descriptors
+23:45:21.01 (1)  	max 67108864 size in bytes
+23:45:21.01 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.01 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.01 (1)  Mem 2097152 bytes of memory
+23:45:21.01 (1)  Network:
+23:45:21.01 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.01 (1)  	max 32 tcp sockets
+23:45:21.01 (1)  	ip 127.0.0.1
+23:45:21.01 (1)  	ports 14468-14468
+23:45:21.01 (1)  
+23:45:21.01 (1)  >> Into sandbox !!!
+23:45:21.01 (1)  > Memory: 159.86328125 KBytes
+23:45:21.01 (1)  > Checking sandbox...
+23:45:21.01 (1)     > passed
+23:45:21.01 (1)  
+23:45:21.07 (1)  START_LOG
+23:45:21.07 (1)  SPLAYD LUA EXEC
+23:45:21.07 (1)  >> Job settings:
+23:45:21.07 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.07 (1)  Name: 
+23:45:21.07 (1)  Description: 
+23:45:21.07 (1)  Disk:
+23:45:21.07 (1)  	max 512 files
+23:45:21.07 (1)  	max 32 file descriptors
+23:45:21.07 (1)  	max 67108864 size in bytes
+23:45:21.07 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.07 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.07 (1)  Mem 2097152 bytes of memory
+23:45:21.07 (1)  Network:
+23:45:21.07 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.07 (1)  	max 32 tcp sockets
+23:45:21.07 (1)  	ip 127.0.0.1
+23:45:21.07 (1)  	ports 14387-14387
+23:45:21.07 (1)  
+23:45:21.07 (1)  >> Into sandbox !!!
+23:45:21.07 (1)  > Memory: 159.86328125 KBytes
+23:45:21.07 (1)  > Checking sandbox...
+23:45:21.07 (1)     > passed
+23:45:21.07 (1)  
+23:45:21.13 (1)  START_LOG
+23:45:21.18 (1)  SPLAYD LUA EXEC
+23:45:21.20 (1)  >> Job settings:
+23:45:21.20 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.20 (1)  Name: 
+23:45:21.20 (1)  Description: 
+23:45:21.20 (1)  Disk:
+23:45:21.20 (1)  	max 512 files
+23:45:21.20 (1)  	max 32 file descriptors
+23:45:21.20 (1)  	max 67108864 size in bytes
+23:45:21.20 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.20 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.20 (1)  Mem 2097152 bytes of memory
+23:45:21.20 (1)  Network:
+23:45:21.20 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.20 (1)  	max 32 tcp sockets
+23:45:21.20 (1)  	ip 127.0.0.1
+23:45:21.20 (1)  	ports 13967-13967
+23:45:21.21 (1)  
+23:45:21.21 (1)  >> Into sandbox !!!
+23:45:21.21 (1)  > Memory: 159.86328125 KBytes
+23:45:21.21 (1)  > Checking sandbox...
+23:45:21.21 (1)     > passed
+23:45:21.21 (1)  
+23:45:21.26 (1)  START_LOG
+23:45:21.26 (1)  SPLAYD LUA EXEC
+23:45:21.26 (1)  >> Job settings:
+23:45:21.26 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.26 (1)  Name: 
+23:45:21.26 (1)  Description: 
+23:45:21.26 (1)  Disk:
+23:45:21.26 (1)  	max 512 files
+23:45:21.26 (1)  	max 32 file descriptors
+23:45:21.26 (1)  	max 67108864 size in bytes
+23:45:21.26 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.26 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.26 (1)  Mem 2097152 bytes of memory
+23:45:21.26 (1)  Network:
+23:45:21.26 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.26 (1)  	max 32 tcp sockets
+23:45:21.26 (1)  	ip 127.0.0.1
+23:45:21.27 (1)  	ports 13623-13623
+23:45:21.27 (1)  
+23:45:21.27 (1)  >> Into sandbox !!!
+23:45:21.27 (1)  > Memory: 159.86328125 KBytes
+23:45:21.27 (1)  > Checking sandbox...
+23:45:21.27 (1)     > passed
+23:45:21.27 (1)  
+23:45:21.32 (1)  START_LOG
+23:45:21.32 (1)  SPLAYD LUA EXEC
+23:45:21.32 (1)  >> Job settings:
+23:45:21.32 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.32 (1)  Name: 
+23:45:21.32 (1)  Description: 
+23:45:21.32 (1)  Disk:
+23:45:21.32 (1)  	max 512 files
+23:45:21.32 (1)  	max 32 file descriptors
+23:45:21.32 (1)  	max 67108864 size in bytes
+23:45:21.32 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.32 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.32 (1)  Mem 2097152 bytes of memory
+23:45:21.32 (1)  Network:
+23:45:21.32 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.32 (1)  	max 32 tcp sockets
+23:45:21.33 (1)  	ip 127.0.0.1
+23:45:21.33 (1)  	ports 14469-14469
+23:45:21.33 (1)  
+23:45:21.33 (1)  >> Into sandbox !!!
+23:45:21.33 (1)  > Memory: 159.86328125 KBytes
+23:45:21.33 (1)  > Checking sandbox...
+23:45:21.33 (1)     > passed
+23:45:21.33 (1)  
+23:45:21.38 (1)  START_LOG
+23:45:21.38 (1)  SPLAYD LUA EXEC
+23:45:21.38 (1)  >> Job settings:
+23:45:21.38 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.38 (1)  Name: 
+23:45:21.38 (1)  Description: 
+23:45:21.38 (1)  Disk:
+23:45:21.38 (1)  	max 512 files
+23:45:21.38 (1)  	max 32 file descriptors
+23:45:21.38 (1)  	max 67108864 size in bytes
+23:45:21.38 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.38 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.38 (1)  Mem 2097152 bytes of memory
+23:45:21.38 (1)  Network:
+23:45:21.38 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.39 (1)  	max 32 tcp sockets
+23:45:21.39 (1)  	ip 127.0.0.1
+23:45:21.39 (1)  	ports 13797-13797
+23:45:21.39 (1)  
+23:45:21.39 (1)  >> Into sandbox !!!
+23:45:21.39 (1)  > Memory: 159.86328125 KBytes
+23:45:21.39 (1)  > Checking sandbox...
+23:45:21.39 (1)     > passed
+23:45:21.39 (1)  
+23:45:21.44 (1)  START_LOG
+23:45:21.44 (1)  SPLAYD LUA EXEC
+23:45:21.44 (1)  >> Job settings:
+23:45:21.44 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.44 (1)  Name: 
+23:45:21.44 (1)  Description: 
+23:45:21.44 (1)  Disk:
+23:45:21.44 (1)  	max 512 files
+23:45:21.44 (1)  	max 32 file descriptors
+23:45:21.44 (1)  	max 67108864 size in bytes
+23:45:21.44 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.44 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.44 (1)  Mem 2097152 bytes of memory
+23:45:21.44 (1)  Network:
+23:45:21.45 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.45 (1)  	max 32 tcp sockets
+23:45:21.45 (1)  	ip 127.0.0.1
+23:45:21.45 (1)  	ports 13313-13313
+23:45:21.45 (1)  
+23:45:21.45 (1)  >> Into sandbox !!!
+23:45:21.45 (1)  > Memory: 159.86328125 KBytes
+23:45:21.45 (1)  > Checking sandbox...
+23:45:21.45 (1)     > passed
+23:45:21.45 (1)  
+23:45:21.52 (1)  START_LOG
+23:45:21.59 (1)  SPLAYD LUA EXEC
+23:45:21.62 (1)  >> Job settings:
+23:45:21.62 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.62 (1)  Name: 
+23:45:21.62 (1)  Description: 
+23:45:21.62 (1)  Disk:
+23:45:21.62 (1)  	max 512 files
+23:45:21.62 (1)  	max 32 file descriptors
+23:45:21.62 (1)  	max 67108864 size in bytes
+23:45:21.62 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.62 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.62 (1)  Mem 2097152 bytes of memory
+23:45:21.62 (1)  Network:
+23:45:21.62 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.62 (1)  	max 32 tcp sockets
+23:45:21.62 (1)  	ip 127.0.0.1
+23:45:21.62 (1)  	ports 13662-13662
+23:45:21.62 (1)  
+23:45:21.62 (1)  >> Into sandbox !!!
+23:45:21.62 (1)  > Memory: 159.86328125 KBytes
+23:45:21.62 (1)  > Checking sandbox...
+23:45:21.62 (1)     > passed
+23:45:21.62 (1)  
+23:45:21.65 (1)  >> Job settings:
+23:45:21.65 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.65 (1)  Name: 
+23:45:21.65 (1)  Description: 
+23:45:21.65 (1)  Disk:
+23:45:21.65 (1)  	max 512 files
+23:45:21.65 (1)  	max 32 file descriptors
+23:45:21.65 (1)  	max 67108864 size in bytes
+23:45:21.65 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.65 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.65 (1)  Mem 2097152 bytes of memory
+23:45:21.65 (1)  Network:
+23:45:21.65 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.65 (1)  	max 32 tcp sockets
+23:45:21.65 (1)  	ip 127.0.0.1
+23:45:21.65 (1)  	ports 13151-13151
+23:45:21.65 (1)  
+23:45:21.65 (1)  >> Into sandbox !!!
+23:45:21.65 (1)  > Memory: 159.86328125 KBytes
+23:45:21.65 (1)  > Checking sandbox...
+23:45:21.65 (1)     > passed
+23:45:21.65 (1)  
+23:45:21.71 (1)  START_LOG
+23:45:21.71 (1)  SPLAYD LUA EXEC
+23:45:21.71 (1)  >> Job settings:
+23:45:21.71 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.71 (1)  Name: 
+23:45:21.71 (1)  Description: 
+23:45:21.71 (1)  Disk:
+23:45:21.71 (1)  	max 512 files
+23:45:21.71 (1)  	max 32 file descriptors
+23:45:21.71 (1)  	max 67108864 size in bytes
+23:45:21.71 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.71 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.71 (1)  Mem 2097152 bytes of memory
+23:45:21.71 (1)  Network:
+23:45:21.71 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.71 (1)  	max 32 tcp sockets
+23:45:21.71 (1)  	ip 127.0.0.1
+23:45:21.71 (1)  	ports 13859-13859
+23:45:21.71 (1)  
+23:45:21.71 (1)  >> Into sandbox !!!
+23:45:21.71 (1)  > Memory: 159.86328125 KBytes
+23:45:21.71 (1)  > Checking sandbox...
+23:45:21.71 (1)     > passed
+23:45:21.71 (1)  
+23:45:21.77 (1)  START_LOG
+23:45:21.77 (1)  SPLAYD LUA EXEC
+23:45:21.77 (1)  >> Job settings:
+23:45:21.77 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.77 (1)  Name: 
+23:45:21.77 (1)  Description: 
+23:45:21.77 (1)  Disk:
+23:45:21.77 (1)  	max 512 files
+23:45:21.77 (1)  	max 32 file descriptors
+23:45:21.77 (1)  	max 67108864 size in bytes
+23:45:21.77 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.80 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.89 (1)  Mem 2097152 bytes of memory
+23:45:21.89 (1)  Network:
+23:45:21.89 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.89 (1)  	max 32 tcp sockets
+23:45:21.89 (1)  	ip 127.0.0.1
+23:45:21.89 (1)  	ports 13072-13072
+23:45:21.89 (1)  
+23:45:21.89 (1)  >> Into sandbox !!!
+23:45:21.89 (1)  > Memory: 159.86328125 KBytes
+23:45:21.89 (1)  > Checking sandbox...
+23:45:21.89 (1)     > passed
+23:45:21.89 (1)  
+23:45:21.92 (1)  START_LOG
+23:45:21.92 (1)  SPLAYD LUA EXEC
+23:45:21.92 (1)  >> Job settings:
+23:45:21.92 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:21.92 (1)  Name: 
+23:45:21.92 (1)  Description: 
+23:45:21.92 (1)  Disk:
+23:45:21.92 (1)  	max 512 files
+23:45:21.92 (1)  	max 32 file descriptors
+23:45:21.92 (1)  	max 67108864 size in bytes
+23:45:21.92 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:21.92 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:21.92 (1)  Mem 2097152 bytes of memory
+23:45:21.92 (1)  Network:
+23:45:21.92 (1)  	max 134217728/134217728 send/receive bytes
+23:45:21.92 (1)  	max 32 tcp sockets
+23:45:21.92 (1)  	ip 127.0.0.1
+23:45:21.92 (1)  	ports 13542-13542
+23:45:21.92 (1)  
+23:45:21.92 (1)  >> Into sandbox !!!
+23:45:21.92 (1)  > Memory: 159.916015625 KBytes
+23:45:21.92 (1)  > Checking sandbox...
+23:45:21.92 (1)     > passed
+23:45:21.92 (1)  
+23:45:21.99 (1)  START_LOG
+23:45:22.09 (1)  SPLAYD LUA EXEC
+23:45:22.20 (1)  >> Job settings:
+23:45:22.31 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:22.40 (1)  Name: 
+23:45:22.44 (1)  Description: 
+23:45:22.53 (1)  Disk:
+23:45:22.62 (1)  	max 512 files
+23:45:22.73 (1)  	max 32 file descriptors
+23:45:22.76 (1)  	max 67108864 size in bytes
+23:45:22.76 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:22.76 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:22.76 (1)  Mem 2097152 bytes of memory
+23:45:22.76 (1)  Network:
+23:45:22.76 (1)  	max 134217728/134217728 send/receive bytes
+23:45:22.76 (1)  	max 32 tcp sockets
+23:45:22.76 (1)  	ip 127.0.0.1
+23:45:22.76 (1)  	ports 13760-13760
+23:45:22.76 (1)  
+23:45:22.77 (1)  >> Into sandbox !!!
+23:45:22.77 (1)  > Memory: 159.916015625 KBytes
+23:45:22.77 (1)  > Checking sandbox...
+23:45:22.77 (1)     > passed
+23:45:22.77 (1)  
+23:45:22.82 (1)  START_LOG
+23:45:22.82 (1)  SPLAYD LUA EXEC
+23:45:22.82 (1)  >> Job settings:
+23:45:22.82 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:22.82 (1)  Name: 
+23:45:22.82 (1)  Description: 
+23:45:22.82 (1)  Disk:
+23:45:22.82 (1)  	max 512 files
+23:45:22.82 (1)  	max 32 file descriptors
+23:45:22.82 (1)  	max 67108864 size in bytes
+23:45:22.83 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:22.83 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:22.83 (1)  Mem 2097152 bytes of memory
+23:45:22.83 (1)  Network:
+23:45:22.83 (1)  	max 134217728/134217728 send/receive bytes
+23:45:22.83 (1)  	max 32 tcp sockets
+23:45:22.83 (1)  	ip 127.0.0.1
+23:45:22.83 (1)  	ports 13110-13110
+23:45:22.83 (1)  
+23:45:22.83 (1)  >> Into sandbox !!!
+23:45:22.83 (1)  > Memory: 159.916015625 KBytes
+23:45:22.83 (1)  > Checking sandbox...
+23:45:22.83 (1)     > passed
+23:45:22.83 (1)  
+23:45:22.88 (1)  START_LOG
+23:45:22.88 (1)  SPLAYD LUA EXEC
+23:45:22.88 (1)  >> Job settings:
+23:45:22.88 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:22.88 (1)  Name: 
+23:45:22.88 (1)  Description: 
+23:45:22.88 (1)  Disk:
+23:45:22.88 (1)  	max 512 files
+23:45:22.89 (1)  	max 32 file descriptors
+23:45:22.89 (1)  	max 67108864 size in bytes
+23:45:22.89 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:22.89 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:22.89 (1)  Mem 2097152 bytes of memory
+23:45:22.89 (1)  Network:
+23:45:22.89 (1)  	max 134217728/134217728 send/receive bytes
+23:45:23.25 (1)  	max 32 tcp sockets
+23:45:23.61 (1)  	ip 127.0.0.1
+23:45:23.68 (1)  	ports 13138-13138
+23:45:23.76 (1)  
+23:45:23.89 (1)  >> Into sandbox !!!
+23:45:24.06 (1)  > Memory: 159.916015625 KBytes
+23:45:24.09 (1)  > Checking sandbox...
+23:45:24.13 (1)     > passed
+23:45:24.22 (1)  
+23:45:24.38 (1)  START_LOG
+23:45:24.50 (1)  SPLAYD LUA EXEC
+23:45:24.50 (1)  >> Job settings:
+23:45:24.50 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:24.50 (1)  Name: 
+23:45:24.50 (1)  Description: 
+23:45:24.50 (1)  Disk:
+23:45:24.50 (1)  	max 512 files
+23:45:24.50 (1)  	max 32 file descriptors
+23:45:24.50 (1)  	max 67108864 size in bytes
+23:45:24.50 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:24.50 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:24.50 (1)  Mem 2097152 bytes of memory
+23:45:24.50 (1)  Network:
+23:45:24.50 (1)  	max 134217728/134217728 send/receive bytes
+23:45:24.50 (1)  	max 32 tcp sockets
+23:45:24.50 (1)  	ip 127.0.0.1
+23:45:24.50 (1)  	ports 14234-14234
+23:45:24.50 (1)  
+23:45:24.50 (1)  >> Into sandbox !!!
+23:45:24.50 (1)  > Memory: 159.916015625 KBytes
+23:45:24.50 (1)  > Checking sandbox...
+23:45:24.50 (1)     > passed
+23:45:24.50 (1)  
+23:45:24.54 (1)  START_LOG
+23:45:24.54 (1)  SPLAYD LUA EXEC
+23:45:24.54 (1)  >> Job settings:
+23:45:24.54 (1)  Ref: 8b65750e0ca527cfc45130980cca8cdb
+23:45:24.54 (1)  Name: 
+23:45:24.54 (1)  Description: 
+23:45:24.54 (1)  Disk:
+23:45:24.54 (1)  	max 512 files
+23:45:24.54 (1)  	max 32 file descriptors
+23:45:24.54 (1)  	max 67108864 size in bytes
+23:45:24.54 (1)  	lib directoy /home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib
+23:45:24.54 (1)  	cpath : ./?.so;/usr/local/lib/lua/5.1/?.so;/usr/lib/i386-linux-gnu/lua/5.1/?.so;/usr/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so;/home/unine/local_splay_turbo_cluster/hosts/host_1_1/jobs_fs/8b65750e0ca527cfc45130980cca8cdb/lib/?.so
+23:45:24.54 (1)  Mem 2097152 bytes of memory
+23:45:24.54 (1)  Network:
+23:45:24.54 (1)  	max 134217728/134217728 send/receive bytes
+23:45:24.54 (1)  	max 32 tcp sockets
+23:45:24.54 (1)  	ip 127.0.0.1
+23:45:24.54 (1)  	ports 13716-13716
+23:45:24.54 (1)  
+23:45:24.54 (1)  >> Into sandbox !!!
+23:45:24.54 (1)  > Memory: 159.916015625 KBytes
+23:45:24.54 (1)  > Checking sandbox...
+23:45:24.54 (1)     > passed
+23:45:24.54 (1)  
+23:45:24.60 (1)  >> Into sandbox !!!
+23:45:24.60 (1)  > Memory: 159.916015625 KBytes
+23:45:24.60 (1)  > Checking sandbox...
+23:45:24.60 (1)     > passed
+23:45:24.60 (1)  
+23:45:45.17 (1)  Average spent time=0.19483957290649 seconds
+23:45:45.52 (1)  Average spent time=0.22684388160706 seconds
+23:45:45.59 (1)  Average spent time=0.2262300491333 seconds
+23:45:45.83 (1)  Average spent time=0.24188446998596 seconds
+23:45:46.00 (1)  Average spent time=0.24467513561249 seconds
+23:45:46.09 (1)  Average spent time=0.2376624584198 seconds
+23:45:46.18 (1)  Average spent time=0.23494310379028 seconds
+23:45:46.28 (1)  Average spent time=0.2800817489624 seconds
+23:45:46.36 (1)  Average spent time=0.27874321937561 seconds
+23:45:46.39 (1)  Average spent time=0.27581551074982 seconds
+23:45:46.44 (1)  Average spent time=0.30010213851929 seconds
+23:45:46.66 (1)  Average spent time=0.306378698349 seconds
+23:45:46.67 (1)  Average spent time=0.32034323215485 seconds
+23:45:46.94 (1)  Average spent time=0.33211853504181 seconds
+23:45:47.07 (1)  Average spent time=0.33892481327057 seconds
+23:45:47.68 (1)  Average spent time=0.38711478710175 seconds
+23:45:47.88 (1)  Average spent time=0.42366378307343 seconds
+23:45:47.97 (1)  Average spent time=0.37500350475311 seconds
+23:45:47.99 (1)  Average spent time=0.34135928153992 seconds
+23:45:48.06 (1)  Average spent time=0.40715630054474 seconds
+23:45:48.20 (1)  Average spent time=0.40054950714111 seconds
+23:45:48.28 (1)  Average spent time=0.43664560317993 seconds
+23:45:48.64 (1)  Average spent time=0.43052325248718 seconds
+23:45:48.66 (1)  Average spent time=0.35679788589478 seconds
+23:45:48.80 (1)  Average spent time=0.42688593864441 seconds
+23:45:49.06 (1)  Average spent time=0.44270179271698 seconds
+23:45:49.22 (1)  Average spent time=0.46222019195557 seconds
+23:45:49.39 (1)  Average spent time=0.45092611312866 seconds
+23:45:50.16 (1)  Average spent time=0.46531753540039 seconds
+23:45:50.30 (1)  Average spent time=0.45950489044189 seconds
+23:45:50.60 (1)  Average spent time=0.50753870010376 seconds
+23:45:50.74 (1)  Average spent time=0.48099710941315 seconds
+23:45:50.78 (1)  Average spent time=0.51073570251465 seconds
+23:45:50.97 (1)  Average spent time=0.42914340496063 seconds
+23:45:51.13 (1)  Average spent time=0.49995255470276 seconds
+23:45:51.31 (1)  Average spent time=0.49695484638214 seconds
+23:45:51.45 (1)  Average spent time=0.50639002323151 seconds
+23:45:51.60 (1)  Average spent time=0.52987871170044 seconds
+23:45:51.71 (1)  Average spent time=0.53239102363586 seconds
+23:45:51.81 (1)  Average spent time=0.53885600566864 seconds
+23:45:51.90 (1)  Average spent time=0.53274264335632 seconds
+23:45:51.90 (1)  Average spent time=0.52877104282379 seconds
+23:45:51.94 (1)  Average spent time=0.57317664623261 seconds
+23:45:51.96 (1)  Average spent time=0.52270967960358 seconds
+23:45:52.00 (1)  Average spent time=0.51914005279541 seconds
+23:45:52.02 (1)  Average spent time=0.57115697860718 seconds
+23:45:52.06 (1)  Average spent time=0.52426335811615 seconds
+23:45:52.08 (1)  Average spent time=0.54865643978119 seconds
+23:45:52.11 (1)  Average spent time=0.54330043792725 seconds
+23:45:52.12 (1)  Average spent time=0.53944063186646 seconds
+23:45:52.20 (1)  Average spent time=0.53769092559814 seconds
+23:45:52.26 (1)  Average spent time=0.56016533374786 seconds
+23:45:52.32 (1)  Average spent time=0.52894406318665 seconds
+23:45:52.86 (1)  Average spent time=0.58917772769928 seconds
+23:45:53.05 (1)  Average spent time=0.60320098400116 seconds
+23:45:53.37 (1)  Average spent time=0.56759254932404 seconds
+23:45:53.63 (1)  Average spent time=0.35297610759735 seconds
+23:45:53.65 (1)  Average spent time=0.5675755739212 seconds
+23:45:53.93 (1)  Average spent time=0.58372209072113 seconds
+23:45:54.01 (1)  Average spent time=0.57984101772308 seconds
+23:45:54.12 (1)  Average spent time=0.60962345600128 seconds
+23:45:54.46 (1)  Average spent time=0.58274490833282 seconds
+23:45:54.51 (1)  Average spent time=0.66332819461823 seconds
+23:45:54.61 (1)  Average spent time=0.59413201808929 seconds
+23:45:54.69 (1)  Average spent time=0.64302215576172 seconds
+23:45:55.10 (1)  Average spent time=0.60159342288971 seconds
+23:45:55.32 (1)  Average spent time=0.63857877254486 seconds
+23:45:55.75 (1)  Average spent time=0.63267915248871 seconds
+23:45:56.19 (1)  Average spent time=0.61651968955994 seconds
+23:45:56.33 (1)  Average spent time=0.46648271083832 seconds
+23:45:56.41 (1)  Average spent time=0.6159056186676 seconds
+23:45:56.47 (1)  Average spent time=0.63727540969849 seconds
+23:45:56.50 (1)  Average spent time=0.61099443435669 seconds
+23:45:56.53 (1)  Average spent time=0.59532289505005 seconds
+23:45:56.53 (1)  Average spent time=0.55642249584198 seconds
+23:45:56.61 (1)  Average spent time=0.66896343231201 seconds
+23:45:56.62 (1)  Average spent time=0.51172432899475 seconds
+23:45:56.72 (1)  Average spent time=0.67167565822601 seconds
+23:45:56.78 (1)  Average spent time=0.6309068441391 seconds
+23:45:56.80 (1)  Average spent time=0.63733432292938 seconds
+23:45:56.86 (1)  Average spent time=0.62288889884949 seconds
+23:45:56.94 (1)  Average spent time=0.60595674514771 seconds
+23:45:57.00 (1)  Average spent time=0.61014261245728 seconds
+23:45:57.03 (1)  Average spent time=0.66317121982574 seconds
+23:45:57.08 (1)  Average spent time=0.67082161903381 seconds
+23:45:57.23 (1)  Average spent time=0.63849291801453 seconds
+23:45:57.48 (1)  Average spent time=0.60651898384094 seconds
+23:45:57.63 (1)  Average spent time=0.65531332492828 seconds
+23:45:57.72 (1)  Average spent time=0.63818805217743 seconds
+23:45:57.78 (1)  Average spent time=0.70425579547882 seconds
+23:45:57.88 (1)  Average spent time=0.63980753421783 seconds
+23:45:57.90 (1)  Average spent time=0.64071350097656 seconds
+23:45:57.94 (1)  Average spent time=0.59910922050476 seconds
+23:45:57.94 (1)  Average spent time=0.62231996059418 seconds
+23:45:57.96 (1)  Average spent time=0.65945289134979 seconds
+23:45:58.05 (1)  Average spent time=0.61009831428528 seconds
+23:45:58.12 (1)  Average spent time=0.63382008075714 seconds
+23:45:58.18 (1)  Average spent time=0.63337020874023 seconds
+23:45:58.18 (1)  Average spent time=0.66347594261169 seconds
+23:45:58.21 (1)  Average spent time=0.65273108482361 seconds
+23:45:58.37 (1)  Average spent time=0.62435641288757 seconds
+23:45:58.56 (1)  Average spent time=0.70268456935883 seconds
+23:45:58.72 (1)  Average spent time=0.7166047334671 seconds
+23:45:59.33 (1)  Average spent time=0.64129931926727 seconds
+23:45:59.89 (1)  Average spent time=0.62449598312378 seconds
+23:45:59.91 (1)  Average spent time=0.58241410255432 seconds
+23:45:59.92 (1)  Average spent time=0.65668501853943 seconds
+23:46:00.12 (1)  Average spent time=0.70935077667236 seconds
+23:46:00.40 (1)  Average spent time=0.64901280403137 seconds
+23:46:00.41 (1)  Average spent time=0.64328541755676 seconds
+23:46:00.52 (1)  Average spent time=0.68750784397125 seconds
+23:46:00.89 (1)  Average spent time=0.64199140071869 seconds
+23:46:01.14 (1)  Average spent time=0.42746245861053 seconds
+23:46:01.32 (1)  Average spent time=0.67036802768707 seconds
+23:46:01.52 (1)  Average spent time=0.56408388614655 seconds
+23:46:01.57 (1)  Average spent time=0.64775042533875 seconds
+23:46:01.71 (1)  Average spent time=0.71864562034607 seconds
+23:46:01.79 (1)  Average spent time=0.71694138050079 seconds
+23:46:01.87 (1)  Average spent time=0.64802923202515 seconds
+23:46:02.00 (1)  Average spent time=0.65124373435974 seconds
+23:46:02.08 (1)  Average spent time=0.6884122133255 seconds
+23:46:02.20 (1)  Average spent time=0.5946496963501 seconds
+23:46:02.39 (1)  Average spent time=0.59745447635651 seconds
+23:46:02.53 (1)  Average spent time=0.62849311828613 seconds
+23:46:02.67 (1)  Average spent time=0.60449020862579 seconds
+23:46:02.80 (1)  Average spent time=0.623788189888 seconds
+23:46:03.00 (1)  Average spent time=0.61131715774536 seconds
+23:46:03.12 (1)  Average spent time=0.6095272064209 seconds
+23:46:03.27 (1)  Average spent time=0.65200345516205 seconds
+23:46:03.38 (1)  Average spent time=0.65732071399689 seconds
+23:46:03.40 (1)  Average spent time=0.60814023017883 seconds
+23:46:03.46 (1)  Average spent time=0.61207938194275 seconds
+23:46:03.52 (1)  Average spent time=0.58687341213226 seconds
+23:46:03.58 (1)  Average spent time=0.60601830482483 seconds
+23:46:03.62 (1)  Average spent time=0.65540232658386 seconds
+23:46:03.64 (1)  Average spent time=0.61045594215393 seconds
+23:46:03.77 (1)  Average spent time=0.58291070461273 seconds
+23:46:03.77 (1)  Average spent time=0.65606319904327 seconds
+23:46:03.80 (1)  Average spent time=0.60563533306122 seconds
+23:46:03.84 (1)  Average spent time=0.61096832752228 seconds
+23:46:03.92 (1)  Average spent time=0.58937096595764 seconds
+23:46:03.94 (1)  Average spent time=0.63380081653595 seconds
+23:46:04.17 (1)  Average spent time=0.62208683490753 seconds
+23:46:04.34 (1)  Average spent time=0.66334774494171 seconds
+23:46:04.51 (1)  Average spent time=0.65023913383484 seconds
+23:46:04.64 (1)  Average spent time=0.64197700023651 seconds
+23:46:04.72 (1)  Average spent time=0.6454065322876 seconds
+23:46:04.89 (1)  Average spent time=0.67140438556671 seconds
+23:46:05.01 (1)  Average spent time=0.66862769126892 seconds
+23:46:05.10 (1)  Average spent time=0.64774913787842 seconds
+23:46:05.16 (1)  Average spent time=0.66285586357117 seconds
+23:46:05.23 (1)  Average spent time=0.66587834358215 seconds
+23:46:05.38 (1)  Average spent time=0.54419205188751 seconds
+23:46:05.39 (1)  Average spent time=0.66728460788727 seconds
+23:46:05.60 (1)  Average spent time=0.63014259338379 seconds
+23:46:06.01 (1)  Average spent time=0.60987367630005 seconds
+23:46:06.14 (1)  Average spent time=0.55336241722107 seconds
+23:46:06.70 (1)  Average spent time=0.64703135490417 seconds
+23:46:07.05 (1)  Average spent time=0.59104239940643 seconds
+23:46:07.22 (1)  Average spent time=0.64818813800812 seconds
+23:46:07.37 (1)  Average spent time=0.65580823421478 seconds
+23:46:07.52 (1)  Average spent time=0.66179575920105 seconds
+23:46:07.63 (1)  Average spent time=0.58659670352936 seconds
+23:46:07.71 (1)  Average spent time=0.62527260780334 seconds
+23:46:07.97 (1)  Average spent time=0.63969604969025 seconds
+23:46:08.04 (1)  Average spent time=0.67208476066589 seconds
+23:46:08.05 (1)  Average spent time=0.61193552017212 seconds
+23:46:08.32 (1)  Average spent time=0.60756587982178 seconds
+23:46:08.34 (1)  Average spent time=0.62640910148621 seconds
+23:46:08.41 (1)  Average spent time=0.55768418312073 seconds
+23:46:08.66 (1)  Average spent time=0.67900919914246 seconds
+23:46:08.70 (1)  Average spent time=0.63307020664215 seconds
+23:46:08.78 (1)  Average spent time=0.60792212486267 seconds
+23:46:08.86 (1)  Average spent time=0.69368925094604 seconds
+23:46:09.01 (1)  Average spent time=0.6144318819046 seconds
+23:46:09.19 (1)  Average spent time=0.66163358688355 seconds
+23:46:09.36 (1)  Average spent time=0.62859435081482 seconds
+23:46:09.52 (1)  Average spent time=0.55709924697876 seconds
+23:46:09.61 (1)  Average spent time=0.64992384910584 seconds
+23:46:09.64 (1)  Average spent time=0.54315030574799 seconds
+23:46:09.75 (1)  Average spent time=0.55557789802551 seconds
+23:46:09.80 (1)  Average spent time=0.60081861019135 seconds
+23:46:09.81 (1)  Average spent time=0.77124717235565 seconds
+23:46:09.86 (1)  Average spent time=0.64546864032745 seconds
+23:46:09.87 (1)  Average spent time=0.61675450801849 seconds
+23:46:09.93 (1)  Average spent time=0.59954218864441 seconds
+23:46:09.99 (1)  Average spent time=0.63745458126068 seconds
+23:46:10.05 (1)  Average spent time=0.61246774196625 seconds
+23:46:10.11 (1)  Average spent time=0.64232676029205 seconds
+23:46:10.25 (1)  Average spent time=0.64476671218872 seconds
+23:46:10.27 (1)  Average spent time=0.66166405677795 seconds
+23:46:10.27 (1)  Average spent time=0.64547891616821 seconds
+23:46:10.33 (1)  Average spent time=0.63611607551575 seconds
+23:46:10.42 (1)  Average spent time=0.58808908462524 seconds
+23:46:10.76 (1)  Average spent time=0.64036338329315 seconds
+23:46:11.19 (1)  Average spent time=0.64211699962616 seconds
+23:46:11.31 (1)  Average spent time=0.62806088924408 seconds
+23:46:11.37 (1)  Average spent time=0.63760929107666 seconds
+23:46:11.41 (1)  Average spent time=0.67056217193604 seconds
+23:46:11.41 (1)  Average spent time=0.68411674499512 seconds
+23:46:11.42 (1)  Average spent time=0.63847596645355 seconds
+23:46:11.47 (1)  Average spent time=0.64360918998718 seconds
+23:46:11.74 (1)  Average spent time=0.57261197566986 seconds
+23:46:11.94 (1)  Average spent time=0.65276570320129 seconds
+23:46:12.01 (1)  Average spent time=0.64048085212708 seconds
+23:46:12.18 (1)  Average spent time=0.6797669172287 seconds
+23:46:12.40 (1)  Average spent time=0.63170397281647 seconds
+23:46:12.92 (1)  Average spent time=0.4893275976181 seconds
+23:46:13.19 (1)  Average spent time=0.64371502399445 seconds
+23:46:13.25 (1)  Average spent time=0.64302508831024 seconds
+23:46:13.30 (1)  Average spent time=0.45220127105713 seconds
+23:46:13.33 (1)  Average spent time=0.68931050300598 seconds
+23:46:13.43 (1)  Average spent time=0.60104537010193 seconds
+23:46:13.76 (1)  Average spent time=0.68373801708221 seconds
+23:46:13.86 (1)  Average spent time=0.68890819549561 seconds
+23:46:13.93 (1)  Average spent time=0.65461032390594 seconds
+23:46:14.18 (1)  Average spent time=0.6125048160553 seconds
+23:46:14.36 (1)  Average spent time=0.58833520412445 seconds
+23:46:14.63 (1)  Average spent time=0.62128176689148 seconds
+23:46:14.72 (1)  Average spent time=0.66630859375 seconds
+23:46:14.89 (1)  Average spent time=0.63785691261291 seconds
+23:46:14.94 (1)  Average spent time=0.60175151824951 seconds
+23:46:15.02 (1)  Average spent time=0.63367438316345 seconds
+23:46:15.11 (1)  Average spent time=0.61452400684357 seconds
+23:46:15.13 (1)  Average spent time=0.59681050777435 seconds
+23:46:15.19 (1)  Average spent time=0.6483033657074 seconds
+23:46:15.46 (1)  Average spent time=0.62099347114563 seconds
+23:46:15.50 (1)  Average spent time=0.63178658485413 seconds
+23:46:15.71 (1)  Average spent time=0.61745109558105 seconds
+23:46:15.77 (1)  Average spent time=0.6353875875473 seconds
+23:46:15.80 (1)  Average spent time=0.69595408439636 seconds
+23:46:15.81 (1)  Average spent time=0.63805105686188 seconds
+23:46:15.81 (1)  Average spent time=0.67553939819336 seconds
+23:46:15.94 (1)  Average spent time=0.63360867500305 seconds
+23:46:16.06 (1)  Average spent time=0.61178436279297 seconds
+23:46:16.18 (1)  Average spent time=0.66299264431 seconds
+23:46:16.36 (1)  Average spent time=0.57801764011383 seconds
+23:46:16.46 (1)  Average spent time=0.67116265296936 seconds
+23:46:16.62 (1)  Average spent time=0.62409842014313 seconds
+23:46:16.77 (1)  Average spent time=0.62298922538757 seconds
+23:46:16.84 (1)  Average spent time=0.61243648529053 seconds
+23:46:16.90 (1)  Average spent time=0.6096688747406 seconds
+23:46:17.20 (1)  Average spent time=0.67462601661682 seconds
+23:46:17.77 (1)  Average spent time=0.61560924053192 seconds
+23:46:17.88 (1)  Average spent time=0.58403167724609 seconds
+23:46:18.02 (1)  Average spent time=0.7823899269104 seconds
+23:46:18.14 (1)  Average spent time=0.62789449691772 seconds
+23:46:18.27 (1)  Average spent time=0.60213797092438 seconds
+23:46:18.41 (1)  Average spent time=0.68618371486664 seconds
+23:46:18.57 (1)  Average spent time=0.6163298368454 seconds
+23:46:18.70 (1)  Average spent time=0.69826462268829 seconds
+23:46:18.71 (1)  Average spent time=0.54451732635498 seconds
+23:46:18.76 (1)  Average spent time=0.58740675449371 seconds
+23:46:18.76 (1)  Average spent time=0.59726130962372 seconds
+23:46:18.82 (1)  Average spent time=0.59542768001556 seconds
+23:46:18.90 (1)  Average spent time=0.60914356708527 seconds
+23:46:19.01 (1)  Average spent time=0.70858719348907 seconds
+23:46:19.06 (1)  Average spent time=0.60423271656036 seconds
+23:46:19.12 (1)  Average spent time=0.69014692306519 seconds
+23:46:19.46 (1)  Average spent time=0.60246248245239 seconds
+23:46:19.54 (1)  Average spent time=0.61736462116241 seconds
+23:46:19.95 (1)  Average spent time=0.59650790691376 seconds
+23:46:20.14 (1)  Average spent time=0.66814591884613 seconds
+23:46:20.27 (1)  Average spent time=0.56257221698761 seconds
+23:46:20.32 (1)  Average spent time=0.68149740695953 seconds
+23:46:20.38 (1)  Average spent time=0.66201066970825 seconds
+23:46:20.54 (1)  Average spent time=0.66425290107727 seconds
+23:46:20.60 (1)  Average spent time=0.6249657869339 seconds
+23:46:20.68 (1)  Average spent time=0.64218599796295 seconds
+23:46:21.23 (1)  Average spent time=0.64706060886383 seconds
+23:46:21.24 (1)  Average spent time=0.60523145198822 seconds
+23:46:21.40 (1)  Average spent time=0.62742328643799 seconds
+23:46:21.55 (1)  Average spent time=0.57825000286102 seconds
+23:46:21.73 (1)  Average spent time=0.6478000164032 seconds
+23:46:21.89 (1)  Average spent time=0.61167368888855 seconds
+23:46:22.04 (1)  Average spent time=0.60858860015869 seconds
+23:46:22.15 (1)  Average spent time=0.64553871154785 seconds
+23:46:22.25 (1)  Average spent time=0.60147094726562 seconds
+23:46:22.28 (1)  Average spent time=0.64684991836548 seconds
+23:46:22.31 (1)  Average spent time=0.70845367908478 seconds
+23:46:22.31 (1)  Average spent time=0.64980049133301 seconds
+23:46:22.32 (1)  Average spent time=0.62359020709991 seconds
+23:46:22.34 (1)  Average spent time=0.62635402679443 seconds
+23:46:22.39 (1)  Average spent time=0.66695380210876 seconds
+23:46:22.40 (1)  Average spent time=0.67142429351807 seconds
+23:46:22.45 (1)  Average spent time=0.6445431470871 seconds
+23:46:22.46 (1)  Average spent time=0.61422011852264 seconds
+23:46:22.52 (1)  Average spent time=0.60287938117981 seconds
+23:46:22.68 (1)  Average spent time=0.61302797794342 seconds
+23:46:22.74 (1)  Average spent time=0.63211233615875 seconds
+23:46:22.75 (1)  Average spent time=0.62315239906311 seconds
+23:46:22.87 (1)  Average spent time=0.67924349308014 seconds
+23:46:23.11 (1)  Average spent time=0.59241681098938 seconds
+23:46:23.33 (1)  Average spent time=0.62075333595276 seconds
+23:46:23.62 (1)  Average spent time=0.62363574504852 seconds
+23:46:23.84 (1)  Average spent time=0.63386270999908 seconds
+23:46:24.00 (1)  Average spent time=0.63201148509979 seconds
+23:46:24.07 (1)  Average spent time=0.61950790882111 seconds
+23:46:24.14 (1)  Average spent time=0.62990159988403 seconds
+23:46:24.17 (1)  Average spent time=0.5922568321228 seconds
+23:46:24.19 (1)  Average spent time=0.69250450134277 seconds
+23:46:24.20 (1)  Average spent time=0.60193953514099 seconds
+23:46:24.25 (1)  Average spent time=0.68494086265564 seconds
+23:46:24.57 (1)  Average spent time=0.65408082008362 seconds
+23:46:24.60 (1)  Average spent time=0.61572051048279 seconds
+23:46:24.84 (1)  Average spent time=0.60641388893127 seconds
+23:46:24.90 (1)  Average spent time=0.63450489044189 seconds
+23:46:25.31 (1)  Average spent time=0.65669436454773 seconds
+23:46:25.52 (1)  Average spent time=0.63170192241669 seconds
+23:46:25.98 (1)  Average spent time=0.59694192409515 seconds
+23:46:25.99 (1)  Average spent time=0.6529088973999 seconds
+23:46:26.04 (1)  Average spent time=0.608722615242 seconds
+23:46:26.17 (1)  Average spent time=0.66614038944244 seconds
+23:46:26.32 (1)  Average spent time=0.59289109706879 seconds
+23:46:26.44 (1)  Average spent time=0.6394070148468 seconds
+23:46:26.47 (1)  Average spent time=0.59374461174011 seconds
+23:46:26.84 (1)  Average spent time=0.61656513214111 seconds
+23:46:26.87 (1)  Average spent time=0.65999684333801 seconds
+23:46:26.94 (1)  Average spent time=0.64279804229736 seconds
+23:46:27.26 (1)  Average spent time=0.51110906600952 seconds
+23:46:27.47 (1)  Average spent time=0.61725292205811 seconds
+23:46:27.62 (1)  Average spent time=0.63645372390747 seconds
+23:46:27.74 (1)  Average spent time=0.62095408439636 seconds
+23:46:27.83 (1)  Average spent time=0.63967311382294 seconds
+23:46:27.93 (1)  Average spent time=0.58334186077118 seconds
+23:46:28.54 (1)  Average spent time=0.63996849060059 seconds
+23:46:28.63 (1)  Average spent time=0.64023196697235 seconds
+23:46:28.72 (1)  Average spent time=0.62223365306854 seconds
+23:46:28.80 (1)  Average spent time=0.62014789581299 seconds
+23:46:28.93 (1)  Average spent time=0.66036379337311 seconds
+23:46:29.10 (1)  Average spent time=0.60393812656403 seconds
+23:46:29.27 (1)  Average spent time=0.65928089618683 seconds
+23:46:29.41 (1)  Average spent time=0.63229315280914 seconds
+23:46:29.52 (1)  Average spent time=0.67306759357452 seconds
+23:46:29.58 (1)  Average spent time=0.68691728115082 seconds
+23:46:29.62 (1)  Average spent time=0.62672863006592 seconds
+23:46:29.66 (1)  Average spent time=0.6904571056366 seconds
+23:46:29.79 (1)  Average spent time=0.57190148830414 seconds
+23:46:29.83 (1)  Average spent time=0.67849473953247 seconds
+23:46:29.89 (1)  Average spent time=0.62072253227234 seconds
+23:46:29.95 (1)  Average spent time=0.62419428825378 seconds
+23:46:29.95 (1)  Average spent time=0.62337827682495 seconds
+23:46:30.01 (1)  Average spent time=0.66707274913788 seconds
+23:46:30.02 (1)  Average spent time=0.63073725700378 seconds
+23:46:30.07 (1)  Average spent time=0.61682200431824 seconds
+23:46:30.16 (1)  Average spent time=0.59432582855225 seconds
+23:46:30.23 (1)  Average spent time=0.65924506187439 seconds
+23:46:30.26 (1)  Average spent time=0.61102681159973 seconds
+23:46:30.29 (1)  Average spent time=0.62168483734131 seconds
+23:46:30.29 (1)  Average spent time=0.68517248630524 seconds
+23:46:30.35 (1)  Average spent time=0.60623352527618 seconds
+23:46:30.47 (1)  Average spent time=0.65288991928101 seconds
+23:46:30.84 (1)  Average spent time=0.62596807479858 seconds
+23:46:31.10 (1)  Average spent time=0.59978656768799 seconds
+23:46:31.23 (1)  Average spent time=0.6602219581604 seconds
+23:46:31.46 (1)  Average spent time=0.72520327568054 seconds
+23:46:31.78 (1)  Average spent time=0.69379839897156 seconds
+23:46:31.94 (1)  Average spent time=0.59077253341675 seconds
+23:46:31.98 (1)  Average spent time=0.66821987628937 seconds
+23:46:32.16 (1)  Average spent time=0.68066101074219 seconds
+23:46:32.36 (1)  Average spent time=0.61074805259705 seconds
+23:46:32.55 (1)  Average spent time=0.65038638114929 seconds
+23:46:32.67 (1)  Average spent time=0.57142009735107 seconds
+23:46:32.90 (1)  Average spent time=0.66148149967194 seconds
+23:46:33.02 (1)  Average spent time=0.59527125358582 seconds
+23:46:33.08 (1)  Average spent time=0.61514959335327 seconds
+23:46:33.11 (1)  Average spent time=0.66701891422272 seconds
+23:46:33.14 (1)  Average spent time=0.66220829486847 seconds
+23:46:33.22 (1)  Average spent time=0.67054681777954 seconds
+23:46:33.35 (1)  Average spent time=0.60734701156616 seconds
+23:46:33.57 (1)  Average spent time=0.61415297985077 seconds
+23:46:33.85 (1)  Average spent time=0.60672266483307 seconds
+23:46:33.99 (1)  Average spent time=0.63581697940826 seconds
+23:46:34.03 (1)  Average spent time=0.61928615570068 seconds
+23:46:34.13 (1)  Average spent time=0.61291210651398 seconds
+23:46:34.29 (1)  Average spent time=0.62648210525513 seconds
+23:46:34.44 (1)  Average spent time=0.60096645355225 seconds
+23:46:34.63 (1)  Average spent time=0.63723177909851 seconds
+23:46:34.72 (1)  Average spent time=0.60812108516693 seconds
+23:46:34.74 (1)  Average spent time=0.61585011482239 seconds
+23:46:34.78 (1)  Average spent time=0.62286083698273 seconds
+23:46:34.78 (1)  Average spent time=0.60792858600616 seconds
+23:46:34.78 (1)  Average spent time=0.58385589122772 seconds
+23:46:34.79 (1)  Average spent time=0.64981663227081 seconds
+23:46:34.80 (1)  Average spent time=0.68171441555023 seconds
+23:46:34.84 (1)  Average spent time=0.63020918369293 seconds
+23:46:34.96 (1)  Average spent time=0.40160481929779 seconds
+23:46:35.10 (1)  Average spent time=0.60594580173492 seconds
+23:46:35.16 (1)  Average spent time=0.60894763469696 seconds
+23:46:35.63 (1)  Average spent time=0.60450539588928 seconds
+23:46:35.85 (1)  Average spent time=0.68751091957092 seconds
+23:46:35.98 (1)  Average spent time=0.61108829975128 seconds
+23:46:36.14 (1)  Average spent time=0.67314562797546 seconds
+23:46:36.26 (1)  Average spent time=0.65708422660828 seconds
+23:46:36.35 (1)  Average spent time=0.59699704647064 seconds
+23:46:36.49 (1)  Average spent time=0.68779799938202 seconds
+23:46:36.56 (1)  Average spent time=0.62386026382446 seconds
+23:46:36.57 (1)  Average spent time=0.63380589485168 seconds
+23:46:36.62 (1)  Average spent time=0.62049403190613 seconds
+23:46:36.63 (1)  Average spent time=0.68373725414276 seconds
+23:46:36.65 (1)  Average spent time=0.69946014881134 seconds
+23:46:36.80 (1)  Average spent time=0.62982189655304 seconds
+23:46:36.94 (1)  Average spent time=0.60553719997406 seconds
+23:46:37.20 (1)  Average spent time=0.69093036651611 seconds
+23:46:37.40 (1)  Average spent time=0.6181254863739 seconds
+23:46:38.04 (1)  Average spent time=0.60400812625885 seconds
+23:46:38.27 (1)  Average spent time=0.55981025695801 seconds
+23:46:38.45 (1)  Average spent time=0.64317572116852 seconds
+23:46:38.54 (1)  Average spent time=0.60499954223633 seconds
+23:46:38.57 (1)  Average spent time=0.64200880527496 seconds
+23:46:38.70 (1)  Average spent time=0.61237506866455 seconds
+23:46:38.74 (1)  Average spent time=0.67555732727051 seconds
+23:46:39.00 (1)  Average spent time=0.60163278579712 seconds
+23:46:39.24 (1)  SPLAYD LUA END
+23:46:39.62 (1)  END_LOG
+23:46:39.75 (1)  Average spent time=0.59625730514526 seconds
+23:46:39.82 (1)  Average spent time=0.6141407251358 seconds
+23:46:39.88 (1)  Average spent time=0.78595304489136 seconds
+23:46:39.95 (1)  Average spent time=0.63631699085236 seconds
+23:46:40.09 (1)  Average spent time=0.69418160915375 seconds
+23:46:40.24 (1)  Average spent time=0.61769132614136 seconds
+23:46:40.32 (1)  Average spent time=0.62014770507812 seconds
+23:46:40.41 (1)  Average spent time=0.60328807830811 seconds
+23:46:40.44 (1)  SPLAYD LUA END
+23:46:40.44 (1)  END_LOG
+23:46:40.50 (1)  Average spent time=0.6973934173584 seconds
+23:46:40.51 (1)  Average spent time=0.64528601169586 seconds
+23:46:40.54 (1)  Average spent time=0.62660393714905 seconds
+23:46:40.56 (1)  Average spent time=0.69766340255737 seconds
+23:46:40.62 (1)  Average spent time=0.59234080314636 seconds
+23:46:40.62 (1)  SPLAYD LUA END
+23:46:40.62 (1)  END_LOG
+23:46:40.68 (1)  Average spent time=0.63358099460602 seconds
+23:46:40.69 (1)  Average spent time=0.62557792663574 seconds
+23:46:40.74 (1)  Average spent time=0.61223874092102 seconds
+23:46:40.78 (1)  SPLAYD LUA END
+23:46:40.86 (1)  END_LOG
+23:46:40.99 (1)  Average spent time=0.6344743013382 seconds
+23:46:41.10 (1)  Average spent time=0.60563726425171 seconds
+23:46:41.22 (1)  Average spent time=0.62349181175232 seconds
+23:46:41.23 (1)  Average spent time=0.62919368743896 seconds
+23:46:41.23 (1)  Average spent time=0.64856581687927 seconds
+23:46:41.23 (1)  Average spent time=0.64547483921051 seconds
+23:46:41.27 (1)  Average spent time=0.6252861738205 seconds
+23:46:41.28 (1)  Average spent time=0.6481463432312 seconds
+23:46:41.28 (1)  SPLAYD LUA END
+23:46:41.28 (1)  Average spent time=0.6497029542923 seconds
+23:46:41.28 (1)  SPLAYD LUA END
+23:46:41.28 (1)  END_LOG
+23:46:41.29 (1)  END_LOG
+23:46:41.29 (1)  SPLAYD LUA END
+23:46:41.34 (1)  END_LOG
+23:46:41.40 (1)  Average spent time=0.64458730220795 seconds
+23:46:41.40 (1)  SPLAYD LUA END
+23:46:41.40 (1)  END_LOG
+23:46:41.69 (1)  Average spent time=0.60328879356384 seconds
+23:46:41.91 (1)  Average spent time=0.60655596256256 seconds
+23:46:42.06 (1)  Average spent time=0.60906448364258 seconds
+23:46:42.15 (1)  SPLAYD LUA END
+23:46:42.31 (1)  Average spent time=0.58416390419006 seconds
+23:46:42.45 (1)  Average spent time=0.61459276676178 seconds
+23:46:42.58 (1)  SPLAYD LUA END
+23:46:42.74 (1)  Average spent time=0.6307678937912 seconds
+23:46:42.89 (1)  Average spent time=0.62397699356079 seconds
+23:46:43.03 (1)  Average spent time=0.59604127407074 seconds
+23:46:43.16 (1)  SPLAYD LUA END
+23:46:43.26 (1)  Average spent time=0.67325708866119 seconds
+23:46:43.40 (1)  Average spent time=0.62276124954224 seconds
+23:46:43.50 (1)  Average spent time=0.58299140930176 seconds
+23:46:43.60 (1)  SPLAYD LUA END
+23:46:43.71 (1)  Average spent time=0.60131781101227 seconds
+23:46:43.78 (1)  Average spent time=0.6036278963089 seconds
+23:46:43.86 (1)  Average spent time=0.57415170669556 seconds
+23:46:43.94 (1)  SPLAYD LUA END
+23:46:44.06 (1)  Average spent time=0.54831719398499 seconds
+23:46:44.17 (1)  SPLAYD LUA END
+23:46:44.29 (1)  Average spent time=0.54367318153381 seconds
+23:46:44.41 (1)  Average spent time=0.50305323600769 seconds
+23:46:44.57 (1)  SPLAYD LUA END
+23:46:44.74 (1)  END_LOG
+23:46:44.84 (1)  Average spent time=0.52967882156372 seconds
+23:46:44.94 (1)  Average spent time=0.5892911195755 seconds
+23:46:44.95 (1)  Average spent time=0.4720963716507 seconds
+23:46:44.95 (1)  SPLAYD LUA END
+23:46:44.95 (1)  END_LOG
+23:46:45.00 (1)  Average spent time=0.37925634384155 seconds
+23:46:45.02 (1)  Average spent time=0.51533133983612 seconds
+23:46:45.05 (1)  SPLAYD LUA END
+23:46:45.05 (1)  END_LOG
+23:46:45.06 (1)  Average spent time=0.51942071914673 seconds
+23:46:45.11 (1)  Average spent time=0.45756602287292 seconds
+23:46:45.11 (1)  Average spent time=0.57949299812317 seconds
+23:46:45.12 (1)  Average spent time=0.56010942459106 seconds
+23:46:45.12 (1)  SPLAYD LUA END
+23:46:45.12 (1)  END_LOG
+23:46:45.17 (1)  Average spent time=0.49804785251617 seconds
+23:46:45.17 (1)  SPLAYD LUA END
+23:46:45.18 (1)  Average spent time=0.52033505439758 seconds
+23:46:45.18 (1)  SPLAYD LUA END
+23:46:45.18 (1)  END_LOG
+23:46:45.18 (1)  END_LOG
+23:46:45.23 (1)  Average spent time=0.46931037902832 seconds
+23:46:45.24 (1)  Average spent time=0.61420183181763 seconds
+23:46:45.24 (1)  SPLAYD LUA END
+23:46:45.24 (1)  END_LOG
+23:46:45.25 (1)  Average spent time=0.4452935218811 seconds
+23:46:45.26 (1)  Average spent time=0.35963399410248 seconds
+23:46:45.27 (1)  SPLAYD LUA END
+23:46:45.28 (1)  END_LOG
+23:46:45.29 (1)  Average spent time=0.40572192668915 seconds
+23:46:45.30 (1)  Average spent time=0.60102705955505 seconds
+23:46:45.30 (1)  SPLAYD LUA END
+23:46:45.30 (1)  END_LOG
+23:46:45.30 (1)  SPLAYD LUA END
+23:46:45.30 (1)  END_LOG
+23:46:45.34 (1)  Average spent time=0.41113662719727 seconds
+23:46:45.36 (1)  END_LOG
+23:46:45.36 (1)  Average spent time=0.44108729362488 seconds
+23:46:45.37 (1)  SPLAYD LUA END
+23:46:45.38 (1)  END_LOG
+23:46:45.42 (1)  END_LOG
+23:46:45.48 (1)  SPLAYD LUA END
+23:46:45.48 (1)  END_LOG
+23:46:45.54 (1)  SPLAYD LUA END
+23:46:45.54 (1)  END_LOG
+23:46:45.60 (1)  END_LOG
+23:46:45.61 (1)  Average spent time=0.43752725124359 seconds
+23:46:45.64 (1)  Average spent time=0.37247109413147 seconds
+23:46:45.66 (1)  Average spent time=0.4623354434967 seconds
+23:46:45.66 (1)  SPLAYD LUA END
+23:46:45.66 (1)  END_LOG
+23:46:45.74 (1)  Average spent time=0.41357445716858 seconds
+23:46:45.81 (1)  Average spent time=0.48476300239563 seconds
+23:46:45.88 (1)  SPLAYD LUA END
+23:46:45.94 (1)  END_LOG
+23:46:46.04 (1)  SPLAYD LUA END
+23:46:46.10 (1)  END_LOG
+23:46:46.23 (1)  Average spent time=0.35835416316986 seconds
+23:46:46.42 (1)  SPLAYD LUA END
+23:46:46.56 (1)  END_LOG
+23:46:46.67 (1)  Average spent time=0.28538861274719 seconds
+23:46:46.70 (1)  SPLAYD LUA END
+23:46:46.70 (1)  END_LOG
+23:46:46.73 (1)  Average spent time=0.10901665687561 seconds
+23:46:46.73 (1)  SPLAYD LUA END
+23:46:46.73 (1)  END_LOG
+23:46:46.76 (1)  Average spent time=0.2501321554184 seconds
+23:46:46.76 (1)  SPLAYD LUA END
+23:46:46.76 (1)  END_LOG
+23:46:46.78 (1)  Average spent time=0.16694679260254 seconds
+23:46:46.78 (1)  SPLAYD LUA END
+23:46:46.78 (1)  END_LOG
+23:46:46.79 (1)  Average spent time=0.3481511592865 seconds
+23:46:46.79 (1)  SPLAYD LUA END
+23:46:46.79 (1)  END_LOG
+23:46:46.82 (1)  Average spent time=0.19687130451202 seconds
+23:46:46.82 (1)  SPLAYD LUA END
+23:46:46.82 (1)  END_LOG
+23:46:46.85 (1)  Average spent time=0.19016849994659 seconds
+23:46:46.85 (1)  SPLAYD LUA END
+23:46:46.85 (1)  END_LOG
+23:46:46.85 (1)  Average spent time=0.34644119739532 seconds
+23:46:46.85 (1)  Average spent time=0.29093501567841 seconds
+23:46:46.85 (1)  SPLAYD LUA END
+23:46:46.85 (1)  END_LOG
+23:46:46.85 (1)  Average spent time=0.55727348327637 seconds
+23:46:46.85 (1)  SPLAYD LUA END
+23:46:46.85 (1)  END_LOG
+23:46:46.85 (1)  END_LOG
+23:46:46.87 (1)  Average spent time=0.16380648612976 seconds
+23:46:46.87 (1)  SPLAYD LUA END
+23:46:46.87 (1)  END_LOG
+23:46:46.93 (1)  Average spent time=0.1566287279129 seconds
+23:46:47.00 (1)  SPLAYD LUA END
+23:46:47.02 (1)  END_LOG
+23:46:47.06 (1)  SPLAYD LUA END
+23:46:47.06 (1)  END_LOG
+23:46:47.08 (1)  Average spent time=0.19059903621674 seconds
+23:46:47.08 (1)  SPLAYD LUA END
+23:46:47.08 (1)  END_LOG
+23:46:47.12 (1)  Average spent time=0.24762434959412 seconds
+23:46:47.12 (1)  SPLAYD LUA END
+23:46:47.12 (1)  END_LOG
+23:46:47.13 (1)  Average spent time=0.14863855838776 seconds
+23:46:47.13 (1)  SPLAYD LUA END
+23:46:47.13 (1)  END_LOG
+23:46:47.14 (1)  Average spent time=0.15330238342285 seconds
+23:46:47.14 (1)  SPLAYD LUA END
+23:46:47.14 (1)  END_LOG
+23:46:47.18 (1)  END_LOG
+23:46:47.24 (1)  Average spent time=0.60560913085937 seconds
+23:46:47.24 (1)  SPLAYD LUA END
+23:46:47.24 (1)  END_LOG
+23:46:47.30 (1)  Average spent time=0.43750097751617 seconds
+23:46:47.30 (1)  SPLAYD LUA END
+23:46:47.30 (1)  END_LOG
+23:46:47.38 (1)  Average spent time=0.34444692134857 seconds
+23:46:47.50 (1)  SPLAYD LUA END
+23:46:47.60 (1)  END_LOG
+23:46:47.69 (1)  END_LOG

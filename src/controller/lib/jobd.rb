@@ -248,9 +248,10 @@ class Jobd
 			m_s_s.each do |m_s|
 				splayd_id = m_s['splayd_id'] #extracts the unique splayd ID
 				if not pos_list[splayd_id] #if there is not a record for this splayd ID
-					pos_list[splayd_id] = [] #creates an empty array to store the positions for each instance
+					pos_list[splayd_id] = {} #creates an empty array to store the positions for each instance
 				end
-				pos_list[splayd_id] << pos #adds the current position to the list of positions
+				instance_id = m_s['instance_id'] 
+				pos_list[splayd_id][instance_id] = pos #adds the current position to the list of positions
 				pos = pos + 1 #increments pos by 1
 			end
 
