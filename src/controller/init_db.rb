@@ -23,7 +23,7 @@
 
 
 # GRANT ALL PRIVILEGES ON splay.* TO splay@localhost IDENTIFIED BY 'splay';
-
+require 'rubygems'
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 #function check_version checks if version is 5.5 or not (version 5.5 has a change of syntax from type=innodb to engine=innodb)

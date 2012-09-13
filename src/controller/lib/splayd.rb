@@ -432,6 +432,9 @@ class SplaydGridProtocol < SplaydProtocol
 						if action['command'] == 'LIST' and action['position']
 							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
 						elsif action['command'] == "REGISTER"
+							if action['nb_instances'] #replaces the generic _NBINSTANCES_ with the real number of instances
+								action['data'] = action['data'].sub(/_NBINSTANCES_/, action['nb_instances'].to_s)
+							end
 							job = action['data']
 							job = JSON.parse(job)
 							#TODO convert this as a function that returns lib, lib_id
@@ -457,9 +460,9 @@ class SplaydGridProtocol < SplaydProtocol
 						if action['command'] == "REGISTER"
 						#tentatively put lib_id in the original class SplaydProtocol, and since the original code does not change it,
 						#the "if" statement below will not be effective
-						  if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
-							port = addslashes(@so.read)
-							reply_data = port
+							if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
+							ports_json = addslashes(@so.read)
+							reply_data = JSON.parse(ports_json)
 						end
 						if action['command'] == "STATUS"
 							reply_data = @so.read # no addslashes (json)
@@ -495,7 +498,8 @@ class SplaydGridProtocol < SplaydProtocol
 
 					if action['command'] == "START"
 						if reply_code == "OK" or reply_code == "RUNNING"
-							@splayd.s_j_start(action['job_id'])
+							action_data = JSON.parse(action['data'])
+							@splayd.s_j_start(action['job_id'], action_data['instances'])
 						else
 							raise ProtocolError, "START not OK: #{reply_code}"
 						end
@@ -503,14 +507,16 @@ class SplaydGridProtocol < SplaydProtocol
 
 					if action['command'] == "STOP"
 						if reply_code == "OK" or reply_code == "NOT_RUNNING"
-							@splayd.s_j_stop(action['job_id'])
+							action_data = JSON.parse(action['data'])
+							@splayd.s_j_stop(action['job_id'], action_data['instances'])
 						else
 							raise ProtocolError, "STOP not OK: #{reply_code}"
 						end
 					end
 
 					if action['command'] == "FREE"
-						@splayd.s_j_free(action['job_id'])
+						action_data = JSON.parse(action['data'])
+						@splayd.s_j_free(action['job_id'], action_data['instances'])
 					end
 
 					if action['command'] == "STATUS"

@@ -63,11 +63,14 @@ class JobdStandard < Jobd
 				if job['turbo'] == "TRUE" then
 					#the number of nodes assigned is the maximum of the splayd minus the nodes already used
 					nodes_assigned = c_splayd['max_number'][splayd_id] - c_splayd['nb_nodes'][splayd_id]
-					#TODO in turbo mode, max-mem x nb-instances and nb-ports x nb-instances should be calculated.
+					
 					#if nodes_assigned already surpasses the remaining number of nodes to assign, it gets lowered to that
 					if nodes_assigned > nb_selected_splayds - count then
 						nodes_assigned = nb_selected_splayds - count
 					end
+
+					#TODO in turbo mode, max-mem x nb-instances and nb-ports x nb-instances should be calculated.
+					#GOES HERE
 				end
 				#concatenates SQL commands to add the nodes to the tables "splayd_selections" and "splayd_jobs"
 				for instance_id in 1..nodes_assigned
