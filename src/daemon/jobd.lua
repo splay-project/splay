@@ -271,6 +271,11 @@ sandbox.protect_env({
 			"luabins",
 			"splay.restricted_db",
 			"kyotocabinet",
+			"splay.fec",
+			"luazfec",
+			"tnetstrings",
+			"sha2",
+			"crypto03",
 			native_from_job
 		},
 		inits = {}

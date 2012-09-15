@@ -179,6 +179,8 @@ function start(ref, instance_nb)
 
 	-- we release the ports we have locked for this job
 	if job.network.nb_ports > 0 then
+		print("Instance number = ", instance_nb)
+		--print("releasing ports starting from ", job.instances[instance_nb].me.port)
 		splay.release_ports(job.instances[instance_nb].me.port,
 				job.instances[instance_nb].me.port + job.network.nb_ports - 1)
 	end
@@ -237,6 +239,8 @@ function free(ref, instance_nb)
 	-- we release the ports we have locked for this job
 	-- it's a security, if the job has never run
 	if splayd.jobs[ref].network.nb_ports > 0 then
+		print("Instance number free ", instance_nb])
+		--print("releasing ports starting from ", job.instances[instance_nb].me.port)
 		splay.release_ports(splayd.jobs[ref].instances[instance_nb].me.port,
 				splayd.jobs[ref].instances[instance_nb].me.port + splayd.jobs[ref].network.nb_ports - 1)
 	end
@@ -330,6 +334,7 @@ function find_reserve_rand_ports(nb_ports)
 	--print("find_reserve_rand_ports ENTERED")
 	local s = splayd.settings.job
 	local r_start = math.random(s.network.start_port, s.network.end_port)
+	print("reserving ports starting ", r_start)
 	return find_reserve_ports(nb_ports, r_start, s.network.end_port) or
 			find_reserve_ports(nb_ports, s.network.start_port, r_start - 1)
 end
@@ -554,7 +559,7 @@ function register(so)
 		--print("register: CHECKPOINT51.b")
 		if job.network.nb_ports > 0 then
 			--print("register: CHECKPOINT51.b.a")
-			s.network.max_ports = 1500
+			s.network.max_ports = 1500 --NOTE ONLY FOR TURBO TEST, MUST BE CORRECTED
 			--print("job.network.nb_ports, job.nb_instances, s.network.max_ports", job.network.nb_ports, job.nb_instances, s.network.max_ports)
 			if job.network.nb_ports*job.nb_instances > s.network.max_ports then --if there are less than nb_ports * nb_instances
 				assert(so:send("INVALID_PORTS"))
@@ -793,6 +798,7 @@ function churn_mgmt()
 							end
 						else
 							-- if the position is odd, it is a "start"
+							print("THIS START? CHURN")
 							start(i)
 						end
 						-- stop looking the timeline table
@@ -854,6 +860,7 @@ function n_start(so)
 		else
 			for i,v in ipairs(instances) do
 				--if the job doesn't have timeline, simply start (normal job)
+				print("THIS START? N_START")
 				start(ref, v)
 			end
 		end
@@ -894,6 +901,7 @@ function restart(so)
 			return
 		end
 		stop(ref)
+		print("THIS START? RESTART")
 		start(ref) --TODO ADAPT TO INSTANCES
 		assert(so:send("OK"))
 	else

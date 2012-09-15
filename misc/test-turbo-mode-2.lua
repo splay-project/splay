@@ -20,7 +20,11 @@ events.loop(function()
 	local nb_tests = 100
 	local nodes = job.get_live_nodes()
 
-	if job.position = 1 then
+	rpc.server(job.me.port)
+	events.sleep(5)
+
+
+	if job.position == 1 then
 		for i=1,nb_tests do
 			--print("Test n. "..i)
 			local init_time = misc.time()
@@ -30,7 +34,7 @@ events.loop(function()
 			local answer = nil
 
 			for k,v in ipairs(unsorted_nodes) do
-				answer = rpc.acall(v, {"rec_ping"})
+				--answer = rpc.acall(v, {"rec_ping"})
 			end
 
 			local end_time = misc.time()
