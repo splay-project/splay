@@ -20,7 +20,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
-
+--CHANGED RECENTLY
 --REQUIRED LIBRARIES
 
 local table = require"table"
@@ -30,6 +30,7 @@ local string = require"string"
 local crypto	= require"crypto"
 -- for RPC calls
 local rpc	= require"splay.rpc" --TODO think about urpc vs rpc
+local urpc	= require"splay.urpc"
 -- for the HTTP server
 local net	= require"splay.net"
 -- for enconding/decoding the bucket
@@ -42,11 +43,12 @@ local events	= require"splay.events" --TODO look if the use of splay.events fits
 local serializer	= require"splay.lbinenc"
 local paxos	= require"splay.paxos"
 
-local USE_KYOTO = true
+local USE_KYOTO = false
 
 local local_db = nil
 local dbs = {}
-
+local im_gossiping = false
+local elapsed_time = 0
 
 if USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
 	--for local db handling, when using kyoto
@@ -71,6 +73,10 @@ else
 			if dbs[table_name] then
 				dbs[table_name][key] = value
 			end
+		end,
+
+		totable = function(table_name)
+			return dbs[table_name]
 		end,
 
 		remove = function(table_name, key)
@@ -318,7 +324,7 @@ function print_all()
 	local for_ports_lua = "for ports.lua "
 	for _,v in ipairs(neighborhood) do
 		print_node(v)
-		for_ports_lua = for_ports_lua..", "..(v.port+1)
+		for_ports_lua = for_ports_lua..", "..v.ip..":"..(v.port+1)
 	end
 	l_o:info(n.short_id..":print_all: "..for_ports_lua)
 
@@ -369,6 +375,7 @@ function receive_gossip(message, neighbor_about)
 	if message == "add" then
 		--if get_position returns something, it means the node is already in the list, so it returns
 		if get_position(neighbor_about) then
+			im_gossiping = false
 			return nil
 		end
 		--if not, add the node to the neighborhood table
@@ -379,6 +386,7 @@ function receive_gossip(message, neighbor_about)
 		local neighbor_about_pos = get_position(neighbor_about)
 		--if the node does not exist, it returns
 		if not neighbor_about_pos then
+			im_gossiping = false
 			return nil
 		end
 		--else, it removes it from the neighbordhood table
@@ -393,7 +401,7 @@ function receive_gossip(message, neighbor_about)
 	--forward the gossip to the previous node
 	events.thread(function()
 		--l_o:debug(n.short_id..":receive_gossip: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-		rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
+		urpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
 end
@@ -404,7 +412,7 @@ local function gossip_changes(message, neighbor_about)
 		--create the gossip to the previous node
 		events.thread(function()
 			--l_o:debug(n.short_id..":gossip_changes: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-			rpc.call(previous_node, {"distdb.receive_gossip", message, neighbor_about})
+			urpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
 		end)
 	end
 end
@@ -416,7 +424,7 @@ local function ping_others()
 		--logs
 		----l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
 		--pings, and if the response is not ok
-		if not rpc.ping(next_node) then --TODO should be after several tries
+		if not urpc.ping({ip=next_node.ip, port=(next_node.port+2)}) then --TODO should be after several tries
 			--logs that it lost a neighbor
 			--l_o:debug(n.short_id..":ping_others: i lost neighbor="..next_node.short_id)
 			--creates an object node_about to insert it into the message to be gossipped
@@ -431,12 +439,18 @@ local function ping_others()
 	end
 end
 
+function is_gossiping()
+	return im_gossiping
+end
+
 --function add_me: called by a new node to the RDV node (job.nodes[1]) to retrieve the neighborhood table and make him gossip the adding
 function add_me(node_to_add)
 	--if the node is already in the ring, leave
 	if get_position(node_to_add) then
 		return nil
 	end
+	elapsed_time = misc.time()
+	im_gossiping = true
 	--add the node to its own table
 	add_node_to_neighborhood(node_to_add)
 	--create a gossip to announce the adding
@@ -512,6 +526,17 @@ function handle_get(type_of_transaction, key)
 	return nil, "network problem"
 end
 
+function handle_get_all_records()
+	l_o:print("size of db_table="..#dbs["db_table"])
+	local local_db_tbl = local_db.totable("db_table") 
+	l_o:print("size of db_table2="..#local_db_tbl)
+	return true, local_db.totable("db_table") 
+end
+
+function handle_get_node_list()
+	return true, neighborhood 
+end
+
 --function handle_put_bucket: handles a PUT request as the Coordinator of the Access Key ID
 function handle_put(type_of_transaction, key, value) --TODO check about setting N,R,W on the transaction
 	--l_o:debug(n.short_id..":handle_put: for key="..shorten_id(key)..", value=", value) -- TODO: key better be hashed here?
@@ -561,7 +586,9 @@ end
 local forward_request = {
 	["GET"] = handle_get,
 	["PUT"] = handle_put,
-	["DELETE"] = handle_delete
+	["DELETE"] = handle_delete,
+	["GET_NODE_LIST"] = handle_get_node_list,
+	["GET_ALL_RECORDS"] = handle_get_all_records
 	}
 
 
@@ -655,6 +682,16 @@ function handle_http_message(socket)
 	--]]
 end
 
+function create_distdb_node(job_node)
+		--takes IP address and port from job.me
+		local n = {ip=job_node.ip, port=job_node.port}
+		--calculates the ID by hashing the IP address and port
+		n.id = calculate_id(job_node)
+		--stores also the first 5 hexadigits of the ID for better printing
+		n.short_id = string.sub(n.id, 1, 5)..".."
+		return n
+end
+
 --function init: initialization of the node
 function init(job)
 	--if init has not been previously called
@@ -693,15 +730,47 @@ function init(job)
 
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
+		
+		urpc.server(n.port+2)
 
 		--if it is the RDV node
 		if job.position == 1 then
+			l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
+		--else
+		end
+		
+		local job_nodes = job.nodes()
+		for i,v in ipairs(job_nodes) do
+			table.insert(neighborhood, create_distdb_node(v))
+		end
+		--gets the position from the neighborhood table
+		n.position = get_position()
+		--calculates the next node
+		next_node = get_next_node()
+		--calculates the previous node
+		previous_node = get_previous_node()
+
+--[[ BOOTSTRAPPING
+		--if it is the RDV node
+		if job.position == 1 then
+			l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
 			--neighborhood is only itself
 			neighborhood = {n}
 		--else
 		else
 			--ask the RDV node for the neighborhood table
 			local job_nodes = job.nodes()
+			local rdv_busy = true
+			local ok1, answer1
+			while rdv_busy do
+				events.sleep(0.2 + (math.random(20)/100))
+				ok1, answer1 = urpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
+				if not ok1 then
+					rdv_busy = true
+				else
+					rdv_busy = answer1[1]
+				end
+			end
 			neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
 		end
 
@@ -719,10 +788,12 @@ function init(job)
 		--prints a initialization message
 		--l_o:debug(n.short_id..":init: HTTP server started on port="..http_server_port)
 
-		print_all()
-
+		--this method of printing all nodes is not suitable for hundreds of nodes; replaced by an API
+		--print_all()
+--]]
 		--starts a 5 second periodic pinging to the next node of the ring
-		events.periodic(5, ping_others)
+		events.sleep(60)
+		--events.periodic(10, ping_others)
 	end
 end
 
