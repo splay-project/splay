@@ -272,47 +272,6 @@ function send_get_node_list(ip_addr, port)
 
 end
 
-function send_get_master(ip_addr, port, key)
-
-	--local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
-
-	--logfile1:write("send_delete: started\n")
-
-	local response_body = {}
-	local response_to_discard = nil
-	local response_status = nil
-	local response_headers = nil
-	local response_status_line = nil
-
-	response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..ip_addr..":"..port.."/"..key,
-		method = "GET_MASTER",
-		headers = {
-			["Type"] = "consistent"
-		},
-		source = ltn12.source.empty(),
-		sink = ltn12.sink.table(response_body)
-	})
-
-	if response_status == 200 then
-		print("GET_MASTER command sent.")
-		--logfile1:write("send_delete: DELETE done.\n")
-		--logfile1:close()
-		local response_tbl1 = serializer.decode(response_body[1])
-		if type(response_tbl1) == "table" then
-			--print("neighborhood size=", #response_tbl1)
-			print(print_tablez("master", 0, response_tbl1))
-		end
-		return true, response_tbl1
-	else
-		--print("Error "..response_status)
-		--logfile1:write("send_delete: Error "..response_status.."\n")
-		--logfile1:close()
-		return false
-	end
-
-end
-
 function send_get_all_records(ip_addr, port)
 
 	--local logfile1 = io.open("/home/unine/Desktop/logfusesplay/log.txt","a")
@@ -333,7 +292,7 @@ function send_get_all_records(ip_addr, port)
 		sink = ltn12.sink.table(response_body)
 	})
 
-	--print(ip_addr, port, response_status)
+	print(ip_addr, port, response_status)
 
 	if response_status == 200 then
 		--print("GET_ALL_RECORDS command sent.")
@@ -367,26 +326,25 @@ if not AS_LIB then
 		local get_node_list_ok = nil
 
 		get_node_list_ok, neighborhood = send_get_node_list(ip_addr, port)
-		print(print_tablez("node", 0, neighborhood))
-		--if not get_node_list_ok then os.error("ERROR IN GET NODE LIST") end
-		print("Key="..key)
-		send_get_master(ip_addr, port, key)
 
+		if not get_node_list_ok then os.error("ERROR IN GET NODE LIST") end
 
 		if #neighborhood < 200 then
 			print("So far only "..#neighborhood.." nodes")
+			os.exit()
 		end
-
-		local consistency_model = "consistent"
-	for j=1,3 do
+print("200 nodes!")
+os.exit()
+		local consistency_model = "evtl_consistent"
+	for j=1,10 do
 		key = crypto.evp.digest("sha1",math.random(100000))
-		for i=1, 3 do
+		for i=1, 4 do
 			local node = misc.random_pick(neighborhood)
 			print("Key is "..key)
 	--		send_put(port, "evtl_consistent", key, i*10)
 	--		send_put(port, "consistent", key, i*10)
 			send_put(node.ip, node.port+1, consistency_model, key, i*10)
-			events.sleep(0.5)
+			events.sleep(1)
 		end
 
 		for i=1, 1 do
@@ -394,22 +352,15 @@ if not AS_LIB then
 	--		send_get(port, "evtl_consistent", key)
 	--		send_get(port, "consistent", key)
 			send_get(node.ip, node.port+1, consistency_model, key)
-			events.sleep(0.5)
+			events.sleep(1)
 		end
 	end
 		local success1 = 0
 		for i,v in pairs(neighborhood) do
 			local ok, node_db = send_get_all_records(v.ip, v.port+1)
 			if ok then
-				if type(node_db) == "table" then
-					local node_db_empty = true
-					for i2,v2 in pairs(node_db) do
-						node_db_empty = false
-						node_db[i2] = serializer.decode(v2)
-					end
-					if not node_db_empty then
-						print(print_tablez(v.ip..":"..v.port..".DB", 0, node_db))
-					end
+				if type(node_db) == "table" and #node_db ~= 0 then
+					print(print_tablez(v.ip..":"..v.port..".DB", 0, node_db))
 				end
 			success1 = success1 + 1
 			end
