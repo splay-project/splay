@@ -378,6 +378,16 @@ if not AS_LIB then
 		end
 
 		local consistency_model = "consistent"
+--[[
+TODOS EN ESPAÑOL:
+
+IMPRIMIR LA ID
+SOLO EL I DE LA TABLA
+HACER UN CHECKER AUTOMATICO
+PROBAR CON MAS NODOS
+HACER EL JOIN
+
+--]]
 	for j=1,3 do
 		key = crypto.evp.digest("sha1",math.random(100000))
 		for i=1, 3 do
@@ -397,6 +407,7 @@ if not AS_LIB then
 			events.sleep(0.5)
 		end
 	end
+	--]]
 		local success1 = 0
 		for i,v in pairs(neighborhood) do
 			local ok, node_db = send_get_all_records(v.ip, v.port+1)
