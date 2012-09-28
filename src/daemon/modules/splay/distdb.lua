@@ -302,6 +302,30 @@ local function get_responsibles(key)
 	return responsibles, master_pos
 end
 
+function sanity_check()
+	local my_keys = local_db.totable("key_list")
+	local old_next_node_keys = {}
+	local key_resp_list = {}
+ 
+	for i,v in pairs(my_keys) do
+		local not_responsible = true
+		key_resp_list[i] = get_responsibles(i)
+		for i2,v2 in ipairs(key_resp_list[i]) do
+			--l_o:print("key", i, "next", next_node.id, "node", v2.id)
+			if n.id == v2.id then
+				not_responsible = false
+				break
+			end
+		end
+		if not_responsible then
+			l_o:print("Node="..n.short_id..", Removing key="..key)
+			local_db.remove("db_table", key)
+			local_db.remove("key_list", key)
+		end
+	end
+
+end
+
 --function shorten_id: returns only the first 5 hexadigits of a ID string (for better printing)
 function shorten_id(id)
 	return string.sub(id, 1, 5)..".."
@@ -309,7 +333,7 @@ end
 
 --function print_me: prints the IP address, port and position of the node
 local function print_me()
-	l_o:debug(n.short_id..":print_me: ME! IP:port=", n.ip..":"..n.port, "position=", n.position)
+	l_o:print(n.short_id..":print_me: ME! IP:port=", n.ip..":"..n.port, "position=", n.position)
 end
 
 --function print_node: prints the IP address, port, and ID of a given node
@@ -353,7 +377,7 @@ function add_node_to_neighborhood(node)
 end
 
 function transfer_key(key, value)
-	l_o:print("receiving key=",key,"value=",type(value))
+	l_o:print("Node="..n.short_id.." receiving key=",key,"value=",type(value))
 	local_db.set("db_table", key, value)
 	local_db.set("key_list", key, 1)
 end
@@ -409,9 +433,11 @@ function remove_node_from_neighborhood(node_pos)
 			end
 		end
 		if not in_new then
-			rpc.acall(next_node, {"transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
+
+	sanity_check()
 
 	--logs
 	--l_o:debug(n.short_id..":remove_node_from_neighborhood: removing node="..node.short_id.." of my list")
