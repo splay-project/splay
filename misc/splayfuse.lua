@@ -51,7 +51,8 @@ local consistency_type = "consistent"
 
 local to_report_t = {}
 
-local db_port = 15296
+local db_ip = "10.0.2.27"
+local db_port = 17265
 
 --function reportlog: function created to send messages to a single log file; it handles different log domains, like DB_OP (Database Operation), etc.
 function reportlog(log_domain, message, args)
@@ -96,7 +97,7 @@ local function write_in_db(unhashed_key, value)
     --logs
     --reportlog("DB_OP", "write_in_db: about to write in distdb, unhashed_key="..unhashed_key..", db_key="..db_key, {value=value})
     --sends the value
-    return send_put(db_port, consistency_type, db_key, value)
+    return send_put(db_ip, db_port, consistency_type, db_key, value)
 end
 
 --function read_from_db: reads an element from the underlying DB
@@ -106,7 +107,7 @@ local function read_from_db(unhashed_key)
     --logs
     --reportlog("DB_OP", "read_from_db: about to read from distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
     --sends a GET command to the DB
-    return send_get(db_port, consistency_type, db_key)
+    return send_get(db_ip, db_port, consistency_type, db_key)
 end
 
 --function read_from_db: reads an element from the underlying DB
@@ -116,7 +117,7 @@ local function delete_from_db(unhashed_key)
     --logs
     --reportlog("DB_OP", "delete_from_db: about to delete from distdb, unhashed_key="..unhashed_key..", db_key="..db_key,{})
     --sends a GET command to the DB
-    return send_delete(db_port, consistency_type, db_key)
+    return send_delete(db_ip, db_port, consistency_type, db_key)
 end
 
 --function splitfilename: splits the filename in base and dir; for example: "/usr/include/lua/5.1/lua.h" -> "/usr/include/lua/5.1", "lua.h"
@@ -414,7 +415,10 @@ function delete_inode(inode_n)
     --logs entrance
     reportlog("FILE_INODE_OP", "delete_inode: ENTERED", {})
     --reportlog("FILE_INODE_OP", "delete_inode: ENTERED for inode_n="..inode_n, {})
-        
+    
+    local inode = get_inode(inode_n)
+
+ 
     for i,v in ipairs(inode.content) do
         delete_from_db("block:"..v) --TODO: NOT CHECKING IF SUCCESSFUL
     end
