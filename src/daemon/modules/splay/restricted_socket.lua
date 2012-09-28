@@ -262,7 +262,7 @@ local function tcp_sock_wrapper(sock)
 
 			-- we only authorize our local connection on our port range
 			if local_ip and host == local_ip then
-				if port < start_port or port > end_port then
+				if false and (port < start_port or port > end_port) then
 					l_o:warn("Local connect restricted (port: "..port..") not in job range.")
 					return nil, "restricted"
 				end
@@ -285,7 +285,7 @@ local function tcp_sock_wrapper(sock)
 		new_sock.bind = function(self, address, port, backlog)
 			--l_o:debug("tcp.bind("..address..", "..tostring(port)..")")
 
-			if port < start_port or port > end_port then
+			if false and (port < start_port or port > end_port) then
 				l_o:warn("Bind restricted (port: "..port..") not in job range.")
 				return nil, "restricted"
 			end
@@ -429,7 +429,7 @@ local function udp_sock_wrapper(sock)
 
 			-- we only authorize our local connection on our port range
 			if local_ip and ip == local_ip then
-				if port < start_port or port > end_port then
+				if false and (port < start_port or port > end_port) then
 					l_o:warn("Local connect restricted (port: "..port..") not in job range.")
 					return nil, "restricted"
 				end
@@ -485,7 +485,7 @@ local function udp_sock_wrapper(sock)
 			else
 				-- we only authorize our local connection on our port range
 				if local_ip and ip == local_ip then
-					if port < start_port or port > end_port then
+					if false and (port < start_port or port > end_port) then
 					l_o:warn("Local connect restricted (port: "..port..") not in job range.")
 						return nil, "restricted"
 					end
@@ -505,7 +505,7 @@ local function udp_sock_wrapper(sock)
 		new_sock.setsockname = function(self, address, port)
 			--l_o:debug("udp.setsockname()")
 			
-			if port < start_port or port > end_port then
+			if false and (port < start_port or port > end_port) then
 				l_o:warn("Local connect restricted (port: "..port..") not in job range.")
 				return nil, "restricted"
 			end

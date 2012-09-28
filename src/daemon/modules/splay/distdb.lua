@@ -50,6 +50,35 @@ local dbs = {}
 local im_gossiping = false
 local elapsed_time = 0
 
+
+
+
+--REQUIRED FUNCTIONS AND OBJECTS
+
+local assert = assert --could be used
+local error = error --could be used
+local ipairs = ipairs
+local next = next
+local pairs = pairs
+local pcall = pcall
+local type = type
+local tonumber = tonumber
+local tostring = tostring
+local log = require"splay.log"
+local base = _G
+
+
+--naming the module
+module("splay.distdb")
+
+--authoring info
+_COPYRIGHT   = "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
+_DESCRIPTION = "Distributed DB functions."
+_VERSION     = 1.0
+
+--[[ DEBUG ]]--
+l_o = log.new(2, "[".._NAME.."]")
+
 if USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
 	--for local db handling, when using kyoto
 	local_db = require"splay.restricted_db"
@@ -104,34 +133,6 @@ else
 		end
 	}
 end
-
-
---REQUIRED FUNCTIONS AND OBJECTS
-
-local assert = assert --could be used
-local error = error --could be used
-local ipairs = ipairs
-local next = next
-local pairs = pairs
-local pcall = pcall
-local type = type
-local tonumber = tonumber
-local tostring = tostring
-local log = require"splay.log"
-local base = _G
-
-
---naming the module
-module("splay.distdb")
-
---authoring info
-_COPYRIGHT   = "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
-_DESCRIPTION = "Distributed DB functions."
-_VERSION     = 1.0
-
---[[ DEBUG ]]--
-l_o = log.new(2, "[".._NAME.."]")
-
 
 --LOCAL VARIABLES
 
@@ -313,7 +314,7 @@ end
 
 --function print_node: prints the IP address, port, and ID of a given node
 local function print_node(node)
-	l_o:debug(n.short_id..":print_node: neighbor=", node.ip, node.port, node.id)
+	l_o:print(n.short_id..":print_node: neighbor=", node.ip, node.port, node.id)
 end
 
 --function print_all: prints the node itself and its neighbors
@@ -351,10 +352,33 @@ function add_node_to_neighborhood(node)
 
 end
 
+function transfer_key(key, value)
+	l_o:print("receiving key=",key,"value=",type(value))
+	local_db.set("db_table", key, value)
+	local_db.set("key_list", key, 1)
+end
+
 --function remove_node_from_neighborhood: removes a node from the neighborhood table, re-sorts and updates n.position
 function remove_node_from_neighborhood(node_pos)
 	--TODO take care of n_nodes < n_replicas
 	--gets the node from the table before removal
+
+	
+	local my_keys = local_db.totable("key_list")
+	local old_next_node_keys = {}
+	local key_resp_list = {}
+ 
+	for i,v in pairs(my_keys) do
+		key_resp_list[i] = get_responsibles(i)
+		for i2,v2 in ipairs(key_resp_list[i]) do
+			--l_o:print("key", i, "next", next_node.id, "node", v2.id)
+			if next_node.id == v2.id then
+				table.insert(old_next_node_keys, i)
+			end
+		end
+	end
+
+	
 	local node = neighborhood[node_pos]
 	--removes it from it
 	table.remove(neighborhood, node_pos)
@@ -364,6 +388,31 @@ function remove_node_from_neighborhood(node_pos)
 	next_node = get_next_node()
 	--updates the "pointer" to the previous node
 	previous_node = get_previous_node()
+
+
+	local new_next_node_keys = {}
+	for i,v in pairs(my_keys) do
+		for i2,v2 in ipairs(key_resp_list[i]) do
+			--l_o:print("key", i, "next", next_node.id, "node", v2.id)
+			if next_node.id == v2.id then
+				table.insert(new_next_node_keys, i)
+			end
+		end
+	end
+	--print_node(next_node)
+	for i,v in ipairs(old_next_node_keys) do
+		local in_new = false
+		for i2,v2 in ipairs(new_next_node_keys) do
+			if v == v2 then
+				in_new = true
+				break --TODO remove from new table for better efficiency
+			end
+		end
+		if not in_new then
+			rpc.acall(next_node, {"transfer_key", v, local_db.get("db_table", v)})
+		end
+	end
+
 	--logs
 	--l_o:debug(n.short_id..":remove_node_from_neighborhood: removing node="..node.short_id.." of my list")
 end
@@ -431,8 +480,10 @@ local function ping_others()
 			local node_about = {id = next_node.id}
 			--calculates the position of the next node
 			local next_node_pos = get_position(next_node)
+			
 			--removes the node from its table
 			remove_node_from_neighborhood(next_node_pos)
+
 			--gossips the removal
 			gossip_changes("remove", node_about)
 		end
@@ -527,10 +578,12 @@ function handle_get(type_of_transaction, key)
 end
 
 function handle_get_all_records()
-	l_o:print("size of db_table="..#dbs["db_table"])
-	local local_db_tbl = local_db.totable("db_table") 
-	l_o:print("size of db_table2="..#local_db_tbl)
 	return true, local_db.totable("db_table") 
+end
+
+function handle_get_master(type_of_transaction, key)
+	local master_node = get_master(key)
+	return true, master_node
 end
 
 function handle_get_node_list()
@@ -587,6 +640,7 @@ local forward_request = {
 	["GET"] = handle_get,
 	["PUT"] = handle_put,
 	["DELETE"] = handle_delete,
+	["GET_MASTER"] = handle_get_master,
 	["GET_NODE_LIST"] = handle_get_node_list,
 	["GET_ALL_RECORDS"] = handle_get_all_records
 	}
@@ -714,6 +768,7 @@ function init(job)
 
 		--initializes db_table
 		local_db.open("db_table", "hash")
+		local_db.open("key_list", "hash")
 
 		--initializes the variable holding the number of replicas
 		n_replicas = 5 --TODO this should be configurable
@@ -743,6 +798,9 @@ function init(job)
 		for i,v in ipairs(job_nodes) do
 			table.insert(neighborhood, create_distdb_node(v))
 		end
+		
+		table.sort(neighborhood, function(a,b) return a.id<b.id end)
+
 		--gets the position from the neighborhood table
 		n.position = get_position()
 		--calculates the next node
@@ -792,8 +850,8 @@ function init(job)
 		--print_all()
 --]]
 		--starts a 5 second periodic pinging to the next node of the ring
-		events.sleep(60)
-		--events.periodic(10, ping_others)
+		events.sleep(30)
+		events.periodic(5, ping_others)
 	end
 end
 
@@ -1493,6 +1551,7 @@ function put_local(key, value, src_write)
 	l_o:debug(n.short_id..":put_local: type(key)="..type(key)..", type(kv_record_serialized)="..type(kv_record_serialized))
 
 	local set_ok = local_db.set("db_table", key, kv_record_serialized)
+	local_db.set("key_list", key, 1)
 
 	l_o:debug(n.short_id..":put_local: writing key="..shorten_id(key)..", value: ",value,", enabled: ", kv_record.enabled, "writing was ok?", set_ok)
 	for i,v in pairs(kv_record.vector_clock) do
@@ -1534,6 +1593,7 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 	if local_db.check("db_table", key) ~= -1 then
 	--else, replace the value and increase the version
 		local_db.remove("db_table", key)
+		local_db.remove("key_list", key)
 	end
 	--l_o:debug(n.short_id..":delete_local: deleting key="..shorten_id(key))
 	return true
