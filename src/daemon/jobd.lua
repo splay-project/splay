@@ -278,7 +278,9 @@ sandbox.protect_env({
 			"crypto03",
 			native_from_job
 		},
-		inits = {}
+		inits = {
+			splay.distdb = job
+		}
 	})
 
 collectgarbage()

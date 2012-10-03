@@ -113,7 +113,8 @@ function generate_require(allowed, inits)
 		if inits[modname] and
 				type(base.package.loaded[modname]) == "table" and
 				base.package.loaded[modname].init then
-			l_o:debug(modname.." initialization.")
+			--l_o:debug(modname.." initialization.")
+			l_o:print(modname.." initialization.")
 			base.package.loaded[modname].init(inits[modname])
 		end
 	end

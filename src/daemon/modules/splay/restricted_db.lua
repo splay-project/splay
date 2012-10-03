@@ -67,7 +67,7 @@ _DESCRIPTION = "Restricted DB"
 _VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+l_o = log.new(1, "[".._NAME.."]")
 
 --TODO
 

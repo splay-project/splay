@@ -20,7 +20,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
---CHANGED RECENTLY
+
 --REQUIRED LIBRARIES
 
 local table = require"table"
@@ -41,17 +41,8 @@ local misc	= require"splay.misc" --TODO look if the use of splay.misc fits here
 local events	= require"splay.events" --TODO look if the use of splay.events fits here
 -- for encoding/decoding the GET answer
 local serializer	= require"splay.lbinenc"
+--for consistency model through paxos
 local paxos	= require"splay.paxos"
-
-local USE_KYOTO = false
-
-local local_db = nil
-local dbs = {}
-local im_gossiping = false
-local elapsed_time = 0
-
-
-
 
 --REQUIRED FUNCTIONS AND OBJECTS
 
@@ -79,7 +70,13 @@ _VERSION     = 1.0
 --[[ DEBUG ]]--
 l_o = log.new(2, "[".._NAME.."]")
 
-if USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
+local _USE_KYOTO = false
+local _BOOTSTRAPPING = false
+
+local local_db = nil
+local dbs = {}
+
+if _USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
 	--for local db handling, when using kyoto
 	local_db = require"splay.restricted_db"
 else
@@ -167,6 +164,12 @@ local init_done = false
 local prop_ids = {}
 --paxos_max_retries is the maximum number of times a Proposer can try a Proposal
 local paxos_max_retries = 5 --TODO maybe this should match with some distdb settings object
+--im_gossiping is set to true if the node sent an update about the network and it is still traversing the ring
+local im_gossiping = false
+
+local gossiping_elpsd_t = 0 --TODO use this to measure the time it takes to spread updates through the ring
+--times_waiting_before_ping: trick variable to make the node wait 6 periods of 5s (30s) to start pinging its neighbor
+local times_waiting_before_ping = 0
 
 --Testers:
 local test_delay = false
@@ -177,16 +180,16 @@ local test_wrong_node = false
 --LOCAL FUNCTIONS
 
 --function get_position returns the position of the node on the ring
-local function get_position(node)
-	--if no node is specified
-	if not node then
+local function get_position(node_id)
+	--if no node ID is specified
+	if not node_id then
 		--checks the ID of the node itself
-		node = {id = n.id}
+		node_id = n.id
 	end
 	--for all neighbors
 	for i = 1, #neighborhood do
 		--if ID is the same as node.id
-		if neighborhood[i].id == node.id then
+		if neighborhood[i].id == node_id then
 			--return the index
 			return i
 		end
@@ -205,7 +208,7 @@ local function calculate_id(node)
 end
 
 --function get_next_node returns the node in the ring after the specified node
-local function get_next_node(node)
+local function get_next_node(node_id)
 	--if neighborhood is a list of only 1 node
 	if #neighborhood == 1 then
 		--return nil
@@ -213,20 +216,18 @@ local function get_next_node(node)
 	end
 	--gets the position with the function get_position; if no node is specified, get_position
 	--will return the position of the node itself
-	local node_pos = get_position(node)
+	local node_pos = get_position(node_id)
 	--if the node is the last on the neighborhood list
 	if node_pos == #neighborhood then
 		--return the first node and position=1
 		return neighborhood[1], 1
-	--else
-	else
-		--return the node whose position = node_pos + 1
-		return neighborhood[node_pos + 1], (node_pos + 1)
 	end
+	--else, return the node whose position = node_pos + 1
+	return neighborhood[node_pos + 1], (node_pos + 1)
 end
 
 --function get_previous_node returns the node in the ring before the specified node
-local function get_previous_node(node)
+local function get_previous_node(node_id)
 	--if neighborhood is a list of only 1 node
 	if #neighborhood == 1 then
 		--return nil
@@ -234,16 +235,14 @@ local function get_previous_node(node)
 	end
 	--gets the position with the function get_position; if no node is specified, get_position
 	--will return the position of the node itself
-	local node_pos = get_position(node)
+	local node_pos = get_position(node_id)
 	--if the node is the first on the neighborhood list
 	if node_pos == 1 then
 		--return the last node
 		return neighborhood[#neighborhood], #neighborhood
-	--else
-	else
-		--return the node whose position = node_pos - 1
-		return neighborhood[node_pos - 1], (node_pos - 1)
 	end
+	--else, return the node whose position = node_pos - 1
+	return neighborhood[node_pos - 1], (node_pos - 1)
 end
 
 --function get_master: looks for the master of a given key
@@ -268,8 +267,8 @@ local function get_master(key)
 			break
 		end
 	end
-	--prints the master ID
-	--l_o:debug("master --> "..master.id)
+	--prints the master ID at debug level
+	--l_o:debug("get_master: master --> "..master.id)
 	--returns the master
 	return master, master_pos
 end
@@ -302,28 +301,35 @@ local function get_responsibles(key)
 	return responsibles, master_pos
 end
 
-function sanity_check()
-	local my_keys = local_db.totable("key_list")
-	local old_next_node_keys = {}
-	local key_resp_list = {}
- 
-	for i,v in pairs(my_keys) do
-		local not_responsible = true
-		key_resp_list[i] = get_responsibles(i)
-		for i2,v2 in ipairs(key_resp_list[i]) do
-			--l_o:print("key", i, "next", next_node.id, "node", v2.id)
-			if n.id == v2.id then
-				not_responsible = false
-				break
+--function is_responsible: checks if a node is responsible for a key or not
+local function is_responsible(key, node_id)
+		--for all the responsible nodes for key
+		for i,v in ipairs(get_responsibles(key)) do
+			--if v.id is equal to the given node ID
+			if node_id == v.id then
+				--returns true
+				return true
 			end
 		end
-		if not_responsible then
+		--if there were no matches, returns false
+		return false
+end
+
+--function sanity_check: checks if there are keys that don't belong to the node anymore and deletes them
+local function sanity_check()
+	--obtains the key list
+	local my_keys = local_db.totable("key_list")
+  	--for all the keys of the node
+	for i,v in pairs(my_keys) do
+		--if the node is not responsible for key i
+		if not is_responsible(i, n.id) then
+			--prints message
 			l_o:print("Node="..n.short_id..", Removing key="..key)
+			--removes the key
 			local_db.remove("db_table", key)
 			local_db.remove("key_list", key)
 		end
 	end
-
 end
 
 --function shorten_id: returns only the first 5 hexadigits of a ID string (for better printing)
@@ -344,7 +350,7 @@ end
 --function print_all: prints the node itself and its neighbors
 function print_all()
 	print_me()
-	l_o:debug()
+	l_o:info()
 	--for the conf file "ports.lua" of the client test file
 	local for_ports_lua = "for ports.lua "
 	for _,v in ipairs(neighborhood) do
@@ -355,12 +361,42 @@ function print_all()
 
 end
 
+function transfer_key(key, value)
+	l_o:print("Node="..n.short_id.." receiving key=",key,"value type=",type(value))
+	local_db.set("db_table", key, value)
+	local_db.set("key_list", key, 1)
+end
+
 --function add_node_to_neighborhood: adds a node to the neighborhood table, re-sorts and updates n.position
 function add_node_to_neighborhood(node)
 	--if node is nil don't do anything
 	if not node then
 		return nil
 	end
+
+	--retrieves the keys that are managed by itself
+	local my_keys = local_db.totable("key_list")
+	--this variable will hold the set of keys that were managed by the old next-node
+	local old_next_node_keys = {}
+	--this variable will hold the set of keys that were managed by the old previous-node
+	local old_previous_node_keys = {}
+ 
+ 	--for each key
+	for i,v in pairs(my_keys) do
+		--if the old next-node is responsible before changes
+		if is_responsible(i, next_node.id) then
+			--adds to the list of "old next-node keys"
+			table.insert(old_next_node_keys, i)
+		end
+		--if the old previous-node is responsible before changes
+		if is_responsible(i, previous_node.id) then
+			--adds to the list of "old next-node keys"
+			table.insert(old_previous_node_keys, i)
+		end
+		--NOTE: this code is cleaner, but if there are millions of keys being administered, it would be better to save the list of responsible
+		-- nodes for the second for loop, done after rearranging the network
+	end
+
 	--insert the node
 	table.insert(neighborhood, node)
 	--sort the neighborhood table
@@ -374,37 +410,104 @@ function add_node_to_neighborhood(node)
 	--logs
 	--l_o:debug(n.short_id..":add_node_to_neighborhood: adding node="..node.short_id.." to my list")
 
-end
+	--holds the set of keys that are managed by the new next-node
+	local new_next_node_keys = {}
+	--holds the set of keys that are managed by the new previous-node
+	local new_previous_node_keys = {}
+	--for each key
+	for i,v in pairs(my_keys) do
+		--if the new next-node is responsible
+		if is_responsible(i, next_node.id) then
+			--adds to the list of "new next-node keys"
+			table.insert(new_next_node_keys, i)
+		end
+		--if the new previous-node is responsible
+		if is_responsible(i, previous_node.id) then
+			--adds to the list of "new next-node keys"
+			table.insert(new_previous_node_keys, i)
+		end
+	end
+	
+	--declares in_new
+	local in_new = nil
 
-function transfer_key(key, value)
-	l_o:print("Node="..n.short_id.." receiving key=",key,"value=",type(value))
-	local_db.set("db_table", key, value)
-	local_db.set("key_list", key, 1)
+	--for all the keys that the old next-node had
+	for i,v in ipairs(old_next_node_keys) do
+		--in_new starts as false
+		in_new = false
+		--if it finds the key v in the new next-node keys
+		for i2,v2 in ipairs(new_next_node_keys) do
+			if v == v2 then
+				--in_new is true
+				in_new = true
+				--removes the matching key from the new list to improve efficiency in the next searchs
+				table.remove(new_next_node_keys, i2)
+				--no need to look further; the key is in the new list
+				break
+			end
+		end
+		--if the key is not in the new list
+		if not in_new then
+			--it transfers it to the new next-node AQUI ME QUEDE
+			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+		end
+	end
+
+	--for all the keys that the old next-node had
+	for i,v in ipairs(old_previous_node_keys) do
+		--in_new starts as false
+		in_new = false
+		--if it finds the key v in the new next-node keys
+		for i2,v2 in ipairs(new_previous_node_keys) do
+			if v == v2 then
+				--in_new is true
+				in_new = true
+				--removes the matching key from the new list to improve efficiency in the next searchs
+				table.remove(new_previous_node_keys, i2)
+				--no need to look further; the key is in the new list
+				break
+			end
+		end
+		--if the key is not in the new list
+		if not in_new then
+			--it transfers it to the new next-node AQUI ME QUEDE
+			rpc.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+		end
+	end
+
+	--does a self sanity check
+	sanity_check()
+
+
 end
 
 --function remove_node_from_neighborhood: removes a node from the neighborhood table, re-sorts and updates n.position
 function remove_node_from_neighborhood(node_pos)
 	--TODO take care of n_nodes < n_replicas
-	--gets the node from the table before removal
-
 	
+	--retrieves the keys that are managed by itself
 	local my_keys = local_db.totable("key_list")
+	--this variable will hold the set of keys that were managed by the old next-node
 	local old_next_node_keys = {}
-	local key_resp_list = {}
  
+ 	--for each key
 	for i,v in pairs(my_keys) do
-		key_resp_list[i] = get_responsibles(i)
-		for i2,v2 in ipairs(key_resp_list[i]) do
-			--l_o:print("key", i, "next", next_node.id, "node", v2.id)
-			if next_node.id == v2.id then
+		--if the old next-node is responsible before changes
+		if is_responsible(i, next_node.id) then
+				--adds to the list of "old next-node keys"
 				table.insert(old_next_node_keys, i)
 			end
 		end
+		--NOTE: this code is cleaner, but if there are millions of keys being administered, it would be better to save the list of responsible
+		-- nodes for the second for loop, done after rearranging the network
 	end
 
+	--retrieves the node for logging purposes
+	--local node = neighborhood[node_pos]
+	--logs
+	--l_o:debug(n.short_id..":remove_node_from_neighborhood: removing node="..node.short_id.." of my list")
 	
-	local node = neighborhood[node_pos]
-	--removes it from it
+	--removes the node from the neighborhood
 	table.remove(neighborhood, node_pos)
 	--recalculates n.position
 	n.position = get_position()
@@ -414,33 +517,44 @@ function remove_node_from_neighborhood(node_pos)
 	previous_node = get_previous_node()
 
 
+	--holds the set of keys that are managed by the new next-node
 	local new_next_node_keys = {}
+	--for each key
 	for i,v in pairs(my_keys) do
-		for i2,v2 in ipairs(key_resp_list[i]) do
-			--l_o:print("key", i, "next", next_node.id, "node", v2.id)
-			if next_node.id == v2.id then
-				table.insert(new_next_node_keys, i)
-			end
+		--if the new next-node is responsible
+		if is_responsible(i, next_node.id) then
+			--adds to the list of "new next-node keys"
+			table.insert(new_next_node_keys, i)
 		end
 	end
-	--print_node(next_node)
+	
+	--declares in_new
+	local in_new = nil
+
+	--for all the keys that the old next-node had
 	for i,v in ipairs(old_next_node_keys) do
-		local in_new = false
+		--in_new starts as false
+		in_new = false
+		--if it finds the key v in the new next-node keys
 		for i2,v2 in ipairs(new_next_node_keys) do
 			if v == v2 then
+				--in_new is true
 				in_new = true
-				break --TODO remove from new table for better efficiency
+				--removes the matching key from the new list to improve efficiency in the next searchs
+				table.remove(new_next_node_keys, i2)
+				--no need to look further; the key is in the new list
+				break
 			end
 		end
+		--if the key is not in the new list
 		if not in_new then
+			--it transfers it to the new next-node AQUI ME QUEDE
 			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
+	--does a self sanity check
 	sanity_check()
-
-	--logs
-	--l_o:debug(n.short_id..":remove_node_from_neighborhood: removing node="..node.short_id.." of my list")
 end
 
 --function receive_gossip: updates the table if necessary and forwards the gossip
@@ -495,7 +609,8 @@ end
 --function ping_others: periodic function that pings the next node on the ring
 local function ping_others()
 	--if there is a next_node (it could be the case of a 1-node ring, where the node will not ping anyone)
-	if next_node then
+	if next_node and (times_waiting_before_ping > 6) then
+		--l_o:print("pinging")
 		--logs
 		----l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
 		--pings, and if the response is not ok
@@ -513,6 +628,10 @@ local function ping_others()
 			--gossips the removal
 			gossip_changes("remove", node_about)
 		end
+	else
+		--l_o:print("not pinging "..times_waiting_before_ping)
+		times_waiting_before_ping = times_waiting_before_ping + 1 --this variable reaches to 6; alternative way to make a events.sleep of 30s which
+		-- is not permitted within the init function
 	end
 end
 
@@ -526,7 +645,6 @@ function add_me(node_to_add)
 	if get_position(node_to_add) then
 		return nil
 	end
-	elapsed_time = misc.time()
 	im_gossiping = true
 	--add the node to its own table
 	add_node_to_neighborhood(node_to_add)
@@ -778,6 +896,12 @@ function init(job)
 	if not init_done then
 		--make the init_done flag true
 		init_done = true
+
+		if not job then
+			l_o:error("no job!")
+			return --TODO for splay. there should be a better way to return on failure
+		end
+
 		--takes IP address and port from job.me
 		n = {ip=job.me.ip, port=job.me.port}
 		--initializes the randomseed with the port
@@ -787,12 +911,16 @@ function init(job)
 		--stores also the first 5 hexadigits of the ID for better printing
 		n.short_id = string.sub(n.id, 1, 5)..".."
 
-		--server listens through the rpc port + 1
-		local http_server_port = n.port+1
-		--puts the server on listen
-		net.server(http_server_port, handle_http_message)
+		--starts the RPC server for internal communication
+		rpc.server(n.port)
+		--HTTP server listens through the RPC port+1
+		net.server(n.port+1, handle_http_message)
+		--starts the URPC server for light internal communication
+		urpc.server(n.port+2)
 
-		--initializes db_table
+		--puts the server on listen
+		
+		--initializes DB tables
 		local_db.open("db_table", "hash")
 		local_db.open("key_list", "hash")
 
@@ -808,75 +936,73 @@ function init(job)
 		--receive_paxos_accept = paxos.receive_accept
 		paxos.send_proposal = send_paxos_proposal
 
-
-		--starts the RPC server for internal communication
-		rpc.server(n.port)
-		
-		urpc.server(n.port+2)
-
-		--if it is the RDV node
-		if job.position == 1 then
-			l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
-		--else
-		end
-		
-		local job_nodes = job.nodes()
-		for i,v in ipairs(job_nodes) do
-			table.insert(neighborhood, create_distdb_node(v))
-		end
-		
-		table.sort(neighborhood, function(a,b) return a.id<b.id end)
-
-		--gets the position from the neighborhood table
-		n.position = get_position()
-		--calculates the next node
-		next_node = get_next_node()
-		--calculates the previous node
-		previous_node = get_previous_node()
-
---[[ BOOTSTRAPPING
-		--if it is the RDV node
-		if job.position == 1 then
-			l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
-			--neighborhood is only itself
-			neighborhood = {n}
-		--else
-		else
-			--ask the RDV node for the neighborhood table
-			local job_nodes = job.nodes()
-			local rdv_busy = true
-			local ok1, answer1
-			while rdv_busy do
-				events.sleep(0.2 + (math.random(20)/100))
-				ok1, answer1 = urpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
-				if not ok1 then
-					rdv_busy = true
-				else
-					rdv_busy = answer1[1]
+		if _BOOTSTRAPPING then
+			--if it is the RDV node
+			if job.position == 1 then
+				l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
+				--neighborhood is only itself
+				neighborhood = {n}
+			--else
+			else
+				--ask the RDV node for the neighborhood table
+				local job_nodes = job.nodes()
+				local rdv_busy = true
+				local ok1, answer1
+				while rdv_busy do
+					events.sleep(0.2 + (math.random(20)/100))
+					ok1, answer1 = urpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
+					if not ok1 then
+						rdv_busy = true
+					else
+						rdv_busy = answer1[1]
+					end
 				end
+				neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
 			end
-			neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
+
+			--gets the position from the neighborhood table
+			n.position = get_position()
+			--calculates the next node
+			next_node = get_next_node()
+			--calculates the previous node
+			previous_node = get_previous_node()
+
+			--create a gossip to announce the adding
+			gossip_changes("add", n)
+
+			--PRINTING STUFF
+			--prints a initialization message
+			--l_o:debug(n.short_id..":init: HTTP server started on port="..http_server_port)
+
+			--this method of printing all nodes is not suitable for hundreds of nodes; replaced by an API
+			--print_all()
+
+		else
+
+			--if it is the RDV node
+			if job.position == 1 then
+				l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
+			end
+			
+			local job_nodes = job.nodes()
+			for i,v in ipairs(job_nodes) do
+				table.insert(neighborhood, create_distdb_node(v))
+			end
+			
+			table.sort(neighborhood, function(a,b) return a.id<b.id end)
+
+			--gets the position from the neighborhood table
+			n.position = get_position()
+			--calculates the next node
+			next_node = get_next_node()
+			--calculates the previous node
+			previous_node = get_previous_node()
+
 		end
 
-		--gets the position from the neighborhood table
-		n.position = get_position()
-		--calculates the next node
-		next_node = get_next_node()
-		--calculates the previous node
-		previous_node = get_previous_node()
-
-		--create a gossip to announce the adding
-		gossip_changes("add", n)
-
-		--PRINTING STUFF
-		--prints a initialization message
-		--l_o:debug(n.short_id..":init: HTTP server started on port="..http_server_port)
-
-		--this method of printing all nodes is not suitable for hundreds of nodes; replaced by an API
-		--print_all()
---]]
+		--sleeps for 30 seconds
+		--events.sleep(30)
 		--starts a 5 second periodic pinging to the next node of the ring
-		events.sleep(30)
 		events.periodic(5, ping_others)
 	end
 end
