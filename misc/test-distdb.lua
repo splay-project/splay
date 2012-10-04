@@ -12,7 +12,7 @@ events.loop(function()
 
 	--events.sleep(1*job.position + math.random(100)/100)
 
-	distdb.init(job)
+	--distdb.init(job)
 
 
 	--if job.position == 5 then
