@@ -86,8 +86,33 @@ else
 	last_logprint = function(message) end
 end
 
+function send_command(command_name, url)
+
+	logprint("send_"..command_name..": START")
+
+	local response_body = {}
+	
+	local response_to_discard, response_status, response_headers, response_status_line = http.request({
+		url = "http://"..url.."/",
+		method = command_name,
+		headers = {},
+		source = ltn12.source.empty(),
+		sink = ltn12.sink.table(response_body)
+	})
+
+	if response_status ~= 200 then
+		logprint("send_"..command_name..": Error "..response_status)
+		last_logprint("send_"..command_name..": END")
+		return false, response_status
+	end
+
+	logprint("send_"..command_name..": 200 OK received")
+	last_logprint("send_"..command_name..": END")
+	return true, serializer.decode(response_body[1])
+end
+
 --function send_put
-function send_put(url, type_of_transaction, key, value)
+function send_put_command(url, type_of_transaction, key, value)
 
 	logprint("send_put: START")
 	
@@ -239,7 +264,7 @@ function send_get_node_list(url)
 	})
 
 	if response_status ~= 200 then
-		logprint("send_delete: Error "..response_status)
+		logprint("send_get_node_list: Error "..response_status)
 		last_logprint("send_get_node_list: END")
 		return false
 	end
@@ -264,46 +289,31 @@ function send_get_master(url, key)
 		url = "http://"..url.."/"..key,
 		method = "GET_MASTER",
 		headers = {
-			["Type"] = "consistent"
 		},
 		source = ltn12.source.empty(),
 		sink = ltn12.sink.table(response_body)
 	})
 
---AQUI ME QUEDÉ
-
-	if response_status == 200 then
-		print("GET_MASTER command sent.")
-		logprint("send_delete: DELETE done.\n")
-		()
-		local response_tbl1 = serializer.decode(response_body[1])
-		if type(response_tbl1) == "table" then
-			--print("neighborhood size=", #response_tbl1)
-			print(table2str("master", 0, response_tbl1))
-		end
-		return true, response_tbl1
-	else
-		--print("Error "..response_status)
-		logprint("send_delete: Error "..response_status.."\n")
-		()
+	if response_status ~= 200 then
+		logprint("send_get_master: Error "..response_status)
+		last_logprint("send_get_master: END")
 		return false
 	end
 
+	logprint("send_get_master: 200 OK received")
+	local response_tbl1 = serializer.decode(response_body[1])
+	logprint(table2str("master", 0, response_tbl1))
+	last_logprint("send_get_master: END")
+	return true, response_tbl1
 end
 
 function send_get_all_records(url)
 
-	--local logfile1 = io.open(_LOGFILE,"a")
-
-	logprint("send_delete: started\n")
+	logprint("send_get_all_records: START")
 
 	local response_body = {}
-	local response_to_discard = nil
-	local response_status = nil
-	local response_headers = nil
-	local response_status_line = nil
-
-	response_to_discard, response_status, response_headers, response_status_line = http.request({
+	
+	local response_to_discard, response_status, response_headers, response_status_line = http.request({
 		url = "http://"..url.."/",
 		method = "GET_ALL_RECORDS",
 		headers = {},
@@ -311,99 +321,15 @@ function send_get_all_records(url)
 		sink = ltn12.sink.table(response_body)
 	})
 
-	--print(url, response_status)
-
-	if response_status == 200 then
-		--print("GET_ALL_RECORDS command sent.")
-		logprint("send_delete: DELETE done.\n")
-		()
-		local response_tbl1 = serializer.decode(response_body[1])
-		if type(response_tbl1) == "table" then
-			--print("records size=", #response_tbl1)
-			--print(table2str("DB", 0, response_tbl1))
-		end
-		return true, response_tbl1
-	else
-		--print("Error "..response_status)
-		logprint("send_delete: Error "..response_status.."\n")
-		()
+	if response_status ~= 200 then
+		logprint("send_get_all_records: Error "..response_status)
+		last_logprint("send_get_all_records: END")
 		return false
 	end
 
-end
-
-if not AS_LIB then
-
-	events.run(function()
-		dofile("ports.lua")
-		math.randomseed(os.time())
-		local key = crypto.evp.digest("sha1",math.random(100000))
-
-		local ip_addr = arg[1]
-		local port = tonumber(arg[2])
-
-		local get_node_list_ok = nil
-
-		get_node_list_ok, neighborhood = send_get_node_list(url)
-		print(table2str("node", 0, neighborhood))
-		--if not get_node_list_ok then os.error("ERROR IN GET NODE LIST") end
-		print("Key="..key)
-		send_get_master(url, key)
-
-
-		if #neighborhood < 200 then
-			print("So far only "..#neighborhood.." nodes")
-		end
-
-		local consistency_model = "consistent"
---[[
-TODOS EN ESPAÑOL:
-
-IMPRIMIR LA ID
-SOLO EL I DE LA TABLA
-HACER UN CHECKER AUTOMATICO
-PROBAR CON MAS NODOS
-HACER EL JOIN
-
---]]
-	for j=1,3 do
-		key = crypto.evp.digest("sha1",math.random(100000))
-		for i=1, 3 do
-			local node = misc.random_pick(neighborhood)
-			print("Key is "..key)
-	--		send_put(port, "evtl_consistent", key, i*10)
-	--		send_put(port, "consistent", key, i*10)
-			send_put(node.ip, node.port+1, consistency_model, key, i*10)
-			events.sleep(0.5)
-		end
-
-		for i=1, 1 do
-			local node = misc.random_pick(neighborhood)
-	--		send_get(port, "evtl_consistent", key)
-	--		send_get(port, "consistent", key)
-			send_get(node.ip, node.port+1, consistency_model, key)
-			events.sleep(0.5)
-		end
-	end
-	--]]
-		local success1 = 0
-		for i,v in pairs(neighborhood) do
-			local ok, node_db = send_get_all_records(v.ip, v.port+1)
-			if ok then
-				if type(node_db) == "table" then
-					local node_db_empty = true
-					for i2,v2 in pairs(node_db) do
-						node_db_empty = false
-						node_db[i2] = serializer.decode(v2)
-					end
-					if not node_db_empty then
-						print(table2str(v.ip..":"..v.port..".DB", 0, node_db))
-					end
-				end
-			success1 = success1 + 1
-			end
-			events.sleep(0.3)
-		end
-		print("total successful = "..success1)
-	end)
+	logprint("send_get_all_records: 200 OK received")
+	local response_tbl1 = serializer.decode(response_body[1])
+	logprint(table2str("records", 0, response_tbl1))
+	last_logprint("send_get_all_records: END")
+	return true, response_tbl1
 end

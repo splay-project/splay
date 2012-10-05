@@ -29,23 +29,21 @@ Provides a sandboxed version of the Kyoto Cabinet DB v2.24
 
 permitted APIs:
 
-db.open(table_name, mode) --mode: hash, tree
+db.open(table_name, mode)
+db.tables()
+db.totable(table_name)
 db.exists(table_name)
 db.check(table_name, key)
 db.size(table_name)
-db.remove(table_name)
+db.count(table_name)
+db.clear(table_name)
+db.replace(table_name, key, value)
+db.pairs(table_name)
+db.remove(table_name, key)
+db.synchronize(table_name)
 db.get(table_name, key)
 db.set(table_name, key, value)
 db.close(table_name)
-db.count(table_name)
-db.clear(table_name)
-replace(table_name, key, value)
-pairs(table_name)
-remove(table_name, key)
-synchronize(table_name)
-get(table_name, key)
-set(table_name, key, value)
-close(table_name)
 
 ]]
 

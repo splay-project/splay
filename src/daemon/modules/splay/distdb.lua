@@ -725,6 +725,10 @@ function handle_get_all_records()
 	return true, local_db.totable("db_table") 
 end
 
+function handle_get_key_list()
+	return true, local_db.totable("key_list") 
+end
+
 function handle_get_master(type_of_transaction, key)
 	local master_node = get_master(key)
 	return true, master_node
@@ -786,7 +790,8 @@ local forward_request = {
 	["DELETE"] = handle_delete,
 	["GET_MASTER"] = handle_get_master,
 	["GET_NODE_LIST"] = handle_get_node_list,
-	["GET_ALL_RECORDS"] = handle_get_all_records
+	["GET_ALL_RECORDS"] = handle_get_all_records,
+	["GET_KEY_LIST"] = handle_get_key_list
 	}
 
 
