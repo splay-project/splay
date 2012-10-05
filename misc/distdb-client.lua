@@ -86,16 +86,22 @@ else
 	last_logprint = function(message) end
 end
 
-function send_command(command_name, url)
+function send_command(command_name, url, key, type_of_transaction, value)
 
 	logprint("send_"..command_name..": START")
 
 	local response_body = {}
+
+	local request_source = ltn12.source.string(tostring(value))
+
+	--AQUI ME QUEDE
 	
 	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/",
+		url = "http://"..url.."/"..(key or ""),
 		method = command_name,
-		headers = {},
+		headers = {
+
+		},
 		source = ltn12.source.empty(),
 		sink = ltn12.sink.table(response_body)
 	})
@@ -118,7 +124,7 @@ function send_put_command(url, type_of_transaction, key, value)
 	
 	local response_body = nil
 	
-	local value_str = tostring(value)
+	local request_source = ltn12.source.string(tostring(value))
 
 	local response_to_discard, response_status, response_headers, response_status_line = http.request({
 		url = "http://"..url.."/"..key,
@@ -128,7 +134,7 @@ function send_put_command(url, type_of_transaction, key, value)
 			["Content-Length"] = string.len(value_str),
 			["Content-Type"] =  "plain/text"
 			},
-		source = ltn12.source.string(value_str),
+		source = 
 		sink = ltn12.sink.table(response_body)
 	})
 
