@@ -11,7 +11,7 @@ local ltn12  = require"ltn12"
 local serializer = require"splay.lbinenc"
 -- END LIBRARIES
 
-_LOGMODE = "print"
+_LOGMODE = "none"
 _LOGFILE = "/home/unine/Desktop/logfusesplay/log.txt"
 local log_tbl = {}
 
@@ -19,7 +19,7 @@ socket.BLOCKSIZE = 10000000
 
 -- FUNCTIONS
 
-local function table2str(name, order, input_table)
+function table2str(name, order, input_table)
 	--creates a table to store all strings; more efficient to do a final table.concat than to concatenate all the way
 	local output_tbl = {"table: "..name.."\n"}
 	--indentation is a series of n x "\t" (tab characters), where n = order
@@ -67,7 +67,7 @@ elseif _LOGMODE == "file" then
 	end
 	last_logprint = logprint
 --if we want to print to a file efficiently
-elseif _LOGMODE == "file" then
+elseif _LOGMODE == "file_efficient" then
 	--logprint adds an entry to the logging table
 	logprint = function(message)
 		table.insert(log_tbl, message.."\n")
@@ -89,6 +89,7 @@ end
 function send_command(command_name, url, key, type_of_transaction, value)
 	--logs entrance in the function
 	logprint("send_"..command_name..": START")
+	logprint("send_"..command_name..": url=",url,"key=",key,"type_of_transaction=",type_of_transaction,"value=",value)
 	--response_body will contain the returning data from the web-service call
 	local response_body = {}
 	--request_source contains the input data
@@ -119,14 +120,14 @@ function send_command(command_name, url, key, type_of_transaction, value)
 		url = "http://"..url.."/"..(key or ""),
 		method = command_name,
 		headers = request_headers,
-		source = ltn12.source.empty(),
+		source = request_source,
 		sink = ltn12.sink.table(response_body)
 	})
 
 	--if the response is not a 200 OK
 	if response_status ~= 200 then
 		--logs the error
-		logprint("send_"..command_name..": Error "..response_status)
+		logprint("send_"..command_name..": Error! \""..response_status.."\"")
 		last_logprint("send_"..command_name..": END")
 		--returns false and the error
 		return false, response_status
@@ -147,84 +148,20 @@ end
 
 --function send_get
 function send_get(url, key, type_of_transaction)
-	return send_command("GET", url, key, type_of_transaction)
-end
-
---function send_get
-function send_put(url, key, type_of_transaction, value)
-	return send_command("PUT", url, key, type_of_transaction, value)
-end
-
-
---AQUI ME QUEDE
-
-
-	logprint("send_put: START")
-	
-	local response_body = nil
-	
-	local request_source = ltn12.source.string(tostring(value))
-
-	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/"..key,
-		method = "PUT",
-		headers = {
-			["Type"] = type_of_transaction,
-			["Content-Length"] = string.len(value_str),
-			["Content-Type"] =  "plain/text"
-			},
-		source = 
-		sink = ltn12.sink.table(response_body)
-	})
-
-	if response_status ~= 200 then
-		logprint("send_put: Error "..response_status)
-		last_logprint("send_put: END")
-		return false
-	end
-
-	logprint("send_put: PUT done.")
-	last_logprint("send_put: END")
-	return true
-end
-
-function send_get(url, type_of_transaction, key)
 
 	logprint("send_get: START")
 
-	local response_body = {}
+	local get_ok, answer = send_command("GET", url, key, type_of_transaction)
 	
-	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/"..key,
-		method = "GET",
-		headers = {
-			["Type"] = type_of_transaction
-			},
-		source = ltn12.source.empty(),
-		sink = ltn12.sink.table(response_body)
-	})
+	local chosen_value = nil
 
-	if response_status ~= 200 then
-		logprint("send_get: Error "..response_status)
-		last_logprint("send_get: END")
+	if not get_ok then
 		return false
 	end
 
-	logprint("send_get: 200 OK received")
-	logprint("send_get: Content of kv-store: "..key.." is:\n"..response_body[1].."\n")
-
-	local answer = serializer.decode(response_body[1])
-
-	logprint("send_get: answer decoded:")
-	logprint(table2str("answer", 0, answer))
-
-	if not answer[1] then
-		logprint("send_get: No answer")
-		last_logprint("send_get: END")
+	if (not answer) or (not answer[1]) then
 		return true, nil
 	end
-
-	local chosen_value = nil
 
 	if type(answer[1].value) == "string" then
 		chosen_value = ""
@@ -267,114 +204,46 @@ function send_get(url, type_of_transaction, key)
 	return true, chosen_value, max_vc
 end
 
-function send_delete(url, type_of_transaction, key)
+--function send_put
+function send_put(url, key, type_of_transaction, value)
+	logprint("send_put: START")
+	return send_command("PUT", url, key, type_of_transaction, value)
+end
 
-	logprint("send_delete: START\n")
-
-	local response_body = {}
-	
-	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/"..key,
-		method = "DELETE",
-		headers = {
-			["Type"] = type_of_transaction
-			},
-		source = ltn12.source.empty(),
-		sink = ltn12.sink.table(response_body)
-	})
-
-	if response_status ~= 200 then
-		logprint("send_delete: Error "..response_status)
-		last_logprint("send_delete: END")
-		return false
-	end
-
-	logprint("send_delete: DELETE done.")
-	last_logprint("send_delete: END")
-	return true
+function send_delete(url, key, type_of_transaction)
+	logprint("send_delete: START")
+	return send_command("DELETE", url, key, type_of_transaction)
 end
 
 function send_get_node_list(url)
-
-	logprint("send_get_node_list: START\n")
-
-	local response_body = {}
-	
-	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/",
-		method = "GET_NODE_LIST",
-		headers = {},
-		source = ltn12.source.empty(),
-		sink = ltn12.sink.table(response_body)
-	})
-
-	if response_status ~= 200 then
-		logprint("send_get_node_list: Error "..response_status)
-		last_logprint("send_get_node_list: END")
-		return false
-	end
-
-	logprint("send_get_node_list: 200 OK received")
-	local response_tbl1 = serializer.decode(response_body[1])
-	logprint("send_get_node_list: node list:")
-	logprint(table2str("node_list", 0, response_tbl1))
+	logprint("send_get_node_list: START")
+	local send_ok, node_list = send_command("GET_NODE_LIST", url)
+	logprint("send_get_node_list:")
+	logprint(table2str("node_list", 0, node_list))
 	last_logprint("send_get_node_list: END")
-	return true, response_tbl1
-	end
+	return send_ok, node_list
+end
 
+function send_get_key_list(url)
+	logprint("send_get_key_list: START")
+	local send_ok, key_list = send_command("GET_KEY_LIST", url)
+	logprint("send_get_key_list:")
+	logprint(table2str("key_list", 0, key_list))
+	last_logprint("send_get_key_list: END")
+	return send_ok, key_list
 end
 
 function send_get_master(url, key)
-
 	logprint("send_get_master: START")
-
-	local response_body = {}
-	
-	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/"..key,
-		method = "GET_MASTER",
-		headers = {
-		},
-		source = ltn12.source.empty(),
-		sink = ltn12.sink.table(response_body)
-	})
-
-	if response_status ~= 200 then
-		logprint("send_get_master: Error "..response_status)
-		last_logprint("send_get_master: END")
-		return false
-	end
-
-	logprint("send_get_master: 200 OK received")
-	local response_tbl1 = serializer.decode(response_body[1])
-	logprint(table2str("master", 0, response_tbl1))
-	last_logprint("send_get_master: END")
-	return true, response_tbl1
+	return send_command("GET_MASTER", url, key)
 end
 
 function send_get_all_records(url)
-
 	logprint("send_get_all_records: START")
+	return send_command("GET_ALL_RECORDS", url)
+end
 
-	local response_body = {}
-	
-	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/",
-		method = "GET_ALL_RECORDS",
-		headers = {},
-		source = ltn12.source.empty(),
-		sink = ltn12.sink.table(response_body)
-	})
-
-	if response_status ~= 200 then
-		logprint("send_get_all_records: Error "..response_status)
-		last_logprint("send_get_all_records: END")
-		return false
-	end
-
-	logprint("send_get_all_records: 200 OK received")
-	local response_tbl1 = serializer.decode(response_body[1])
-	logprint(table2str("records", 0, response_tbl1))
-	last_logprint("send_get_all_records: END")
-	return true, response_tbl1
+function send_change_log_lvl(url, log_level)
+	logprint("send_change_log_lvl: START")
+	return send_command("CHANGE_LOG_LVL", url, log_level)
 end

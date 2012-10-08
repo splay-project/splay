@@ -65,7 +65,7 @@ _DESCRIPTION = "Restricted DB"
 _VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(1, "[".._NAME.."]")
+l_o = log.new(3, "[".._NAME.."]")
 
 --TODO
 
@@ -80,52 +80,49 @@ local prefix = "pdb_"
 
 local init_done = false
 function init(directory)
-	if not init_done then
-		init_done = true
-		if not directory then l_o:debug("no directory") end
-
-		l_o:debug("directory="..directory)
-
-		local l_dir = directory
-
-		l_o:debug("l_dir="..l_dir)
-
-		if not l_dir then
-			l_o:debug("l_dir=nil, no dir")
-			return false, "no dir"
-		end
-
-		if l_dir == "/" then
-			l_dir = dir
-		end
-
-		if string.sub(l_dir, #l_dir, #l_dir) == "/" then
-			return false, "dir must not end with a /"
-		end
-
-		--[[ TODO: HOW TO CHECK L_DIR
-		local f, error_msg1 = io.open(l_dir, "r")
-		
-		if f then -- Dir is OK
-			l_o:debug("dir is OK")
-			dir = l_dir
-		else
-			l_o:debug("dir is not OK:"..error_msg1)
-		end
-		--]]
-		dir = l_dir
-		--TODO possible initialization of variables
-	else
-		l_o:debug("init() already called")
+	if init_done then
+		l_o:debug("init: already called")
+		return true
 	end
+
+	init_done = true
+	if not directory then l_o:debug("init: no directory") end
+
+	l_o:debug("init: directory="..directory)
+
+	local l_dir = directory
+
+	l_o:debug("init: l_dir="..l_dir)
+
+	if not l_dir then
+		l_o:debug("init: l_dir=nil, no dir")
+		return false, "no dir"
+	end
+
+	if l_dir == "/" then
+		l_dir = dir
+	end
+
+	if string.sub(l_dir, #l_dir, #l_dir) == "/" then
+		return false, "dir must not end with a /"
+	end
+
+	--[[ TODO: HOW TO CHECK L_DIR
+	local f, error_msg1 = io.open(l_dir, "r")
+	
+	if f then -- Dir is OK
+		l_o:debug("dir is OK")
+		dir = l_dir
+	else
+		l_o:debug("dir is not OK:"..error_msg1)
+	end
+	--]]
+	dir = l_dir
+	--TODO possible initialization of variables
+	return true
 end
 
 local dbs = {}
-
---[[ Stats ]]--
-
-----------------------------------------------------------------
-----------------------------------------------------------------
 
 --function open(table_name, mode, flags) --mode: hash, tree JV: version with flags
 function open(table_name, mode) --mode: hash, tree
