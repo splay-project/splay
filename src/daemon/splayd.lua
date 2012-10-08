@@ -239,7 +239,7 @@ function free(ref, instance_nb)
 	-- we release the ports we have locked for this job
 	-- it's a security, if the job has never run
 	if splayd.jobs[ref].network.nb_ports > 0 then
-		print("Instance number free ", instance_nb])
+		print("Instance number free ", instance_nb)
 		--print("releasing ports starting from ", job.instances[instance_nb].me.port)
 		splay.release_ports(splayd.jobs[ref].instances[instance_nb].me.port,
 				splayd.jobs[ref].instances[instance_nb].me.port + splayd.jobs[ref].network.nb_ports - 1)
