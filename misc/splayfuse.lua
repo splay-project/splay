@@ -38,7 +38,7 @@ local blank_block=string.rep("0", block_size)
 local open_mode={'rb','wb','rb+'}
 
 local consistency_type = "consistent"
-local db_url = "127.0.0.1:22135"
+local db_url = "127.0.0.1:22070"
 
 --LOGGING
 local log_domains = {
@@ -51,7 +51,7 @@ local log_domains = {
 	FILE_MISC_OP=true,
 	MV_CP_OP=true
 }
-local _LOGMODE = "print"
+local _LOGMODE = "none"
 local _LOGFILE = "/home/unine/Desktop/logfusesplay/log.txt"
 local log_tbl = {}
 local to_report_t = {}
@@ -172,8 +172,8 @@ local function write_in_db(unhashed_key, value)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	logprint("DB_OP", "write_in_db: about to write in distdb, unhashed_key=", unhashed_key, ", db_key=", db_key)
-	last_logprint("DB_OP", table2str("value", 0 ,value))
+	last_logprint("DB_OP", "write_in_db: about to write in distdb, unhashed_key=", unhashed_key, ", db_key = ", db_key)
+	--last_logprint("DB_OP", "write_in_db: value = ", value)
 	--sends the value
 	return send_put(db_url, db_key, consistency_type, value)
 end
@@ -183,7 +183,7 @@ local function read_from_db(unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	last_logprint("DB_OP", "read_from_db: about to read from distdb, unhashed_key=", unhashed_key, ", db_key=", db_key)
+	last_logprint("DB_OP", "read_from_db: about to read from distdb, unhashed_key=", unhashed_key, ", db_key = ", db_key)
 	--sends a GET command to the DB
 	return send_get(db_url, db_key, consistency_type)
 end
@@ -193,7 +193,7 @@ local function delete_from_db(unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	last_logprint("DB_OP", "delete_from_db: about to delete from distdb, unhashed_key=", unhashed_key, ", db_key=", db_key)
+	last_logprint("DB_OP", "delete_from_db: about to delete from distdb, unhashed_key=", unhashed_key, ", db_key = ", db_key)
 	--sends a GET command to the DB
 	return send_delete(db_url, db_key, consistency_type)
 end
@@ -354,10 +354,10 @@ function get_inode(inode_n)
 	local inode = serializer.decode(inode_serialized)
 
 	--if the de-serialized inode is not a table, report the error and return nil
-	if not type(inode) ~= "table" then
-		last_logprint(log_domain, function_name..": inode is not a table, returning nil")
-		return nil
-	end
+	--if not type(inode) ~= "table" then
+	--	last_logprint(log_domain, function_name..": inode is not a table, returning nil")
+	--	return nil
+	--end
 
 	logprint(log_domain, function_name..": read_from_db returned")
 	last_logprint(log_domain, table2str("inode", 0, inode))
@@ -428,7 +428,7 @@ function put_block(block_n, data)
 	end
 	
 	--logs entrance
-	logprint(log_domain, function_name..": START, block_n=", block_n..", data size=", string.len(data))
+	logprint(log_domain, function_name..": START, block_n=", block_n, "data size=", string.len(data))
 	--writes the block in the DB
 	local ok_write_in_db_block = write_in_db("block:"..block_n, data)
 	--if the writing was not successful, report the error and return nil
@@ -670,86 +670,40 @@ pulse=function()
 end,
 
 getattr=function(self, filename)
-	local sleep_count = 1
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--for all the logprint functions
 	local log_domain, function_name = "FILE_MISC_OP", "getattr"
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename=", filename)
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--gets the inode from the DB
 	local inode = get_inode_from_filename(filename)
 	--if there is no inode returns the error code ENOENT (No such file or directory)
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	if not inode then
 		last_logprint(log_domain, function_name..": no inode found, returns ENOENT")
-		os.execute("sleep 5")
-		print("sleep 5 - b - "..sleep_count)
-		sleep_count = sleep_count + 1
 		return ENOENT
 	end
 	--logs
-	logprint(log_domain, function_name..": for filename=", filename.." get_inode_from_filename returned =")
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
+	logprint(log_domain, function_name..": for filename =", filename, " get_inode_from_filename returned =")
 	last_logprint(log_domain, table2str("inode", 0, inode))
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	local x = inode.meta
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
 end,
 
 opendir=function(self, filename)
 	local sleep_count = 1
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--for all the logprint functions
 	local log_domain, function_name = "DIR_OP", "opendir"
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--logs entrance
-	logprint(log_domain, function_name..": START, filename=", filename)
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
+	logprint(log_domain, function_name..": START, filename =", filename)
 	--gets the inode from the DB
 	local inode = get_inode_from_filename(filename)
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--if there is no inode returns the error code ENOENT (No such file or directory)
 	if not inode then
 		last_logprint(log_domain, function_name..": no inode found, returns ENOENT")
-		os.execute("sleep 5")
-		print("sleep 5 - b - "..sleep_count)
-		sleep_count = sleep_count + 1
 		return ENOENT
 	end
 	--logs
-	logprint(log_domain, function_name..": for filename=", filename, "get_inode_from_filename returned =")
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
+	logprint(log_domain, function_name..": for filename =", filename, "get_inode_from_filename returned =")
 	last_logprint(log_domain, table2str("inode", 0, inode))
-	os.execute("sleep 5")
-	print("sleep 5 - "..sleep_count)
-	sleep_count = sleep_count + 1
 	--else, returns 0, and the inode object
 	return 0, inode
 end,
@@ -898,10 +852,7 @@ read=function(self, filename, size, offset, inode)
 		table.insert(data_t, string.sub(block, rem_start_offset+1))
 
 		for i=start_block_idx+1,end_block_idx-1 do
-			logprint(log_domain, function_name..": so far data is=", data)
-		
 			--table.insert(to_report_t, "read: getting new block\telapsed_time=", (misc.time()-start_time).."\n")
-		
 			block = get_block(inode.content[i]) or ""
 			table.insert(data_t, block)
 		end
@@ -912,8 +863,6 @@ read=function(self, filename, size, offset, inode)
 		table.insert(data_t, string.sub(block, 1, rem_end_offset))
 	end
 
-	logprint(log_domain, function_name..": finally data is=", data..", size of data=", string.len(data))
-	
 	--table.insert(to_report_t, "read: finished\telapsed_time=", (misc.time()-start_time).."\n")
 
 	--last_logprint(table.concat(to_report_t))
@@ -974,9 +923,8 @@ write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITI
 
 	--table.insert(to_report_t, "write: root might have been retrieved\telapsed_time=", (misc.time()-start_time).."\n")
 
-	logprint(log_domain, function_name..": blocks are gonna be created? new file is bigger?", {blocks_created=blocks_created,size_changed=size_changed})
-
-	logprint(log_domain, function_name..": buf=", buf)
+	logprint(log_domain, function_name..": blocks are gonna be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
+	--logprint(log_domain, function_name..": buf=", buf)
 
 	for i=start_block_idx, end_block_idx do
 		logprint(log_domain, function_name..": im in the for loop, i=", i)
@@ -986,10 +934,9 @@ write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITI
 			block = get_block(inode.content[i])
 		else
 			logprint(log_domain, function_name..": block doesnt exists, so create the block")
-			logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
-			logprint(log_domain, function_name..": greatest block number=", {root_inode_greatest_block_n=root_inode.meta.xattr.greatest_block_n})
+			--logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
 			root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
-			logprint(log_domain, function_name..": greatest block number=", root_inode.meta.xattr.greatest_block_n)
+			logprint(log_domain, function_name..": now greatest block number=", root_inode.meta.xattr.greatest_block_n)
 			--TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
 			block_n = root_inode.meta.xattr.greatest_block_n
 			block = ""
