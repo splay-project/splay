@@ -909,6 +909,7 @@ end
 
 --function init: initialization of the node
 function init(job)
+	l_o:notice("init: START")
 	--if init has not been previously called
 	if not init_done then
 		--make the init_done flag true
