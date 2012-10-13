@@ -1,3 +1,4 @@
+#!/usr/bin/lua
 local file1 = io.open(arg[1], "r")
 local file2 = io.open(arg[2], "w")
 
