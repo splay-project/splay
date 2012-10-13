@@ -1,0 +1,8 @@
+#!/usr/bin/lua
+local file1 = io.open(arg[1], "r")
+
+print("file1="..arg[1])
+
+local str1 = file1:read("*a")
+
+file1:close()

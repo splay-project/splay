@@ -1,0 +1,12 @@
+#!/usr/bin/lua
+local file1 = io.open(arg[1], "r")
+
+print("file1="..arg[1])
+
+local str1 = ""
+
+while str1 do
+	str1 = file1:read(2*1024*1024)
+end
+
+file1:close()
