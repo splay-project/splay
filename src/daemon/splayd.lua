@@ -1044,7 +1044,6 @@ function server_loop(so)
 			-- if there is a msg (msg can be empty when using non-blocking sockets - when the churn coroutine is active)
 			if msg then
 
-				print("Command: "..msg)
 				if msg == "PING" then
 					-- blocking socket
 					so:settimeout(nil)
@@ -1054,8 +1053,10 @@ function server_loop(so)
 				elseif msg == "BLACKLIST" then
 					blacklist(so)
 				elseif msg == "REGISTER" then
+					print("Command: REGISTER")
 					register(so)
 				elseif msg == "FREE" then
+					print("Command: FREE")
 					n_free(so)
 				elseif msg == "UNREGISTER" then -- deprecated
 					n_free(so)
@@ -1064,14 +1065,17 @@ function server_loop(so)
 				elseif msg == "LOCAL_LOG" then
 					local_log(so)
 				elseif msg == "LIST" then
+					print("Command: LIST")
 					list(so)
 				elseif msg == "RESET" then
 					n_reset(so)
 				elseif msg == "START" then
+					print("Command: START")
 					n_start(so)
 				elseif msg == "RESTART" then
 					restart(so)
 				elseif msg == "STOP" then
+					print("Command: STOP")
 					n_stop(so)
 				elseif msg == "INFOS" then
 					infos(so)
@@ -1086,6 +1090,7 @@ function server_loop(so)
 						break
 					end
 				elseif msg == "KILL" then
+					print("Command: KILL")
 					running = false
 					break
 				elseif msg == "ERROR" then
