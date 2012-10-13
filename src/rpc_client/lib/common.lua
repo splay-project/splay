@@ -45,6 +45,7 @@ function load_config()
 		cli_server_url_from_conf_file = config.cli_server_url
 		username_from_conf_file = config.username
 		password_from_conf_file = config.password
+		job_options_from_conf_file = config.job_options
 	end
 end
 

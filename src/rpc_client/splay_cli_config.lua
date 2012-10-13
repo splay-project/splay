@@ -24,6 +24,12 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 config = {
 	cli_server_url	= "http://127.0.0.1:2222/splay-ctrl-api",
 	username	= "admin",
-	password	= "admin"
+	password	= "admin",
+	job_options = {
+		network_nb_ports	= 4,
+		max_mem			= 50331648,
+		network_max_send	= 549755813888,
+		network_max_receive	= 549755813888
 	}
+}
 

@@ -312,6 +312,9 @@ function submit_job_extra_checks()
 		queue_timeout = 0
 	end
 
+	--loads options form the conf file
+	options = job_options_from_conf_file
+
 	--contructs options table from the options string
 	while options_string do
 		local colon_sign = string.find(options_string, ":")
@@ -330,7 +333,8 @@ function submit_job_extra_checks()
 end
 
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
-function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job, turbo)	--prints the arguments
+function send_submit_job()
+	--prints the arguments
 	print_line(VERBOSE, "NAME              = "..name)
 	print_line(VERBOSE, "DESCRIPTION       = "..description)
 	print_line(VERBOSE, "CODE_FILE         = "..code_filename)
@@ -515,4 +519,4 @@ check_session_id()
 submit_job_extra_checks()
 
 --calls send_submit_job
-send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout,multiple_code_files, designated_splayds_string, splayds_as_job, turbo)
+send_submit_job()
