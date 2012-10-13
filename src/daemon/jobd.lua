@@ -279,7 +279,7 @@ sandbox.protect_env({
 			native_from_job
 		},
 		inits = {
-			splay.distdb = job
+			["splay.distdb"] = job
 		}
 	})
 
