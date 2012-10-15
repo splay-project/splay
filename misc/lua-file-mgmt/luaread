@@ -1,5 +1,7 @@
 #!/usr/bin/lua
-if #arg < 2 then
+local misc = require"splay.misc"
+
+if #arg < 1 then
 	print("Syntax: ./luaread FILE")
 	os.exit()
 end

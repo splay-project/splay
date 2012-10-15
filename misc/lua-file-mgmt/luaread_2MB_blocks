@@ -1,4 +1,6 @@
 #!/usr/bin/lua
+local misc = require"splay.misc"
+
 if #arg < 1 then
 	print("Syntax: ./luaread_2MB_blocks FILE")
 	os.exit()
