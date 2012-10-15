@@ -1,12 +1,26 @@
 #!/usr/bin/lua
+if #arg < 1 then
+	print("Syntax: ./luaread_2MB_blocks FILE")
+	os.exit()
+end
+
+io.write("file = "..arg[1])
+
 local file1 = io.open(arg[1], "r")
 
-print("file1="..arg[1])
+if not file1 then
+	print("ERROR: File \""..arg[1].."\" could not be open for reading")
+	os.exit()
+end
 
 local str1 = ""
+
+local start_time = misc.time()
 
 while str1 do
 	str1 = file1:read(2*1024*1024)
 end
+
+print("\tElapsed time = "..string.format("%.6f", (misc.time() - start_time)))
 
 file1:close()

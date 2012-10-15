@@ -1,16 +1,37 @@
 #!/usr/bin/lua
+local misc = require"splay.misc"
+
+if #arg < 2 then
+	print("Syntax: ./luacp_2MB_blocks FILE1 FILE2")
+	os.exit()
+end
+
+io.write("file1 = "..arg[1].." file2 = "..arg[2])
+
 local file1 = io.open(arg[1], "r")
+
+if not file1 then
+	print("ERROR: File \""..arg[1].."\" could not be open for reading")
+	os.exit()
+end
+
 local file2 = io.open(arg[2], "w")
 
-print("file1="..arg[1])
-print("file2="..arg[2])
+if not file2 then
+	print("ERROR: File \""..arg[2].."\" could not be open for writing")
+	os.exit()
+end
 
 local str1 = ""
+
+local start_time = misc.time()
 
 while str1 do
 	file2:write(str1)
 	str1 = file1:read(2*1024*1024)
 end
+
+print("\tElapsed time = "..string.format("%.6f", (misc.time() - start_time)))
 
 file1:close()
 file2:close()
