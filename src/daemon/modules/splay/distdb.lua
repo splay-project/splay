@@ -168,7 +168,7 @@ local im_gossiping = false
 
 local gossiping_elpsd_t = 0 --TODO use this to measure the time it takes to spread updates through the ring
 --times_waiting_before_ping: trick variable to make the node wait 6 periods of 5s (30s) to start pinging its neighbor
-local times_waiting_before_ping = 0
+local times_waiting_before_ping = 4
 
 --Testers:
 local test_delay = false
@@ -614,7 +614,7 @@ end
 --function ping_others: periodic function that pings the next node on the ring
 local function ping_others()
 	--if there is a next_node (it could be the case of a 1-node ring, where the node will not ping anyone)
-	if next_node and (times_waiting_before_ping > 6) then
+	if next_node and (times_waiting_before_ping < 0) then
 		--logs
 		l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
 		--pings, and if the response is not ok
@@ -635,7 +635,7 @@ local function ping_others()
 	else
 		--this variable reaches to 6; alternative way to make a events.sleep of 30s which
 		-- is not permitted within the init function
-		times_waiting_before_ping = times_waiting_before_ping + 1
+		times_waiting_before_ping = times_waiting_before_ping - 1
 	end
 end
 
@@ -1021,7 +1021,7 @@ function init(job)
 		--sleeps for 30 seconds
 		--events.sleep(30)
 		--starts a 5 second periodic pinging to the next node of the ring
-		events.periodic(5, ping_others)
+		--events.periodic(5, ping_others)
 	end
 end
 

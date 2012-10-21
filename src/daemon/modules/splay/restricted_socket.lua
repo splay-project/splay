@@ -612,6 +612,8 @@ function wrap(sock)
 		--l_o:debug("udp()")
 
 		if total_udp_sockets >= max_sockets then
+			l_o:error(" total_udp_sockets =", total_udp_sockets, "max_sockets =", max_sockets)
+			l_o:error("RESTRICTED")
 			return nil, "restricted"
 		end
 

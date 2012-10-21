@@ -320,6 +320,7 @@ function server(port)
 	
 	local s, err = socket.udp()
 	if not s then
+		l_o:warn("RESTRICTED1")
 		l_o:warn("udp():"..err)
 		return nil, err
 	end
@@ -354,6 +355,7 @@ function default_server()
 
 	local s, err = socket.udp()
 	if not s then
+		l_o:warn("RESTRICTED2")
 		l_o:warn("udp():"..err)
 		return nil, err
 	end
