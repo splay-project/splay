@@ -1441,7 +1441,7 @@ exec_script = false
 
 -- Will log splayd's output in logs_directoy/splayd.log and, if not in production
 -- mode, log each job's output in logs_directoy/jobs/job.log.
-jobs_log = true -- Log jobs output.
+jobs_log = false -- Log jobs output.
 
 -- if the trace has ended for a trace-job
 job_trace_ended = {}

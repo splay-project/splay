@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
 				total_sent += nbytes;
 
 				/* NOTE: in production comment next line */
-				tmp = write(1, read_buffer, nbytes);
+				//tmp = write(1, read_buffer, nbytes);
 
 				if (log_fd > 0) {
 					nbytes = write(log_fd, read_buffer, nbytes);
