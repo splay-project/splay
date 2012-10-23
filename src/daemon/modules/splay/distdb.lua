@@ -29,7 +29,7 @@ local string = require"string"
 -- for hashing
 local crypto	= require"crypto"
 -- for RPC calls
-local rpc	= require"splay.rpc" --TODO think about rpcq vs rpc
+--local rpc	= require"splay.rpc" --TODO think about rpcq vs rpc
 local rpcq	= require"splay.rpcq"
 -- for the HTTP server
 local net	= require"splay.net"
@@ -456,7 +456,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpcq.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
@@ -478,7 +478,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpcq.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
@@ -555,7 +555,7 @@ function remove_node_from_neighborhood(node_pos)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpcq.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
@@ -715,7 +715,7 @@ function handle_get(key, type_of_transaction)
 	--l_o:notice(n.short_id..":handle_get: for key="..shorten_id(key))
 	
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):handle_get: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":handle_get: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
@@ -723,14 +723,14 @@ function handle_get(key, type_of_transaction)
 	local chosen_node = responsibles[chosen_node_id]
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_get"
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_get: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
-	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
+	table.insert(to_report_t, n.short_id..":handle_get: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
+	local rpc_ok, rpc_answer = rpcq.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_get: RPC call returned correctly. END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":handle_get: RPC call returned correctly. END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return rpc_answer[1], rpc_answer[2]
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_get: RPC call returned on error. END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_get: RPC call returned on error. END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return nil, "network problem"
 end
@@ -756,7 +756,7 @@ end
 function handle_put(key, type_of_transaction, value) --TODO check about setting N,R,W on the transaction
 	--l_o:notice(n.short_id..":handle_put: START for key=", shorten_id(key)) --TODO: key better be hashed here?
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):handle_put: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":handle_put: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 	l_o:debug(n.short_id..":handle_put: value=", value)
 	
 	local chosen_node = nil
@@ -781,19 +781,19 @@ function handle_put(key, type_of_transaction, value) --TODO check about setting 
 
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_put"
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_put: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
-	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
+	table.insert(to_report_t, n.short_id..":handle_put: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
+	local rpc_ok, rpc_answer = rpcq.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
 		--if something went wrong
 		if not rpc_answer[1] then
 			l_o:error(n.short_id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_put: RPC call returned correctly. END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":handle_put: RPC call returned correctly. END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return rpc_answer[1], rpc_answer[2]
 	end
 	l_o:error(n.short_id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_get: RPC call returned on error. END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_put: RPC call returned on error. END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return nil, "network problem"
 end
@@ -830,7 +830,7 @@ function handle_http_message(socket)
 
 	--l_o:notice(n.short_id..":handle_http_message: START")
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):handle_http_message: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":handle_http_message: START\telapsed_time=0\n"}
 
 	--gets the client IP address and port from the socket
 	local client_ip, client_port = socket:getpeername()
@@ -840,7 +840,7 @@ function handle_http_message(socket)
 	resource = string.sub(resource, 2)
 	--logs
 	--l_o:notice(n.short_id..":handle_http_message: resource is "..resource)
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_http_message: http message parsed\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":handle_http_message: http message parsed\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--the value is the body if it exists
 	local value = body
@@ -853,7 +853,7 @@ function handle_http_message(socket)
 	--forwards the request to a specific handle function
 	local ok, answer = forward_request[method](resource, type_of_transaction, value)
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_http_message: method was performed\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":handle_http_message: method was performed\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--initializes the response body, code and content type as nil
 	local http_response_body = nil
@@ -880,7 +880,7 @@ function handle_http_message(socket)
 		end
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_http_message: answer was encoded\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":handle_http_message: answer was encoded\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
@@ -896,12 +896,12 @@ function handle_http_message(socket)
 		http_response = http_response.."\r\n"
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_http_message: all work is done, ready to send\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":handle_http_message: all work is done, ready to send\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--send the HTTP response
 	socket:send(http_response)
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):handle_http_message: sent\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_http_message: sent\telapsed_time="..(misc.time() - start_time))
 
 	l_o:notice(table.concat(to_report_t))
 	--[[
@@ -946,7 +946,7 @@ function init(job)
 		n.short_id = string.sub(n.id, 1, 5)..".."
 
 		--starts the RPC server for internal communication
-		rpc.server(n.port)
+		rpcq.server(n.port)
 		--HTTP server listens through the RPC port+1
 		net.server(n.port+1, handle_http_message)
 		--starts the rpcq server for light internal communication
@@ -991,7 +991,7 @@ function init(job)
 						rdv_busy = answer1[1]
 					end
 				end
-				neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
+				neighborhood = rpcq.call(job_nodes[1], {"distdb.add_me", n})
 			end
 
 			--gets the position from the neighborhood table
@@ -1054,13 +1054,13 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 	--initializes boolean not_responsible
 	
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):consistent_put: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":consistent_put: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 
 	local not_responsible = true
 	--gets all responsibles for the key
 	local responsibles = get_responsibles(key)
 	
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: responsible nodes are retrieved\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":consistent_put: responsible nodes are retrieved\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--for all responsibles
 	for i,v in ipairs(responsibles) do
@@ -1079,7 +1079,7 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 	--initialize successful as false
 	local successful = false
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: lookup to see if im responsible finished\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":consistent_put: lookup to see if im responsible finished\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--TODO consider min replicas and neighborhood
 
@@ -1093,12 +1093,14 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 			local put_local_result = nil
 			--l_o:notice(n.short_id..":consistent_put: value_type=", type(value))
 			if value == nil then
+				table.insert(to_report_t, n.short_id..":consistent_put: local put done, it's a delete")
 				put_local_result = delete_local(key)
 			else
+				table.insert(to_report_t, n.short_id..":consistent_put: local put done, value size="..string.len(value))
 				put_local_result = put_local(key, value, n)
 			end
 
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: local put done\telapsed_time="..(misc.time() - start_time).."\n")
+			table.insert(to_report_t, "\telapsed_time="..(misc.time() - start_time).."\n")
 
 			--if the "put" action is successful
 			if put_local_result then
@@ -1114,22 +1116,22 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 		--for all responsibles
 		for i,v in ipairs(responsibles) do --TODO this can be merged and only de diff part be separated (put the if v.id ~= n.id just before "if value == nil")
 			--if node ID is not the same as the node itself (avoids RPC calling itself)
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: starting the loop for "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
+			table.insert(to_report_t, n.short_id..":consistent_put: starting the loop for "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 			if v.id ~= n.id then
 				--execute in parallel
 				events.thread(function()
 					--puts the key remotely on the others responsibles, if the put is successful
 					local rpc_ok, rpc_answer = nil, nil
 
-					table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
+					table.insert(to_report_t, n.short_id..":consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 
 					if value == nil then
-						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
+						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.delete_local", key})
 					else
-						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.put_local", key, value, n})
 					end
 
-					table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
+					table.insert(to_report_t, n.short_id..":consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
 
 					--if the RPC call was OK
 					if rpc_ok then
@@ -1155,7 +1157,7 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_put: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":consistent_put: END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the value of the variable successful
 	return successful
@@ -1166,7 +1168,7 @@ function evtl_consistent_put(key, value)
 	--l_o:notice(n.short_id..":evtl_consistent_put: START, for key=", shorten_id(key))
 
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):evtl_consistent_put: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":evtl_consistent_put: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 
 	l_o:debug(n.short_id..":evtl_consistent_put: value=", value)
 	--initializes boolean not_responsible
@@ -1174,7 +1176,7 @@ function evtl_consistent_put(key, value)
 	--gets all responsibles for the key
 	local responsibles = get_responsibles(key)
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: responsible nodes are retrieved\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":evtl_consistent_put: responsible nodes are retrieved\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--for all responsibles
 	for i,v in ipairs(responsibles) do
@@ -1193,7 +1195,7 @@ function evtl_consistent_put(key, value)
 	--initialize successful as false
 	local successful = false
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: lookup to see if im responsible finished\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":evtl_consistent_put: lookup to see if im responsible finished\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--TODO consider min replicas and neighborhood
 
@@ -1207,12 +1209,14 @@ function evtl_consistent_put(key, value)
 			--if the "put" action is successful
 			local put_local_result = nil
 			if value == nil then
+				table.insert(to_report_t, n.short_id..":evtl_consistent_put: local put done, it's a delete")
 				put_local_result = delete_local(key)
 			else
+				table.insert(to_report_t, n.short_id..":evtl_consistent_put: local put done, value size="..string.len(value))
 				put_local_result = put_local(key, value, n)
 			end
 
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: local put done\telapsed_time="..(misc.time() - start_time).."\n")
+			table.insert(to_report_t, "\telapsed_time="..(misc.time() - start_time).."\n")
 
 			--if the "put" action is successful
 			if put_local_result then
@@ -1227,7 +1231,7 @@ function evtl_consistent_put(key, value)
 		end)
 		--for all responsibles
 		for i,v in ipairs(responsibles) do
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: starting the loop for "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
+			table.insert(to_report_t, n.short_id..":evtl_consistent_put: starting the loop for "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 			--if node ID is not the same as the node itself (avoids RPC calling itself)
 			if v.id ~= n.id then
 				--execute in parallel
@@ -1235,15 +1239,15 @@ function evtl_consistent_put(key, value)
 					--puts the key remotely on the others responsibles, if the put is successful
 					local rpc_ok, rpc_answer = nil, nil
 
-					table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
+					table.insert(to_report_t, n.short_id..":evtl_consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 
 					if not value then
-						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
+						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.delete_local", key})
 					else
-						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.put_local", key, value, n})
 					end
 
-					table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
+					table.insert(to_report_t, n.short_id..":evtl_consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
 
 					--if the RPC call was OK
 					if rpc_ok then
@@ -1269,7 +1273,7 @@ function evtl_consistent_put(key, value)
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_put: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":evtl_consistent_put: END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the value of the variable successful
 	return successful
@@ -1324,7 +1328,7 @@ end
 function consistent_get(key)
 	--l_o:notice(n.short_id..":consistent_get: START, for key="..shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):consistent_get: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":consistent_get: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 	--gets the responsibles of the key
 	local responsibles = get_responsibles(key)
 	--for all responsibles
@@ -1332,12 +1336,12 @@ function consistent_get(key)
 		--if the node ID is the same as the ID of the node itself
 		if v.id == n.id then
 			--returns the value of the key
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_get: successful END\telapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":consistent_get: successful END\telapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			return true, {get_local(key)} --TODO maybe it is better to enclose this on a table to make it output-compatible with eventually-consistent get
 		end
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):consistent_get: wrong node. UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":consistent_get: wrong node. UNsuccessful END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--if none of the responsible matched IDs with the node itself, return false with an error message
 	return false, "wrong node"
@@ -1347,7 +1351,7 @@ end
 function evtl_consistent_get(key)
 	--l_o:notice(n.short_id..":evtl_consistent_get: START, for key=", shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):evtl_consistent_get: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":evtl_consistent_get: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 	--initializes not_responsible as false
 	local not_responsible = true
 	--gets the responsibles of the key
@@ -1364,13 +1368,13 @@ function evtl_consistent_get(key)
 	end
 	--if the node is not one of the responsibles
 	if not_responsible then
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: wrong node. UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":evtl_consistent_get: wrong node. UNsuccessful END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		--returns false with an error message
 		return false, "wrong node"
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: im a responsible\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":evtl_consistent_get: im a responsible\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--initializes variables
 	local answers = 0
@@ -1389,7 +1393,7 @@ function evtl_consistent_get(key)
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
-				local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.get_local", key})
+				local rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.get_local", key})
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
@@ -1399,7 +1403,7 @@ function evtl_consistent_get(key)
 					l_o:error(n.short_id..":evtl_consistent_get: SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL TO NODE="..v.short_id)
 				end
 			end
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: get on "..v.short_id.."done.\telapsed_time="..(misc.time() - start_time).."\n")
+			table.insert(to_report_t, n.short_id..":evtl_consistent_get: get on "..v.short_id.."done.\telapsed_time="..(misc.time() - start_time).."\n")
 			--if there is an answer
 			if answer_data[v.id] then
 				--logs
@@ -1423,11 +1427,11 @@ function evtl_consistent_get(key)
 	successful = events.wait(key, rpc_timeout) --TODO match this with settings
 	--if it is not a successful read return false and an error message
 	if not successful then
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: timeout! UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":evtl_consistent_get: timeout! UNsuccessful END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return false, "timeout"
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: get successful.\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":evtl_consistent_get: get successful.\telapsed_time="..(misc.time() - start_time).."\n")
 	--initializes the comparison table for vector clocks
 	local comparison_table = {}
 	--for all answers
@@ -1515,14 +1519,14 @@ function evtl_consistent_get(key)
 			--TODO WHAT IF they are equal? i think im not considering this case
 		end
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: comparisons done.\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":evtl_consistent_get: comparisons done.\telapsed_time="..(misc.time() - start_time).."\n")
 	--insert the info in the return data
 	for i,v in pairs(answer_data) do
 		--l_o:notice(n.short_id..":evtl_consistent_get: remaining answer=", i)
 		l_o:debug(n.short_id..":evtl_consistent_get: value=", v.value)
 		table.insert(return_data, v)
 	end
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):evtl_consistent_get: successful END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":evtl_consistent_get: successful END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns
 	return true, return_data
@@ -1576,7 +1580,7 @@ end
 --REPLACEMENTS OF PAXOS FUNCTIONS
 function send_paxos_proposal(v, prop_id, key)
 	--l_o:notice(n.short_id..":send_paxos_proposal: START, for node=", shorten_id(v.id), "key=", shorten_id(key), "propID=", prop_id)
-	return rpc.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
+	return rpcq.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
 end
 
 function send_paxos_accept(v, prop_id, peers, value, key)
@@ -1585,7 +1589,7 @@ function send_paxos_accept(v, prop_id, peers, value, key)
 	for i2,v2 in ipairs(peers) do
 		l_o:notice(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
 	end
-	return rpc.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
+	return rpcq.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
 end
 
 function send_paxos_learn(v, value, key)
@@ -1593,9 +1597,9 @@ function send_paxos_learn(v, value, key)
 	l_o:debug(n.short_id..":send_paxos_learn: value=",value)
 	local ret_put_local = nil
 	if value == nil then
-		ret_put_local = rpc.call(v, {"distdb.delete_local", key})
+		ret_put_local = rpcq.call(v, {"distdb.delete_local", key})
 	else
-		ret_put_local = rpc.call(v, {"distdb.put_local", key, value})
+		ret_put_local = rpcq.call(v, {"distdb.put_local", key, value})
 	end
 	return ret_put_local
 end
@@ -1711,14 +1715,14 @@ end
 function put_local(key, value, src_write)
 	--l_o:notice(n.short_id..":put_local: START, for key=", shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):put_local: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":put_local: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 	l_o:debug(n.short_id..":put_local: value=", value)
 	--TODO how to check if the source node is valid?
 	
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(5) == 1 then
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: UNsuccessful (on purpose) END\telapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":put_local: UNsuccessful (on purpose) END\telapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			--l_o:notice(n.short_id..": NOT writing key: "..key)
 			return false, "404"
@@ -1733,28 +1737,28 @@ function put_local(key, value, src_write)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:error(n.short_id..":put_local: NOT writing key, wrong key type")
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":put_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return false, "wrong key type"
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: check key type done\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":put_local: check key type done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
 		l_o:error(n.short_id..":put_local: NOT writing key, wrong value type")
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":put_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return false, "wrong value type"
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: check value type done\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":put_local: check value type done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	if not src_write then
 		src_write = {id="version"} --for compatibility with consistent_put
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: setting up src_write when there isnt done\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":put_local: setting up src_write when there isnt done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--if the k,v pair doesnt exist, create it with a new vector clock, enabled=true
 	local kv_record_serialized = local_db.get("db_table", key)
@@ -1768,7 +1772,7 @@ function put_local(key, value, src_write)
 		kv_record.vector_clock[src_write.id] = 1
 	else
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: creation of the vector clock done\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":put_local: creation of the vector clock done\telapsed_time="..(misc.time() - start_time).."\n")
 
 	--else, replace the value and increase the version
 		kv_record.value=value
@@ -1781,7 +1785,7 @@ function put_local(key, value, src_write)
 		--TODO add timestamps
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: k,v record written\telapsed_time="..(misc.time() - start_time).."\n")
+	table.insert(to_report_t, n.short_id..":put_local: k,v record written\telapsed_time="..(misc.time() - start_time).."\n")
 
 	local kv_record_serialized = serializer.encode(kv_record)
 
@@ -1796,7 +1800,7 @@ function put_local(key, value, src_write)
 		--l_o:notice(n.short_id..":put_local: vector_clock=",i,v)
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):put_local: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":put_local: END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 
 	return true
@@ -1840,12 +1844,12 @@ end
 function get_local(key)
 	--l_o:notice(n.short_id..":get_local: START, for key="..shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id.."("..misc.time().."):get_local: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":get_local: START, key="..shorten_id(key).."\telapsed_time=0\n"}
 
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(10) == 1 then
-			table.insert(to_report_t, n.short_id.."("..misc.time().."):get_local: UNsuccessful (on purpose) END\telapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":get_local: UNsuccessful (on purpose) END\telapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			return nil
 		end
@@ -1860,12 +1864,12 @@ function get_local(key)
 
 	if not kv_record_serialized then
 		l_o:error(n.short_id..":get_local: record is nil")
-		table.insert(to_report_t, n.short_id.."("..misc.time().."):get_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":get_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return nil
 	end
 
-	table.insert(to_report_t, n.short_id.."("..misc.time().."):get_local: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":get_local: END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return serializer.decode(kv_record_serialized)
 end
