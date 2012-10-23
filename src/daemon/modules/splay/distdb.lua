@@ -29,8 +29,8 @@ local string = require"string"
 -- for hashing
 local crypto	= require"crypto"
 -- for RPC calls
-local rpc	= require"splay.rpc" --TODO think about urpc vs rpc
-local urpc	= require"splay.urpc"
+local rpc	= require"splay.rpc" --TODO think about rpcq vs rpc
+local rpcq	= require"splay.rpcq"
 -- for the HTTP server
 local net	= require"splay.net"
 -- for enconding/decoding the bucket
@@ -126,7 +126,7 @@ _DESCRIPTION = "Distributed DB functions."
 _VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+l_o = log.new(2, "[".._NAME.."]")
 
 local _BOOTSTRAPPING = false
 
@@ -167,8 +167,9 @@ local paxos_max_retries = 5 --TODO maybe this should match with some distdb sett
 local im_gossiping = false
 
 local gossiping_elpsd_t = 0 --TODO use this to measure the time it takes to spread updates through the ring
---times_waiting_before_ping: trick variable to make the node wait 6 periods of 5s (30s) to start pinging its neighbor
+--times_waiting_before_ping: trick variable to make the node wait n periods of 5s to start pinging its neighbor
 local times_waiting_before_ping = 4
+local ping_period = 5
 
 --Testers:
 local test_delay = false
@@ -595,7 +596,7 @@ function receive_gossip(message, neighbor_about)
 	--forward the gossip to the previous node
 	events.thread(function()
 		--l_o:notice(n.short_id..":receive_gossip: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-		urpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
+		rpcq.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
 end
@@ -606,7 +607,7 @@ local function gossip_changes(message, neighbor_about)
 		--create the gossip to the previous node
 		events.thread(function()
 			--l_o:notice(n.short_id..":gossip_changes: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-			urpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
+			rpcq.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
 		end)
 	end
 end
@@ -618,7 +619,7 @@ local function ping_others()
 		--logs
 		l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
 		--pings, and if the response is not ok
-		if not urpc.ping({ip=next_node.ip, port=(next_node.port+2)}) then --TODO should be after several tries
+		if not rpcq.ping({ip=next_node.ip, port=(next_node.port+2)}) then --TODO should be after several tries
 			--logs that it lost a neighbor
 			--l_o:notice(n.short_id..":ping_others: i lost neighbor="..next_node.short_id)
 			--creates an object node_about to insert it into the message to be gossipped
@@ -948,8 +949,8 @@ function init(job)
 		rpc.server(n.port)
 		--HTTP server listens through the RPC port+1
 		net.server(n.port+1, handle_http_message)
-		--starts the URPC server for light internal communication
-		urpc.server(n.port+2)
+		--starts the rpcq server for light internal communication
+		--rpcq.server(n.port+2)
 
 		--puts the server on listen
 		
@@ -983,7 +984,7 @@ function init(job)
 				local ok1, answer1
 				while rdv_busy do
 					events.sleep(0.2 + (math.random(20)/100))
-					ok1, answer1 = urpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
+					ok1, answer1 = rpcq.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
 					if not ok1 then
 						rdv_busy = true
 					else
@@ -1036,7 +1037,7 @@ function init(job)
 		--sleeps for 30 seconds
 		--events.sleep(30)
 		--starts a 5 second periodic pinging to the next node of the ring
-		--events.periodic(5, ping_others)
+		--events.periodic(ping_period, ping_others)
 	end
 end
 
