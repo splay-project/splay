@@ -715,7 +715,7 @@ function handle_get(key, type_of_transaction)
 	--l_o:notice(n.short_id..":handle_get: for key="..shorten_id(key))
 	
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":handle_get: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":handle_get: START key="..shorten_id(key).." elapsed_time=0\n"}
 
 	local responsibles = get_responsibles(key)
 	local chosen_node_id = math.random(#responsibles)
@@ -726,11 +726,11 @@ function handle_get(key, type_of_transaction)
 	table.insert(to_report_t, n.short_id..":handle_get: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
 	local rpc_ok, rpc_answer = rpcq.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
-		table.insert(to_report_t, n.short_id..":handle_get: RPC call returned correctly. END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":handle_get: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return rpc_answer[1], rpc_answer[2]
 	end
-	table.insert(to_report_t, n.short_id..":handle_get: RPC call returned on error. END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_get: END key="..shorten_id(key).." success=false elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return nil, "network problem"
 end
@@ -756,7 +756,7 @@ end
 function handle_put(key, type_of_transaction, value) --TODO check about setting N,R,W on the transaction
 	--l_o:notice(n.short_id..":handle_put: START for key=", shorten_id(key)) --TODO: key better be hashed here?
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":handle_put: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":handle_put: START key="..shorten_id(key).." elapsed_time=0\n"}
 	l_o:debug(n.short_id..":handle_put: value=", value)
 	
 	local chosen_node = nil
@@ -788,12 +788,12 @@ function handle_put(key, type_of_transaction, value) --TODO check about setting 
 		if not rpc_answer[1] then
 			l_o:error(n.short_id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
-		table.insert(to_report_t, n.short_id..":handle_put: RPC call returned correctly. END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":handle_put: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return rpc_answer[1], rpc_answer[2]
 	end
 	l_o:error(n.short_id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
-	table.insert(to_report_t, n.short_id..":handle_put: RPC call returned on error. END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_put: END key="..shorten_id(key).." success=false elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return nil, "network problem"
 end
@@ -830,7 +830,7 @@ function handle_http_message(socket)
 
 	--l_o:notice(n.short_id..":handle_http_message: START")
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":handle_http_message: START\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":handle_http_message: START elapsed_time=0\n"}
 
 	--gets the client IP address and port from the socket
 	local client_ip, client_port = socket:getpeername()
@@ -1054,7 +1054,7 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 	--initializes boolean not_responsible
 	
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":consistent_put: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":consistent_put: START key="..shorten_id(key).." elapsed_time=0\n"}
 
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -1157,7 +1157,7 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	table.insert(to_report_t, n.short_id..":consistent_put: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":consistent_put: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the value of the variable successful
 	return successful
@@ -1168,7 +1168,7 @@ function evtl_consistent_put(key, value)
 	--l_o:notice(n.short_id..":evtl_consistent_put: START, for key=", shorten_id(key))
 
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":evtl_consistent_put: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":evtl_consistent_put: START key="..shorten_id(key).." elapsed_time=0\n"}
 
 	l_o:debug(n.short_id..":evtl_consistent_put: value=", value)
 	--initializes boolean not_responsible
@@ -1273,7 +1273,7 @@ function evtl_consistent_put(key, value)
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	table.insert(to_report_t, n.short_id..":evtl_consistent_put: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END\telapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the value of the variable successful
 	return successful
@@ -1328,7 +1328,7 @@ end
 function consistent_get(key)
 	--l_o:notice(n.short_id..":consistent_get: START, for key="..shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":consistent_get: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":consistent_get: START key="..shorten_id(key).." elapsed_time=0\n"}
 	--gets the responsibles of the key
 	local responsibles = get_responsibles(key)
 	--for all responsibles
@@ -1336,12 +1336,12 @@ function consistent_get(key)
 		--if the node ID is the same as the ID of the node itself
 		if v.id == n.id then
 			--returns the value of the key
-			table.insert(to_report_t, n.short_id..":consistent_get: successful END\telapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":consistent_get: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			return true, {get_local(key)} --TODO maybe it is better to enclose this on a table to make it output-compatible with eventually-consistent get
 		end
 	end
-	table.insert(to_report_t, n.short_id..":consistent_get: wrong node. UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":consistent_get: END key="..shorten_id(key).." success=false(wrong_node) elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--if none of the responsible matched IDs with the node itself, return false with an error message
 	return false, "wrong node"
@@ -1351,7 +1351,7 @@ end
 function evtl_consistent_get(key)
 	--l_o:notice(n.short_id..":evtl_consistent_get: START, for key=", shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":evtl_consistent_get: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":evtl_consistent_get: START key="..shorten_id(key).." elapsed_time=0\n"}
 	--initializes not_responsible as false
 	local not_responsible = true
 	--gets the responsibles of the key
@@ -1368,7 +1368,7 @@ function evtl_consistent_get(key)
 	end
 	--if the node is not one of the responsibles
 	if not_responsible then
-		table.insert(to_report_t, n.short_id..":evtl_consistent_get: wrong node. UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":evtl_consistent_get: END key="..shorten_id(key).." success=false(wrong_node) elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		--returns false with an error message
 		return false, "wrong node"
@@ -1427,7 +1427,7 @@ function evtl_consistent_get(key)
 	successful = events.wait(key, rpc_timeout) --TODO match this with settings
 	--if it is not a successful read return false and an error message
 	if not successful then
-		table.insert(to_report_t, n.short_id..":evtl_consistent_get: timeout! UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":evtl_consistent_get: END key="..shorten_id(key).." success=false(timeout) elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return false, "timeout"
 	end
@@ -1526,7 +1526,7 @@ function evtl_consistent_get(key)
 		l_o:debug(n.short_id..":evtl_consistent_get: value=", v.value)
 		table.insert(return_data, v)
 	end
-	table.insert(to_report_t, n.short_id..":evtl_consistent_get: successful END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":evtl_consistent_get: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns
 	return true, return_data
