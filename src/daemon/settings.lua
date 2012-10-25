@@ -52,8 +52,8 @@ splayd.settings.job.network.end_port = 32000
 
 -- Information about your connection (or your limitations)
 -- Enforce them with trickle or other tools
-splayd.settings.network.send_speed = 1024 * 1024
-splayd.settings.network.receive_speed = 1024 * 1024
+splayd.settings.network.send_speed = 1024 * 1024 * 1024 * 1024
+splayd.settings.network.receive_speed = 1024 * 1024 * 1024 * 1024
 
 --[[ NOTES ABOUT LIMITATIONS
 

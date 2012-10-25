@@ -29,8 +29,8 @@ local string = require"string"
 -- for hashing
 local crypto	= require"crypto"
 -- for RPC calls
---local rpc	= require"splay.rpc" --TODO think about rpcq vs rpc
-local rpcq	= require"splay.rpcq"
+--local rpc	= require"splay.rpc" --TODO think about rpc vs rpc
+local rpc	= require"splay.rpc"
 -- for the HTTP server
 local net	= require"splay.net"
 -- for enconding/decoding the bucket
@@ -456,7 +456,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpcq.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
@@ -478,7 +478,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpcq.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
@@ -555,7 +555,7 @@ function remove_node_from_neighborhood(node_pos)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpcq.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
 		end
 	end
 
@@ -596,7 +596,7 @@ function receive_gossip(message, neighbor_about)
 	--forward the gossip to the previous node
 	events.thread(function()
 		--l_o:notice(n.short_id..":receive_gossip: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-		rpcq.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
+		rpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
 	end)
 
 end
@@ -607,7 +607,7 @@ local function gossip_changes(message, neighbor_about)
 		--create the gossip to the previous node
 		events.thread(function()
 			--l_o:notice(n.short_id..":gossip_changes: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-			rpcq.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
+			rpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
 		end)
 	end
 end
@@ -619,7 +619,7 @@ local function ping_others()
 		--logs
 		l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
 		--pings, and if the response is not ok
-		if not rpcq.ping({ip=next_node.ip, port=(next_node.port+2)}) then --TODO should be after several tries
+		if not rpc.ping({ip=next_node.ip, port=(next_node.port+2)}) then --TODO should be after several tries
 			--logs that it lost a neighbor
 			--l_o:notice(n.short_id..":ping_others: i lost neighbor="..next_node.short_id)
 			--creates an object node_about to insert it into the message to be gossipped
@@ -724,7 +724,7 @@ function handle_get(key, type_of_transaction)
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_get"
 	table.insert(to_report_t, n.short_id..":handle_get: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
-	local rpc_ok, rpc_answer = rpcq.acall(chosen_node, {function_to_call, key, value})
+	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
 		table.insert(to_report_t, n.short_id..":handle_get: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
@@ -782,7 +782,7 @@ function handle_put(key, type_of_transaction, value) --TODO check about setting 
 	--construct the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_put"
 	table.insert(to_report_t, n.short_id..":handle_put: responsible chosen, about to make RPC call\telapsed_time="..(misc.time() - start_time).."\n")
-	local rpc_ok, rpc_answer = rpcq.acall(chosen_node, {function_to_call, key, value})
+	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
 		--if something went wrong
 		if not rpc_answer[1] then
@@ -946,11 +946,11 @@ function init(job)
 		n.short_id = string.sub(n.id, 1, 5)..".."
 
 		--starts the RPC server for internal communication
-		rpcq.server(n.port)
+		rpc.server(n.port)
 		--HTTP server listens through the RPC port+1
 		net.server(n.port+1, handle_http_message)
-		--starts the rpcq server for light internal communication
-		--rpcq.server(n.port+2)
+		--starts the rpc server for light internal communication
+		--rpc.server(n.port+2)
 
 		--puts the server on listen
 		
@@ -984,14 +984,14 @@ function init(job)
 				local ok1, answer1
 				while rdv_busy do
 					events.sleep(0.2 + (math.random(20)/100))
-					ok1, answer1 = rpcq.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
+					ok1, answer1 = rpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
 					if not ok1 then
 						rdv_busy = true
 					else
 						rdv_busy = answer1[1]
 					end
 				end
-				neighborhood = rpcq.call(job_nodes[1], {"distdb.add_me", n})
+				neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
 			end
 
 			--gets the position from the neighborhood table
@@ -1126,9 +1126,9 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 					table.insert(to_report_t, n.short_id..":consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 
 					if value == nil then
-						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.delete_local", key})
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
 					else
-						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.put_local", key, value, n})
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
 					end
 
 					table.insert(to_report_t, n.short_id..":consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
@@ -1242,9 +1242,9 @@ function evtl_consistent_put(key, value)
 					table.insert(to_report_t, n.short_id..":evtl_consistent_put: gonna do put in "..v.id.."\telapsed_time="..(misc.time() - start_time).."\n")
 
 					if not value then
-						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.delete_local", key})
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
 					else
-						rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.put_local", key, value, n})
+						rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
 					end
 
 					table.insert(to_report_t, n.short_id..":evtl_consistent_put: put in "..v.id.." done\telapsed_time="..(misc.time() - start_time).."\n")
@@ -1393,7 +1393,7 @@ function evtl_consistent_get(key)
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
-				local rpc_ok, rpc_answer = rpcq.acall(v, {"distdb.get_local", key})
+				local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.get_local", key})
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
@@ -1580,7 +1580,7 @@ end
 --REPLACEMENTS OF PAXOS FUNCTIONS
 function send_paxos_proposal(v, prop_id, key)
 	--l_o:notice(n.short_id..":send_paxos_proposal: START, for node=", shorten_id(v.id), "key=", shorten_id(key), "propID=", prop_id)
-	return rpcq.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
+	return rpc.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
 end
 
 function send_paxos_accept(v, prop_id, peers, value, key)
@@ -1589,7 +1589,7 @@ function send_paxos_accept(v, prop_id, peers, value, key)
 	for i2,v2 in ipairs(peers) do
 		l_o:notice(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
 	end
-	return rpcq.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
+	return rpc.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
 end
 
 function send_paxos_learn(v, value, key)
@@ -1597,9 +1597,9 @@ function send_paxos_learn(v, value, key)
 	l_o:debug(n.short_id..":send_paxos_learn: value=",value)
 	local ret_put_local = nil
 	if value == nil then
-		ret_put_local = rpcq.call(v, {"distdb.delete_local", key})
+		ret_put_local = rpc.call(v, {"distdb.delete_local", key})
 	else
-		ret_put_local = rpcq.call(v, {"distdb.put_local", key, value})
+		ret_put_local = rpc.call(v, {"distdb.put_local", key, value})
 	end
 	return ret_put_local
 end

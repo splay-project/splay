@@ -12,10 +12,12 @@
 ]]
 
 local fuse = require 'fuse'
+--local dbclient = require 'distdb-client-rpcq'
 local dbclient = require 'distdb-client'
 local serializer = require'splay.lbinenc'
 local crypto = require'crypto'
 local misc = require'splay.misc'
+--require"splay.base"
 --require'profiler'
 
 local S_WID = 1 --world
@@ -38,21 +40,21 @@ local blank_block=string.rep("0", block_size)
 local open_mode={'rb','wb','rb+'}
 
 local consistency_type = "consistent"
-local db_url = "127.0.0.1:22070"
+local db_url = "10.0.2.24:18846"
 
 --LOGGING
 local log_domains = {
-	MAIN_OP=true,
+	MAIN_OP=false,
 	DB_OP=true,
-	FILE_INODE_OP=true,
-	DIR_OP=true,
-	LINK_OP=true,
+	FILE_INODE_OP=false,
+	DIR_OP=false,
+	LINK_OP=false,
 	READ_WRITE_OP=true,
-	FILE_MISC_OP=true,
-	MV_CP_OP=true
+	FILE_MISC_OP=false,
+	MV_CP_OP=false
 }
-local _LOGMODE = "none"
-local _LOGFILE = "/home/unine/Desktop/logfusesplay/log.txt"
+local _LOGMODE = "file_efficient"
+local _LOGFILE = "/home/unine/logsplayfuse.txt"
 local log_tbl = {}
 local to_report_t = {}
 
@@ -65,9 +67,9 @@ elseif _LOGMODE == "file" then
 	write_log_line = function(message, ...)
 		local logfile1 = io.open(_LOGFILE,"a")
 		logfile1:write(message)
-		for i,v in ipairs(arg) do
-			f1:write("\t"..v)
-		end
+		--for i,v in ipairs(arg) do
+		--	f1:write("\t"..v)
+		--end
 		logfile1:write("\n")
 		logfile1:close()
 	end
@@ -77,9 +79,9 @@ elseif _LOGMODE == "file_efficient" then
 	--write_log_line adds an entry to the logging table
 	write_log_line = function(message, ...)
 		table.insert(log_tbl, message)
-		for i,v in ipairs(arg) do
-			table.insert(log_tbl, "\t"..v)
-		end
+		--for i,v in ipairs(arg) do
+		--	table.insert(log_tbl, "\t"..v)
+		--end
 		table.insert(log_tbl, "\n")
 	end
 	--write_last_log_line writes the table.concat of all the log lines in a file and cleans the logging table
@@ -169,33 +171,45 @@ end
 
 --function write_in_db: writes an element into the underlying DB
 local function write_in_db(unhashed_key, value)
+	local start_time = misc.time()
+	logprint("DB_OP", "write_in_db: START unhashed_key="..unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	last_logprint("DB_OP", "write_in_db: about to write in distdb, unhashed_key=", unhashed_key, ", db_key = ", db_key)
-	--last_logprint("DB_OP", "write_in_db: value = ", value)
+	--logprint("DB_OP", "write_in_db: value = ", value)
+	logprint("DB_OP", "write_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
 	--sends the value
-	return send_put(db_url, db_key, consistency_type, value)
+	local ok_put = send_put(db_url, db_key, consistency_type, value)
+	last_logprint("DB_OP", "write_in_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	return ok_put
 end
 
 --function read_from_db: reads an element from the underlying DB
 local function read_from_db(unhashed_key)
+	local start_time = misc.time()
+	logprint("DB_OP", "read_in_db: START unhashed_key="..unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	last_logprint("DB_OP", "read_from_db: about to read from distdb, unhashed_key=", unhashed_key, ", db_key = ", db_key)
+	logprint("DB_OP", "read_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
 	--sends a GET command to the DB
-	return send_get(db_url, db_key, consistency_type)
+	local ok_get, value_get = send_get(db_url, db_key, consistency_type)
+	last_logprint("DB_OP", "read_in_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	return ok_get, value_get
 end
 
 --function read_from_db: reads an element from the underlying DB
 local function delete_from_db(unhashed_key)
+	local start_time = misc.time()
+	logprint("DB_OP", "delete_from_db: START unhashed_key="..unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	last_logprint("DB_OP", "delete_from_db: about to delete from distdb, unhashed_key=", unhashed_key, ", db_key = ", db_key)
-	--sends a GET command to the DB
-	return send_delete(db_url, db_key, consistency_type)
+	logprint("DB_OP", "delete_from_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	local ok_delete = send_delete(db_url, db_key, consistency_type)
+	last_logprint("DB_OP", "delete_from_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--sends a DELETE command to the DB
+	return ok_delete
 end
 
 --function splitfilename: splits the filename in base and dir; for example: "/usr/include/lua/5.1/lua.h" -> "/usr/include/lua/5.1", "lua.h"
@@ -811,61 +825,61 @@ read=function(self, filename, size, offset, inode)
 	--for all the logprint functions
 	local log_domain, function_name = "READ_WRITE_OP", "read"
 	--logs entrance
-	logprint(log_domain, function_name..": START")
-	logprint(log_domain, function_name..": START, filename=", filename..", size=", size..", offset=", offset, {inode=inode})
+	--logprint(log_domain, function_name..": START")
+	--logprint(log_domain, function_name..": START, filename=", filename..", size=", size..", offset=", offset, {inode=inode})
 
-	--table.insert(to_report_t, "read: started\telapsed_time=0\n")
+	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
 	local start_time = misc.time()
 
 	local inode = get_inode_from_filename(filename)
-	logprint(log_domain, function_name..": inode retrieved =")
-	logprint(log_domain, table2str("inode", 0, inode))
+	--logprint(log_domain, function_name..": inode retrieved =")
+	--logprint(log_domain, table2str("inode", 0, inode))
 	if not inode then
 		return 1
 	end
 
-	--table.insert(to_report_t, "read: inode retrieved\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
 	local start_block_idx = math.floor(offset / block_size)+1
 	local rem_start_offset = offset % block_size
 	local end_block_idx = math.floor((offset+size-1) / block_size)+1
 	local rem_end_offset = (offset+size-1) % block_size
 
-	logprint(log_domain, function_name..": offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
-	logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
+	--logprint(log_domain, function_name..": offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
+	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
 
-	logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
+	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
 
-	--table.insert(to_report_t, "read: orig_size et al. calculated, size=", size.."\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
 
 	local block = get_block(inode.content[start_block_idx]) or ""
 
 	local data_t = {}
 
-	--table.insert(to_report_t, "read: first block retrieved\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": first block retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
 	if start_block_idx == end_block_idx then
-		logprint(log_domain, function_name..": just one block to read")
+		--logprint(log_domain, function_name..": just one block to read")
 		table.insert(data_t, string.sub(block, rem_start_offset+1, rem_end_offset))
 	else
-		logprint(log_domain, function_name..": several blocks to read")
+		--logprint(log_domain, function_name..": several blocks to read")
 		table.insert(data_t, string.sub(block, rem_start_offset+1))
 
 		for i=start_block_idx+1,end_block_idx-1 do
-			--table.insert(to_report_t, "read: getting new block\telapsed_time=", (misc.time()-start_time).."\n")
+			table.insert(to_report_t, function_name..": getting new block\telapsed_time="..(misc.time()-start_time).."\n")
 			block = get_block(inode.content[i]) or ""
 			table.insert(data_t, block)
 		end
 
-		--table.insert(to_report_t, "read: getting new block\telapsed_time=", (misc.time()-start_time).."\n")
+		table.insert(to_report_t, function_name..": getting new block\telapsed_time="..(misc.time()-start_time).."\n")
 
 		block = get_block(inode.content[end_block_idx]) or ""
 		table.insert(data_t, string.sub(block, 1, rem_end_offset))
 	end
 
-	--table.insert(to_report_t, "read: finished\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": finished\telapsed_time="..(misc.time()-start_time).."\n")
 
-	--last_logprint(table.concat(to_report_t))
+	last_logprint(table.concat(to_report_t))
 
 	to_report_t = {}
 
@@ -876,19 +890,19 @@ write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITI
 	--for all the logprint functions
 	local log_domain, function_name = "READ_WRITE_OP", "write"
 	--logs entrance
-	logprint(log_domain, function_name..": START")
-	logprint(log_domain, function_name..": START, filename=", filename, {buf=buf,offset=offset,inode=inode})
+	--logprint(log_domain, function_name..": START")
+	--logprint(log_domain, function_name..": START, filename=", filename, {buf=buf,offset=offset,inode=inode})
 	--logs entrance without reporting buf
-	logprint(log_domain, function_name..": START, filename=", filename, {offset=offset,inode=inode})
+	--logprint(log_domain, function_name..": START, filename=", filename, {offset=offset,inode=inode})
 
-	--table.insert(to_report_t, "write: started\telapsed_time=0\n")
+	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
 	local start_time = misc.time()
 
 	local inode = get_inode_from_filename(filename)
 
-	logprint(log_domain, function_name..": inode retrieved =")
-	logprint(log_domain, table2str("inode", 0, inode))
-	--table.insert(to_report_t, "write: inode retrieved\telapsed_time=", (misc.time()-start_time).."\n")
+	--logprint(log_domain, function_name..": inode retrieved =")
+	--logprint(log_domain, table2str("inode", 0, inode))
+	table.insert(to_report_t, function_name..": inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 	
 	local orig_size = inode.meta.size
 	local size = #buf
@@ -899,12 +913,12 @@ write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITI
 	local rem_end_offset = ((offset+size-1) % block_size)
 
 	
-	logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
-	logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
+	--logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
+	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
 
-	logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
+	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
 
-	--table.insert(to_report_t, "write: orig_size et al. calculated, size=", size.."\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
 
 	local block = nil
 	local block_n = nil
@@ -915,70 +929,70 @@ write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITI
 	local root_inode = nil
 	local remaining_buf = buf
 
-	--table.insert(to_report_t, "write: calculated more stuff\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": calculated more stuff\telapsed_time="..(misc.time()-start_time).."\n")
 
 	if blocks_created then
 		root_inode = get_inode(1)
 	end
 
-	--table.insert(to_report_t, "write: root might have been retrieved\telapsed_time=", (misc.time()-start_time).."\n")
+	table.insert(to_report_t, function_name..": root might have been retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
-	logprint(log_domain, function_name..": blocks are gonna be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
+	--logprint(log_domain, function_name..": blocks are gonna be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
 	--logprint(log_domain, function_name..": buf=", buf)
 
 	for i=start_block_idx, end_block_idx do
-		logprint(log_domain, function_name..": im in the for loop, i=", i)
+		--logprint(log_domain, function_name..": im in the for loop, i=", i)
 		if inode.content[i] then
-			logprint(log_domain, function_name..": block exists, so get the block")
+			--logprint(log_domain, function_name..": block exists, so get the block")
 			block_n = inode.content[i]
 			block = get_block(inode.content[i])
 		else
-			logprint(log_domain, function_name..": block doesnt exists, so create the block")
-			--logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+			--logprint(log_domain, function_name..": block doesnt exists, so create the block")
+			--already commented--logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
 			root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
-			logprint(log_domain, function_name..": now greatest block number=", root_inode.meta.xattr.greatest_block_n)
+			--logprint(log_domain, function_name..": now greatest block number=", root_inode.meta.xattr.greatest_block_n)
 			--TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
 			block_n = root_inode.meta.xattr.greatest_block_n
 			block = ""
 			table.insert(inode.content, block_n)
-			logprint(log_domain, function_name..": new inode with block =")
-	logprint(log_domain, table2str("inode", 0, inode))
+			--logprint(log_domain, function_name..": new inode with block =")
+			--logprint(log_domain, table2str("inode", 0, inode))
 		end
-		logprint(log_domain, function_name..": remaining_buf=", remaining_buf)
-		logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
-		logprint(log_domain, function_name..": block_size=", block_size)
+		--logprint(log_domain, function_name..": remaining_buf=", remaining_buf)
+		--logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
+		--logprint(log_domain, function_name..": block_size=", block_size)
 		if (#remaining_buf+block_offset) > block_size then
-			logprint(log_domain, function_name..": more than block size")
+			--logprint(log_domain, function_name..": more than block size")
 			to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
 			remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
 		else
-			logprint(log_domain, function_name..": less than block size")
+			--logprint(log_domain, function_name..": less than block size")
 			to_write_in_block = remaining_buf
 		end
-		logprint(log_domain, function_name..": block=", {block=block})
-		logprint(log_domain, function_name..": to_write_in_block=", to_write_in_block)
-		logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
+		--logprint(log_domain, function_name..": block=", {block=block})
+		--logprint(log_domain, function_name..": to_write_in_block=", to_write_in_block)
+		--logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
 		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
-		logprint(log_domain, function_name..": now block=", block)
+		--logprint(log_domain, function_name..": now block=", block)
 		block_offset = 0
-		--table.insert(to_report_t, "write: before putting the block\telapsed_time=", (misc.time()-start_time).."\n")
+		table.insert(to_report_t, function_name..": before putting the block\telapsed_time="..(misc.time()-start_time).."\n")
 		put_block(block_n, block)
-		--table.insert(to_report_t, "write: timestamp at the end of each cycle\telapsed_time=", (misc.time()-start_time).."\n")
+		table.insert(to_report_t, function_name..": timestamp at the end of each cycle\telapsed_time="..(misc.time()-start_time).."\n")
 	end
 
 	if size_changed then
 		inode.meta.size = offset+size
 		put_inode(inode.meta.ino, inode)
-		--table.insert(to_report_t, "write: inode was written\telapsed_time=", (misc.time()-start_time).."\n")
+		table.insert(to_report_t, function_name..": inode was written\telapsed_time="..(misc.time()-start_time).."\n")
 		if blocks_created then
 			put_inode(1, root_inode)
-			--table.insert(to_report_t, "write: root was written\telapsed_time=", (misc.time()-start_time).."\n")
+			table.insert(to_report_t, function_name..": root was written\telapsed_time="..(misc.time()-start_time).."\n")
 		end
 	end
 
-	--table.insert(to_report_t, "\n")
+	table.insert(to_report_t, function_name..": finished\telapsed_time="..(misc.time()-start_time).."\n")
 
-	--last_logprint(table.concat(to_report_t))
+	last_logprint(log_domain, table.concat(to_report_t))
 
 	to_report_t = {}
 
@@ -1310,7 +1324,7 @@ link=function(self, from, to, ...)
 	local log_domain, function_name = "LINK_OP", "link"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
-	logprint(log_domain, function_name..": START, from=", from..", to=", to)
+	logprint(log_domain, function_name..": START, from="..from.." to="..to)
    
 	if from == to then return 0 end
 
@@ -1647,7 +1661,8 @@ if select('#', ...) < 2 then
 end
 
 logprint("MAIN_OP", "MAIN: gonna execute fuse.main")
-
 fuse.main(splayfuse, {...})
-
+--events.run(function()
+--	fuse.main(splayfuse, {"testsplayfuse","/home/unine/testsplayfuse/testsplayfuse/","-ouse_ino,big_writes","d"})
+--end)
 --profiler.stop()

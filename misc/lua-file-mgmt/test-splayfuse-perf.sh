@@ -15,7 +15,7 @@ filename1=$3
 
 if [ "$luaop" = "luacp" ] || [ "$luaop" = "luacp_2MB_blocks" ]
 then
-	if [ $# -ne 4 ]
+	if [ $# -lt 4 ]
 	then
 		echo "Syntax: .test-splayfuse-perf.sh <number_of_tests> <lua_operation> FILE1 [FILE2]"
 		echo ""
@@ -29,7 +29,7 @@ fi
 
 for i in $(seq 1 $n)
 do
-	echo "Executing \"./${luaop} $filename1 $filename2 >> results_${luaop}.txt\" for the ${i}th time"
+	echo "$(date +%H:%M) Executing \"./${luaop} $filename1 $filename2 >> results_${luaop}.txt\" for the ${i}th time"
 	./${luaop} $filename1 $filename2 >> results_${luaop}.txt
 	if [ -n "$filename2" ]
 	then
