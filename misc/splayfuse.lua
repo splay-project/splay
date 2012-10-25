@@ -12,12 +12,10 @@
 ]]
 
 local fuse = require 'fuse'
---local dbclient = require 'distdb-client-rpcq'
 local dbclient = require 'distdb-client'
 local serializer = require'splay.lbinenc'
 local crypto = require'crypto'
 local misc = require'splay.misc'
---require"splay.base"
 --require'profiler'
 
 local S_WID = 1 --world
@@ -40,7 +38,7 @@ local blank_block=string.rep("0", block_size)
 local open_mode={'rb','wb','rb+'}
 
 local consistency_type = "consistent"
-local db_url = "10.0.2.24:18846"
+local db_url = "127.0.0.1:22070"
 
 --LOGGING
 local log_domains = {
@@ -67,9 +65,9 @@ elseif _LOGMODE == "file" then
 	write_log_line = function(message, ...)
 		local logfile1 = io.open(_LOGFILE,"a")
 		logfile1:write(message)
-		--for i,v in ipairs(arg) do
-		--	f1:write("\t"..v)
-		--end
+		for i=1,arg["n"] do
+			logfile1:write("\t"..tostring(arg[i]))
+		end
 		logfile1:write("\n")
 		logfile1:close()
 	end
@@ -79,9 +77,9 @@ elseif _LOGMODE == "file_efficient" then
 	--write_log_line adds an entry to the logging table
 	write_log_line = function(message, ...)
 		table.insert(log_tbl, message)
-		--for i,v in ipairs(arg) do
-		--	table.insert(log_tbl, "\t"..v)
-		--end
+		for i=1,arg["n"] do
+			table.insert(log_tbl, "\t"..tostring(arg[i]))
+		end
 		table.insert(log_tbl, "\n")
 	end
 	--write_last_log_line writes the table.concat of all the log lines in a file and cleans the logging table
@@ -1324,7 +1322,7 @@ link=function(self, from, to, ...)
 	local log_domain, function_name = "LINK_OP", "link"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
-	logprint(log_domain, function_name..": START, from="..from.." to="..to)
+	logprint(log_domain, function_name..": START, from=", from..", to=", to)
    
 	if from == to then return 0 end
 
@@ -1661,6 +1659,7 @@ if select('#', ...) < 2 then
 end
 
 logprint("MAIN_OP", "MAIN: gonna execute fuse.main")
+
 fuse.main(splayfuse, {...})
 --events.run(function()
 --	fuse.main(splayfuse, {"testsplayfuse","/home/unine/testsplayfuse/testsplayfuse/","-ouse_ino,big_writes","d"})

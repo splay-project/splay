@@ -60,31 +60,40 @@ if _LOGMODE == "print" then
 	last_logprint = print
 --if we print to a file
 elseif _LOGMODE == "file" then
-	logprint = function(message)
+	logprint = function(message, ...)
 		local logfile1 = io.open(_LOGFILE,"a")
-		logfile1:write(message.."\n")
+		logfile1:write(message)
+		for i=1,arg["n"] do
+			logfile1:write("\t"..tostring(arg[i]))
+		end
+		logfile1:write("\n")
 		logfile1:close()
 	end
 	last_logprint = logprint
 --if we want to print to a file efficiently
 elseif _LOGMODE == "file_efficient" then
 	--logprint adds an entry to the logging table
-	logprint = function(message)
-		table.insert(log_tbl, message.."\n")
+	logprint = function(message, ...)
+		table.insert(log_tbl, message)
+		for i=1,arg["n"] do
+			table.insert(log_tbl, "\t"..tostring(arg[i]))
+		end
+		table.insert(log_tbl, "\n")
 	end
 	--last_logprint writes the table.concat of all the log lines in a file and cleans the logging table
-	last_logprint = function(message)
+	last_logprint = function(message, ...)
 		local logfile1 = io.open(_LOGFILE,"a")
-		table.insert(log_tbl, message.."\n")
+		logprint(message, ...)
 		logfile1:write(table.concat(log_tbl))
 		logfile1:close()
 		log_tbl = {}
 	end
 else
 	--empty functions
-	logprint = function(message) end
-	last_logprint = function(message) end
+	logprint = function(message, ...) end
+	last_logprint = function(message, ...) end
 end
+
 
 function send_command(command_name, url, key, type_of_transaction, value)
 	--logs entrance in the function
