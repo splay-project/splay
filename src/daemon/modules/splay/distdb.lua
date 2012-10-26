@@ -1715,14 +1715,14 @@ end
 function put_local(key, value, src_write)
 	--l_o:notice(n.short_id..":put_local: START, for key=", shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":put_local: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":put_local: START key="..shorten_id(key).." elapsed_time=0\n"}
 	l_o:debug(n.short_id..":put_local: value=", value)
 	--TODO how to check if the source node is valid?
 	
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(5) == 1 then
-			table.insert(to_report_t, n.short_id..":put_local: UNsuccessful (on purpose) END\telapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":put_local: END key="..shorten_id(key).." success=false(on_purpose) elapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			--l_o:notice(n.short_id..": NOT writing key: "..key)
 			return false, "404"
@@ -1737,7 +1737,7 @@ function put_local(key, value, src_write)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:error(n.short_id..":put_local: NOT writing key, wrong key type")
-		table.insert(to_report_t, n.short_id..":put_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":put_local: END key="..shorten_id(key).." success=false(wrong_key_type) elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return false, "wrong key type"
 	end
@@ -1800,7 +1800,7 @@ function put_local(key, value, src_write)
 		--l_o:notice(n.short_id..":put_local: vector_clock=",i,v)
 	end
 
-	table.insert(to_report_t, n.short_id..":put_local: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":put_local: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 
 	return true
@@ -1809,6 +1809,8 @@ end
 --function delete_local: deletes a k,v pair. TODO should be atomic? is it?
 function delete_local(key, src_write) --TODO: Consider this fucking src_write and if the data is ever deleted NOTE: enabled is a field meant to handle this
 	--l_o:notice(n.short_id..":delete_local: START, for key=", shorten_id(key))
+	local start_time = misc.time()
+	local to_report_t = {n.short_id..":delete_local: START key="..shorten_id(key).." elapsed_time=0\n"}
 	--TODO how to check if the source node is valid?
 	
 	if test_fail then
@@ -1827,6 +1829,8 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:error(n.short_id..":delete_local: NOT writing key, wrong key type")
+		table.insert(to_report_t, n.short_id..":delete_local: END key="..shorten_id(key).." success=false(wrong_key_type) elapsed_time="..(misc.time() - start_time))
+		l_o:notice(table.concat(to_report_t))
 		return false, "wrong key type"
 	end
 	
@@ -1837,6 +1841,8 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 		local_db.remove("key_list", key)
 	end
 	--l_o:notice(n.short_id..":delete_local: deleting key="..shorten_id(key))
+	table.insert(to_report_t, n.short_id..":delete_local: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
+	l_o:notice(table.concat(to_report_t))
 	return true
 end
 
@@ -1844,12 +1850,12 @@ end
 function get_local(key)
 	--l_o:notice(n.short_id..":get_local: START, for key="..shorten_id(key))
 	local start_time = misc.time()
-	local to_report_t = {n.short_id..":get_local: START, key="..shorten_id(key).."\telapsed_time=0\n"}
+	local to_report_t = {n.short_id..":get_local: START key="..shorten_id(key).." elapsed_time=0\n"}
 
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(10) == 1 then
-			table.insert(to_report_t, n.short_id..":get_local: UNsuccessful (on purpose) END\telapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":get_local: END key="..shorten_id(key).." success=false(on_purpose) elapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			return nil
 		end
@@ -1864,12 +1870,12 @@ function get_local(key)
 
 	if not kv_record_serialized then
 		l_o:error(n.short_id..":get_local: record is nil")
-		table.insert(to_report_t, n.short_id..":get_local: UNsuccessful END\telapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":get_local: END key="..shorten_id(key).." success=false elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return nil
 	end
 
-	table.insert(to_report_t, n.short_id..":get_local: END\telapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":get_local: END key="..shorten_id(key).." success=true elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return serializer.decode(kv_record_serialized)
 end
