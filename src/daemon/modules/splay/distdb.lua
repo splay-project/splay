@@ -1157,7 +1157,7 @@ function consistent_put(key, value) --TODO this code can be merged with evtl_con
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the value of the variable successful
 	return successful
@@ -1273,7 +1273,7 @@ function evtl_consistent_put(key, value)
 		--unlocks the key
 		locked_keys[key] = nil
 	end
-	table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the value of the variable successful
 	return successful
@@ -1323,7 +1323,7 @@ function paxos_put(key, value)
 	local ok, answer = paxos.paxos_write(prop_ids[key], responsibles, paxos_max_retries, value, key)
 	locked_keys[key] = false
 
-	table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=true. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	--returns the answer of paxos_operation
 	return ok, answer
