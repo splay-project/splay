@@ -726,11 +726,11 @@ function handle_get(key, type_of_transaction)
 	table.insert(to_report_t, n.short_id..":handle_get: responsible chosen, about to make RPC call. elapsed_time="..(misc.time() - start_time).."\n")
 	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
 	if rpc_ok then
-		table.insert(to_report_t, n.short_id..":handle_get: key="..shorten_id(key).." END success=true elapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":handle_get: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return rpc_answer[1], rpc_answer[2]
 	end
-	table.insert(to_report_t, n.short_id..":handle_get: key="..shorten_id(key).." END success=false elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_get: key="..shorten_id(key).." END success=false. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return nil, "network problem"
 end
@@ -788,12 +788,12 @@ function handle_put(key, type_of_transaction, value) --TODO check about setting 
 		if not rpc_answer[1] then
 			l_o:error(n.short_id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
-		table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END success=true elapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=true. elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return rpc_answer[1], rpc_answer[2]
 	end
 	l_o:error(n.short_id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
-	table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END success=false elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return nil, "network problem"
 end
@@ -1817,7 +1817,7 @@ function put_local(key, value, src_write)
 		--l_o:notice(n.short_id..":put_local: vector_clock=",i,v)
 	end
 
-	table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=true elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 
 	return true
@@ -1846,7 +1846,7 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:error(n.short_id..":delete_local: NOT writing key, wrong key type")
-		table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=false(wrong_key_type) elapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return false, "wrong key type"
 	end
@@ -1858,7 +1858,7 @@ function delete_local(key, src_write) --TODO: Consider this fucking src_write an
 		local_db.remove("key_list", key)
 	end
 	--l_o:notice(n.short_id..":delete_local: deleting key="..shorten_id(key))
-	table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=true elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return true
 end
@@ -1872,7 +1872,7 @@ function get_local(key)
 	if test_fail then
 		--adding a random failure to simulate failed local transactions
 		if math.random(10) == 1 then
-			table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false(on_purpose) elapsed_time="..(misc.time() - start_time))
+			table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
 			l_o:notice(table.concat(to_report_t))
 			return nil
 		end
@@ -1887,12 +1887,12 @@ function get_local(key)
 
 	if not kv_record_serialized then
 		l_o:error(n.short_id..":get_local: record is nil")
-		table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false elapsed_time="..(misc.time() - start_time))
+		table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false. elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
 		return nil
 	end
 
-	table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=true elapsed_time="..(misc.time() - start_time))
+	table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
 	return serializer.decode(kv_record_serialized)
 end
