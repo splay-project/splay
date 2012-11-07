@@ -809,6 +809,12 @@ function handle_change_log_lvl(log_level) --TODO check about setting N,R,W on th
 	return true
 end
 
+--function handle_change__n_replicas: handles a CHANGE_N_REPLICAS request
+function handle_change_n_replicas(n_replicas)
+	n_replicas = tonumber(n_replicas)
+	return true
+end
+
 --TABLE OF FORWARDING FUNCTIONS
 
 local forward_request = {
@@ -819,7 +825,8 @@ local forward_request = {
 	["GET_NODE_LIST"] = handle_get_node_list,
 	["GET_ALL_RECORDS"] = handle_get_all_records,
 	["GET_KEY_LIST"] = handle_get_key_list,
-	["CHANGE_LOG_LVL"] = handle_change_log_lvl
+	["CHANGE_LOG_LVL"] = handle_change_log_lvl,
+	["CHANGE_N_REPLICAS"] = handle_change_n_replicas
 	}
 
 
