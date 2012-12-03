@@ -1485,7 +1485,7 @@ function consistent_get(key)
 	return false, "wrong node"
 end
 
---function consistent_get: returns the value of a certain key; reads the value from a minimum of replicas
+--function evtl_consistent_get: returns the value of a certain key; reads the value from a minimum of replicas
 function evtl_consistent_get(key)
 	--logs entrance
 	l_o:debug(n.short_id..":evtl_consistent_get: START, for key=", shorten_id(key))
