@@ -45,8 +45,9 @@ local paxos	= require"splay.paxos"
 
 --REQUIRED FUNCTIONS AND OBJECTS
 
-local assert = assert --could be used
-local error = error --could be used
+--assert and error not used but could be
+local assert = assert
+local error = error
 local ipairs = ipairs
 local next = next
 local pairs = pairs
@@ -65,11 +66,13 @@ local _PINGING = false
 local _USE_KYOTO = true
 
 local local_db
-if _USE_KYOTO then --TODO maybe the kyoto vs mem mode can be set inside the restricted_db
-	--for local db handling, when using kyoto
+--if KyotoCabinet is used; TODO maybe the kyoto vs mem mode can be set inside the restricted_db
+if _USE_KYOTO then
+	--for local DB handling, use splay.restricted_db
 	local_db = require"splay.restricted_db"
+--if not KyotoCabinet
 else
-	--for local db handling, when using memory-based db (a simple table): dbs and local_db
+	--for local DB handling, use memory-based DB (a simple table): dbs and local_db
 	local_db = {
 		init = function(settings)
 			dbs = {}
@@ -124,9 +127,9 @@ end
 module("splay.distdb")
 
 --authoring info
-_COPYRIGHT   = "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
-_DESCRIPTION = "Distributed DB functions."
-_VERSION     = 1.0
+_COPYRIGHT		= "Copyright 2011-2012 José Valerio (University of Neuchâtel)"
+_DESCRIPTION	= "Distributed DB functions."
+_VERSION		= 1.0
 
 --[[ DEBUG ]]--
 l_o = log.new(2, "[".._NAME.."]")
@@ -136,14 +139,14 @@ l_o = log.new(2, "[".._NAME.."]")
 --locked_keys contains all the keys that are being modified, thus are locked; stored in RAM, i don't think there is need to store in disk - not so big
 local locked_keys = {}
 
---n_replicas is the number of nodes that store a k,v record
-local n_replicas = 0 --TODO maybe this should match with some distdb settings object
+--n_replicas is the number of nodes that store a k,v record; TODO maybe this should match with some distdb settings object
+local n_replicas = 0
 --min_replicas_write is the minimum number of nodes that must write a k,v to be considered
---successful (only for eventually consistent put)
-local min_replicas_write = 0 --TODO maybe this should match with some distdb settings object
+--successful (only for eventually consistent put); TODO maybe this should match with some distdb settings object
+local min_replicas_write = 0
 --min_replicas_write is the minimum number of nodes that must read k,v to have
---quorum (only for eventually consistent get)
-local min_replicas_read = 0 --TODO maybe this should match with some distdb settings object
+--quorum (only for eventually consistent get); TODO maybe this should match with some distdb settings object
+local min_replicas_read = 0
 --rpc_timeout is the time in seconds that a node waits for an answer from another node on any rpc call
 local rpc_timeout = 15
 --paxos_propose_timeout is the time in seconds that a Proposer waits that all Acceptors answer a Propose message
@@ -162,20 +165,22 @@ local previous_node
 local init_done = false
 --prop_ids holds the Proposal IDs for Paxos operations (used by Proposer)
 local prop_ids = {}
---paxos_max_retries is the maximum number of times a Proposer can try a Proposal
-local paxos_max_retries = 5 --TODO maybe this should match with some distdb settings object
+--paxos_max_retries is the maximum number of times a Proposer can try a Proposal; TODO maybe this should match with some distdb settings object
+local paxos_max_retries = 5
 --im_gossiping is set to true if the node sent an update about the network and it is still traversing the ring
 local im_gossiping = false
-
-local gossiping_elpsd_t = 0 --TODO use this to measure the time it takes to spread updates through the ring
+--TODO use this to measure the time it takes to spread updates through the ring
+local gossiping_elpsd_t = 0
 --times_waiting_before_ping: trick variable to make the node wait n periods of 5s to start pinging its neighbor
 local times_waiting_before_ping = 4
 local ping_period = 5
 
 --Testers:
-local test_delay = false
-local test_fail = false
-local test_wrong_node = false
+local sim_delay = false
+--sim_fail_rate holds the percentage of failed local transactions (for testing purposes)
+local sim_fail_rate = 0
+--sim_fail_rate holds the percentage of times that the EP contacts a wrong node (for testing purposes)
+local sim_wrong_node_rate = 0
 
 
 --LOCAL FUNCTIONS
@@ -269,7 +274,7 @@ local function get_master(key)
 		end
 	end
 	--prints the master ID at debug level
-	l_o:debug("get_master: master --> "..master.id)
+	l_o:debug("get_master: master -> "..master.id)
 	--returns the master
 	return master, master_pos
 end
@@ -321,7 +326,7 @@ local function sanity_check()
 	--l_o:notice(n.short_id..":sanity_check: START")
 	--obtains the key list
 	local my_keys = local_db.totable("key_list")
-  	--for all the keys of the node
+	--for all the keys of the node
 	for i,v in pairs(my_keys) do
 		--if the node is not responsible for key i
 		if not is_responsible(i, n.id) then
@@ -392,7 +397,7 @@ function add_node_to_neighborhood(node)
 	--this variable will hold the set of keys that were managed by the old previous-node
 	local old_previous_node_keys = {}
  
- 	--for each key
+	--for each key
 	for i,v in pairs(my_keys) do
 		--if the old next-node is responsible before changes
 		if is_responsible(i, next_node.id) then
@@ -492,15 +497,15 @@ function add_node_to_neighborhood(node)
 
 end
 
---function remove_node_from_neighborhood: removes a node from the neighborhood table, re-sorts and updates n.position
-function remove_node_from_neighborhood(node_pos) --TODO take care of n_nodes < n_replicas
+--function remove_node_from_neighborhood: removes a node from the neighborhood table, re-sorts and updates n.position; TODO take care of n_nodes < n_replicas
+function remove_node_from_neighborhood(node_pos)
 
 	--retrieves the keys that are managed by itself
 	local my_keys = local_db.totable("key_list")
 	--this variable will hold the set of keys that were managed by the old next-node
 	local old_next_node_keys = {}
  
- 	--for each key
+	--for each key
 	for i,v in pairs(my_keys) do
 		--if the old next-node is responsible before changes
 		if is_responsible(i, next_node.id) then
@@ -591,7 +596,7 @@ function receive_gossip(message, neighbor_about)
 		remove_node_from_neighborhood(neighbor_about_pos)
 	end
 	
-	if test_delay then
+	if sim_delay then
 		--sleep for a random time between 0 and 2sec
 		events.sleep(math.random(100)/50)
 	end
@@ -621,8 +626,8 @@ local function ping_others()
 	if next_node and (times_waiting_before_ping < 0) then
 		--logs
 		l_o:debug(n.short_id..":ping_others: pinging "..next_node.short_id)
-		--pings, and if the response is not ok
-		if not rpc.ping({ip=next_node.ip, port=(next_node.port+2)}) then --TODO should be after several tries
+		--pings, and if the response is not ok; TODO should be after several tries
+		if not rpc.ping({ip=next_node.ip, port=(next_node.port+2)}) then
 			--logs that it lost a neighbor
 			l_o:debug(n.short_id..":ping_others: i lost neighbor="..next_node.short_id)
 			--creates an object node_about to insert it into the message to be gossipped
@@ -723,7 +728,17 @@ function handle_get(key, type_of_transaction)
 	--logs
 	l_o:debug(n.short_id..":handle_get: choosing responsible n. "..chosen_node_id)
 	local chosen_node = responsibles[chosen_node_id]
-	--construct the function to call
+
+	--probability of sending the request to a wrong node (for testing purposes)
+	if math.random(100) < sim_wrong_node_rate then
+		--choses a random node from the whole network
+		local new_node_id = math.random(#neighborhood)
+		chosen_node = neighborhood[new_node_id]
+		--logs
+		l_o:debug(n.short_id..":handle_get: Chosen node changed")
+	end
+
+	--constructs the function to call
 	local function_to_call = "distdb."..type_of_transaction.."_get"
 	--timestamp logging
 	table.insert(to_report_t, n.short_id..":handle_get: responsible chosen, about to make RPC call. elapsed_time="..(misc.time() - start_time).."\n")
@@ -767,10 +782,10 @@ function handle_get_node_list()
 	return true, neighborhood 
 end
 
---function handle_put: handles a PUT request as the Entry Point
-function handle_put(key, type_of_transaction, value) --TODO check about setting N,R,W on the transaction
+--function handle_put: handles a PUT request as the Entry Point; TODO check about setting N,R,W on the transaction
+function handle_put(key, type_of_transaction, value)
 	--logs entrance
-	l_o:debug(n.short_id..":handle_put: START for key=", shorten_id(key)) --TODO: key better be hashed here?
+	l_o:debug(n.short_id..":handle_put: START for key=", shorten_id(key))
 	l_o:debug(n.short_id..":handle_put: value=", value)
 	--timestamp logging
 	local start_time = misc.time()
@@ -793,16 +808,14 @@ function handle_put(key, type_of_transaction, value) --TODO check about setting 
 	end
 	--logs
 	l_o:debug(n.short_id..":handle_put: Chosen node="..chosen_node.short_id)
-	--Testing wrong node
-	if test_wrong_node then
-		--with probability of 20%
-		if math.random(5) == 1 then
-			--choses a random node from the whole network
-			local new_node_id = math.random(#job.nodes)
-			chosen_node = job.nodes[new_node_id]
-			--logs
-			l_o:debug(n.short_id..":handle_put: Chosen node changed")
-		end
+	
+	--probability of sending the request to a wrong node (for testing purposes)
+	if math.random(100) < sim_wrong_node_rate then
+		--choses a random node from the whole network
+		local new_node_id = math.random(#neighborhood)
+		chosen_node = neighborhood[new_node_id]
+		--logs
+		l_o:debug(n.short_id..":handle_put: Chosen node changed")
 	end
 
 	--constructs the function to call
@@ -1223,8 +1236,8 @@ function consistent_put(key, value)
 			end)
 		end
 	end
-	--waits until min_write replicas answer, or until the rpc_timeout is depleted
-	successful = events.wait(key, rpc_timeout) --TODO match this with settings
+	--waits until min_write replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	successful = events.wait(key, rpc_timeout)
 	--unlocks the key
 	locked_keys[key] = nil
 
@@ -1360,8 +1373,8 @@ function evtl_consistent_put(key, value)
 			end)
 		end
 	end
-	--waits until min_write replicas answer, or until the rpc_timeout is depleted
-	successful = events.wait(key, rpc_timeout) --TODO match this with settings
+	--waits until min_write replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	successful = events.wait(key, rpc_timeout)
 	--unlocks the key
 	locked_keys[key] = nil
 
@@ -1460,7 +1473,7 @@ function consistent_get(key)
 			--flushes all timestamp logs
 			l_o:notice(table.concat(to_report_t))
 			--returns the value of the key
-			return true, {get_local(key)} --TODO maybe it is better to enclose this on a table to make it output-compatible with eventually-consistent get
+			return true, {get_local(key)}
 		end
 	end
 	--timestamp logging
@@ -1519,8 +1532,8 @@ function evtl_consistent_get(key)
 		events.thread(function()
 			--if the ID is the same as the node itself
 			if v.id == n.id then
-				--gets the value locally
-				answer_data[v.id] = get_local(key) --TODO deal with attemps of writing a previous version
+				--gets the value locally; TODO deal with attemps of writing a previous version
+				answer_data[v.id] = get_local(key)
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
@@ -1554,8 +1567,8 @@ function evtl_consistent_get(key)
 			end
 		end)
 	end
-	--waits until min_read replicas answer, or until the rpc_timeout is depleted
-	successful = events.wait(key, rpc_timeout) --TODO match this with settings
+	--waits until min_read replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	successful = events.wait(key, rpc_timeout)
 	--if it is not a successful read
 	if not successful then
 		--timestamp logging
@@ -1796,19 +1809,16 @@ function receive_paxos_proposal(prop_id, key)
 	--logs entrance
 	l_o:debug(n.short_id..":receive_paxos_proposal: START, for key=", shorten_id(key), ", propID=", prop_id)
 	
-	--if failure simulation is activated
-	if test_fail then
-		--with probability of 20%
-		if math.random(5) == 1 then
-			--logs
-			l_o:notice(n.short_id..":receive_paxos_proposal: RANDOMLY NOT accepting Propose for key=", shorten_id(key))
-			--returns false
-			return false
-		end
+	--probability of having a fail (for testing purposes)
+	if math.random(100) < sim_fail_rate then
+		--logs
+		l_o:notice(n.short_id..":receive_paxos_proposal: RANDOMLY NOT accepting Propose for key=", shorten_id(key))
+		--returns false
+		return false
 	end
 
 	--if delay simulation is activated
-	if test_delay then
+	if sim_delay then
 		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
@@ -1851,7 +1861,7 @@ function receive_paxos_accept(prop_id, peers, value, key)
 	l_o:debug(n.short_id..":receive_paxos_accept: value=", value)
 	
 	--if delay simulation is activated
-	if test_delay then
+	if sim_delay then
 		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
@@ -1942,23 +1952,20 @@ function put_local(key, value, src_write)
 
 	--TODO how to check if the source node is valid?
 
-	--if failure simulation is activated
-	if test_fail then
-		--with a probability of 20%
-		if math.random(5) == 1 then
-			--timestamp logging
-			table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
-			--flushes all timestamp logs
-			l_o:notice(table.concat(to_report_t))
-			--logs
-			l_o:debug(n.short_id..": NOT writing key: "..key)
-			--returns with error message
-			return false, "404"
-		end
+	--probability of having a fail (for testing purposes)
+	if math.random(100) < sim_fail_rate then
+		--timestamp logging
+		table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
+		--flushes all timestamp logs
+		l_o:notice(table.concat(to_report_t))
+		--logs
+		l_o:debug(n.short_id..":put_local: RANDOMLY NOT writing key: "..key)
+		--returns with error message
+		return false, "404"
 	end
 
 	--if delay simulation is activated
-	if test_delay then
+	if sim_delay then
 		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
@@ -2051,71 +2058,84 @@ function delete_local(key, src_write)
 	local start_time = misc.time()
 	local to_report_t = {n.short_id..":delete_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
 	
-	--AQUI
-
-	if test_fail then
-		--adding a random failure to simulate failed local transactions
-		if math.random(5) == 1 then
-			--l_o:notice(n.short_id..": NOT writing key: "..key)
-			return false, "404"
-		end
+	--probability of having a fail (for testing purposes)
+	if math.random(100) < sim_fail_rate then
+		--logs
+		l_o:debug(n.short_id..": NOT writing key: "..key)
+		--returns with error message
+		return false, "404"
 	end
 
-	if test_delay then
-		--adding a random waiting time to simulate different response times
+	--if a delay is simulated
+	if sim_delay then
+		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
 
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
+		--logs
 		l_o:error(n.short_id..":delete_local: NOT writing key, wrong key type")
+		--timestamp logging
 		table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
+		--returns with error message
 		return false, "wrong key type"
 	end
 	
-	--if the k,v pair exists, delete it, TODO maybe can be improved with only db:remove, just 1 DB op
+	--if the k,v pair exists, delete it; TODO maybe can be improved with only db:remove, just 1 DB op
 	if local_db.check("db_table", key) ~= -1 then
-	--else, replace the value and increase the version
 		local_db.remove("db_table", key)
 		local_db.remove("key_list", key)
 	end
-	--l_o:notice(n.short_id..":delete_local: deleting key="..shorten_id(key))
+	--logs
+	l_o:debug(n.short_id..":delete_local: deleting key="..shorten_id(key))
+	--timestamp logging
 	table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
+	--returns true
 	return true
 end
 
 --function get_local: returns v from a k,v pair.
 function get_local(key)
-	--l_o:notice(n.short_id..":get_local: START, for key="..shorten_id(key))
+	--logs entrance
+	l_o:debug(n.short_id..":get_local: START, for key="..shorten_id(key))
+	--timestamp logging
 	local start_time = misc.time()
 	local to_report_t = {n.short_id..":get_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
 
-	if test_fail then
-		--adding a random failure to simulate failed local transactions
-		if math.random(10) == 1 then
-			table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
-			l_o:notice(table.concat(to_report_t))
-			return nil
-		end
+	--probability of having a fail (for testing purposes)
+	if math.random(100) < sim_fail_rate then
+		--timestamp logging
+		table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
+		l_o:notice(table.concat(to_report_t))
+		--returns nil
+		return nil
 	end
 
-	if test_delay then
+	--if delay is simulated
+	if sim_delay then
 		--adding a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
 
+	--retrieves the serialized version of the record
 	local kv_record_serialized = local_db.get("db_table", key)
-
+	--if there's no record
 	if not kv_record_serialized then
+		--logs error
 		l_o:error(n.short_id..":get_local: record is nil")
+		--timestamp logging
 		table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false. elapsed_time="..(misc.time() - start_time))
 		l_o:notice(table.concat(to_report_t))
+		--returns nil
 		return nil
 	end
 
+	--timestamp logging
 	table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	l_o:notice(table.concat(to_report_t))
+	--returns the record as table
 	return serializer.decode(kv_record_serialized)
 end
