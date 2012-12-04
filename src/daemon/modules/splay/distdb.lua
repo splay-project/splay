@@ -1121,20 +1121,12 @@ function consistent_put(key, value)
 
 	--initializes boolean not_responsible
 	local not_responsible = true
-	--gets all responsibles for the key
-	local responsibles = get_responsibles(key)
+	--gets the master for the key
+	local master_node = get_master(key)
 	--timestamp logging
-	table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Responsible nodes are retrieved. elapsed_time="..(misc.time() - start_time).."\n")
-	--for all responsibles
-	for i,v in ipairs(responsibles) do
-		--if the ID of the node matches, make not_responsible false
-		if v.id == n.id then
-			not_responsible = false
-			break
-		end
-	end
-	--if the node is not responsible
-	if not_responsible then
+	table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Master node is retrieved. elapsed_time="..(misc.time() - start_time).."\n")
+	--if the node is not the master
+	if if master_node.id ~= n.id then
 		--timestamp logging
 		table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
@@ -1147,7 +1139,7 @@ function consistent_put(key, value)
 
 	--TODO consider min replicas > neighborhood
 
-	--if the key is not being modified right now
+	--if the key is locked
 	if locked_keys[key] then
 		--timestamp logging
 		table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
@@ -1164,7 +1156,6 @@ function consistent_put(key, value)
 	--locks the key during the put
 	locked_keys[key] = true
 	--puts the key locally; TODO maybe this can change to a sequential approach: first node itself
-	-- checks the version and writes the k,v, then it writes to others
 	events.thread(function()
 		local put_local_result
 		--logs
@@ -1287,7 +1278,7 @@ function evtl_consistent_put(key, value)
 
 	--TODO consider min replicas > neighborhood
 
-	--if the key is not being modified right now
+	--if the key is locked
 	if locked_keys[key] then
 		--timestamp logging
 		table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
