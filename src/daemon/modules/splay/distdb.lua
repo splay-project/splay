@@ -1909,7 +1909,7 @@ function receive_paxos_accept(prop_id, peers, value, key)
 			if v.id == n.id then
 				--if there's a value to put
 				if value then
-					--calls put_local
+					--calls put_local; TODO can we put n for src_write?
 					put_local(key, value)
 				--if value is nil
 				else
@@ -1985,7 +1985,7 @@ function put_local(key, value, src_write)
 
 	--if the source is not specified
 	if not src_write then
-		--writes "version" as the ID, for compatibility with consistent_put
+		--writes "version" as the ID, for compatibility with paxos_put
 		src_write = {id="version"}
 	end
 
@@ -2000,18 +2000,11 @@ function put_local(key, value, src_write)
 
 	--if the k,v pair doesnt exist, creates it with a new vector clock, enabled=true
 	if not kv_record then
-		kv_record = {value=value, enabled=true, vector_clock={}}
-		kv_record.vector_clock[src_write.id] = 1
-	--else, replace the value and increase the version
-	else
-		kv_record.value=value
-		if kv_record.vector_clock[src_write.id] then
-			kv_record.vector_clock[src_write.id] = kv_record.vector_clock[src_write.id] + 1
-		else
-			kv_record.vector_clock[src_write.id] = 1
-		end
-		--TODO handle enabled, add timestamps
+		kv_record = {enabled=true, vector_clock={}}
 	end
+	--replaces the value and increases the version
+	kv_record.value=value
+	kv_record.vector_clock[src_write.id] = (kv_record.vector_clock[src_write.id] or 0)+ 1
 
 	--timestamp logging
 	table.insert(to_report_t, n.short_id..":put_local: k,v record written. elapsed_time="..(misc.time() - start_time).."\n")
