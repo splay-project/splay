@@ -1623,8 +1623,8 @@ function evtl_consistent_get(key)
 					for i5,v5 in pairs(merged_vector) do
 						--logs
 						l_o:debug(n.short_id..":evtl_consistent_get: merged_vector["..i5.."]= value=", v5.value, "max=", v5.max)
-						--rules: if all elements are =1, the first is fresher
-						-- if all elements are =2, the second is fresher
+						--rules: if all elements are =1 or 0, the first is fresher
+						-- if all elements are =2 or 0, the second is fresher
 						-- if all are equal, vectors are equal
 						-- if some are 2 and some are 1, nothing can be said (comparison_table=3)
 						if v5.max == 1 then
@@ -1655,13 +1655,12 @@ function evtl_consistent_get(key)
 				answer_data[i2] = nil
 				--logs
 				l_o:debug(n.short_id..":evtl_consistent_get: deleting answer from "..i2.." because "..i.." is fresher")
-			--if the comparison == 2, deletes the first answer
+			--if the comparison == 2 or 0, deletes the first answer; TODO missing the or v2 == 0, try with 0 (equal vectors)
 			elseif v2 == 2 then
 				answer_data[i] = nil
 				--logs
 				l_o:debug(n.short_id..":evtl_consistent_get: deleting answer from "..i.." because "..i2.." is fresher")
 			end
-			--TODO WHAT IF they are equal? i think im not considering this case
 		end
 	end
 	--timestamp logging
