@@ -5,7 +5,7 @@ module ChurnLang
   include Treetop::Runtime
 
   def root
-    @root || :root
+    @root ||= :root
   end
 
   module Root0
@@ -25,34 +25,8 @@ module ChurnLang
       return cached
     end
 
-    i0 = index
-    r1 = _nt_action_line
-    if r1
-      r0 = r1
-    else
-      r2 = _nt_comment_c_style
-      if r2
-        r0 = r2
-      else
-        s3, i3 = [], index
-        loop do
-          r4 = _nt_space
-          if r4
-            s3 << r4
-          else
-            break
-          end
-        end
-        r3 = instantiate_node(SyntaxNode,input, i3...index, s3)
-        r3.extend(Root0)
-        if r3
-          r0 = r3
-        else
-          @index = i0
-          r0 = nil
-        end
-      end
-    end
+    r0 = _nt_number
+    r0.extend(Root0)
 
     node_cache[:root][start_index] = r0
 
