@@ -27,7 +27,7 @@ local table = require"table"
 local math = require"math"
 local string = require"string"
 -- for RPC calls
-local rpc	= require"splay.rpc" --TODO think about urpc vs rpc
+local rpc	= require"splay.rpc"
 -- for handling threads
 local events	= require"splay.events"
 --for logging
@@ -76,8 +76,8 @@ local paxos_learn_timeout = 1
 local init_done = false
 --prop_ids holds the Proposal IDs for Paxos operations (used by Proposer)
 local prop_ids = {}
---paxos_max_retries is the maximum number of times a Proposer can try a Proposal
-local paxos_max_retries = 5 --TODO maybe this should match with some distdb settings object
+--paxos_max_retries is the maximum number of times a Proposer can try a Proposal; TODO maybe this should match with some distdb settings object
+local paxos_max_retries = 5
 --paxos_db holds the values for different keys
 local paxos_db = {}
 
@@ -96,30 +96,30 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 		--default key
 		key = "default"
 	end
-	--logs entrance to the function
+	--logs entrance
 	l_o:debug("paxos_"..operation_type..": ENTERED, for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
-	--prints all the peers
+	--logs
 	for i,v in ipairs(peers) do
 		l_o:debug("paxos_"..operation_type..": peer="..v.ip..":"..v.port)
 	end
 
-	--initialize successful as false
+	--initializes successful as false
 	local successful = false
-	--initialize string paxos_op_error_msg as nil
+	--initializes string paxos_op_error_msg as nil
 	local paxos_op_error_msg = nil
 	--calculates the minimum majority for the peers
 	local min_majority = math.floor(#peers/2)+1
-	--initialize the answers as 0
+	--initializes the answers as 0
 	local propose_answers = 0
-	--initialize newest_prop_id as 0
+	--initializes newest_prop_id as 0
 	local newest_prop_id = 0
-	--initialize newest_value as nil
+	--initializes newest_value as nil
 	local newest_value = nil
 	--initializes the acceptors group
 	local acceptors = {}
-	--for all responsibles
+	--for all peers
 	for i,v in ipairs(peers) do
-		--execute in parallel
+		--executes in parallel
 		events.thread(function()
 			local propose_answer = {}
 			--sends a Propose message
@@ -148,7 +148,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 				propose_answers = propose_answers + 1
 				--if answers reaches the minimum majority
 				if propose_answers >= min_majority then
-					--trigger the unlocking of the key
+					--triggers the unlocking of the key
 					events.fire("propose_"..key)
 				end
 			else
@@ -179,34 +179,32 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 		end)
 	end
 
-	--waits until min_write replicas answer, or until paxos_propose_timeout is depleted
-	successful = events.wait("propose_"..key, paxos_propose_timeout) --TODO match this with settings
+	--waits until min_write replicas answer, or until paxos_propose_timeout is depleted; TODO match this with settings
+	successful = events.wait("propose_"..key, paxos_propose_timeout)
 
-	--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1". see above
-	--this is done because even after the triggering of event "key", acceptors
-	--can continue engrossing the acceptors group
-	--TODO check if necessary (maybe having more acceptors doesn't hurt - it involves
-	--more messages in accept phase, though)
+	--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1" (see above). This
+	-- is done because even after the triggering of event "key", acceptors can continue engrossing the
+	-- acceptors group; TODO check if necessary (maybe having more acceptors doesn't
+	-- hurt - it involves more messages in accept phase, though)
 	local n_acceptors = #acceptors
 
 	--if the proposal didn't gather the quorum needed
 	if not successful then
+		--if the number of retries is depleted
+		if retries == 0 then
+			--returns failure
+			return false, "failed at Propose phase after "..paxos_max_retries.."retries"
+		end
 		--if a higher prop_id was indicated by the acceptors
 		if newest_prop_id > 0 then
 			--propose 1 more than that prop_id
 			prop_id = newest_prop_id + 1
 		end
-		--if the number of retries is depleted
-		if retries == 0 then
-			--returns failure
-			return false, "failed at Propose phase after "..paxos_max_retries.."retries"
-		--if not
-		else
-			--retry (retries--)
-			return paxos_operation(operation_type, prop_id, peers, retries-1, value, key)
-		end
+		--retries (with retries-1)
+		return paxos_operation(operation_type, prop_id, peers, retries-1, value, key)
 	end
 
+	--if it is a "read" operation, return the newest value and finish
 	if operation_type == "read" then
 		return true, {newest_value}
 	end
@@ -219,7 +217,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 		--execute in parallel
 		events.thread(function()
 			local accept_answer = nil
-			--puts the key remotely on the others responsibles, if the put is successful
+			--sends an Accept message
 			local rpc_ok, rpc_answer = send_accept(v, prop_id, peers, value, key)
 			--if the RPC call was OK
 			if rpc_ok then
@@ -245,22 +243,24 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 	end
 
 
-	--waits until min_write replicas answer, or until the paxos_accept_timeout is depleted
-	successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout) --TODO match this with settings
+	--waits until min_write replicas answer, or until the paxos_accept_timeout is depleted; TODO match this with settings
+	successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout)
 
+	--returns
 	return successful, paxos_op_error_msg
 end
 
---to be replaced if paxos is used as a library inside a library
+--to be replaced if paxos is used as a library inside a library; TODO it can maybe improved, with the logic "if it's the same node dont do RPC"
 function send_proposal(v, prop_id, key)
-	--logs entrance to the function
+	--logs entrance
 	l_o:debug("send_proposal: ENTERED, for node="..v.ip..":"..v.port..", key="..shorten_id(key)..", propID="..prop_id)
 	return rpc.acall(v, {"paxos.receive_proposal", prop_id, key})
 end
 
 function send_accept(v, prop_id, peers, value, key)
-	--logs entrance to the function
+	--logs entrance
 	l_o:debug("send_accept: ENTERED, for node="..v.ip..":"..v.port..", key="..shorten_id(key)..", propID="..prop_id..", value="..value)
+	--logs
 	for i2,v2 in ipairs(peers) do
 		l_o:debug("send_accept: peers: node="..v2.ip..":"..v2.port)
 	end
@@ -268,7 +268,7 @@ function send_accept(v, prop_id, peers, value, key)
 end
 
 function send_learn(v, value, key)
-	--logs entrance to the function
+	--logs entrance
 	l_o:debug("send_learn: ENTERED, for node="..v.ip..":"..v.port..", key="..shorten_id(key)..", value="..value)
 	return rpc.acall(v, {"paxos.receive_learn", value, key})
 end
@@ -290,18 +290,20 @@ end
 function receive_proposal(prop_id, key)
 	l_o:debug("receive_proposal: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id)
 	
-	if test_fail then
-		--adding a random failure to simulate failed local transactions
-		if math.random(5) == 1 then
-			l_o:debug("receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
-			return false
-		end
+	--probability of having a fail (for testing purposes)
+	if math.random(100) < sim_fail_rate then
+		--logs
+		l_o:debug("receive_proposal: RANDOMLY NOT accepting Propose for key="..shorten_id(key))
+		--returns on error
+		return false
 	end
 
+	--if delay is simulated
 	if test_delay then
-		--adding a random waiting time to simulate different response times
+		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
+
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		l_o:debug("receive_proposal: NOT accepting Propose for key, wrong key type")
@@ -313,11 +315,14 @@ function receive_proposal(prop_id, key)
 		paxos_db[key] = {}
 	--if it exists
 	elseif paxos_db[key].prop_id and paxos_db[key].prop_id >= prop_id then
-		--TODO maybe to send the value on a negative answer is not necessary
+		--sends the value; TODO maybe not necessary
 		return false, paxos_db[key].prop_id, paxos_db[key]
 	end
+	--keeps the old proposal ID
 	local old_prop_id = paxos_db[key].prop_id
+	--replaces the proposal ID
 	paxos_db[key].prop_id = prop_id
+	--sends the value with the old proposal ID
 	return true, old_prop_id, paxos_db[key]
 end
 
@@ -325,8 +330,9 @@ end
 function receive_accept(prop_id, peers, value, key)
 	l_o:debug("receive_accept: ENTERED, for key="..shorten_id(key)..", prop_id="..prop_id..", value="..value)
 	
+	--if delay is simulated
 	if test_delay then
-		--adding a random waiting time to simulate different response times
+		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
 
@@ -353,29 +359,34 @@ function receive_accept(prop_id, peers, value, key)
 		l_o:error("receive_accept: BIZARRE! lower prop_id")
 		return false, "BIZARRE! lower prop_id"
 	end
+	--logs
 	l_o:debug("receive_accept: Telling learners about key="..shorten_id(key)..", value="..value..", enabled=", paxos_db[key].enabled, "propID="..prop_id)
+	--sends Learn message to all the peers (executes in parallel)
 	for i,v in ipairs(peers) do
 		events.thread(function()
 			send_learn(v, value, key)
 		end)
 	end
+	--returns
 	return true
 end
 
---to be replaced with app function
+--function receive_learn: receives the new value and learns it; to be replaced with app function
 function receive_learn(value, key)
+	--logs entrance
 	l_o:debug("receive_learn: ENTERED, for key="..shorten_id(key)..", value="..value)
 	
-	if test_fail then
-		--adding a random failure to simulate failed local transactions
-		if math.random(5) == 1 then
-			l_o:debug(n.short_id..": NOT writing key: "..key)
-			return false, "404"
-		end
+	--probability of having a fail (for testing purposes)
+	if math.random(100) < sim_fail_rate then
+		--logs
+		l_o:debug(n.short_id..": NOT writing key: "..key)
+		--returns error message
+		return false, "404"
 	end
 	
+	--if a delay is simulated
 	if test_delay then
-		--adding a random waiting time to simulate different response times
+		--adds a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
 
@@ -389,13 +400,15 @@ function receive_learn(value, key)
 		l_o:debug("receive_learn: NOT writing key, wrong value type")
 		return false, "wrong value type"
 	end
-	--if there is no record for this key, create it empty
+	--if there is no record for this key
 	if not paxos_db[key] then
+		--creates it empty
 		paxos_db[key] = {}
 	end
 	--replace the value
 	paxos_db[key].value=value
-
+	--logs
 	l_o:debug("receive_learn: writing key="..shorten_id(key)..", value: "..value)
+	--returns
 	return true
 end

@@ -1519,7 +1519,7 @@ function evtl_consistent_get(key)
 	local successful = false
 	--for all the responsibles
 	for i,v in ipairs(responsibles) do
-		--execute in parallel
+		--executes in parallel
 		events.thread(function()
 			--if the ID is the same as the node itself
 			if v.id == n.id then
