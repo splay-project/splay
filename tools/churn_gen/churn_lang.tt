@@ -1,4 +1,5 @@
 grammar ChurnLang
+
 	rule root
 	 	action_line 
 		/
