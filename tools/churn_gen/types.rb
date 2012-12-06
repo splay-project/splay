@@ -56,9 +56,6 @@ class Line
           -1
         elsif @time.class == PeriodTiming and 
           other.time.class == InstantTiming
-          # puts "tato"
-          puts "me: #{@time} and #{@action} (class: #{@time.class})"
-          puts "other: #{other.time} and #{other.action} (class: #{other.time.class})"
           1
         end
         # same action and time type, usage of churn
