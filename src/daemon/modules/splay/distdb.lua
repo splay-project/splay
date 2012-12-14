@@ -1126,7 +1126,7 @@ function consistent_put(key, value)
 	--timestamp logging
 	table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Master node is retrieved. elapsed_time="..(misc.time() - start_time).."\n")
 	--if the node is not the master
-	if if master_node.id ~= n.id then
+	if master_node.id ~= n.id then
 		--timestamp logging
 		table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs

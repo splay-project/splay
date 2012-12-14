@@ -148,7 +148,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 				propose_answers = propose_answers + 1
 				--if answers reaches the minimum majority
 				if propose_answers >= min_majority then
-					--triggers the unlocking of the key
+					--triggers the Accept phase
 					events.fire("propose_"..key)
 				end
 			else
@@ -179,7 +179,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 		end)
 	end
 
-	--waits until min_write replicas answer, or until paxos_propose_timeout is depleted; TODO match this with settings
+	--waits until min_majority replicas answer, or until paxos_propose_timeout is depleted; TODO match this with settings
 	successful = events.wait("propose_"..key, paxos_propose_timeout)
 
 	--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1" (see above). This
@@ -233,7 +233,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 				accept_answers = accept_answers + 1
 				--if answers reaches the number of acceptors
 				if accept_answers >= n_acceptors then
-					--trigger the unlocking of the key
+					--unlocks the waiting call below (events.wait)
 					events.fire("accept_"..key)
 				end
 			else
@@ -243,7 +243,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 	end
 
 
-	--waits until min_write replicas answer, or until the paxos_accept_timeout is depleted; TODO match this with settings
+	--waits until all acceptors answer, or until the paxos_accept_timeout is depleted; TODO match this with settings
 	successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout)
 
 	--returns
