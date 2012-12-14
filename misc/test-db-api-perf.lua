@@ -1,3 +1,4 @@
+local misc = require"splay.misc"
 local dbclient = require 'distdb-client'
 local crypto = require"crypto"
 
@@ -22,10 +23,13 @@ end
 
 local value1 = nil
 local value2 = nil
+local ok_get = nil
+local start_time = nil
+local time_put = 0
 
 local function gen_rand_string(size)
 	local tbl1 = {}
-	for i=1,size do
+	for i=1,size*1024 do
 		tbl1[i] = string.char(math.random(256)-1)
 	end
 	return table.concat(tbl1)
@@ -34,12 +38,15 @@ end
 for i=1,n_times do
 	key = crypto.evp.digest("sha1", "unhashed_key"..i)
 	value1 = gen_rand_string(block_size)
-	dbclient.send_put(url, key, consistency_model, value1)
-	value2 = dbclient.send_get(url, key, consistency_model)
+	start_time = misc.time()
+	send_put(url, key, consistency_model, value1)
+	time_put = time_put + misc.time() - start_time
+	ok_get, value2 = send_get(url, key, consistency_model)
 	if value1 ~= value2 then
 		print("FATAL ERROR, PUT/GET CORRUPTED")
 		os.exit()
 	end
-	dbclient.send_delete(url, key, consistency_model)
+	send_delete(url, key, consistency_model)
 	print("Test nº "..i.." performed")
 end
+print("PUT time = "..(time_put/n_times))
