@@ -145,6 +145,8 @@ local function check_blacklist(target)
 
 		-- REVERSE (dns to ip or ip to dns)
 		local rev_target = nil
+		--TODO the following string.match is not compliant with LuaJIT 2.0.0, fails at run time with 
+		--an error like: play/restricted_socket.lua:148: invalid escape sequence near '"^%d+' 
 		if string.match(target, "^%d+\.%d+\.%d+\.%d+$") then -- ip
 			rev_target = socket.dns.tohostname(target)
 		else
