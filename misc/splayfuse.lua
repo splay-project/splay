@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 --[[
 	SplayFUSE: Distributed FS in FUSE using the LUA bindings
-	Copyright 2011-2012 José Valerio (University of Neuchâtel)
+	Copyright 2011-2013 José Valerio (University of Neuchâtel)
 
 	Based on:
 	
@@ -11,12 +11,24 @@
 	This program can be distributed under the terms of the GNU LGPL.
 ]]
 
+
+--REQUIRED LIBRARIES
+
+--fuse is for the Lua bindings
 local fuse = require 'fuse'
+--distdb-client contains APIs send-get, -put, -delete to communicate with the distDB
 local dbclient = require 'distdb-client'
+--lbinenc is used for serialization
 local serializer = require'splay.lbinenc'
+--crypto is used for hashing
 local crypto = require'crypto'
+--splay.misc used for misc.time
 local misc = require'splay.misc'
+--profiler is used for Lua profiling
 --require'profiler'
+
+
+--"CONSTANTS"
 
 local S_WID = 1 --world
 local S_GID = 2^3 --group
@@ -33,14 +45,21 @@ local ENOSYS = -38
 local ENOATTR = -516
 local ENOTSUPP = -524
 
+
+--LOCAL VARIABLES
+
 local block_size = 256*1024
 local blank_block=string.rep("0", block_size)
 local open_mode={'rb','wb','rb+'}
 
+--consistency type can be "evtl_consistent", "paxos" or "consistent"
 local consistency_type = "consistent"
-local db_url = "127.0.0.1:22070"
+--the URL of the Entry Point to the distDB
+local db_url = "127.0.0.1:15272"
 
---LOGGING
+
+--LOCAL VARIABLES FOR LOGGING
+
 local log_domains = {
 	MAIN_OP=false,
 	DB_OP=true,
@@ -55,6 +74,8 @@ local _LOGMODE = "file_efficient"
 local _LOGFILE = "/home/unine/logsplayfuse.txt"
 local log_tbl = {}
 local to_report_t = {}
+
+--LOGGING FUNCTIONS
 
 --if we are just printing in screen
 if _LOGMODE == "print" then
@@ -165,26 +186,34 @@ function table2str(name, order, input_table)
 	return table.concat(output_tbl)
 end
 
+
 --DB OPERATIONS
 
 --function write_in_db: writes an element into the underlying DB
 local function write_in_db(unhashed_key, value)
+	--timestamp logging
 	local start_time = misc.time()
+	--logs entrance
 	logprint("DB_OP", "write_in_db: START unhashed_key="..unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
 	--logprint("DB_OP", "write_in_db: value = ", value)
+	--timestamp logging
 	logprint("DB_OP", "write_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
 	--sends the value
 	local ok_put = send_put(db_url, db_key, consistency_type, value)
+	--flushes all timestamp logs
 	last_logprint("DB_OP", "write_in_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--returns the result of the PUT operation (true=successful or false=failed)
 	return ok_put
 end
 
 --function read_from_db: reads an element from the underlying DB
 local function read_from_db(unhashed_key)
+	--timestamp logging
 	local start_time = misc.time()
+	--logs entrance
 	logprint("DB_OP", "read_in_db: START unhashed_key="..unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
@@ -192,21 +221,27 @@ local function read_from_db(unhashed_key)
 	logprint("DB_OP", "read_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
 	--sends a GET command to the DB
 	local ok_get, value_get = send_get(db_url, db_key, consistency_type)
+	--flushes all timestamp logs
 	last_logprint("DB_OP", "read_in_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--returns the result of the GET operation (true=successful or false=failed) and the returned value
 	return ok_get, value_get
 end
 
 --function read_from_db: reads an element from the underlying DB
 local function delete_from_db(unhashed_key)
+	--timestamp logging
 	local start_time = misc.time()
+	--logs entrance
 	logprint("DB_OP", "delete_from_db: START unhashed_key="..unhashed_key)
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
 	logprint("DB_OP", "delete_from_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
-	local ok_delete = send_delete(db_url, db_key, consistency_type)
-	last_logprint("DB_OP", "delete_from_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
 	--sends a DELETE command to the DB
+	local ok_delete = send_delete(db_url, db_key, consistency_type)
+	--flushes all timestamp logs
+	last_logprint("DB_OP", "delete_from_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--returns the result of the DELETE operation (true=successful or false=failed)
 	return ok_delete
 end
 
@@ -224,8 +259,11 @@ function string:splitfilename()
 end
 
 
---bit logic used for the mode field. TODO replace the mode field in file's metadata with a table (if I have the time, it's not really necessary)
-local tab = {  -- tab[i+1][j+1] = xor(i, j) where i,j in (0-15)
+--MISC FUNCTIONS
+
+--bit logic used for the mode field. TODO: replace the mode field in file's metadata with a table (if I have the time, it's not really necessary)
+--tab[i+1][j+1] = xor(i, j) where i,j in (0-15)
+local tab = {
   {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, },
   {1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, },
 
@@ -291,26 +329,29 @@ local function decode_acl(s)
 	end
 end
 
-
 --function mk_mode: creates the mode from the owner, group, world rights and the sticky bit
 function mk_mode(owner, group, world, sticky)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "mk_mode"
 	local log_domain, function_name = "FILE_INODE_OP", "mk_mode"
 	--logs entrance
 	logprint(log_domain, function_name..": START, owner=", owner, ", group=", group, ", world=", world)
 	logprint(log_domain, table2str("sticky", 0 ,sticky))
-
+	--if sticky is not specified, fills it out with 0
 	sticky = sticky or 0
+	--result mode is the combination of the owner, group, world rights and the sticky mode
 	local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID
+	--flushes all logs
 	last_logprint(log_domain, function_name..": returns result_mode=", result_mode)
+	--returns the mode
 	return result_mode
 end
 
+
 --FS TO DB FUNCTIONS
 
---function get_block: gets a block from the db
+--function get_block: gets a block from the DB
 function get_block(block_n)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_block"
 	local log_domain, function_name = "FILE_INODE_OP", "get_block"
 	--checks input errors
 	--safety if: if the block_n is not a number, return with error
@@ -322,22 +363,25 @@ function get_block(block_n)
 	logprint(log_domain, function_name..": START, block_n=", block_n)
 	--reads the file element from the DB
 	local ok_read_from_db_block, data = read_from_db("block:"..block_n)
-	--if the reading was not successful, report the error and return nil
+	--if the reading was not successful
 	if not ok_read_from_db_block then
+		--reports the error, flushes all logs and return nil
 		last_logprint(log_domain, function_name..": ERROR, read_from_db of block was not OK")
 		return nil
 	end
-	--if everything went well return the inode number
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
+	--if everything went well, it returns the inode number
 	return data
 end
 
---function get_inode: gets a inode element from the db
+--function get_inode: gets a inode element from the DB
 function get_inode(inode_n)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "get_inode"
-	--safety if: if the inode_n is not a number, return with error
+	--safety if: if the inode_n is not a number
 	if type(inode_n) ~= "number" then
+		--flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": inode_n not a number, returning nil")
 		return nil
 	end
@@ -345,46 +389,42 @@ function get_inode(inode_n)
 	logprint(log_domain, function_name..": START, inode_n=", inode_n)
 	--reads the inode element from the DB
 	local ok_read_from_db_inode, inode_serialized = read_from_db("inode:"..inode_n)
+	--logs
 	logprint(log_domain, function_name..": read_from_db returned=")
 	logprint(log_domain, table2str("ok_read_from_db_inode", 0, ok_read_from_db_inode))
 	--logprint(log_domain, table2str("inode_serialized", 0, inode_serialized))
-
-	--if the reading was not successful, report the error and return nil
+	--if the reading was not successful
 	if not ok_read_from_db_inode then
+		--reports the error and returns nil
 		last_logprint(log_domain, function_name..": ERROR, read_from_db of inode was not OK")
 		return nil
 	end
-
-	--if the reading was not successful, report the error and return nil
+	--if the requested record is empty
 	if not inode_serialized then
+		--reports the error and returns nil
 		last_logprint(log_domain, function_name..": inode_serialized is nil, returning nil")
 		return nil
 	end
-
+	--logs
 	logprint(log_domain, function_name..": trying to serializer_decode, type of inode_serialized=", type(inode_serialized))
-
+	--deserializes the inode
 	local inode = serializer.decode(inode_serialized)
-
-	--if the de-serialized inode is not a table, report the error and return nil
-	--if not type(inode) ~= "table" then
-	--	last_logprint(log_domain, function_name..": inode is not a table, returning nil")
-	--	return nil
-	--end
-
+	--logs
 	logprint(log_domain, function_name..": read_from_db returned")
+	--flushes all logs
 	last_logprint(log_domain, table2str("inode", 0, inode))
-	
-	--if everything went well return the inode
+	--returns the inode
 	return inode
 end
 
---function get_inode_n: gets a inode number from the db, by identifying it with the filename
+--function get_inode_n: gets a inode number from the DB, by identifying it with the filename
 function get_inode_n(filename)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_inode_n"
 	local log_domain, function_name = "FILE_INODE_OP", "get_inode_n"
 	--checks input errors
-	--safety if: if the filename is not a string or an empty string, returns with error
+	--safety if: if the filename is not a string or an empty string
 	if type(filename) ~= "string" or filename == "" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": filename not a valid string, returning nil")
 		return nil
 	end
@@ -392,23 +432,26 @@ function get_inode_n(filename)
 	logprint(log_domain, function_name..": START, filename=", filename)
 	--reads the file element from the DB
 	local ok_read_from_db_file, inode_n = read_from_db("file:"..filename)
-	--if the reading was not successful, report the error and return nil
+	--if the reading was not successful
 	if not ok_read_from_db_file then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, read_from_db of file was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": inode_n = ", inode_n)
-	--if everything went well return the inode number
+	--returns the inode number
 	return tonumber(inode_n)
 end
 
---function get_inode_from_filename: gets a inode element from the db, by identifying it with the filename
+--function get_inode_from_filename: gets a inode element from the DB, by identifying it with the filename
 function get_inode_from_filename(filename)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_inode_from_filename"
 	local log_domain, function_name = "FILE_INODE_OP", "get_inode_from_filename"
 	--checks input errors
-	--safety if: if the filename is not a string or an empty string, returns with error
+	--safety if: if the filename is not a string or an empty string
 	if type(filename) ~= "string" or filename == "" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": filename not a valid string, returning nil")
 		return nil
 	end
@@ -416,55 +459,59 @@ function get_inode_from_filename(filename)
 	logprint(log_domain, function_name..": START, filename=", filename)
 	--the inode number is extracted by calling get_inode_n
 	local inode_n = get_inode_n(filename)
-
+	--flushes all logs
 	last_logprint(log_domain, function_name..": inode number retrieved inode_n=", inode_n)
-
 	--returns the corresponding inode
 	return get_inode(inode_n)
 end
 
---function put_block: puts a block element into the db
+--function put_block: puts a block element into the DB
 function put_block(block_n, data)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_INODE_OP", "put_block"
 	--checks input errors
-	--if block_n is not a number, report an error and return nil
+	--if block_n is not a number
 	if type(block_n) ~= "number" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": block_n not a number, returning nil")
 		return nil
 	end
-	--if data is not a string, report an error and return nil
+	--if data is not a string
 	if type(data) ~= "string" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": data not a string, returning nil")
 		return nil
 	end
-	
 	--logs entrance
 	logprint(log_domain, function_name..": START, block_n=", block_n, "data size=", string.len(data))
 	--writes the block in the DB
 	local ok_write_in_db_block = write_in_db("block:"..block_n, data)
-	--if the writing was not successful, report the error and return nil
+	--if the writing was not successful
 	if not ok_write_in_db_block then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, write_in_db of block was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
-	--if everything went well return true
+	--returns true
 	return true
 end
 
---function put_inode: puts a inode element into the db
+--function put_inode: puts a inode element into the DB
 function put_inode(inode_n, inode)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "put_inode"
 	--checks input errors
-	--if inode_n is not a number, report an error and return nil
+	--if inode_n is not a number
 	if type(inode_n) ~= "number" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, inode_n not a number")
 		return nil
 	end
-	--if inode is not a table, report an error and return nil
+	--if inode is not a table
 	if type(inode) ~= "table" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, inode not a table")
 		return nil
 	end	
@@ -475,28 +522,32 @@ function put_inode(inode_n, inode)
 
 	--writes the inode in the DB
 	local ok_write_in_db_inode = write_in_db("inode:"..inode_n, serializer.encode(inode))
-	--if the writing was not successful, report the error and return nil
+	--if the writing was not successful
 	if not ok_write_in_db_inode then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, write_in_db of inode was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
-	--if everything went well return true
+	--returns true
 	return true
 end
 
---function put_file: puts a file element into the db
+--function put_file: puts a file element into the DB
 function put_file(filename, inode_n)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_file"
 	local log_domain, function_name = "FILE_INODE_OP", "put_file"
 	--checks input errors
-	--if filename is not a string, report an error and return nil
+	--if filename is not a string
 	if type(filename) ~= "string" or filename == "" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, filename not a string")
 		return nil
 	end
-	--if inode_n is not a number, report an error and return nil
+	--if inode_n is not a number
 	if type(inode_n) ~= "number" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, inode_n not a number")
 		return nil
 	end
@@ -505,115 +556,140 @@ function put_file(filename, inode_n)
 
 	--writes the file in the DB
 	local ok_write_in_db_file = write_in_db("file:"..filename, inode_n)
-	--if the writing was not successful, report the error and return nil
+	--if the writing was not successful
 	if not ok_write_in_db_file then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, write_in_db of file was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
-	--if everything went well return true
+	--returns true
 	return true
 end
 
+--function delete_block: deletes a block element from the DB
 function delete_block(block_n)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_block"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_block"
 	--checks input errors
+	--if block_n is not a number
 	if type(block_n) ~= "number" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, block_n not a number")
 		return nil
 	end
 	--logs entrance
 	logprint(log_domain, function_name..": START, block_n=", block_n)
-	
+	--deletes the block from the DB
 	local ok_delete_from_db_block = delete_from_db("block:"..block_n)
-
+	--if the deletion was not successful
 	if not ok_delete_from_db_block then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
+	--returns true
 	return true
 end
 
+--function delete_inode: deletes an inode element from the DB
 function delete_inode(inode_n)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_inode"
---TODOS: WEIRD LATENCY IN DELETE_LOCAL
---I THINK THE INODE DOES NOT GET DELETED.
+	--TODO: WEIRD LATENCY IN DELETE_LOCAL, I THINK THE INODE DOES NOT GET DELETED.
 	--checks input errors
+	--if inode_n is not a number
 	if type(inode_n) ~= "number" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, inode_n not a number")
 		return nil
 	end
 	--logs entrance
 	logprint(log_domain, function_name..": START, inode_n=", inode_n)
-	
+	--reads the inode element from the DB
 	local inode = get_inode(inode_n)
- 
+ 	--for all the blocks refered by the inode
 	for i,v in ipairs(inode.content) do
-		delete_from_db("block:"..v) --TODO: NOT CHECKING IF SUCCESSFUL
+		--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
+		delete_from_db("block:"..v)
 	end
-		
+	--deletes the inode from the DB
 	local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
-
+	--if the deletion was not successful
 	if not ok_delete_from_db_inode then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
+	--returns true
 	return true
 end
 
+--function delete_dir_inode: deletes a directory inode element from the DB
 function delete_dir_inode(inode_n)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_dir_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_dir_inode"
 	--checks input errors
+	--if inode_n is not a number
 	if type(inode_n) ~= "number" then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, inode_n not a number")
 		return nil
 	end
 	--logs entrance
 	logprint(log_domain, function_name..": START, inode_n=", inode_n)
-	
+	--deletes the inode from the DB
 	local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
-
+	--if the deletion was not successful
 	if not ok_delete_from_db_inode then
+		--reports the error, flushes all logs and returns nil
 		logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
+	--returns true
 	return true
 end
 
+--function delete_file: deletes a file element from the DB
 function delete_file(filename)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_file"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_file"
-
+	--if filename is not a string or it is an empty string
 	if type(filename) ~= "string" or filename == "" then
+		--reports the error, flushes all logs and returns nil
 		logprint(log_domain, function_name..": ERROR, filename not a string")
 		return nil
 	end
-
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename=", filename)
-	
+	--deletes the file element from the DB
 	local ok_delete_from_db_file = delete_from_db("file:"..filename)
-
+	--if the deletion was not successful
 	if not ok_delete_from_db_file then
+		--reports the error, flushes all logs and returns nil
 		last_logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
 	end
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
+	--returns true
 	return true
 end
 
-
+--function get_attributes: gets the attributes of a file AQUI ME QUEDE, BIG TODOS: cambiar block a id=hash(content) e inode a id=hash(random). pierre dice que el Entry Point debe ser stateful.
 function get_attributes(filename)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_attributes"
 	local log_domain, function_name = "FILE_INODE_OP", "get_attributes"
-
+	--if filename is not a string or it is an empty string
 	if type(filename) ~= "string" or filename == "" then
+		--reports the error, flushes all logs and returns ENOENT
 		logprint(log_domain, function_name..": filename not a valid string, returning ENOENT")
 		return ENOENT
 	end
@@ -682,7 +758,7 @@ pulse=function()
 end,
 
 getattr=function(self, filename)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "getattr"
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename=", filename)
@@ -702,7 +778,7 @@ end,
 
 opendir=function(self, filename)
 	local sleep_count = 1
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "DIR_OP", "opendir"
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename =", filename)
@@ -721,7 +797,7 @@ opendir=function(self, filename)
 end,
 
 readdir=function(self, filename, offset, inode)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "DIR_OP", "readdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -753,7 +829,7 @@ end,
 
 --function mknod: not sure what it does, it creates a generic node? when is this called
 mknod=function(self, filename, mode, rdev)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "mknod"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -820,7 +896,7 @@ mknod=function(self, filename, mode, rdev)
 end,
 
 read=function(self, filename, size, offset, inode)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "READ_WRITE_OP", "read"
 	--logs entrance
 	--logprint(log_domain, function_name..": START")
@@ -885,7 +961,7 @@ read=function(self, filename, size, offset, inode)
 end,
 
 write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITING
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "READ_WRITE_OP", "write"
 	--logs entrance
 	--logprint(log_domain, function_name..": START")
@@ -1000,7 +1076,7 @@ end,
 open=function(self, filename, mode) --NOTE: MAYBE OPEN DOESN'T DO ANYTHING BECAUSE OF THE SHARED NATURE OF THE FILESYSTEM; EVERY WRITE READ MUST BE ATOMIC AND
 --LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
 --TODO: CHECK ABOUT MODE AND USER RIGHTS.
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "open"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1019,7 +1095,7 @@ open=function(self, filename, mode) --NOTE: MAYBE OPEN DOESN'T DO ANYTHING BECAU
 end,
 
 release=function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MUCH SENSE
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "release"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1055,7 +1131,7 @@ fgetattr=function(self, filename, inode, ...) --TODO: CHECK IF fgetattr IS USEFU
 end,
 
 rmdir=function(self, filename)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "DIR_OP", "rmdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1083,7 +1159,7 @@ end,
 
 mkdir=function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
 --TODO: MERGE THESE CODES (MKDIR, MKNODE, CREATE) ON 1 FUNCTION
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "DIR_OP", "mkdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1140,7 +1216,7 @@ mkdir=function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYING
 end,
 
 create=function(self, filename, mode, flag, ...)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "create"
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename")
@@ -1214,7 +1290,7 @@ readlink=function(self, filename)
 end,
 
 symlink=function(self, from, to)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "LINK_OP", "symlink"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1262,7 +1338,7 @@ symlink=function(self, from, to)
 end,
 
 rename=function(self, from, to)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "MV_CP_OP", "rename"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1318,7 +1394,7 @@ rename=function(self, from, to)
 end,
 
 link=function(self, from, to, ...)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "LINK_OP", "link"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1353,7 +1429,7 @@ link=function(self, from, to, ...)
 end,
 
 unlink=function(self, filename, ...)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "LINK_OP", "unlink"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1443,7 +1519,7 @@ utime=function(self, filename, atime, mtime)
 	end
 end,
 ftruncate=function(self, filename, size, inode)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "ftruncate"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1489,7 +1565,7 @@ ftruncate=function(self, filename, size, inode)
 end,
 
 truncate=function(self, filename, size)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "truncate"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1621,7 +1697,7 @@ setxattr=function(self, filename, name, val, flags)
 end,
 
 getxattr=function(self, filename, name, size)
-	--for all the logprint functions
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "getxattr"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
