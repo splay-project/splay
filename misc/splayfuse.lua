@@ -227,7 +227,7 @@ local function read_from_db(unhashed_key)
 	return ok_get, value_get
 end
 
---function read_from_db: reads an element from the underlying DB
+--function delete_from_db: deletes an element from the underlying DB
 local function delete_from_db(unhashed_key)
 	--timestamp logging
 	local start_time = misc.time()
@@ -683,17 +683,17 @@ function delete_file(filename)
 	return true
 end
 
---function get_attributes: gets the attributes of a file AQUI ME QUEDE, BIG TODOS: cambiar block a id=hash(content) e inode a id=hash(random). pierre dice que el Entry Point debe ser stateful.
+--function get_attributes: gets the attributes of a file
+--BIG TODOS: cambiar block a id=hash(content) e inode a id=hash(random). pierre dice que el Entry Point debe ser stateful.
 function get_attributes(filename)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_attributes"
 	local log_domain, function_name = "FILE_INODE_OP", "get_attributes"
 	--if filename is not a string or it is an empty string
 	if type(filename) ~= "string" or filename == "" then
-		--reports the error, flushes all logs and returns ENOENT
+		--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
 		logprint(log_domain, function_name..": filename not a valid string, returning ENOENT")
 		return ENOENT
 	end
-
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename=", filename)
 	--gets the inode from the DB
@@ -701,81 +701,95 @@ function get_attributes(filename)
 	--logs
 	logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned =")
 	logprint(log_domain, table2str("inode", 0, inode))
-	--if there is no inode returns the error code ENOENT (No such file or directory)
+	--if there is no inode
 	if not inode then
+		--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
 		logprint(log_domain, function_name..": no inode found, returning ENOENT")
 		return ENOENT
 	end
+	--copies all metadata into the variable x
 	local x = inode.meta
+	--flushes all logs
 	last_logprint(log_domain, function_name..": END")
+	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, creation time
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
 end
 
 
-
+--logs start
 logprint("MAIN_OP", "MAIN: starting SPLAYFUSE")
-
 --takes User and Group ID, etc, from FUSE context
 local uid,gid,pid,puid,pgid = fuse.context()
-
+--logs
 logprint("MAIN_OP", "MAIN: FUSE context taken")
-
 --looks if the root_inode is already in the DB
 local root_inode = get_inode(1)
-
+--logs
 logprint("MAIN_OP", "MAIN: got root_inode")
-
---if there is any, create it
+--if there isn't any
 if not root_inode then
-
+	--logs
 	logprint("FILE_INODE_OP", "MAIN: creating root")
-	
+	--creats a root inode
 	root_inode = {
+		--metadata
 		meta = {
+			--inode number is 1
 			ino = 1,
+			--attributes greatest inode number and greatest block number (TODO remove these attributes)
 			xattr ={greatest_inode_n=1, greatest_block_n=0},
+			--mode is 755 + is a dir
 			mode  = mk_mode(7,5,5) + S_IFDIR,
+			--number of links = 2, etc...
 			nlink = 2, uid = puid, gid = pgid, size = 0, atime = os.time(), mtime = os.time(), ctime = os.time()
 		},
+		--content is empty
 		content = {}
 	}
-
-	logprint("FILE_INODE_OP", "MAIN: gonna put root file")
-	
+	--logs
+	logprint("FILE_INODE_OP", "MAIN: going to put root file")
+	--puts root file element
 	put_file("/", 1)
-
-	logprint("FILE_INODE_OP", "MAIN: gonna put root inode")
-
+	--logs
+	logprint("FILE_INODE_OP", "MAIN: going to put root inode")
+	--puts root inode element
 	put_inode(1, root_inode)
 end
 
 --the splayfuse object, with all the FUSE methods
 local splayfuse={
 
+--function pulse: used in Lua memFS for "pinging"
 pulse=function()
 	--logs entrance
 	last_logprint("FILE_MISC_OP", "pulse: START")
 end,
 
+--function getattr: gets the attributes of a requested file
 getattr=function(self, filename)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "getattr"
 	local log_domain, function_name = "FILE_MISC_OP", "getattr"
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename=", filename)
 	--gets the inode from the DB
 	local inode = get_inode_from_filename(filename)
-	--if there is no inode returns the error code ENOENT (No such file or directory)
+	--if there is no inode
 	if not inode then
+		--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
 		last_logprint(log_domain, function_name..": no inode found, returns ENOENT")
 		return ENOENT
 	end
 	--logs
 	logprint(log_domain, function_name..": for filename =", filename, " get_inode_from_filename returned =")
+	--flushes all logs
 	last_logprint(log_domain, table2str("inode", 0, inode))
+	--copies the metadata into the variable x
 	local x = inode.meta
+	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, creation time
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
 end,
 
+--function opendir: opens a directory AQUI ME QUEDE
 opendir=function(self, filename)
 	local sleep_count = 1
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
@@ -1011,7 +1025,7 @@ write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITI
 
 	table.insert(to_report_t, function_name..": root might have been retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
-	--logprint(log_domain, function_name..": blocks are gonna be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
+	--logprint(log_domain, function_name..": blocks are going to be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
 	--logprint(log_domain, function_name..": buf=", buf)
 
 	for i=start_block_idx, end_block_idx do
@@ -1107,11 +1121,11 @@ release=function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MUCH
 	if inode.open < 1 then
 		logprint(log_domain, function_name..": open < 1")
 		if inode.changed then
-			logprint(log_domain, function_name..": gonna put")
+			logprint(log_domain, function_name..": going to put")
 			local ok_put_inode = put_inode(inode.ino, inode)
 		end
 		if inode.meta_changed then
-			logprint(log_domain, function_name..": gonna put")
+			logprint(log_domain, function_name..": going to put")
 			local ok_put_inode = put_inode(inode.ino, inode)
 		end
 		logprint(log_domain, function_name..": meta_changed = nil")
@@ -1734,7 +1748,7 @@ if select('#', ...) < 2 then
 	os.exit(1)
 end
 
-logprint("MAIN_OP", "MAIN: gonna execute fuse.main")
+logprint("MAIN_OP", "MAIN: going to execute fuse.main")
 
 fuse.main(splayfuse, {...})
 --events.run(function()
