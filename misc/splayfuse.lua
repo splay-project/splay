@@ -789,16 +789,15 @@ getattr=function(self, filename)
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
 end,
 
---function opendir: opens a directory AQUI ME QUEDE
+--function opendir: opens a directory
 opendir=function(self, filename)
-	local sleep_count = 1
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "DIR_OP" and the function name is "opendir"
 	local log_domain, function_name = "DIR_OP", "opendir"
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename =", filename)
 	--gets the inode from the DB
 	local inode = get_inode_from_filename(filename)
-	--if there is no inode returns the error code ENOENT (No such file or directory)
+	--if there is no inode, returns the error code ENOENT (No such file or directory)
 	if not inode then
 		last_logprint(log_domain, function_name..": no inode found, returns ENOENT")
 		return ENOENT
@@ -806,7 +805,7 @@ opendir=function(self, filename)
 	--logs
 	logprint(log_domain, function_name..": for filename =", filename, "get_inode_from_filename returned =")
 	last_logprint(log_domain, table2str("inode", 0, inode))
-	--else, returns 0, and the inode object
+	--returns 0, and the inode object
 	return 0, inode
 end,
 
@@ -818,6 +817,7 @@ readdir=function(self, filename, offset, inode)
 	logprint(log_domain, function_name..": START, filename = ", filename, ", offset=", offset)
 	--looks for the inode; we don't care about the inode on memory (sequential operations condition)
 	local inode = get_inode_from_filename(filename)
+	--logs
 	logprint(log_domain, function_name..": inode retrieved =")
 	logprint(log_domain, table2str("inode", 0, inode))
 	--TODO was commented to check compatibility with memfs
@@ -831,34 +831,34 @@ readdir=function(self, filename, offset, inode)
 	for k,v in pairs(inode.content) do
 		table.insert(out, k)
 	end
+	--returns 0 and the list of files
 	return 0, out
 end,
 
+--function releasedir: closes a directory
 releasedir=function(self, filename, inode)
 	--logs entrance
 	logprint("DIR_OP", "releasedir: START, filename = ", filename)
 	last_logprint("DIR_OP", table2str("inode", 0, inode))
+	--returns 0
 	return 0
 end,
 
---function mknod: not sure what it does, it creates a generic node? when is this called
+--function mknod: not sure what it does, it creates a generic node? when is this called?
 mknod=function(self, filename, mode, rdev)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "mknod"
 	local log_domain, function_name = "FILE_MISC_OP", "mknod"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, filename=", filename)
-	--TODO print mode=mode,rdev=rdev
-
 	--gets the inode from the DB
 	local inode = get_inode_from_filename(filename)
-	--if the inode does not exist, we can create it
+	--if the inode does not exist, it can be created
 	if not inode then
 		--extracts dir and base from filename
 		local dir, base = filename:splitfilename()
 		--looks for the parent inode by using the dir
 		local parent = get_inode_from_filename(dir)
-		
 		--declares root_inode
 		local root_inode = nil
 		--if the parent inode number is 1
@@ -870,147 +870,163 @@ mknod=function(self, filename, mode, rdev)
 			--read the inode from the DB
 			root_inode = get_inode(1)
 		end
-
-		--increment by 1 the greatest inode number
+		--increments by 1 the greatest inode number
 		root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
-		--use a variable to hold the greatest inode number, so we don't have to look in root_inode.meta.xattr all the time
+		--uses a variable to hold the greatest inode number, so we don't have to look in root_inode.meta.xattr all the time
 		local greatest_ino = root_inode.meta.xattr.greatest_inode_n
-		
-		--take User, Group and Process ID from FUSE context
+		--takes User, Group and Process ID from FUSE context
 		local uid, gid, pid = fuse.context()
-		
-		--create the inode
+		--creates the inode
 		inode = {
 			meta = {
 				xattr = {},
+				--takes the greatest inode number property from the root inode
 				ino = greatest_ino,
 				mode = mode,
-				dev = rdev, 
+				dev = rdev,
+				--number of links is 1
 				nlink = 1, uid = uid, gid = gid, size = 0, atime = os.time(), mtime = os.time(), ctime = os.time()
 			},
-			content = {""} --TODO: MAYBE THIS IS EMPTY
+			--content is an empty string TODO: MAYBE THIS IS REALLY EMPTY
+			content = {""}
 		}
-		
 		--logs
 		logprint(log_domain, function_name..": what is parent_parent? = ", parent.parent)
-		--add the entry in the parent's inode
+		--adds the entry in the parent's inode
 		parent.content[base]=true
-
-		--put the parent's inode (changed because it has one more entry)
+		--puts the parent's inode (changed because it has one more entry)
 		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
-		--put the inode itself
+		--puts the inode itself
 		local ok_put_inode = put_inode(greatest_ino, inode)
-		--put a file that points to that inode
+		--puts a file that points to that inode
 		local ok_put_file = put_file(filename, greatest_ino)
-		--put the root inode, since the greatest inode number changed
+		--puts the root inode, since the greatest inode number changed
 		local ok_put_root_inode = put_inode(1, root_inode)
 		--returns 0 and the inode
 		return 0, inode
 	end
 end,
 
+--function read: reads data from an open file. TODO: CHANGE MDATE and ADATE WHEN WRITING
 read=function(self, filename, size, offset, inode)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "read"
 	local log_domain, function_name = "READ_WRITE_OP", "read"
 	--logs entrance
 	--logprint(log_domain, function_name..": START")
 	--logprint(log_domain, function_name..": START, filename=", filename..", size=", size..", offset=", offset, {inode=inode})
-
-	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
+	--timestamp logging
 	local start_time = misc.time()
-
+	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
+	--gets inode from DB
 	local inode = get_inode_from_filename(filename)
+	--logs
 	--logprint(log_domain, function_name..": inode retrieved =")
 	--logprint(log_domain, table2str("inode", 0, inode))
+	--if there is no inode, returns 1
 	if not inode then
 		return 1
 	end
-
+	--timestamp logging
 	table.insert(to_report_t, function_name..": inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
 
+	--calculates the starting block ID
 	local start_block_idx = math.floor(offset / block_size)+1
+	--calculates the offset on the starting block
 	local rem_start_offset = offset % block_size
+	--calculates the end block ID
 	local end_block_idx = math.floor((offset+size-1) / block_size)+1
+	--calculates the offset on the end block
 	local rem_end_offset = (offset+size-1) % block_size
 
+	--logs
 	--logprint(log_domain, function_name..": offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
 	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
-
 	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
-
+	--timestamp logging
 	table.insert(to_report_t, function_name..": orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
-
+	--gets the first block; if the result of the get OP is empty, fills it out with an empty string
 	local block = get_block(inode.content[start_block_idx]) or ""
-
+	--table that contains the data, then it gets concatenated (just a final concatenation shows better performance than concatenating inside the loop)
 	local data_t = {}
-
+	--timestamp logging
 	table.insert(to_report_t, function_name..": first block retrieved\telapsed_time="..(misc.time()-start_time).."\n")
-
+	--if the starting block and the end block are the same, it does nothing but logging (the first block was retrieved above)
 	if start_block_idx == end_block_idx then
+		--logs
 		--logprint(log_domain, function_name..": just one block to read")
+		--timestamp logging
 		table.insert(data_t, string.sub(block, rem_start_offset+1, rem_end_offset))
+	--if not
 	else
+		--logs
 		--logprint(log_domain, function_name..": several blocks to read")
 		table.insert(data_t, string.sub(block, rem_start_offset+1))
-
+		--for all blocks, from the second to the second last one
 		for i=start_block_idx+1,end_block_idx-1 do
+			--timestamp logging
 			table.insert(to_report_t, function_name..": getting new block\telapsed_time="..(misc.time()-start_time).."\n")
+			--gets the block
 			block = get_block(inode.content[i]) or ""
+			--inserts the block in data_t
 			table.insert(data_t, block)
 		end
-
+		--timestamp logging
 		table.insert(to_report_t, function_name..": getting new block\telapsed_time="..(misc.time()-start_time).."\n")
-
+		--gets last block
 		block = get_block(inode.content[end_block_idx]) or ""
+		--inserts it only until the offset
 		table.insert(data_t, string.sub(block, 1, rem_end_offset))
 	end
-
+	--timestamp logging
 	table.insert(to_report_t, function_name..": finished\telapsed_time="..(misc.time()-start_time).."\n")
-
+	--flushes all timestamp logs
 	last_logprint(table.concat(to_report_t))
-
+	--cleans the timestamp log table
 	to_report_t = {}
-
+	--returns 0 and the concatenation of the data table
 	return 0, table.concat(data_t)
 end,
 
-write=function(self, filename, buf, offset, inode) --TODO CHANGE DATE WHEN WRITING
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function write: writes data into a file. TODO: CHANGE MDATE and ADATE WHEN WRITING
+write=function(self, filename, buf, offset, inode)
+	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "write"
 	local log_domain, function_name = "READ_WRITE_OP", "write"
 	--logs entrance
 	--logprint(log_domain, function_name..": START")
 	--logprint(log_domain, function_name..": START, filename=", filename, {buf=buf,offset=offset,inode=inode})
-	--logs entrance without reporting buf
+	--logs entrance without reporting buffer
 	--logprint(log_domain, function_name..": START, filename=", filename, {offset=offset,inode=inode})
-
-	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
+	--timestamp logging
 	local start_time = misc.time()
-
+	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
+	--gets inode from the DB
 	local inode = get_inode_from_filename(filename)
-
+	--logs
 	--logprint(log_domain, function_name..": inode retrieved =")
 	--logprint(log_domain, table2str("inode", 0, inode))
+	--timestamp logging
 	table.insert(to_report_t, function_name..": inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
-	
+	--stores the size reported by the inode in the variable orig_size
 	local orig_size = inode.meta.size
+	--size is initially equal to the size of the buffer
 	local size = #buf
-	
+	--calculates the starting block ID
 	local start_block_idx = math.floor(offset / block_size)+1
+	--calculates the offset on the starting block
 	local rem_start_offset = offset % block_size
+	--calculates the end block ID
 	local end_block_idx = math.floor((offset+size-1) / block_size)+1
+	--calculates the offset on the end block
 	local rem_end_offset = ((offset+size-1) % block_size)
-
-	
+	--logs
 	--logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
 	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
-
 	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
-
+	--timestamp logging
 	table.insert(to_report_t, function_name..": orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
-
-	local block = nil
-	local block_n = nil
-	local to_write_in_block = nil
+	--block, block_n and to_write_in_block are initialized to nil
+	local block, block_n, to_write_in_block = nil
+	--AQUI ME QUEDE
 	local block_offset = rem_start_offset
 	local blocks_created = (end_block_idx > #inode.content)
 	local size_changed = ((offset+size) > orig_size)
