@@ -1,5 +1,8 @@
+local misc = require"splay.misc"
+
 _LOGMODE = "file"
 _LOGFILE = "/home/unine/Desktop/logfusesplay/log.txt"
+_TIMESTAMP = true
 local log_tbl = {}
 log_domains = {}
 
@@ -52,6 +55,9 @@ end
 function logprint(log_domain, message, ...)
 	--if logging in the proposed log domain is ON
 	if log_domains[log_domain] then
+		if _TIMESTAMP then
+			message = tostring(misc.time())..": "..(message or "")
+		end
 		write_log_line(message, ...)
 	end
 end
@@ -59,6 +65,9 @@ end
 function last_logprint(log_domain, message, ...)
 	--if logging in the proposed log domain is ON
 	if log_domains[log_domain] then
+		if _TIMESTAMP then
+			message = tostring(misc.time())..": "..(message or "")
+		end
 		--writes a log line with the message
 		write_last_log_line(message, ...)
 	end

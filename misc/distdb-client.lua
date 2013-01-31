@@ -14,7 +14,7 @@ local logger = require"logger"
 -- END LIBRARIES
 
 _LOCAL = true
-log_domains.DIST_DB_CLIENT = true
+log_domains.DIST_DB_CLIENT = false
 
 socket.BLOCKSIZE = 10000000
 
