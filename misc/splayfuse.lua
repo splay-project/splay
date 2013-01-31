@@ -15,18 +15,19 @@
 --REQUIRED LIBRARIES
 
 --fuse is for the Lua bindings
-local fuse = require 'fuse'
+local fuse = require"fuse"
 --distdb-client contains APIs send-get, -put, -delete to communicate with the distDB
-local dbclient = require 'distdb-client'
+local dbclient = require"distdb-client"
 --lbinenc is used for serialization
-local serializer = require'splay.lbinenc'
+local serializer = require"splay.lbinenc"
 --crypto is used for hashing
-local crypto = require'crypto'
+local crypto = require"crypto"
 --splay.misc used for misc.time
-local misc = require'splay.misc'
+local misc = require"splay.misc"
+--logger provides some fine tunable logging functions
+local logger = require"logger"
 --profiler is used for Lua profiling
 --require'profiler'
-
 
 --"CONSTANTS"
 
@@ -60,131 +61,14 @@ local db_url = "127.0.0.1:15272"
 
 --LOCAL VARIABLES FOR LOGGING
 
-local log_domains = {
-	MAIN_OP=false,
-	DB_OP=true,
-	FILE_INODE_OP=false,
-	DIR_OP=false,
-	LINK_OP=false,
-	READ_WRITE_OP=true,
-	FILE_MISC_OP=false,
-	MV_CP_OP=false
-}
-local _LOGMODE = "file_efficient"
-local _LOGFILE = "/home/unine/logsplayfuse.txt"
-local log_tbl = {}
-local to_report_t = {}
-
---LOGGING FUNCTIONS
-
---if we are just printing in screen
-if _LOGMODE == "print" then
-	write_log_line = print
-	write_last_log_line = print
---if we print to a file
-elseif _LOGMODE == "file" then
-	write_log_line = function(message, ...)
-		local logfile1 = io.open(_LOGFILE,"a")
-		logfile1:write(message)
-		for i=1,arg["n"] do
-			logfile1:write("\t"..tostring(arg[i]))
-		end
-		logfile1:write("\n")
-		logfile1:close()
-	end
-	write_last_log_line = write_log_line
---if we want to print to a file efficiently
-elseif _LOGMODE == "file_efficient" then
-	--write_log_line adds an entry to the logging table
-	write_log_line = function(message, ...)
-		table.insert(log_tbl, message)
-		for i=1,arg["n"] do
-			table.insert(log_tbl, "\t"..tostring(arg[i]))
-		end
-		table.insert(log_tbl, "\n")
-	end
-	--write_last_log_line writes the table.concat of all the log lines in a file and cleans the logging table
-	write_last_log_line = function(message, ...)
-		local logfile1 = io.open(_LOGFILE,"a")
-		write_log_line(message, ...)
-		logfile1:write(table.concat(log_tbl))
-		logfile1:close()
-		log_tbl = {}
-	end
-else
-	--empty functions
-	write_log_line = function(message, ...) end
-	write_last_log_line = function(message, ...) end
-end
-
---function logprint: function created to send log messages; it handles different log domains, like DB_OP (Database Operation), etc.
-function logprint(log_domain, message, ...)
-	--if logging in the proposed log domain is ON
-	if log_domains[log_domain] then
-		write_log_line(message, ...)
-	end
-end
-
-function last_logprint(log_domain, message, ...)
-	--if logging in the proposed log domain is ON
-	if log_domains[log_domain] then
-		--writes a log line with the message
-		write_last_log_line(message, ...)
-	end
-end
-
-function table2str(name, order, input_table)
-	--if input_table is nil
-	if not input_table then
-		--return a string indicating it
-		return name.." = nil"
-	end
-	--if it is a string or a number, return it as it is
-	if type(input_table) == "string" or type(input_table) == "number" then
-		return name.." = "..input_table
-	end
-
-	if type(input_table) == "boolean" then
-		if input_table then
-			return name.." = true"
-		else
-			return name.." = false"
-		end
-	end
-
-	--creates a table to store all strings; more efficient to do a final table.concat than to concatenate all the way
-	local output_tbl = {"table: "..name.."\n"}
-	--indentation is a series of n x "\t" (tab characters), where n = order
-	local indentation = string.rep("\t", order)
-	--for all elements of the table
-	for i,v in pairs(input_table) do
-		--the start of the line is the indentation + table_indx
-		table.insert(output_tbl, indentation..i.." = ")
-		--if the value is a string or number, just concatenate
-		if type(v) == "string" or type(v) == "number" then
-			table.insert(output_tbl, v.."\n")
-		--if it's a boolean, concatenate "true" or "false" according to the case
-		elseif type(v) == "boolean" then
-			if v then
-				table.insert(output_tbl, "true\n")
-			else
-				table.insert(output_tbl, "false\n")
-			end
-		--if it's a table, repeat table2str a level deeper
-		elseif type(v) == "table" then
-			table.insert(output_tbl, "table:\n")
-			table.insert(output_tbl, table2str("", order+1, v))
-		--if v is nil, concatenate "nil"
-		elseif not v then
-			table.insert(output_tbl, "nil\n")
-		--if v is something else, print type(v) e.g. functions
-		else
-			table.insert(output_tbl, "type: "..type(v).."\n")
-		end
-	end
-	--returns the concatenation of all lines
-	return table.concat(output_tbl)
-end
+log_domains.MAIN_OP = true
+log_domains.DB_OP = true
+log_domains.FILE_INODE_OP = false
+log_domains.DIR_OP = false
+log_domains.LINK_OP = false
+log_domains.READ_WRITE_OP = false
+log_domains.FILE_MISC_OP = false
+log_domains.MV_CP_OP = false
 
 
 --DB OPERATIONS
@@ -194,17 +78,17 @@ local function write_in_db(unhashed_key, value)
 	--timestamp logging
 	local start_time = misc.time()
 	--logs entrance
-	logprint("DB_OP", "write_in_db: START unhashed_key="..unhashed_key)
+	logprint("DB_OP", "write_in_db: START. unhashed_key=\""..unhashed_key.."\"")
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
 	--logprint("DB_OP", "write_in_db: value = ", value)
 	--timestamp logging
-	logprint("DB_OP", "write_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--logprint("DB_OP", "write_in_db: GOING_TO_SEND unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
 	--sends the value
 	local ok_put = send_put(db_url, db_key, consistency_type, value)
 	--flushes all timestamp logs
-	last_logprint("DB_OP", "write_in_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--last_logprint("DB_OP", "write_in_db: END unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
 	--returns the result of the PUT operation (true=successful or false=failed)
 	return ok_put
 end
@@ -214,15 +98,15 @@ local function read_from_db(unhashed_key)
 	--timestamp logging
 	local start_time = misc.time()
 	--logs entrance
-	logprint("DB_OP", "read_in_db: START unhashed_key="..unhashed_key)
+	logprint("DB_OP", "read_from_db: START. unhashed_key=\""..unhashed_key.."\"")
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	logprint("DB_OP", "read_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--logprint("DB_OP", "read_from_db: GOING_TO_SEND unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
 	--sends a GET command to the DB
 	local ok_get, value_get = send_get(db_url, db_key, consistency_type)
 	--flushes all timestamp logs
-	last_logprint("DB_OP", "read_in_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--last_logprint("DB_OP", "read_from_db: END unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
 	--returns the result of the GET operation (true=successful or false=failed) and the returned value
 	return ok_get, value_get
 end
@@ -232,20 +116,20 @@ local function delete_from_db(unhashed_key)
 	--timestamp logging
 	local start_time = misc.time()
 	--logs entrance
-	logprint("DB_OP", "delete_from_db: START unhashed_key="..unhashed_key)
+	logprint("DB_OP", "delete_from_db: START. unhashed_key=\""..unhashed_key.."\"")
 	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
 	local db_key = crypto.evp.digest("sha1", unhashed_key)
 	--logs
-	logprint("DB_OP", "delete_from_in_db: GOING_TO_SEND unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--logprint("DB_OP", "delete_from_in_db: GOING_TO_SEND unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
 	--sends a DELETE command to the DB
 	local ok_delete = send_delete(db_url, db_key, consistency_type)
 	--flushes all timestamp logs
-	last_logprint("DB_OP", "delete_from_db: END unhashed_key="..unhashed_key.." db_key="..db_key.." elapsed_time="..(misc.time()-start_time))
+	--last_logprint("DB_OP", "delete_from_db: END unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
 	--returns the result of the DELETE operation (true=successful or false=failed)
 	return ok_delete
 end
 
---function splitfilename: splits the filename in base and dir; for example: "/usr/include/lua/5.1/lua.h" -> "/usr/include/lua/5.1", "lua.h"
+--function splitfilename: splits the filename into parent dir and basename; for example: "/usr/include/lua/5.1/lua.h" -> "/usr/include/lua/5.1", "lua.h"
 function string:splitfilename() 
 	local dir,file = self:match("(.-)([^:/\\]*)$")
 	local dirmatch = dir:match("(.-)[/\\]?$")
@@ -316,7 +200,7 @@ end
 --function decode_acl: TODO check what this does in memfs.lua
 local function decode_acl(s)
 
-	last_logprint("FILE_INODE_OP", "decode_acl: START, s=", s)
+	last_logprint("FILE_INODE_OP", "decode_acl: START. s=", s)
 
 	local version = s:sub(1,4)
 	local n = 5
@@ -334,14 +218,14 @@ function mk_mode(owner, group, world, sticky)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "mk_mode"
 	local log_domain, function_name = "FILE_INODE_OP", "mk_mode"
 	--logs entrance
-	logprint(log_domain, function_name..": START, owner=", owner, ", group=", group, ", world=", world)
-	logprint(log_domain, table2str("sticky", 0 ,sticky))
+	logprint(log_domain, function_name..": START. owner=", owner, ", group=", group, ", world=", world)
+	--logprint(log_domain, tbl2str("sticky", 0 ,sticky))
 	--if sticky is not specified, fills it out with 0
 	sticky = sticky or 0
 	--result mode is the combination of the owner, group, world rights and the sticky mode
 	local result_mode = owner * S_UID + group * S_GID + world + sticky * S_SID
 	--flushes all logs
-	last_logprint(log_domain, function_name..": returns result_mode=", result_mode)
+	last_logprint(log_domain, function_name..": END. returns result_mode=", result_mode)
 	--returns the mode
 	return result_mode
 end
@@ -370,7 +254,7 @@ function get_block(block_n)
 		return nil
 	end
 	--flushes all logs
-	last_logprint(log_domain, function_name..": END")
+	last_logprint(log_domain, function_name..": END.")
 	--if everything went well, it returns the inode number
 	return data
 end
@@ -391,8 +275,8 @@ function get_inode(inode_n)
 	local ok_read_from_db_inode, inode_serialized = read_from_db("inode:"..inode_n)
 	--logs
 	logprint(log_domain, function_name..": read_from_db returned=")
-	logprint(log_domain, table2str("ok_read_from_db_inode", 0, ok_read_from_db_inode))
-	--logprint(log_domain, table2str("inode_serialized", 0, inode_serialized))
+	logprint(log_domain, tbl2str("ok_read_from_db_inode", 0, ok_read_from_db_inode))
+	--logprint(log_domain, tbl2str("inode_serialized", 0, inode_serialized))
 	--if the reading was not successful
 	if not ok_read_from_db_inode then
 		--reports the error and returns nil
@@ -412,7 +296,7 @@ function get_inode(inode_n)
 	--logs
 	logprint(log_domain, function_name..": read_from_db returned")
 	--flushes all logs
-	last_logprint(log_domain, table2str("inode", 0, inode))
+	last_logprint(log_domain, tbl2str("inode", 0, inode))
 	--returns the inode
 	return inode
 end
@@ -439,7 +323,7 @@ function get_inode_n(filename)
 		return nil
 	end
 	--flushes all logs
-	last_logprint(log_domain, function_name..": inode_n = ", inode_n)
+	last_logprint(log_domain, function_name..": inode_n=", inode_n)
 	--returns the inode number
 	return tonumber(inode_n)
 end
@@ -518,7 +402,7 @@ function put_inode(inode_n, inode)
 
 	--logs entrance
 	logprint(log_domain, function_name..": START, inode_n=", inode_n)
-	logprint(log_domain, table2str("inode", 0, inode))
+	logprint(log_domain, tbl2str("inode", 0, inode))
 
 	--writes the inode in the DB
 	local ok_write_in_db_inode = write_in_db("inode:"..inode_n, serializer.encode(inode))
@@ -700,7 +584,7 @@ function get_attributes(filename)
 	local inode = get_inode_from_filename(filename)
 	--logs
 	logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned =")
-	logprint(log_domain, table2str("inode", 0, inode))
+	logprint(log_domain, tbl2str("inode", 0, inode))
 	--if there is no inode
 	if not inode then
 		--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
@@ -718,7 +602,7 @@ end
 
 --logs start
 logprint("MAIN_OP", "MAIN: starting SPLAYFUSE")
---takes User and Group ID, etc, from FUSE context
+--takes userID, groupID, etc., from FUSE context
 local uid,gid,pid,puid,pgid = fuse.context()
 --logs
 logprint("MAIN_OP", "MAIN: FUSE context taken")
@@ -757,16 +641,16 @@ if not root_inode then
 end
 
 --the splayfuse object, with all the FUSE methods
-local splayfuse={
+local splayfuse = {
 
 --function pulse: used in Lua memFS for "pinging"
-pulse=function()
+pulse = function()
 	--logs entrance
 	last_logprint("FILE_MISC_OP", "pulse: START")
 end,
 
 --function getattr: gets the attributes of a requested file
-getattr=function(self, filename)
+getattr = function(self, filename)
 	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "getattr"
 	local log_domain, function_name = "FILE_MISC_OP", "getattr"
 	--logs entrance
@@ -782,7 +666,7 @@ getattr=function(self, filename)
 	--logs
 	logprint(log_domain, function_name..": for filename =", filename, " get_inode_from_filename returned =")
 	--flushes all logs
-	last_logprint(log_domain, table2str("inode", 0, inode))
+	last_logprint(log_domain, tbl2str("inode", 0, inode))
 	--copies the metadata into the variable x
 	local x = inode.meta
 	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, creation time
@@ -790,7 +674,7 @@ getattr=function(self, filename)
 end,
 
 --function opendir: opens a directory
-opendir=function(self, filename)
+opendir = function(self, filename)
 	--for all the logprint functions: the log domain is "DIR_OP" and the function name is "opendir"
 	local log_domain, function_name = "DIR_OP", "opendir"
 	--logs entrance
@@ -804,22 +688,22 @@ opendir=function(self, filename)
 	end
 	--logs
 	logprint(log_domain, function_name..": for filename =", filename, "get_inode_from_filename returned =")
-	last_logprint(log_domain, table2str("inode", 0, inode))
+	last_logprint(log_domain, tbl2str("inode", 0, inode))
 	--returns 0, and the inode object
 	return 0, inode
 end,
 
-readdir=function(self, filename, offset, inode)
+readdir = function(self, filename, offset, inode)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "DIR_OP", "readdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
-	logprint(log_domain, function_name..": START, filename = ", filename, ", offset=", offset)
+	logprint(log_domain, function_name..": START, filename=", filename, ", offset=", offset)
 	--looks for the inode; we don't care about the inode on memory (sequential operations condition)
 	local inode = get_inode_from_filename(filename)
 	--logs
 	logprint(log_domain, function_name..": inode retrieved =")
-	logprint(log_domain, table2str("inode", 0, inode))
+	logprint(log_domain, tbl2str("inode", 0, inode))
 	--TODO was commented to check compatibility with memfs
 	--[[if not inode then
 		return 1
@@ -836,16 +720,16 @@ readdir=function(self, filename, offset, inode)
 end,
 
 --function releasedir: closes a directory
-releasedir=function(self, filename, inode)
+releasedir = function(self, filename, inode)
 	--logs entrance
-	logprint("DIR_OP", "releasedir: START, filename = ", filename)
-	last_logprint("DIR_OP", table2str("inode", 0, inode))
+	logprint("DIR_OP", "releasedir: START, filename=", filename)
+	last_logprint("DIR_OP", tbl2str("inode", 0, inode))
 	--returns 0
 	return 0
 end,
 
 --function mknod: not sure what it does, it creates a generic node? when is this called?
-mknod=function(self, filename, mode, rdev)
+mknod = function(self, filename, mode, rdev)
 	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "mknod"
 	local log_domain, function_name = "FILE_MISC_OP", "mknod"
 	--logs entrance
@@ -870,13 +754,13 @@ mknod=function(self, filename, mode, rdev)
 			--read the inode from the DB
 			root_inode = get_inode(1)
 		end
-		--increments by 1 the greatest inode number
+		--increments by 1 the "greatest inode number" in the root inode
 		root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
 		--uses a variable to hold the greatest inode number, so we don't have to look in root_inode.meta.xattr all the time
 		local greatest_ino = root_inode.meta.xattr.greatest_inode_n
-		--takes User, Group and Process ID from FUSE context
+		--takes userID, groupID, and processID from FUSE context
 		local uid, gid, pid = fuse.context()
-		--creates the inode
+		--creates an empty inode
 		inode = {
 			meta = {
 				xattr = {},
@@ -891,7 +775,7 @@ mknod=function(self, filename, mode, rdev)
 			content = {""}
 		}
 		--logs
-		logprint(log_domain, function_name..": what is parent_parent? = ", parent.parent)
+		logprint(log_domain, function_name..": what is parent_parent?=", parent.parent)
 		--adds the entry in the parent's inode
 		parent.content[base]=true
 		--puts the parent's inode (changed because it has one more entry)
@@ -908,7 +792,7 @@ mknod=function(self, filename, mode, rdev)
 end,
 
 --function read: reads data from an open file. TODO: CHANGE MDATE and ADATE WHEN WRITING
-read=function(self, filename, size, offset, inode)
+read = function(self, filename, size, offset, inode)
 	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "read"
 	local log_domain, function_name = "READ_WRITE_OP", "read"
 	--logs entrance
@@ -916,18 +800,18 @@ read=function(self, filename, size, offset, inode)
 	--logprint(log_domain, function_name..": START, filename=", filename..", size=", size..", offset=", offset, {inode=inode})
 	--timestamp logging
 	local start_time = misc.time()
-	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
+	logprint(log_domain, function_name..": START. elapsed_time=0")
 	--gets inode from DB
 	local inode = get_inode_from_filename(filename)
 	--logs
 	--logprint(log_domain, function_name..": inode retrieved =")
-	--logprint(log_domain, table2str("inode", 0, inode))
+	--logprint(log_domain, tbl2str("inode", 0, inode))
 	--if there is no inode, returns 1
 	if not inode then
 		return 1
 	end
 	--timestamp logging
-	table.insert(to_report_t, function_name..": inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
+	logprint(log_domain, function_name..": inode retrieved. elapsed_time="..(misc.time()-start_time))
 
 	--calculates the starting block ID
 	local start_block_idx = math.floor(offset / block_size)+1
@@ -943,13 +827,13 @@ read=function(self, filename, size, offset, inode)
 	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
 	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
 	--timestamp logging
-	table.insert(to_report_t, function_name..": orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
+	logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
 	--gets the first block; if the result of the get OP is empty, fills it out with an empty string
 	local block = get_block(inode.content[start_block_idx]) or ""
 	--table that contains the data, then it gets concatenated (just a final concatenation shows better performance than concatenating inside the loop)
 	local data_t = {}
 	--timestamp logging
-	table.insert(to_report_t, function_name..": first block retrieved\telapsed_time="..(misc.time()-start_time).."\n")
+	logprint(log_domain, function_name..": first block retrieved. elapsed_time="..(misc.time()-start_time))
 	--if the starting block and the end block are the same, it does nothing but logging (the first block was retrieved above)
 	if start_block_idx == end_block_idx then
 		--logs
@@ -964,31 +848,27 @@ read=function(self, filename, size, offset, inode)
 		--for all blocks, from the second to the second last one
 		for i=start_block_idx+1,end_block_idx-1 do
 			--timestamp logging
-			table.insert(to_report_t, function_name..": getting new block\telapsed_time="..(misc.time()-start_time).."\n")
+			logprint(log_domain, function_name..": getting new block. elapsed_time="..(misc.time()-start_time))
 			--gets the block
 			block = get_block(inode.content[i]) or ""
 			--inserts the block in data_t
 			table.insert(data_t, block)
 		end
 		--timestamp logging
-		table.insert(to_report_t, function_name..": getting new block\telapsed_time="..(misc.time()-start_time).."\n")
+		logprint(log_domain, function_name..": getting new block. elapsed_time="..(misc.time()-start_time))
 		--gets last block
 		block = get_block(inode.content[end_block_idx]) or ""
 		--inserts it only until the offset
 		table.insert(data_t, string.sub(block, 1, rem_end_offset))
 	end
-	--timestamp logging
-	table.insert(to_report_t, function_name..": finished\telapsed_time="..(misc.time()-start_time).."\n")
 	--flushes all timestamp logs
-	last_logprint(table.concat(to_report_t))
-	--cleans the timestamp log table
-	to_report_t = {}
+	last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
 	--returns 0 and the concatenation of the data table
 	return 0, table.concat(data_t)
 end,
 
 --function write: writes data into a file. TODO: CHANGE MDATE and ADATE WHEN WRITING
-write=function(self, filename, buf, offset, inode)
+write = function(self, filename, buf, offset, inode)
 	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "write"
 	local log_domain, function_name = "READ_WRITE_OP", "write"
 	--logs entrance
@@ -998,14 +878,14 @@ write=function(self, filename, buf, offset, inode)
 	--logprint(log_domain, function_name..": START, filename=", filename, {offset=offset,inode=inode})
 	--timestamp logging
 	local start_time = misc.time()
-	table.insert(to_report_t, function_name..": started\telapsed_time=0\n")
+	logprint(log_domain, function_name..": START. elapsed_time=0")
 	--gets inode from the DB
 	local inode = get_inode_from_filename(filename)
 	--logs
 	--logprint(log_domain, function_name..": inode retrieved =")
-	--logprint(log_domain, table2str("inode", 0, inode))
+	--logprint(log_domain, tbl2str("inode", 0, inode))
 	--timestamp logging
-	table.insert(to_report_t, function_name..": inode retrieved\telapsed_time="..(misc.time()-start_time).."\n")
+	logprint(log_domain, function_name..": inode retrieved. elapsed_time="..(misc.time()-start_time))
 	--stores the size reported by the inode in the variable orig_size
 	local orig_size = inode.meta.size
 	--size is initially equal to the size of the buffer
@@ -1023,115 +903,153 @@ write=function(self, filename, buf, offset, inode)
 	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
 	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
 	--timestamp logging
-	table.insert(to_report_t, function_name..": orig_size et al. calculated, size="..size.."\telapsed_time="..(misc.time()-start_time).."\n")
-	--block, block_n and to_write_in_block are initialized to nil
-	local block, block_n, to_write_in_block = nil
-	--AQUI ME QUEDE
+	logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
+	--root_inode, block, block_n and to_write_in_block are initialized to nil
+	local root_inode, block, block_n, to_write_in_block
+	--initializes the block offset as the offset in the starting block
 	local block_offset = rem_start_offset
+	--calculates if blocks need to be created; if the ID of the end block is bigger than the number of blocks in the inode, yes.
 	local blocks_created = (end_block_idx > #inode.content)
+	--calculates if the size of the file changed; if the offset+size is bigger than the original size, yes.
 	local size_changed = ((offset+size) > orig_size)
-	local root_inode = nil
+	--initializes the remaining buffer as the whole buffer
 	local remaining_buf = buf
-
-	table.insert(to_report_t, function_name..": calculated more stuff\telapsed_time="..(misc.time()-start_time).."\n")
-
+	--timestamp logging
+	logprint(log_domain, function_name..": calculated more stuff. elapsed_time="..(misc.time()-start_time))
+	--if blocks need to be created, gets the root node
 	if blocks_created then
 		root_inode = get_inode(1)
 	end
-
-	table.insert(to_report_t, function_name..": root might have been retrieved\telapsed_time="..(misc.time()-start_time).."\n")
-
+	--timestamp logging
+	logprint(log_domain, function_name..": root might have been retrieved. elapsed_time="..(misc.time()-start_time))
+	--logs
 	--logprint(log_domain, function_name..": blocks are going to be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
 	--logprint(log_domain, function_name..": buf=", buf)
-
+	--for all blocks from the starting to the end block
 	for i=start_block_idx, end_block_idx do
+		--logs
 		--logprint(log_domain, function_name..": im in the for loop, i=", i)
+		--if the block exists
 		if inode.content[i] then
+			--logs
 			--logprint(log_domain, function_name..": block exists, so get the block")
+			--block_n is the ith entry of inode contents table
 			block_n = inode.content[i]
+			--gets the block
 			block = get_block(inode.content[i])
+		--if not
 		else
+			--logs
 			--logprint(log_domain, function_name..": block doesnt exists, so create the block")
-			--already commented--logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+			--already commented: --logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
+			--increases the greatest block number in the root inode
 			root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
+			--logs
 			--logprint(log_domain, function_name..": now greatest block number=", root_inode.meta.xattr.greatest_block_n)
 			--TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
+			--assigns the block number as the current greatest block
 			block_n = root_inode.meta.xattr.greatest_block_n
+			--the block initially is an empty string
 			block = ""
+			--inserts the new block number in the contents table
 			table.insert(inode.content, block_n)
+			--logs
 			--logprint(log_domain, function_name..": new inode with block =")
-			--logprint(log_domain, table2str("inode", 0, inode))
+			--logprint(log_domain, tbl2str("inode", 0, inode))
 		end
+		--logs
 		--logprint(log_domain, function_name..": remaining_buf=", remaining_buf)
 		--logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
 		--logprint(log_domain, function_name..": block_size=", block_size)
+		--if the size of the remaining buffer + the block offset is bigger than a full block size (it means we need to trunk the remaining buffer cause it does not fit in one block)
 		if (#remaining_buf+block_offset) > block_size then
+			--logs
 			--logprint(log_domain, function_name..": more than block size")
+			--fills out to_write_in_block with enough data to reach the end of the block
 			to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
+			--cuts that data from the remaining buffer
 			remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
+		--if not (all the remaining buffer fits in the block)
 		else
+			--logs
 			--logprint(log_domain, function_name..": less than block size")
+			--to_write_in_block is equal to the remaining buffer
 			to_write_in_block = remaining_buf
 		end
+		--logs
 		--logprint(log_domain, function_name..": block=", {block=block})
 		--logprint(log_domain, function_name..": to_write_in_block=", to_write_in_block)
 		--logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
-		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1)) --TODO CHECK IF THE +1 AT THE END IS OK
+		--inserts the to_write_in_block segment into the block. TODO: CHECK IF THE +1 AT THE END IS OK
+		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1))
+		--logs
 		--logprint(log_domain, function_name..": now block=", block)
+		--the block offset is set to 0
 		block_offset = 0
-		table.insert(to_report_t, function_name..": before putting the block\telapsed_time="..(misc.time()-start_time).."\n")
+		--timestamp logging
+		logprint(log_domain, function_name..": before putting the block. elapsed_time="..(misc.time()-start_time))
+		--puts the block
 		put_block(block_n, block)
-		table.insert(to_report_t, function_name..": timestamp at the end of each cycle\telapsed_time="..(misc.time()-start_time).."\n")
+		--timestamp logging
+		logprint(log_domain, function_name..": timestamp at the end of each cycle. elapsed_time="..(misc.time()-start_time))
 	end
-
+	--if the size changed
 	if size_changed then
+		--changes the metadata in the inode
 		inode.meta.size = offset+size
+		--puts the inode into the DB
 		put_inode(inode.meta.ino, inode)
-		table.insert(to_report_t, function_name..": inode was written\telapsed_time="..(misc.time()-start_time).."\n")
+		--logs
+		logprint(log_domain, function_name..": inode was written. elapsed_time="..(misc.time()-start_time))
+		--if blocks were created
 		if blocks_created then
+			--updates the root inode with the new "greatest block number"
 			put_inode(1, root_inode)
-			table.insert(to_report_t, function_name..": root was written\telapsed_time="..(misc.time()-start_time).."\n")
+			--logs
+			logprint(log_domain, function_name..": root was written. elapsed_time="..(misc.time()-start_time))
 		end
 	end
-
-	table.insert(to_report_t, function_name..": finished\telapsed_time="..(misc.time()-start_time).."\n")
-
-	last_logprint(log_domain, table.concat(to_report_t))
-
-	to_report_t = {}
-
+	--flushes all timestamp loggings
+	last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
+	--returns the size of the written buffer
 	return #buf
 end,
 
-open=function(self, filename, mode) --NOTE: MAYBE OPEN DOESN'T DO ANYTHING BECAUSE OF THE SHARED NATURE OF THE FILESYSTEM; EVERY WRITE READ MUST BE ATOMIC AND
---LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
+--function open: opens a file for read/write operations
+--NOTE: WHEN DOING ATOMIC WRITE READ, LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
 --TODO: CHECK ABOUT MODE AND USER RIGHTS.
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+open = function(self, filename, mode)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "open"
 	local log_domain, function_name = "FILE_MISC_OP", "open"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
-	logprint(log_domain, function_name..": START, filename=", filename, {mode=mode})
-
+	logprint(log_domain, function_name..": START, filename=", filename)
+	--m is the remainder mode divided by 4
 	local m = mode % 4
+	--gets the inode from the DB
 	local inode = get_inode_from_filename(filename)
 	--[[
-	--TODO: CHECK THIS MODE THING
+	--NOTE: CODE RELATED TO SESSION ORIENTED MODE
 	if not inode then return ENOENT end
 	inode.open = (inode.open or 0) + 1
 	put_inode(inode.meta.ino, inode)
 	--TODO: CONSIDER CHANGING A FIELD OF THE DISTDB WITHOUT RETRIEVING THE WHOLE OBJECT; DIFFERENTIAL WRITE
 	--]]
+	--returns 0 and the inode
 	return 0, inode
 end,
 
-release=function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MUCH SENSE
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function release: closes an open file
+--NOTE: RELEASE DOESNT MAKE SENSE WHEN USING ATOMIC READ WRITES
+release = function(self, filename, inode)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "release"
 	local log_domain, function_name = "FILE_MISC_OP", "release"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, filename=", filename, {inode=inode})
 
 	--[[
+	--NOTE: CODE RELATED TO SESSION ORIENTED MODE
 	inode.open = inode.open - 1
 	logprint(log_domain, function_name..": for filename=", filename, {inode_open=inode.open})
 	if inode.open < 1 then
@@ -1150,59 +1068,70 @@ release=function(self, filename, inode) --NOTE: RELEASE DOESNT SEEM TO MAKE MUCH
 		inode.changed = nil
 	end
 	--]]
+	--returns 0
 	return 0
 end,
 
-fgetattr=function(self, filename, inode, ...) --TODO: CHECK IF fgetattr IS USEFUL, IT IS! TODO: CHECK WITH filename
+--function fgetattr:
+--TODO: CHECK IF fgetattr IS USEFUL, IT IS! TODO: CHECK WITH filename
+fgetattr = function(self, filename, inode, ...)
 	--logs entrance
-	logprint("FILE_MISC_OP", "fgetattr: START, filename = ", filename)
-	last_logprint("FILE_MISC_OP", table2str("inode", 0, inode))
+	logprint("FILE_MISC_OP", "fgetattr: START, filename=", filename)
+	last_logprint("FILE_MISC_OP", tbl2str("inode", 0, inode))
+	--returns the attributes of a file
 	return get_attributes(filename)
 end,
 
-rmdir=function(self, filename)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function rmdir: removes a directory from the filesystem
+rmdir = function(self, filename)
+	--for all the logprint functions: the log domain is "DIR_OP" and the function name is "rmdir"
 	local log_domain, function_name = "DIR_OP", "rmdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, filename=", filename)
-
+	--gets the inode
 	local inode_n = get_inode_n(filename)
-
-	if inode_n then --TODO: WATCH OUT, I PUT THIS IF
+	--if the inode exists. TODO: if it doesn't exist, should we still return 0? when we know this, change the model to "if not smth then return error end, continue and return (no else)"
+	if inode_n then
+		--splits the filename
 		local dir, base = filename:splitfilename()
-
-		--local inode = get_inode_from_filename(filename)
-		--TODO: CHECK WHAT HAPPENS WHEN TRYING TO ERASE A NON-EMPTY DIR
+		--logs
 		--logprint(log_domain, function_name..": got inode", {inode, inode})
-
+		--gets the parent dir inode
 		local parent = get_inode_from_filename(dir)
+		--deletes the entry from the contents of the parent node. TODO: CHECK WHAT HAPPENS WHEN TRYING TO ERASE A NON-EMPTY DIR
 		parent.content[base] = nil
+		--decrements the number of links in the parent node (one less dir pointing to it with the ".." element)
 		parent.meta.nlink = parent.meta.nlink - 1
-
+		--removes the file from the DB
 		delete_file(filename)
+		--removes the inode from the DB
 		delete_dir_inode(inode_n)
+		--updates the parent inode
 		put_inode(parent.ino, parent)
 	end
+	--returns 0
 	return 0
 end,
 
-mkdir=function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
+--function mkdir: creates a directory
+--TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
 --TODO: MERGE THESE CODES (MKDIR, MKNODE, CREATE) ON 1 FUNCTION
+mkdir = function(self, filename, mode, ...)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "DIR_OP", "mkdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, filename=", filename, {mode=mode})
-
+	--tries to get the inode first
 	local inode = get_inode_from_filename(filename)
-
+	--if there is no inode, we can create it
 	if not inode then
-		
+		--splits the filename
 		local dir, base = filename:splitfilename()
+		--gets the parent dir inode
 		local parent = get_inode_from_filename(dir)
-		
-		--declares root_inode
+		--initializes root_inode as nil
 		local root_inode = nil
 		--if the parent inode number is 1
 		if parent.meta.ino == 1 then
@@ -1210,67 +1139,79 @@ mkdir=function(self, filename, mode, ...) --TODO: CHECK WHAT HAPPENS WHEN TRYING
 			root_inode = parent
 		--if not
 		else
-			--read the inode from the DB
+			--gets the inode from the DB
 			root_inode = get_inode(1)
 		end
-
+		--increments by 1 the "greatest inode number" in the root inode
 		root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+		--takes the greatest inode number and stores it in greatest_ino
 		local greatest_ino = root_inode.meta.xattr.greatest_inode_n
-		
+		--takes userID, groupID, and processID from FUSE context
 		local uid, gid, pid = fuse.context()
-		
+		--creates an empty dir inode
 		inode = {
 			meta = {
 				xattr = {},
-				mode = set_bits(mode,S_IFDIR),
-				ino = greatest_ino, 
-				dev = 0, --TODO: CHECK IF USEFUL
-				nlink = 2, uid = uid, gid = gid, size = 0, atime = os.time(), mtime = os.time(), ctime = os.time() --TODO: CHECK IF SIZE IS NOT block_size
+				mode = set_bits(mode, S_IFDIR),
+				ino = greatest_ino,
+				--deviceID is 0. TODO: CHECK IF USEFUL
+				dev = 0,
+				--number of links is 2. TODO: CHECK IF SIZE IS NOT block_size
+				nlink = 2, uid = uid, gid = gid, size = 0, atime = os.time(), mtime = os.time(), ctime = os.time()
 			},
 			content = {}
 		}
-		
+		--adds the entry into the parent contents table
 		parent.content[base]=true
+		--adds one link to the parent (the ".." link)
 		parent.meta.nlink = parent.meta.nlink + 1
 
-		--put the parent's inode, because the contents changed
+		--puts the parent's inode, because the contents changed
 		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
-		--put the inode, because it's new
+		--puts the inode, because it's new
 		local ok_put_inode = put_inode(greatest_ino, inode)
-		--put the file, because it's new
+		--puts the file, because it's new
 		local ok_put_file = put_file(filename, greatest_ino)
-		--put root inode, because greatest ino was incremented
+		--puts root inode, because greatest ino was incremented
 		local ok_put_root_inode = put_inode(1, root_inode)
 	end
+	--returns 0
 	return 0
 end,
 
-create=function(self, filename, mode, flag, ...)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function create: creates and opens a file
+create = function(self, filename, mode, flag, ...)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "create"
 	local log_domain, function_name = "FILE_MISC_OP", "create"
 	--logs entrance
 	logprint(log_domain, function_name..": START, filename")
 	logprint(log_domain, function_name..": START, filename=", filename,{mode=mode,flag=flag})
-
+	--gets inode from the DB
 	local inode = get_inode_from_filename(filename)
-
+	--if the inode doesn't exist
 	if not inode then
-		
+		--splits the filename
 		local dir, base = filename:splitfilename()
+		--gets the parent dir inode
 		local parent = get_inode_from_filename(dir)
-		
+		--initializes the root inode as nil
 		local root_inode = nil
+		--if the parent is the root node
 		if parent.meta.ino == 1 then
+			--root_inode is equal to the parent (no need to look for it again)
 			root_inode = parent
+		--if not
 		else
+			--gets the root inode
 			root_inode = get_inode(1)
 		end
-
+		--increments by 1 the "greatest inode number" in the root inode
 		root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+		--assigns that number to greatest_ino
 		local greatest_ino = root_inode.meta.xattr.greatest_inode_n
-		
+		--takes userID, groupID, and processID from FUSE context
 		local uid, gid, pid = fuse.context()
-		
+		--creates an empty inode
 		inode = {
 			meta = {
 				xattr = {},
@@ -1281,68 +1222,82 @@ create=function(self, filename, mode, flag, ...)
 			},
 			content = {}
 		}
-		
+		--adds the entry in the parent dir inode
 		parent.content[base]=true
 
-		--put the parent's inode, because the contents changed
+		--puts the parent's inode, because the contents changed
 		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
-		--put the inode, because it's new
+		--puts the inode, because it's new
 		local ok_put_inode = put_inode(greatest_ino, inode)
-		--put the file, because it's new
+		--puts the file, because it's new
 		local ok_put_file = put_file(filename, greatest_ino)
-		--put root inode, because greatest ino was incremented
+		--puts root inode, because greatest ino was incremented
 		local ok_put_root_inode = put_inode(1, root_inode)
+		--returns 0 and the inode element
 		return 0, inode
 	end
 end,
 
-flush=function(self, filename, inode)
+--function flush: cleans local record about an open file
+flush = function(self, filename, inode)
 	--logs entrance
 	logprint("FILE_MISC_OP", "flush: START")
 	logprint("FILE_MISC_OP", "flush: START, filename=", filename, {inode=inode})
-
+	--if the inode changed
 	if inode.changed then
 		--TODO: CHECK WHAT TO DO HERE, IT WAS MNODE.FLUSH, AN EMPTY FUNCTION
 	end
+	--returns 0
 	return 0
 end,
 
-readlink=function(self, filename)
+--function readlink: reads a symbolic link
+readlink = function(self, filename)
 	--logs entrance
 	logprint("LINK_OP", "readlink: START")
 	logprint("LINK_OP", "readlink: START, filename=", filename)
-
+	--gets inode from the DB
 	local inode = get_inode_from_filename(filename)
+	--if there is an inode, returns 0, and the symbolic link
 	if inode then
 		return 0, inode.content[1]
 	end
+	--if not, returns ENOENT
 	return ENOENT
 end,
 
-symlink=function(self, from, to)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function symlink: makes a symbolic link
+symlink = function(self, from, to)
+	--for all the logprint functions: the log domain is "LINK_OP" and the function name is "symlink"
 	local log_domain, function_name = "LINK_OP", "symlink"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START",{from=from,to=to})
-
+	--splits the "to" filename
 	local to_dir, to_base = to:splitfilename()
+	--gets the  parent dir of the "to" file
 	local to_parent = get_inode_from_filename(to_dir)
 
+	--initializes the root inode as nil
 	local root_inode = nil
+	--if the parent is the root node
 	if to_parent.meta.ino == 1 then
+		--root_inode is equal to the parent (no need to look for it again)
 		root_inode = to_parent
+	--if not
 	else
+		--gets the root inode
 		root_inode = get_inode(1)
 	end
-
+	--logs
 	logprint(log_domain, function_name..": root_inode retrieved",{root_inode=root_inode})
-
+	--increments by 1 the "greatest inode number" in the root inode
 	root_inode.meta.xattr.greatest_inode_n = root_inode.meta.xattr.greatest_inode_n + 1
+	--assigns that value to greatest_ino
 	local greatest_ino = root_inode.meta.xattr.greatest_inode_n
-
+	--takes userID, groupID, and processID from FUSE context
 	local uid, gid, pid = fuse.context()
-
+	--creates an empty inode
 	local to_inode = {
 		meta = {
 			xattr = {},
@@ -1353,155 +1308,173 @@ symlink=function(self, from, to)
 		},
 		content = {from}
 	}
-
+	--adds the entry into the parent dir inode of the "to" file
 	to_parent.content[to_base]=true
 
-	--put the to_parent's inode, because the contents changed
+	--puts the to_parent's inode, because the contents changed
 	local ok_put_to_parent_inode = put_inode(to_parent.meta.ino, to_parent)
-	--put the to_inode, because it's new
+	--puts the to_inode, because it's new
 	local ok_put_inode = put_inode(greatest_ino, to_inode)
-	--put the file, because it's new
+	--puts the file, because it's new
 	local ok_put_file = put_file(to, greatest_ino)
-	--put root inode, because greatest ino was incremented
+	--puts root inode, because greatest ino was incremented
 	local ok_put_root_inode = put_inode(1, root_inode)
-	return 0 --TODO this return 0 was inside an IF
+	--returns 0. TODO: this return 0 was inside an IF
+	return 0
 end,
 
-rename=function(self, from, to)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function rename: moves/renames a file
+rename = function(self, from, to)
+	--for all the logprint functions: the log domain is "MV_CP_OP" and the function name is "rename"
 	local log_domain, function_name = "MV_CP_OP", "rename"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, from=", from..", to=", to)
-
+	--if the "from" file is equal to the "to" file
 	if from == to then return 0 end
-
+	--gets the "from" inode
 	local from_inode = get_inode_from_filename(from)
-	
+	--if there is a from inode
 	if from_inode then
-
+		--logs
 		logprint(log_domain, function_name..": entered in IF", {from_inode=from_inode})
-		
+		--splits the "from" filename
 		local from_dir, from_base = from:splitfilename()
+		--splits the "to" filename
 		local to_dir, to_base = to:splitfilename()
+		--gets the parent dir inode of the "from" file
 		local from_parent = get_inode_from_filename(from_dir)
+		--initializes the parent dir inode of the "to" file as nil
 		local to_parent = nil
+		--if the "to" and "from" parent dir inodes are the same
 		if to_dir == from_dir then
+			--to_parent is the from_parent (no need to look it up again)
 			to_parent = from_parent
+		--if not
 		else
+			--gets the "to" parent dir inode
 			to_parent = get_inode_from_filename(to_dir)
 		end
-
+		--adds the entry into the "to" parent dir inode
 		to_parent.content[to_base] = true
+		--deletes the entry from the "from" parent dir inode
 		from_parent.content[from_base] = nil
-		
+		--logs
 		logprint(log_domain, function_name..": changes made", {to_parent=to_parent, from_parent=from_parent})
-		--TODO: CHECK IF IT IS A DIR
-
-		--only if to and from are different (avoids writing on parent's inode twice, for the sake of efficiency)
+		--only if "to" and "from" are different (avoids writing on parent's inode twice, for the sake of efficiency)
 		if to_dir ~= from_dir then
-			--put the to_parent's inode, because the contents changed
+			--updates the to_parent dir inode, because the contents changed
 			local ok_put_to_parent_inode = put_inode(to_parent.meta.ino, to_parent)
 		end
-		--put the from_parent's inode, because the contents changed
+		--puts the from_parent's inode, because the contents changed
 		local ok_put_from_parent_inode = put_inode(from_parent.meta.ino, from_parent)
-		--put the to_file, because it's new
+		--puts the to_file, because it's new
 		local ok_put_file = put_file(to, from_inode.meta.ino)
-		--delete the from_file
+		--deletes the from_file
 		local ok_delete_file = delete_file(from)
-		
-		--[[
-		if (inode.open or 0) < 1 then
-			--mnode.flush_node(inode,to, true) --JV: REMOVED FOR REPLACEMENT WITH DISTDB
-			local ok_write_in_db_inode = write_in_db(to, inode) --JV: ADDED FOR REPLACEMENT WITH DISTDB
-			--TODO: WTF DO I DO HERE?
-		else
-			inode.meta_changed = true
-		end
-		--]]
+		--returns 0
 		return 0
 	end
 end,
 
-link=function(self, from, to, ...)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function link: makes a hard link
+link = function(self, from, to, ...)
+	--for all the logprint functions: the log domain is "LINK_OP" and the function name is "link"
 	local log_domain, function_name = "LINK_OP", "link"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, from=", from..", to=", to)
-   
+	--if "from" and "to" are the same, do nothing; return 0
 	if from == to then return 0 end
-
+	--gets the "from" inode
 	local from_inode = get_inode_from_filename(from)
-	
+	--logs
 	logprint(log_domain, function_name..": from_inode", {from_inode=from_inode})
-
+	--if the "from" inode exists
 	if from_inode then
+		--logs
 		logprint(log_domain, function_name..": entered in IF")
+		--splits the "to" filename
 		local to_dir, to_base = to:splitfilename()
+		--logs
 		logprint(log_domain, function_name..": to_dir=", to_dir..", to_base=", to_base)
+		--gets the parent dir inode of the "to" file
 		local to_parent = get_inode_from_filename(to_dir)
+		--logs
 		logprint(log_domain, function_name..": to_parent", {to_parent=to_parent})
-		
+		--adds an entry to the "to" parent dir inode
 		to_parent.content[to_base] = true
+		--logs
 		logprint(log_domain, function_name..": added file in to_parent", {to_parent=to_parent})
+		--increments the number of links in the inode
 		from_inode.meta.nlink = from_inode.meta.nlink + 1
+		--logs
 		logprint(log_domain, function_name..": incremented nlink in from_inode", {from_inode=from_inode})
 
-		--put the to_parent's inode, because the contents changed
+		--puts the to_parent's inode, because the contents changed
 		local ok_put_to_parent = put_inode(to_parent.meta.ino, to_parent)
-		--put the inode, because nlink was incremented
+		--puts the inode, because nlink was incremented
 		local ok_put_inode = put_inode(from_inode.meta.ino, from_inode)
-		--put the to_file, because it's new
+		--puts the to_file, because it's new
 		local ok_put_file = put_file(to, from_inode.meta.ino)
+		--returns 0
 		return 0
 	end
 end,
 
-unlink=function(self, filename, ...)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+--function unlink: deletes a link to a inode
+unlink = function(self, filename, ...)
+	--for all the logprint functions: the log domain is "LINK_OP" and the function name is "unlink"
 	local log_domain, function_name = "LINK_OP", "unlink"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
 	logprint(log_domain, function_name..": START, filename=", filename)
-
+	--gets the inode
 	local inode = get_inode_from_filename(filename)
-	
+	--if the inode exists
 	if inode then
+		--splits the filename
 		local dir, base = filename:splitfilename()
+		--gets the parent
 		local parent = get_inode_from_filename(dir)
-
+		--logs
 		logprint(log_domain, function_name..":", {parent=parent})
-		
+		--deletes the entry in the parent inode
 		parent.content[base] = nil
-
+		--logs
 		logprint(log_domain, function_name..": link to file in parent removed", {parent=parent})
-
+		--increments the number of links
 		inode.meta.nlink = inode.meta.nlink - 1
-
+		--logs
 		logprint(log_domain, function_name..": now inode has less links =")
-	logprint(log_domain, table2str("inode", 0, inode))
-		
-		--delete the file, because it's being unlinked
+		logprint(log_domain, tbl2str("inode", 0, inode))
+		--deletes the file element, because it's being unlinked
 		local ok_delete_file = delete_file(filename)
-		--put the parent ino, because the record of the file was deleted
+		--puts the parent ino, because the record of the file was deleted
 		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
 		--if the inode has no more links
 		if inode.meta.nlink == 0 then
 			logprint(log_domain, function_name..": i have to delete the inode too")
-			--delete the inode, since it's not linked anymore
+			--deletes the inode, since it's not linked anymore
 			delete_inode(inode.meta.ino)
+		--if not
 		else
+			--updates the inode
 			local ok_put_inode = put_inode(inode.meta.ino, inode)
 		end
+		--returns 0
 		return 0
+	--if not
 	else
+		--logs error
 		logprint(log_domain, function_name..": ERROR no inode")
+		--returns ENOENT
 		return ENOENT
 	end
 end,
 
-chown=function(self, filename, uid, gid)
+--function chown: UNTIL HERE I COMMENTED
+chown = function(self, filename, uid, gid)
 	--logs entrance
 	logprint("FILE_MISC_OP", "chown: START")
 	logprint("FILE_MISC_OP", "chown: START, filename=", filename..", uid=", uid..", gid=", gid)
@@ -1517,7 +1490,7 @@ chown=function(self, filename, uid, gid)
 	end
 end,
 
-chmod=function(self, filename, mode)
+chmod = function(self, filename, mode)
 	--logs entrance
 	logprint("FILE_MISC_OP", "chmod: START")
 	logprint("FILE_MISC_OP", "chmod: START, filename=", filename, {mode=mode})
@@ -1532,7 +1505,7 @@ chmod=function(self, filename, mode)
 	end
 end,
 
-utime=function(self, filename, atime, mtime)
+utime = function(self, filename, atime, mtime)
 	--logs entrance
 	logprint("FILE_MISC_OP", "utime: START")
 	logprint("FILE_MISC_OP", "utime: START, filename=", filename, {atime=atime,mtime=mtime})
@@ -1548,8 +1521,9 @@ utime=function(self, filename, atime, mtime)
 		return ENOENT
 	end
 end,
-ftruncate=function(self, filename, size, inode)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+
+ftruncate = function(self, filename, size, inode)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "ftruncate"
 	local log_domain, function_name = "FILE_MISC_OP", "ftruncate"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1594,8 +1568,8 @@ ftruncate=function(self, filename, size, inode)
 	return 0
 end,
 
-truncate=function(self, filename, size)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+truncate = function(self, filename, size)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "truncate"
 	local log_domain, function_name = "FILE_MISC_OP", "truncate"
 	--logs entrance
 	logprint(log_domain, function_name..": START")
@@ -1604,7 +1578,7 @@ truncate=function(self, filename, size)
 	local inode = get_inode_from_filename(filename)
 	
 	logprint(log_domain, function_name..": inode was retrieved =")
-	logprint(log_domain, table2str("inode", 0, inode))
+	logprint(log_domain, tbl2str("inode", 0, inode))
 
 	if inode then
 
@@ -1651,14 +1625,14 @@ truncate=function(self, filename, size)
 	end
 end,
 
-access=function(...)
+access = function(...)
 	--logs entrance
 	logprint("FILE_MISC_OP", "access: START")
 	
 	return 0
 end,
 
-fsync=function(self, filename, isdatasync, inode)
+fsync = function(self, filename, isdatasync, inode)
 	--logs entrance
 	logprint("FILE_MISC_OP", "fsync: START")
 	logprint("FILE_MISC_OP", "fsync: START, filename=", filename, {isdatasync=isdatasync,inode=inode})
@@ -1671,14 +1645,16 @@ fsync=function(self, filename, isdatasync, inode)
 	--]]
 	return 0
 end,
-fsyncdir=function(self, filename, isdatasync, inode)
+
+fsyncdir = function(self, filename, isdatasync, inode)
 	--logs entrance
 	logprint("FILE_MISC_OP", "fsyncdir: START")
 	logprint("FILE_MISC_OP", "fsyncdir: START, filename=", filename, {isdatasync=isdatasync,inode=inode})
 
 	return 0
 end,
-listxattr=function(self, filename, size)
+
+listxattr = function(self, filename, size)
 	--logs entrance
 	logprint("FILE_MISC_OP", "listxattr: START")
 	logprint("FILE_MISC_OP", "listxattr: START, filename=", filename, {size=size})
@@ -1695,7 +1671,7 @@ listxattr=function(self, filename, size)
 	end
 end,
 
-removexattr=function(self, filename, name)
+removexattr = function(self, filename, name)
 	--logs entrance
 	logprint("FILE_MISC_OP", "removexattr: START")
 	logprint("FILE_MISC_OP", "removexattr: START, filename=", filename, {name=name})
@@ -1710,12 +1686,12 @@ removexattr=function(self, filename, name)
 	end
 end,
 
-setxattr=function(self, filename, name, val, flags)
+setxattr = function(self, filename, name, val, flags)
 	--logs entrance
 	logprint("FILE_MISC_OP", "setxattr: START")
 	logprint("FILE_MISC_OP", "setxattr: START, filename=", filename, {name=name,val=val,flags=flags})
 
-	--string.hex=function(s) return s:gsub(".", function(c) return format("%02x", string.byte(c)) end) end
+	--string.hex = function(s) return s:gsub(".", function(c) return format("%02x", string.byte(c)) end) end
 	local inode = get_inode_from_filename(filename)
 	if inode then
 		inode.meta.xattr[name]=val
@@ -1726,7 +1702,7 @@ setxattr=function(self, filename, name, val, flags)
 	end
 end,
 
-getxattr=function(self, filename, name, size)
+getxattr = function(self, filename, name, size)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_MISC_OP", "getxattr"
 	--logs entrance
@@ -1735,7 +1711,7 @@ getxattr=function(self, filename, name, size)
 
 	local inode = get_inode_from_filename(filename)
 	logprint(log_domain, function_name..": get_inode was successful =")
-	logprint(log_domain, table2str("inode", 0, inode))
+	logprint(log_domain, tbl2str("inode", 0, inode))
 	if inode then
 		logprint(log_domain, function_name..": retrieving xattr["..name.."]=", {inode_meta_xattr=inode.meta.xattr[name]})
 		return 0, inode.meta.xattr[name] or "" --not found is empty string
@@ -1744,7 +1720,7 @@ getxattr=function(self, filename, name, size)
 	end
 end,
 
-statfs=function(self,filename)
+statfs = function(self,filename)
 	local inode,parent = get_inode_from_filename(filename)
 	local o = {bs=block_size,blocks=64,bfree=48,bavail=48,bfiles=16,bffree=16}
 	return 0, o.bs, o.blocks, o.bfree, o.bavail, o.bfiles, o.bffree
