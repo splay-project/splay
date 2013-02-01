@@ -26,8 +26,8 @@ local kv_records = {}
 
 function send_command(command_name, url, key, type_of_transaction, value)
 	--logs entrance in the function
-	logprint("DIST_DB_CLIENT", "send_"..command_name..": START")
-	logprint("DIST_DB_CLIENT", "send_"..command_name..": url=",url,"key=",key,"type_of_transaction=",type_of_transaction,"value=",value)
+	logprint("DIST_DB_CLIENT", "send_"..command_name..": START.")
+	logprint("DIST_DB_CLIENT", "send_"..command_name..": url=", url, "key=", key, "type_of_transaction=", type_of_transaction, "value=", value)
 	--response_body will contain the returning data from the web-service call
 	local response_body = {}
 	--request_source contains the input data
@@ -66,7 +66,7 @@ function send_command(command_name, url, key, type_of_transaction, value)
 	if response_status ~= 200 then
 		--logs the error
 		logprint("DIST_DB_CLIENT", "send_"..command_name..": Error! \""..response_status.."\"")
-		last_logprint("DIST_DB_CLIENT", "send_"..command_name..": END")
+		last_logprint("DIST_DB_CLIENT", "send_"..command_name..": END.")
 		--returns false and the error
 		return false, response_status
 	end
@@ -74,7 +74,7 @@ function send_command(command_name, url, key, type_of_transaction, value)
 	--if it arrives here, it means it didn't enter inside the if
 	logprint("DIST_DB_CLIENT", "send_"..command_name..": 200 OK received")
 	--logs exit of the function
-	last_logprint("DIST_DB_CLIENT", "send_"..command_name..": END")
+	last_logprint("DIST_DB_CLIENT", "send_"..command_name..": END.")
 	--if there is a response_body
 	if type(response_body) == "table" and response_body[1] then
 		--returns true (indicates a succesful call), and the return value
@@ -87,7 +87,7 @@ end
 --function send_get
 function send_get(url, key, type_of_transaction)
 
-	logprint("DIST_DB_CLIENT", "send_get: START")
+	logprint("DIST_DB_CLIENT", "send_get: START.")
 
 	if _LOCAL then
 		return true, kv_records[key]
@@ -142,13 +142,13 @@ function send_get(url, key, type_of_transaction)
 
 	logprint("DIST_DB_CLIENT", "send_get: key: "..key..", value: "..chosen_value..", merged vector_clock:")
 	logprint("DIST_DB_CLIENT", table2str("max_vc", 0, max_vc))
-	last_logprint("DIST_DB_CLIENT", "send_get: END")
+	last_logprint("DIST_DB_CLIENT", "send_get: END.")
 	return true, chosen_value, max_vc
 end
 
 --function send_put
 function send_put(url, key, type_of_transaction, value)
-	logprint("DIST_DB_CLIENT", "send_put: START")
+	logprint("DIST_DB_CLIENT", "send_put: START.")
 	if _LOCAL then
 		kv_records[key] = value
 		return true
@@ -157,7 +157,7 @@ function send_put(url, key, type_of_transaction, value)
 end
 
 function send_delete(url, key, type_of_transaction)
-	logprint("DIST_DB_CLIENT", "send_delete: START")
+	logprint("DIST_DB_CLIENT", "send_delete: START.")
 	if _LOCAL then
 		kv_records[key] = nil
 		return true
@@ -166,34 +166,34 @@ function send_delete(url, key, type_of_transaction)
 end
 
 function send_get_node_list(url)
-	logprint("DIST_DB_CLIENT", "send_get_node_list: START")
+	logprint("DIST_DB_CLIENT", "send_get_node_list: START.")
 	local send_ok, node_list = send_command("GET_NODE_LIST", url)
 	logprint("DIST_DB_CLIENT", "send_get_node_list:")
 	logprint("DIST_DB_CLIENT", table2str("node_list", 0, node_list))
-	last_logprint("DIST_DB_CLIENT", "send_get_node_list: END")
+	last_logprint("DIST_DB_CLIENT", "send_get_node_list: END.")
 	return send_ok, node_list
 end
 
 function send_get_key_list(url)
-	logprint("DIST_DB_CLIENT", "send_get_key_list: START")
+	logprint("DIST_DB_CLIENT", "send_get_key_list: START.")
 	local send_ok, key_list = send_command("GET_KEY_LIST", url)
 	logprint("DIST_DB_CLIENT", "send_get_key_list:")
 	logprint("DIST_DB_CLIENT", table2str("key_list", 0, key_list))
-	last_logprint("DIST_DB_CLIENT", "send_get_key_list: END")
+	last_logprint("DIST_DB_CLIENT", "send_get_key_list: END.")
 	return send_ok, key_list
 end
 
 function send_get_master(url, key)
-	logprint("DIST_DB_CLIENT", "send_get_master: START")
+	logprint("DIST_DB_CLIENT", "send_get_master: START.")
 	return send_command("GET_MASTER", url, key)
 end
 
 function send_get_all_records(url)
-	logprint("DIST_DB_CLIENT", "send_get_all_records: START")
+	logprint("DIST_DB_CLIENT", "send_get_all_records: START.")
 	return send_command("GET_ALL_RECORDS", url)
 end
 
 function send_change_log_lvl(url, log_level)
-	logprint("DIST_DB_CLIENT", "send_change_log_lvl: START")
+	logprint("DIST_DB_CLIENT", "send_change_log_lvl: START.")
 	return send_command("CHANGE_LOG_LVL", url, log_level)
 end
