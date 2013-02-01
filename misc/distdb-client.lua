@@ -148,7 +148,7 @@ end
 
 --function send_put
 function send_put(url, key, type_of_transaction, value)
-	logprint("DIST_DB_CLIENT", "send_put: START.")
+	logprint("DIST_DB_CLIENT", "send_put: START. key=", key)
 	if _LOCAL then
 		kv_records[key] = value
 		return true

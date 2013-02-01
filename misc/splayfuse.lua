@@ -49,12 +49,13 @@ local ENOTSUPP = -524
 
 --LOCAL VARIABLES
 
-local block_size = 256*1024
+local block_size = 48
 local blank_block=string.rep("0", block_size)
 local open_mode={'rb','wb','rb+'}
 
---consistency type can be "evtl_consistent", "paxos" or "consistent"
-local consistency_type = "consistent"
+--consistency types can be "evtl_consistent", "paxos" or "consistent"
+local inode_ctype = "consistent"
+local block_ctype = "consistent"
 --the URL of the Entry Point to the distDB
 local db_url = "127.0.0.1:15272"
 
@@ -62,7 +63,6 @@ local db_url = "127.0.0.1:15272"
 --LOCAL VARIABLES FOR LOGGING
 
 log_domains.MAIN_OP = true
-log_domains.DB_OP = true
 log_domains.FILE_INODE_OP = true
 log_domains.DIR_OP = true
 log_domains.LINK_OP = true
@@ -71,63 +71,7 @@ log_domains.FILE_MISC_OP = true
 log_domains.MV_CP_OP = true
 
 
---DB OPERATIONS
-
---function write_in_db: writes an element into the underlying DB
-local function write_in_db(unhashed_key, value)
-	--timestamp logging
-	local start_time = misc.time()
-	--logs entrance
-	--logprint("DB_OP", "write_in_db: START. unhashed_key=\""..unhashed_key.."\"")
-	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
-	local db_key = crypto.evp.digest("sha1", unhashed_key)
-	--logs
-	--logprint("DB_OP", "write_in_db: value = ", value)
-	--timestamp logging
-	--logprint("DB_OP", "write_in_db: GOING_TO_SEND unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
-	--sends the value
-	local ok_put = send_put(db_url, db_key, consistency_type, value)
-	--flushes all timestamp logs
-	--last_logprint("DB_OP", "write_in_db: END unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
-	--returns the result of the PUT operation (true=successful or false=failed)
-	return ok_put
-end
-
---function read_from_db: reads an element from the underlying DB
-local function read_from_db(unhashed_key)
-	--timestamp logging
-	local start_time = misc.time()
-	--logs entrance
-	--logprint("DB_OP", "read_from_db: START. unhashed_key=\""..unhashed_key.."\"")
-	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
-	local db_key = crypto.evp.digest("sha1", unhashed_key)
-	--logs
-	--logprint("DB_OP", "read_from_db: GOING_TO_SEND unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
-	--sends a GET command to the DB
-	local ok_get, value_get = send_get(db_url, db_key, consistency_type)
-	--flushes all timestamp logs
-	--last_logprint("DB_OP", "read_from_db: END unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
-	--returns the result of the GET operation (true=successful or false=failed) and the returned value
-	return ok_get, value_get
-end
-
---function delete_from_db: deletes an element from the underlying DB
-local function delete_from_db(unhashed_key)
-	--timestamp logging
-	local start_time = misc.time()
-	--logs entrance
-	--logprint("DB_OP", "delete_from_db: START. unhashed_key=\""..unhashed_key.."\"")
-	--creates the DB Key by SHA1-ing the concatenation of the type of element and the unhashed key (e.g. the filename, the inode number)
-	local db_key = crypto.evp.digest("sha1", unhashed_key)
-	--logs
-	--logprint("DB_OP", "delete_from_in_db: GOING_TO_SEND unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
-	--sends a DELETE command to the DB
-	local ok_delete = send_delete(db_url, db_key, consistency_type)
-	--flushes all timestamp logs
-	--last_logprint("DB_OP", "delete_from_db: END unhashed_key=\""..unhashed_key.."\" db_key=\""..db_key.."\" elapsed_time="..(misc.time()-start_time))
-	--returns the result of the DELETE operation (true=successful or false=failed)
-	return ok_delete
-end
+--MISC FUNCTIONS
 
 --function splitfilename: splits the filename into parent dir and basename; for example: "/usr/include/lua/5.1/lua.h" -> "/usr/include/lua/5.1", "lua.h"
 function string:splitfilename() 
@@ -141,9 +85,6 @@ function string:splitfilename()
 		return dir:match("(.-)[/\\]?$"), file
 	end
 end
-
-
---MISC FUNCTIONS
 
 --bit logic used for the mode field. TODO: replace the mode field in file's metadata with a table (if I have the time, it's not really necessary)
 --tab[i+1][j+1] = xor(i, j) where i,j in (0-15)
@@ -229,25 +170,23 @@ function mk_mode(owner, group, world, sticky)
 	return result_mode
 end
 
+local function hash_string(str)
+	return crypto.evp.digest("sha1", str)
+end
+
 
 --FS TO DB FUNCTIONS
 
 --function get_block: gets a block from the DB
-function get_block(block_n)
+function get_block(block_id)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_block"
 	local log_domain, function_name = "FILE_INODE_OP", "get_block"
-	--checks input errors
-	--safety if: if the block_n is not a number, return with error
-	if type(block_n) ~= "number" then
-		--last_logprint(log_domain, function_name..": block_n not a number, returning nil")
-		return nil
-	end
 	--logs entrance
-	--logprint(log_domain, function_name..": START. block_n=", block_n)
+	--logprint(log_domain, function_name..": START. block_id=\""..block_id.."\"")
 	--reads the file element from the DB
-	local ok_read_from_db_block, data = read_from_db("block:"..block_n)
+	local ok, data = send_get(db_url, block_id, block_ctype)
 	--if the reading was not successful
-	if not ok_read_from_db_block then
+	if not ok then
 		--reports the error, flushes all logs and return nil
 		--last_logprint(log_domain, function_name..": ERROR, read_from_db of block was not OK")
 		return nil
@@ -271,13 +210,13 @@ function get_inode(inode_n)
 	--logs entrance
 	--logprint(log_domain, function_name..": START. inode_n=", inode_n)
 	--reads the inode element from the DB
-	local ok_read_from_db_inode, inode_serialized = read_from_db("inode:"..inode_n)
+	local ok, inode_serialized = send_get(db_url, hash_string("inode:"..inode_n), inode_ctype)
 	--logs
 	--logprint(log_domain, function_name..": read_from_db returned=")
 	--logprint(log_domain, tbl2str("ok_read_from_db_inode", 0, ok_read_from_db_inode))
 	--logprint(log_domain, tbl2str("inode_serialized", 0, inode_serialized))
 	--if the reading was not successful
-	if not ok_read_from_db_inode then
+	if not ok then
 		--reports the error and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, read_from_db of inode was not OK")
 		return nil
@@ -314,9 +253,9 @@ function get_inode_n(filename)
 	--logs entrance
 	--logprint(log_domain, function_name..": START. filename=", filename)
 	--reads the file element from the DB
-	local ok_read_from_db_file, inode_n = read_from_db("file:"..filename)
+	local ok, inode_n = send_get(db_url, hash_string("file:"..filename), inode_ctype)
 	--if the reading was not successful
-	if not ok_read_from_db_file then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, read_from_db of file was not OK")
 		return nil
@@ -349,16 +288,10 @@ function get_inode_from_filename(filename)
 end
 
 --function put_block: puts a block element into the DB
-function put_block(block_n, data)
+function put_block(block_id, data)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_INODE_OP", "put_block"
 	--checks input errors
-	--if block_n is not a number
-	if type(block_n) ~= "number" then
-		--reports the error, flushes all logs and returns nil
-		--last_logprint(log_domain, function_name..": block_n not a number, returning nil")
-		return nil
-	end
 	--if data is not a string
 	if type(data) ~= "string" then
 		--reports the error, flushes all logs and returns nil
@@ -366,18 +299,18 @@ function put_block(block_n, data)
 		return nil
 	end
 	--logs entrance
-	--logprint(log_domain, function_name..": START. block_n=", block_n, "data size=", string.len(data))
+	--logprint(log_domain, function_name..": START. block_id=", block_id, "data size=", string.len(data))
 	--writes the block in the DB
-	local ok_write_in_db_block = write_in_db("block:"..block_n, data)
+	local ok = send_put(db_url, block_id, block_ctype, data)
 	--if the writing was not successful
-	if not ok_write_in_db_block then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, write_in_db of block was not OK")
 		return nil
 	end
 	--flushes all logs
 	--last_logprint(log_domain, function_name..": END")
-	--returns true
+	--returns the blockID
 	return true
 end
 
@@ -404,9 +337,9 @@ function put_inode(inode_n, inode)
 	--logprint(log_domain, tbl2str("inode", 0, inode))
 
 	--writes the inode in the DB
-	local ok_write_in_db_inode = write_in_db("inode:"..inode_n, serializer.encode(inode))
+	local ok = send_put(db_url, hash_string("inode:"..inode_n), inode_ctype, serializer.encode(inode))
 	--if the writing was not successful
-	if not ok_write_in_db_inode then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, write_in_db of inode was not OK")
 		return nil
@@ -438,9 +371,9 @@ function put_file(filename, inode_n)
 	--logprint(log_domain, function_name..": START. filename=", filename, "inode_n=", inode_n)
 
 	--writes the file in the DB
-	local ok_write_in_db_file = write_in_db("file:"..filename, inode_n)
+	local ok = send_put(db_url, hash_string("file:"..filename), inode_ctype, inode_n)
 	--if the writing was not successful
-	if not ok_write_in_db_file then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, write_in_db of file was not OK")
 		return nil
@@ -452,22 +385,15 @@ function put_file(filename, inode_n)
 end
 
 --function delete_block: deletes a block element from the DB
-function delete_block(block_n)
+function delete_block(block_id)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_block"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_block"
-	--checks input errors
-	--if block_n is not a number
-	if type(block_n) ~= "number" then
-		--reports the error, flushes all logs and returns nil
-		--last_logprint(log_domain, function_name..": ERROR, block_n not a number")
-		return nil
-	end
 	--logs entrance
 	--logprint(log_domain, function_name..": START. block_n=", block_n)
 	--deletes the block from the DB
-	local ok_delete_from_db_block = delete_from_db("block:"..block_n)
+	local ok = send_delete(db_url, block_id, block_ctype)
 	--if the deletion was not successful
-	if not ok_delete_from_db_block then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
@@ -497,12 +423,12 @@ function delete_inode(inode_n)
  	--for all the blocks refered by the inode
 	for i,v in ipairs(inode.content) do
 		--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
-		delete_from_db("block:"..v)
+		delete_block(v)
 	end
 	--deletes the inode from the DB
-	local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
+	local ok = send_delete(db_url, hash_string("inode:"..inode_n), inode_ctype)
 	--if the deletion was not successful
-	if not ok_delete_from_db_inode then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
@@ -527,9 +453,9 @@ function delete_dir_inode(inode_n)
 	--logs entrance
 	--logprint(log_domain, function_name..": START. inode_n=", inode_n)
 	--deletes the inode from the DB
-	local ok_delete_from_db_inode = delete_from_db("inode:"..inode_n)
+	local ok = send_delete(db_url, hash_string("inode:"..inode_n), inode_ctype)
 	--if the deletion was not successful
-	if not ok_delete_from_db_inode then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
@@ -553,9 +479,9 @@ function delete_file(filename)
 	--logs entrance
 	--logprint(log_domain, function_name..": START. filename=", filename)
 	--deletes the file element from the DB
-	local ok_delete_from_db_file = delete_from_db("file:"..filename)
+	local ok = send_delete(db_url, hash_string("file:"..filename), inode_ctype)
 	--if the deletion was not successful
-	if not ok_delete_from_db_file then
+	if not ok then
 		--reports the error, flushes all logs and returns nil
 		--last_logprint(log_domain, function_name..": ERROR, delete_from_db of inode was not OK")
 		return nil
@@ -594,7 +520,7 @@ function get_attributes(filename)
 	local x = inode.meta
 	--flushes all logs
 	--last_logprint(log_domain, function_name..": END")
-	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, creation time
+	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, inode change time
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
 end
 
@@ -663,14 +589,14 @@ getattr = function(self, filename)
 		return ENOENT
 	end
 	--logs
-	--logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned=")
+	logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned=")
 	--logs the inode
-	--logprint(log_domain, tbl2str("inode", 0, inode))
+	logprint(log_domain, tbl2str("inode", 0, inode))
 	--flushes all logs
-	--last_logprint(log_domain, function_name..": END.")
+	last_logprint(log_domain, function_name..": END.")
 	--copies the metadata into the variable x
 	local x = inode.meta
-	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, creation time
+	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, inode change time
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
 end,
 
@@ -698,7 +624,7 @@ opendir = function(self, filename)
 end,
 
 readdir = function(self, filename, offset, inode)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "DIR_OP" and the function name is "readdir"
 	local log_domain, function_name = "DIR_OP", "readdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START. filename=", filename, ", offset=", offset)
@@ -894,72 +820,53 @@ write = function(self, filename, buf, offset, inode)
 	--calculates the offset on the end block
 	local rem_end_offset = ((offset+size-1) % block_size)
 	--logs
-	--logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
-	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
-	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
+	logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
+	logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
+	logprint(log_domain, function_name..": about to get block. block_id=", inode.content[start_block_idx])
 	--timestamp logging
-	--logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
-	--root_inode, block, block_n and to_write_in_block are initialized to nil
-	local root_inode, block, block_n, to_write_in_block
+	logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
+	--block, block_id and to_write_in_block are initialized to nil
+	local block, block_id, to_write_in_block
 	--initializes the block offset as the offset in the starting block
 	local block_offset = rem_start_offset
-	--calculates if blocks need to be created; if the ID of the end block is bigger than the number of blocks in the inode, yes.
-	local blocks_created = (end_block_idx > #inode.content)
 	--calculates if the size of the file changed; if the offset+size is bigger than the original size, yes.
 	local size_changed = ((offset+size) > orig_size)
 	--initializes the remaining buffer as the whole buffer
 	local remaining_buf = buf
 	--timestamp logging
 	--logprint(log_domain, function_name..": calculated more stuff. elapsed_time="..(misc.time()-start_time))
-	--if blocks need to be created, gets the root node
-	if blocks_created then
-		root_inode = get_inode(1)
-	end
 	--timestamp logging
 	--logprint(log_domain, function_name..": root might have been retrieved. elapsed_time="..(misc.time()-start_time))
 	--logs
-	--logprint(log_domain, function_name..": blocks are going to be created? new file is bigger? blocks_created=", blocks_created, "size_changed=", size_changed)
-	--logprint(log_domain, function_name..": buf=", buf)
+	logprint(log_domain, function_name..": new file is bigger? size_changed="..tostring(size_changed))
+	logprint(log_domain, function_name..": buf=\""..buf.."\"")
 	--for all blocks from the starting to the end block
 	for i=start_block_idx, end_block_idx do
 		--logs
-		--logprint(log_domain, function_name..": im in the for loop, i=", i)
+		logprint(log_domain, function_name..": im in the for loop, i=", i)
 		--if the block exists
 		if inode.content[i] then
 			--logs
-			--logprint(log_domain, function_name..": block exists, so get the block")
-			--block_n is the ith entry of inode contents table
-			block_n = inode.content[i]
-			--gets the block
+			logprint(log_domain, function_name..": block exists, so get the block")
+			--gets the block; the block_id is the ith entry of inode contents table
 			block = get_block(inode.content[i])
+			--removes the block from the content table
+			table.remove(inode.content, i)
 		--if not
 		else
 			--logs
-			--logprint(log_domain, function_name..": block doesnt exists, so create the block")
-			--already commented: --logprint(log_domain, function_name..": root's xattr=", {root_inode_xattr=root_inode.meta.xattr})
-			--increases the greatest block number in the root inode
-			root_inode.meta.xattr.greatest_block_n = root_inode.meta.xattr.greatest_block_n + 1
-			--logs
-			--logprint(log_domain, function_name..": now greatest block number=", root_inode.meta.xattr.greatest_block_n)
-			--TODO Concurrent writes can really fuck up the system cause im not writing on root at every time
-			--assigns the block number as the current greatest block
-			block_n = root_inode.meta.xattr.greatest_block_n
+			logprint(log_domain, function_name..": block doesnt exists, so create the block")
 			--the block initially is an empty string
 			block = ""
-			--inserts the new block number in the contents table
-			table.insert(inode.content, block_n)
-			--logs
-			--logprint(log_domain, function_name..": new inode with block =")
-			--logprint(log_domain, tbl2str("inode", 0, inode))
 		end
 		--logs
-		--logprint(log_domain, function_name..": remaining_buf=", remaining_buf)
-		--logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
-		--logprint(log_domain, function_name..": block_size=", block_size)
+		logprint(log_domain, function_name..": remaining_buf=\""..remaining_buf.."\"")
+		logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
+		logprint(log_domain, function_name..": block_size=", block_size)
 		--if the size of the remaining buffer + the block offset is bigger than a full block size (it means we need to trunk the remaining buffer cause it does not fit in one block)
 		if (#remaining_buf+block_offset) > block_size then
 			--logs
-			--logprint(log_domain, function_name..": more than block size")
+			logprint(log_domain, function_name..": more than block size")
 			--fills out to_write_in_block with enough data to reach the end of the block
 			to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
 			--cuts that data from the remaining buffer
@@ -967,24 +874,30 @@ write = function(self, filename, buf, offset, inode)
 		--if not (all the remaining buffer fits in the block)
 		else
 			--logs
-			--logprint(log_domain, function_name..": less than block size")
+			logprint(log_domain, function_name..": less than block size")
 			--to_write_in_block is equal to the remaining buffer
 			to_write_in_block = remaining_buf
 		end
 		--logs
-		--logprint(log_domain, function_name..": block=", {block=block})
-		--logprint(log_domain, function_name..": to_write_in_block=", to_write_in_block)
-		--logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
+		logprint(log_domain, function_name..": block=\""..block.."\"")
+		logprint(log_domain, function_name..": to_write_in_block=\""..to_write_in_block.."\"")
+		logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
 		--inserts the to_write_in_block segment into the block. TODO: CHECK IF THE +1 AT THE END IS OK
-		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset+#to_write_in_block+1))
+		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset + #to_write_in_block + 1))
 		--logs
-		--logprint(log_domain, function_name..": now block=", block)
-		--the block offset is set to 0
-		block_offset = 0
+		logprint(log_domain, function_name..": now block=", block)
 		--timestamp logging
 		--logprint(log_domain, function_name..": before putting the block. elapsed_time="..(misc.time()-start_time))
-		--puts the block
-		put_block(block_n, block)
+		--the blockID is the hash of the inode number concatenated with the block data
+		block_id = hash_string(tostring(inode.meta.ino)..block)
+		--puts the block. TODO: delete the other block if existed through GC
+		put_block(block_id, block)
+		--timestamp logging
+		--logprint(log_domain, function_name..": after putting the block. elapsed_time="..(misc.time()-start_time))
+		--inserts the new block number in the contents table
+		table.insert(inode.content, block_id)
+		--the block offset is set to 0
+		block_offset = 0
 		--timestamp logging
 		--logprint(log_domain, function_name..": timestamp at the end of each cycle. elapsed_time="..(misc.time()-start_time))
 	end
@@ -995,14 +908,7 @@ write = function(self, filename, buf, offset, inode)
 		--puts the inode into the DB
 		put_inode(inode.meta.ino, inode)
 		--logs
-		--logprint(log_domain, function_name..": inode was written. elapsed_time="..(misc.time()-start_time))
-		--if blocks were created
-		if blocks_created then
-			--updates the root inode with the new "greatest block number"
-			put_inode(1, root_inode)
-			--logs
-			--logprint(log_domain, function_name..": root was written. elapsed_time="..(misc.time()-start_time))
-		end
+		logprint(log_domain, function_name..": inode was written. elapsed_time="..(misc.time()-start_time))
 	end
 	--flushes all timestamp loggings
 	--last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
@@ -1110,7 +1016,7 @@ end,
 --TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
 --TODO: MERGE THESE CODES (MKDIR, MKNODE, CREATE) ON 1 FUNCTION
 mkdir = function(self, filename, mode, ...)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "DIR_OP" and the function name is "mkdir"
 	local log_domain, function_name = "DIR_OP", "mkdir"
 	--logs entrance
 	logprint(log_domain, function_name..": START. filename=", filename)
@@ -1508,42 +1414,66 @@ ftruncate = function(self, filename, size, inode)
 	local log_domain, function_name = "FILE_MISC_OP", "ftruncate"
 	--logs entrance
 	logprint(log_domain, function_name..": START. filename=", filename, "size=", size)
-	
-	local orig_size = inode.meta.size
+	--gets inode from DB
+	local inode = get_inode_from_filename(filename)
+	--logs
+	--logprint(log_domain, function_name..": inode was retrieved =")
+	--logprint(log_domain, tbl2str("inode", 0, inode))
+	--if there is the inode
+	if inode then
+		--stores the size reported by the inode in the variable orig_size
+		local orig_size = inode.meta.size
+		--calculates the index (in the inode contents table) of the block where the pruning takes place
+		local block_idx = math.floor((size - 1) / block_size) + 1
+		--calculates the offset on the block
+		local rem_offset = size % block_size
+		--logs
+		--logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
+		--from the last block until the second last to be deleted (decremented for loop)
+		for i=#inode.content, block_idx+1,-1 do
+			--logs
+			--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
+			--deletes the block. TODO: for the moment we will not do it, just send them to GC
+			--delete_block(inode.content[i])
+			table.remove(inode.content, i)
+		end
+		--logs
+		--logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
+		--if the remainding offset is 0
+		if rem_offset == 0 then
+			--logprint(log_domain, function_name..": last block must be empty, so we delete it")
+			--deletes the block. TODO: for the moment we will not do it, just send them to GC
+			--delete_block(inode.content[block_idx])
+			table.remove(inode.content, block_idx)
+		--if not, we must truncate the block and rewrite it
+		else
+			--logs
+			--logprint(log_domain, function_name..": last block is not empty")
+			local last_block = get_block(block_idx)
+			--logprint(log_domain, function_name..": it already has this=", last_block)
+			local write_in_last_block = string.sub(last_block, 1, rem_offset)
+			--deletes the block. TODO: for the moment we will not do it, just send them to GC
+			--delete_block(inode.content[block_idx])
+			--logs
+			--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
+			--the blockID is the hash of the inode number concatenated with the block data
+			local block_id = hash_string(tostring(inode.meta.ino)..write_in_last_block)
+			--puts the block.
+			put_block(block_id, write_in_last_block)
+			--replaces with the new blockID the entry blockIdx in the contents table
+			inode.content[block_idx] = block_id
+		end
 
-	local block_idx = math.floor((size - 1) / block_size) + 1
-	local rem_offset = size % block_size
+		inode.meta.size = size
 
-	--logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
-		
-	for i=#inode.content, block_idx+1,-1 do
-		--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
-		local ok_delete_from_db_block = delete_block(inode.content[i])
-		table.remove(inode.content, i)
-	end
+		--logprint(log_domain, function_name..": about to write inode")
 
-	--logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
+		put_inode(inode.meta.ino, inode)
 
-	if rem_offset == 0 then
-		--logprint(log_domain, function_name..": last block must be empty, so we delete it")
-		local ok_delete_from_db_block = delete_block(inode.content[block_idx])
-		table.remove(inode.content, block_idx)
+		return 0
 	else
-		--logprint(log_domain, function_name..": last block is not empty")
-		local last_block = get_block(block_idx)
-		--logprint(log_domain, function_name..": it already has this=", last_block)
-		local write_in_last_block = string.sub(last_block, 1, rem_offset)
-		--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
-		local ok_put_block = put_block(inode.content[block_idx], write_in_last_block)
+		return ENOENT
 	end
-
-	inode.meta.size = size
-
-	--logprint(log_domain, function_name..": about to write inode")
-
-	local ok_put_inode = put_inode(inode.meta.ino, inode)
-
-	return 0
 end,
 
 truncate = function(self, filename, size)
@@ -1551,50 +1481,61 @@ truncate = function(self, filename, size)
 	local log_domain, function_name = "FILE_MISC_OP", "truncate"
 	--logs entrance
 	logprint(log_domain, function_name..": START. filename=", filename, "size=", size)
-	
+	--gets inode from DB
 	local inode = get_inode_from_filename(filename)
-	
+	--logs
 	--logprint(log_domain, function_name..": inode was retrieved =")
 	--logprint(log_domain, tbl2str("inode", 0, inode))
-
+	--if there is the inode
 	if inode then
-
+		--stores the size reported by the inode in the variable orig_size
 		local orig_size = inode.meta.size
-
+		--calculates the index (in the inode contents table) of the block where the pruning takes place
 		local block_idx = math.floor((size - 1) / block_size) + 1
+		--calculates the offset on the block
 		local rem_offset = size % block_size
-
+		--logs
 		--logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
-		
+		--from the last block until the second last to be deleted (decremented for loop)
 		for i=#inode.content, block_idx+1,-1 do
+			--logs
 			--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
-			local ok_delete_from_db_block = delete_block(inode.content[i])
+			--deletes the block. TODO: for the moment we will not do it, just send them to GC
+			--delete_block(inode.content[i])
 			table.remove(inode.content, i)
 		end
-
-		if block_idx > 0 then
-			--logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
-
-			if rem_offset == 0 then
-				--logprint(log_domain, function_name..": last block must be empty, so we delete it")
-			
-				local ok_delete_from_db_block = delete_block(inode.content[block_idx])
-				table.remove(inode.content, block_idx)
-			else
-				--logprint(log_domain, function_name..": last block is not empty")
-				local last_block = get_block(block_idx)
-				--logprint(log_domain, function_name..": it already has this=", last_block)
-				local write_in_last_block = string.sub(last_block, 1, rem_offset)
-				--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
-				local ok_put_block = put_block(inode.content[block_idx], write_in_last_block)
-			end
+		--logs
+		--logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
+		--if the remainding offset is 0
+		if rem_offset == 0 then
+			--logprint(log_domain, function_name..": last block must be empty, so we delete it")
+			--deletes the block. TODO: for the moment we will not do it, just send them to GC
+			--delete_block(inode.content[block_idx])
+			table.remove(inode.content, block_idx)
+		--if not, we must truncate the block and rewrite it
+		else
+			--logs
+			--logprint(log_domain, function_name..": last block is not empty")
+			local last_block = get_block(block_idx)
+			--logprint(log_domain, function_name..": it already has this=", last_block)
+			local write_in_last_block = string.sub(last_block, 1, rem_offset)
+			--deletes the block. TODO: for the moment we will not do it, just send them to GC
+			--delete_block(inode.content[block_idx])
+			--logs
+			--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
+			--the blockID is the hash of the inode number concatenated with the block data
+			local block_id = hash_string(tostring(inode.meta.ino)..write_in_last_block)
+			--puts the block.
+			put_block(block_id, write_in_last_block)
+			--replaces with the new blockID the entry blockIdx in the contents table
+			inode.content[block_idx] = block_id
 		end
 
 		inode.meta.size = size
 
 		--logprint(log_domain, function_name..": about to write inode")
 
-		local ok_put_inode = put_inode(inode.meta.ino, inode)
+		put_inode(inode.meta.ino, inode)
 
 		return 0
 	else
@@ -1675,7 +1616,7 @@ setxattr = function(self, filename, name, val, flags)
 end,
 
 getxattr = function(self, filename, name, size)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "getxattr"
 	local log_domain, function_name = "FILE_MISC_OP", "getxattr"
 	--logs entrance
 	logprint(log_domain, function_name..": START. filename=", filename)
