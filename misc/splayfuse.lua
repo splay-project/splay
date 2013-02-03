@@ -41,10 +41,10 @@ local S_IFDIR = 4*2^12
 local S_IFBLK = 6*2^12
 local S_IFREG = 2^15
 local S_IFLNK = S_IFREG + S_IFCHR
+--standard error codes (errno.h)
 local ENOENT = -2
+local ENOTEMPTY = -39
 local ENOSYS = -38
-local ENOATTR = -516
-local ENOTSUPP = -524
 
 
 --LOCAL VARIABLES
@@ -156,7 +156,7 @@ local function decode_acl(s)
 end
 
 --function mk_mode: creates the mode from the owner, group, world rights and the sticky bit
-function mk_mode(owner, group, world, sticky)
+local function mk_mode(owner, group, world, sticky)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "mk_mode"
 	local log_domain, function_name = "FILE_INODE_OP", "mk_mode"
 	--logs entrance
@@ -192,7 +192,7 @@ end
 --FS TO DB FUNCTIONS
 
 --function get_block: gets a block from the DB
-function get_block(block_id)
+local function get_block(block_id)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_block"
 	local log_domain, function_name = "FILE_INODE_OP", "get_block"
 	--logs entrance
@@ -212,7 +212,7 @@ function get_block(block_id)
 end
 
 --function get_inode: gets a inode element from the DB
-function get_inode(inode_n)
+local function get_inode(inode_n)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "get_inode"
 	--safety if: if the inode_n is not a number
@@ -254,7 +254,7 @@ function get_inode(inode_n)
 end
 
 --function get_inode_n: gets a inode number from the DB, by identifying it with the filename
-function get_inode_n(filename)
+local function get_inode_n(filename)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_inode_n"
 	local log_domain, function_name = "FILE_INODE_OP", "get_inode_n"
 	--checks input errors
@@ -281,7 +281,7 @@ function get_inode_n(filename)
 end
 
 --function get_inode_from_filename: gets a inode element from the DB, by identifying it with the filename
-function get_inode_from_filename(filename)
+local function get_inode_from_filename(filename)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_inode_from_filename"
 	local log_domain, function_name = "FILE_INODE_OP", "get_inode_from_filename"
 	--checks input errors
@@ -302,7 +302,7 @@ function get_inode_from_filename(filename)
 end
 
 --function put_block: puts a block element into the DB
-function put_block(block_id, data)
+local function put_block(block_id, data)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_block"
 	local log_domain, function_name = "FILE_INODE_OP", "put_block"
 	--checks input errors
@@ -329,7 +329,7 @@ function put_block(block_id, data)
 end
 
 --function put_inode: puts a inode element into the DB
-function put_inode(inode_n, inode)
+local function put_inode(inode_n, inode)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "put_inode"
 	--checks input errors
@@ -365,7 +365,7 @@ function put_inode(inode_n, inode)
 end
 
 --function put_file: puts a file element into the DB
-function put_file(filename, inode_n)
+local function put_file(filename, inode_n)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "put_file"
 	local log_domain, function_name = "FILE_INODE_OP", "put_file"
 	--checks input errors
@@ -399,7 +399,7 @@ function put_file(filename, inode_n)
 end
 
 --function delete_block: deletes a block element from the DB
-function delete_block(block_id)
+local function delete_block(block_id)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_block"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_block"
 	--logs entrance
@@ -419,7 +419,7 @@ function delete_block(block_id)
 end
 
 --function delete_inode: deletes an inode element from the DB
-function delete_inode(inode_n)
+local function delete_inode(inode_n)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_inode"
 	--TODO: WEIRD LATENCY IN DELETE_LOCAL, I THINK THE INODE DOES NOT GET DELETED.
@@ -454,7 +454,7 @@ function delete_inode(inode_n)
 end
 
 --function delete_dir_inode: deletes a directory inode element from the DB
-function delete_dir_inode(inode_n)
+local function delete_dir_inode(inode_n)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_dir_inode"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_dir_inode"
 	--checks input errors
@@ -481,7 +481,7 @@ function delete_dir_inode(inode_n)
 end
 
 --function delete_file: deletes a file element from the DB
-function delete_file(filename)
+local function delete_file(filename)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "delete_file"
 	local log_domain, function_name = "FILE_INODE_OP", "delete_file"
 	--if filename is not a string or it is an empty string
@@ -508,7 +508,7 @@ end
 
 --function get_attributes: gets the attributes of a file
 --BIG TODOS: cambiar block a id=hash(content) e inode a id=hash(random). pierre dice que el Entry Point debe ser stateful.
-function get_attributes(filename)
+local function get_attributes(filename)
 	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_attributes"
 	local log_domain, function_name = "FILE_INODE_OP", "get_attributes"
 	--if filename is not a string or it is an empty string
@@ -544,7 +544,7 @@ end
 --logs start
 logprint("MAIN_OP", "MAIN: starting SPLAYFUSE")
 --takes userID, groupID, etc., from FUSE context
-local uid,gid,pid,puid,pgid = fuse.context()
+local uid, gid, pid, puid, pgid = fuse.context()
 --logs
 --logprint("MAIN_OP", "MAIN: FUSE context taken. uid="..tostring(uid)..", gid="..tostring(gid)..", pid="..tostring(pid)..", puid="..tostring(puid)..", pgid="..tostring(pgid))
 --the session register is identified with the hash of the string session_id
@@ -740,11 +740,11 @@ local splayfuse = {
 		--adds the entry in the parent's inode
 		parent.content[base]=true
 		--puts the inode itself
-		local ok_put_inode = put_inode(inode_number, inode)
+		put_inode(inode_number, inode)
 		--puts a file that points to that inode
-		local ok_put_file = put_file(filename, inode_number)
+		put_file(filename, inode_number)
 		--puts the parent's inode (changed because it has one more entry)
-		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+		put_inode(parent.meta.ino, parent)
 		--returns 0 and the inode
 		return 0, inode
 	end,
@@ -850,9 +850,9 @@ local splayfuse = {
 		--calculates the offset on the end block
 		local rem_end_offset = ((offset+size-1) % block_size)
 		--logs
-		--logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
-		--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
-		--logprint(log_domain, function_name..": about to get block. block_id=", inode.content[start_block_idx])
+		logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
+		logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
+		logprint(log_domain, function_name..": about to get block. block_id=", inode.content[start_block_idx])
 		--timestamp logging
 		--logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
 		--block, block_id and to_write_in_block are initialized to nil
@@ -880,6 +880,8 @@ local splayfuse = {
 				--logprint(log_domain, function_name..": block exists, so get the block")
 				--gets the block; the block_id is the ith entry of inode contents table
 				block = get_block(inode.content[i])
+				--sends the block to GC
+				send_block_GC(inode.content[i])
 				--removes the block from the content table
 				table.remove(inode.content, i)
 			--if not
@@ -890,9 +892,9 @@ local splayfuse = {
 				block = ""
 			end
 			--logs
-			--logprint(log_domain, function_name..": remaining_buf=\""..remaining_buf.."\"")
-			--logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
-			--logprint(log_domain, function_name..": block_size=", block_size)
+			logprint(log_domain, function_name..": remaining_buf=\""..remaining_buf.."\"")
+			logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
+			logprint(log_domain, function_name..": block_size=", block_size)
 			--if the size of the remaining buffer + the block offset is bigger than a full block size (it means we need to trunk the remaining buffer cause it does not fit in one block)
 			if (#remaining_buf+block_offset) > block_size then
 				--logs
@@ -941,7 +943,7 @@ local splayfuse = {
 			--logprint(log_domain, function_name..": inode was written. elapsed_time="..(misc.time()-start_time))
 		end
 		--flushes all timestamp loggings
-		--last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
+		last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
 		--returns the size of the written buffer
 		return #buf
 	end,
@@ -1029,14 +1031,13 @@ local splayfuse = {
 			return ENOENT
 		end
 		--logs
-		logprint(log_domain, function_name..": got inode=", tbl2str("inode", 0, inode))
+		--logprint(log_domain, function_name..": got inode=", tbl2str("inode", 0, inode))
 		--if there is at least one entry in inode.content, returns error ENOTEMPTY
 		for i,v in pairs(inode.content) do
-			last_logprint(log_domain, function_name..": dir entry=", i)
-			--TODO: change to ENOTEMPTY, no la agarra, no sé por qué!!!
-			return ENOENT
+			--last_logprint(log_domain, function_name..": dir entry=", i)
+			return ENOTEMPTY
 		end
-		logprint(log_domain, function_name..": everything's fine")
+		--logprint(log_domain, function_name..": everything's fine")
 		--splits the filename
 		local dir, base = filename:splitfilename()
 		--gets the parent dir inode
@@ -1073,6 +1074,11 @@ local splayfuse = {
 		local dir, base = filename:splitfilename()
 		--gets the parent dir inode
 		local parent = get_inode_from_filename(dir)
+		--if the parent inode does not exist, logs error and returns with error ENOENT
+		if not parent then
+			last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
+			return ENOENT
+		end
 		--gets the inode number
 		local inode_number = get_inode_number()
 		--takes userID, groupID, and processID from FUSE context
@@ -1080,20 +1086,19 @@ local splayfuse = {
 		--creates an empty dir inode
 		inode = {
 			meta = {
-				xattr = {},
-				mode = set_bits(mode, S_IFDIR),
 				ino = inode_number,
-				--deviceID is 0. TODO: CHECK what to put there
-				dev = 0,
-				--number of links is 2
-				nlink = 2,
 				uid = uid,
 				gid = gid,
-				--size is 0. TODO: CHECK IF SIZE IS NOT block_size
+				mode = set_bits(mode, S_IFDIR),
+				nlink = 2,
 				size = 0,
+				--number of links is 2
+				--size is 0. TODO: CHECK IF SIZE IS NOT block_size
 				atime = os.time(),
 				mtime = os.time(),
-				ctime = os.time()
+				ctime = os.time(),
+				dev = 0,
+				xattr = {}
 			},
 			content = {}
 		}
@@ -1103,11 +1108,11 @@ local splayfuse = {
 		parent.meta.nlink = parent.meta.nlink + 1
 
 		--puts the inode, because it's new
-		local ok_put_inode = put_inode(inode_number, inode)
+		put_inode(inode_number, inode)
 		--puts the file, because it's new
-		local ok_put_file = put_file(filename, inode_number)
-		--puts the parent's inode, because the contents changed
-		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+		put_file(filename, inode_number)
+		--updates the parent's inode, because the contents changed
+		put_inode(parent.meta.ino, parent)
 		--returns 0
 		return 0
 	end,
@@ -1131,9 +1136,9 @@ local splayfuse = {
 		--logprint(log_domain, function_name..": dir=", dir, "base=", base)
 		--gets the parent dir inode
 		local parent = get_inode_from_filename(dir)
-		--if the parent inode does not exist, logs error and returns with error ENOENT
 		--logs
 		--logprint(log_domain, function_name..": parent retrieved=", tbl2str("parent", 0, parent))
+		--if the parent inode does not exist, logs error and returns with error ENOENT
 		if not parent then
 			last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
 			return ENOENT
@@ -1147,17 +1152,17 @@ local splayfuse = {
 		--creates an empty inode
 		inode = {
 			meta = {
-				xattr = {},
-				mode  = set_bits(mode, S_IFREG),
 				ino = inode_number, 
-				dev = 0, 
-				nlink = 1,
 				uid = uid,
 				gid = gid,
+				mode  = set_bits(mode, S_IFREG),
+				nlink = 1,
 				size = 0,
 				atime = os.time(),
 				mtime = os.time(),
-				ctime = os.time()
+				ctime = os.time(),
+				dev = 0, 
+				xattr = {}
 			},
 			content = {}
 		}
@@ -1165,11 +1170,11 @@ local splayfuse = {
 		parent.content[base]=true
 
 		--puts the inode, because it's new
-		local ok_put_inode = put_inode(inode_number, inode)
+		put_inode(inode_number, inode)
 		--puts the file, because it's new
-		local ok_put_file = put_file(filename, inode_number)
-		--puts the parent's inode, because the contents changed
-		local ok_put_parent_inode = put_inode(parent.meta.ino, parent)
+		put_file(filename, inode_number)
+		--updates the parent's inode, because the contents changed
+		put_inode(parent.meta.ino, parent)
 		--returns 0 and the inode element
 		return 0, inode
 	end,
@@ -1210,22 +1215,29 @@ local splayfuse = {
 		local to_dir, to_base = to:splitfilename()
 		--gets the  parent dir of the "to" file
 		local to_parent = get_inode_from_filename(to_dir)
+		--if the parent inode does not exist, logs error and returns with error ENOENT
+		if not parent then
+			last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
+			return ENOENT
+		end
+		--gets the inode number
+		local inode_number = get_inode_number()
 		--takes userID, groupID, and processID from FUSE context
 		local uid, gid, pid = fuse.context()
 		--creates an empty inode
 		local to_inode = {
 			meta = {
-				xattr = {},
-				mode= S_IFLNK + mk_mode(7,7,7),
-				ino = inode_number, 
-				dev = 0, 
-				nlink = 1,
+				ino = inode_number,
 				uid = uid,
 				gid = gid,
+				mode= S_IFLNK + mk_mode(7,7,7),
+				nlink = 1,
 				size = string.len(from),
 				atime = os.time(),
 				mtime = os.time(),
-				ctime = os.time()
+				ctime = os.time(),
+				dev = 0,
+				xattr = {}
 			},
 			content = {from}
 		}
@@ -1233,11 +1245,11 @@ local splayfuse = {
 		to_parent.content[to_base]=true
 
 		--puts the to_inode, because it's new
-		local ok_put_inode = put_inode(inode_number, to_inode)
+		put_inode(inode_number, to_inode)
 		--puts the file, because it's new
-		local ok_put_file = put_file(to, inode_number)
-		--puts the to_parent's inode, because the contents changed
-		local ok_put_to_parent_inode = put_inode(to_parent.meta.ino, to_parent)
+		put_file(to, inode_number)
+		--updates the to_parent's inode, because the contents changed
+		put_inode(to_parent.meta.ino, to_parent)
 		--returns 0. TODO: this return 0 was inside an IF
 		return 0
 	end,
@@ -1284,14 +1296,14 @@ local splayfuse = {
 		--only if "to" and "from" are different (avoids writing on parent's inode twice, for the sake of efficiency)
 		if to_dir ~= from_dir then
 			--updates the to_parent dir inode, because the contents changed
-			local ok_put_to_parent_inode = put_inode(to_parent.meta.ino, to_parent)
+			put_inode(to_parent.meta.ino, to_parent)
 		end
-		--puts the from_parent's inode, because the contents changed
-		local ok_put_from_parent_inode = put_inode(from_parent.meta.ino, from_parent)
-		--puts the to_file, because it's new
-		local ok_put_file = put_file(to, from_inode.meta.ino)
-		--deletes the from_file
-		local ok_delete_file = delete_file(from)
+		--updates the from_parent's inode, because the contents changed
+		put_inode(from_parent.meta.ino, from_parent)
+		--puts the "to" file, because it's new
+		put_file(to, from_inode.meta.ino)
+		--deletes the "from" file
+		delete_file(from)
 		--returns 0
 		return 0
 	end,
@@ -1331,12 +1343,12 @@ local splayfuse = {
 		--logs
 		--logprint(log_domain, function_name..": incremented nlink in from_inode", {from_inode=from_inode})
 
-		--puts the to_parent's inode, because the contents changed
-		local ok_put_to_parent = put_inode(to_parent.meta.ino, to_parent)
+		--updates the to_parent's inode, because the contents changed
+		put_inode(to_parent.meta.ino, to_parent)
 		--puts the inode, because nlink was incremented
-		local ok_put_inode = put_inode(from_inode.meta.ino, from_inode)
-		--puts the to_file, because it's new
-		local ok_put_file = put_file(to, from_inode.meta.ino)
+		put_inode(from_inode.meta.ino, from_inode)
+		--puts the "to" file, because it's new
+		put_file(to, from_inode.meta.ino)
 		--returns 0
 		return 0
 	end,
@@ -1347,7 +1359,7 @@ local splayfuse = {
 		local log_domain, function_name = "LINK_OP", "unlink"
 		--logs entrance
 		logprint(log_domain, function_name..": START. filename=", filename)
-		--gets the inode
+		--gets inode from DB
 		local inode = get_inode_from_filename(filename)
 		--if the inode does not exist, returns ENOENT
 		if not inode then
@@ -1388,6 +1400,7 @@ local splayfuse = {
 	chown = function(self, filename, uid, gid)
 		--logs entrance
 		logprint("FILE_MISC_OP", "chown: START. filename=", filename..", uid=", uid..", gid=", gid)
+		--gets inode from DB
 		local inode = get_inode_from_filename(filename)
 		--if the inode does not exist, returns ENOENT
 		if not inode then
@@ -1395,27 +1408,28 @@ local splayfuse = {
 		end
 		inode.meta.uid = uid
 		inode.meta.gid = gid
-		local ok_put_inode = put_inode(inode.meta.ino, inode)
+		put_inode(inode.meta.ino, inode)
 		return 0
 	end,
 
 	chmod = function(self, filename, mode)
 		--logs entrance
 		logprint("FILE_MISC_OP", "chmod: START. filename=", filename)
+		--gets inode from DB
 		local inode = get_inode_from_filename(filename)
 		--if the inode does not exist, returns ENOENT
 		if not inode then
 			return ENOENT
 		end
 		inode.meta.mode = mode
-		local ok_put_inode = put_inode(inode.meta.ino, inode)
+		put_inode(inode.meta.ino, inode)
 		return 0
 	end,
 
 	utime = function(self, filename, atime, mtime)
 		--logs entrance
 		logprint("FILE_MISC_OP", "utime: START. filename=", filename, "atime=", atime, "mtime=", mtime)
-
+		--gets inode from DB
 		local inode = get_inode_from_filename(filename)
 		--if the inode does not exist, returns ENOENT
 		if not inode then
@@ -1423,11 +1437,11 @@ local splayfuse = {
 		end
 		inode.meta.atime = atime
 		inode.meta.mtime = mtime
-		local ok_put_inode = put_inode(inode.meta.ino, inode)
+		put_inode(inode.meta.ino, inode)
 		return 0
 	end,
 
-	--function ftruncate: truncates a file using directly the inode as reference. TODO: consider when size > inode.meta.size, fill with 0s
+	--function ftruncate: truncates a file using directly the inode as reference.
 	ftruncate = function(self, filename, size, inode)
 		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "ftruncate"
 		local log_domain, function_name = "FILE_MISC_OP", "ftruncate"
@@ -1436,7 +1450,7 @@ local splayfuse = {
 		--gets inode from DB
 		local inode = get_inode_from_filename(filename)
 		--logs
-		--logprint(log_domain, function_name..": inode was retrieved =")
+		--logprint(log_domain, function_name..": inode was retrieved=")
 		--logprint(log_domain, tbl2str("inode", 0, inode))
 		--if the inode does not exist, returns ENOENT
 		if not inode then
@@ -1449,13 +1463,14 @@ local splayfuse = {
 		--calculates the offset on the block
 		local rem_offset = size % block_size
 		--logs
-		--logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
+		logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
 		--from the last block until the second last to be deleted (decremented for loop)
 		for i=#inode.content, block_idx+1,-1 do
 			--logs
 			--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
-			--deletes the block. TODO: for the moment we will not do it, just send them to GC
-			--delete_block(inode.content[i])
+			--sends the block to GC
+			send_block_GC(inode.content[i])
+			--removes the block from the inode contents
 			table.remove(inode.content, i)
 		end
 		--logs
@@ -1463,8 +1478,7 @@ local splayfuse = {
 		--if the remainding offset is 0
 		if rem_offset == 0 then
 			--logprint(log_domain, function_name..": last block must be empty, so we delete it")
-			--deletes the block. TODO: for the moment we will not do it, just send them to GC
-			--delete_block(inode.content[block_idx])
+			--removes the block from the inode contents
 			table.remove(inode.content, block_idx)
 		--if not, we must truncate the block and rewrite it
 		else
@@ -1473,35 +1487,30 @@ local splayfuse = {
 			local last_block = get_block(block_idx)
 			--logprint(log_domain, function_name..": it already has this=", last_block)
 			local write_in_last_block = string.sub(last_block, 1, rem_offset)
-			--deletes the block. TODO: for the moment we will not do it, just send them to GC
-			--delete_block(inode.content[block_idx])
 			--logs
 			--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
 			--the blockID is the hash of the inode number concatenated with the block data
 			local block_id = hash_string(tostring(inode.meta.ino)..write_in_last_block)
-			--puts the block.
+			--puts the block
 			put_block(block_id, write_in_last_block)
 			--replaces with the new blockID the entry blockIdx in the contents table
 			inode.content[block_idx] = block_id
 		end
-
+		--eitherway, sends the block to GC
+		send_block_GC(inode.content[block_idx])
 		inode.meta.size = size
-
 		--logprint(log_domain, function_name..": about to write inode")
 		put_inode(inode.meta.ino, inode)
-
 		return 0
 	end,
 
 	truncate = function(self, filename, size)
-		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "truncate"
-		local log_domain, function_name = "FILE_MISC_OP", "truncate"
 		--logs entrance
 		logprint(log_domain, function_name..": START. filename=", filename, "size=", size)
 		--gets inode from DB
 		local inode = get_inode_from_filename(filename)
 		--logs
-		--logprint(log_domain, function_name..": inode was retrieved =")
+		--logprint(log_domain, function_name..": inode was retrieved=")
 		--logprint(log_domain, tbl2str("inode", 0, inode))
 		--if the inode does not exist, returns ENOENT
 		if not inode then
@@ -1514,13 +1523,14 @@ local splayfuse = {
 		--calculates the offset on the block
 		local rem_offset = size % block_size
 		--logs
-		--logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
+		logprint(log_domain, function_name..": orig_size=", orig_size..", new_size=", size..", block_idx=", block_idx..", rem_offset=", rem_offset)
 		--from the last block until the second last to be deleted (decremented for loop)
 		for i=#inode.content, block_idx+1,-1 do
 			--logs
 			--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
-			--deletes the block. TODO: for the moment we will not do it, just send them to GC
-			--delete_block(inode.content[i])
+			--sends the block to GC
+			send_block_GC(inode.content[i])
+			--removes the block from the inode contents
 			table.remove(inode.content, i)
 		end
 		--logs
@@ -1528,8 +1538,7 @@ local splayfuse = {
 		--if the remainding offset is 0
 		if rem_offset == 0 then
 			--logprint(log_domain, function_name..": last block must be empty, so we delete it")
-			--deletes the block. TODO: for the moment we will not do it, just send them to GC
-			--delete_block(inode.content[block_idx])
+			--removes the block from the inode contents
 			table.remove(inode.content, block_idx)
 		--if not, we must truncate the block and rewrite it
 		else
@@ -1538,24 +1547,20 @@ local splayfuse = {
 			local last_block = get_block(block_idx)
 			--logprint(log_domain, function_name..": it already has this=", last_block)
 			local write_in_last_block = string.sub(last_block, 1, rem_offset)
-			--deletes the block. TODO: for the moment we will not do it, just send them to GC
-			--delete_block(inode.content[block_idx])
 			--logs
 			--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
 			--the blockID is the hash of the inode number concatenated with the block data
 			local block_id = hash_string(tostring(inode.meta.ino)..write_in_last_block)
-			--puts the block.
+			--puts the block
 			put_block(block_id, write_in_last_block)
 			--replaces with the new blockID the entry blockIdx in the contents table
 			inode.content[block_idx] = block_id
 		end
-
+		--eitherway, sends the block to GC
+		send_block_GC(inode.content[block_idx])
 		inode.meta.size = size
-
 		--logprint(log_domain, function_name..": about to write inode")
-
 		put_inode(inode.meta.ino, inode)
-
 		return 0
 	end,
 
@@ -1582,7 +1587,7 @@ local splayfuse = {
 	fsyncdir = function(self, filename, isdatasync, inode)
 		--logs entrance
 		logprint("FILE_MISC_OP", "fsyncdir: START. filename=", filename)
-
+		--returns 0
 		return 0
 	end,
 
@@ -1612,7 +1617,7 @@ local splayfuse = {
 			return ENOENT
 		end
 		inode.meta.xattr[name] = nil
-		local ok_put_inode = put_inode(inode.meta.ino, inode)
+		put_inode(inode.meta.ino, inode)
 		return 0
 	end,
 
@@ -1627,7 +1632,7 @@ local splayfuse = {
 			return ENOENT
 		end
 		inode.meta.xattr[name]=val
-		local ok_put_inode = put_inode(inode.meta.ino, inode)
+		put_inode(inode.meta.ino, inode)
 		return 0
 	end,
 
@@ -1645,7 +1650,8 @@ local splayfuse = {
 			return ENOENT
 		end
 		--logprint(log_domain, function_name..": retrieving xattr["..name.."]=", {inode_meta_xattr=inode.meta.xattr[name]})
-		return 0, inode.meta.xattr[name] or "" --not found is empty string
+		--returns 0 and the attribute (if not found, returns empty string)
+		return 0, inode.meta.xattr[name] or ""
 	end,
 
 	statfs = function(self, filename)
@@ -1662,23 +1668,24 @@ local splayfuse = {
 	end
 }
 
+--start profiling
 --profiler.start()
-
+--logs
 --logprint("MAIN_OP", "MAIN: before defining fuse_opt")
-
-fuse_opt = { 'splayfuse', 'mnt', '-f', '-s', '-d', '-oallow_other'}
-
+--fills the fuse options out
+fuse_opt = {'splayfuse', 'mnt', '-f', '-s', '-d', '-oallow_other'}
+--logs
 --logprint("MAIN_OP", "MAIN: fuse_opt defined")
-
+--if the amount of argumenst is less than two
 if select('#', ...) < 2 then
+	--prints usage
 	print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
+	--exits
 	os.exit(1)
 end
-
+--logs
 --logprint("MAIN_OP", "MAIN: going to execute fuse.main")
-
+--starts FUSE
 fuse.main(splayfuse, {...})
---events.run(function()
---	fuse.main(splayfuse, {"testsplayfuse","/home/unine/testsplayfuse/testsplayfuse/","-ouse_ino,big_writes","d"})
---end)
+--stop profiling
 --profiler.stop()
