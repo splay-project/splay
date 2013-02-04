@@ -513,42 +513,98 @@ end
 
 --COMMON ROUTINES FOR FUSE OPERATIONS
 
---function get_attributes: gets the attributes of a file
---BIG TODOS: cambiar block a id=hash(content) e inode a id=hash(random). pierre dice que el Entry Point debe ser stateful.
-local function get_attributes(filename)
-	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "get_attributes"
-	local log_domain, function_name = "FILE_INODE_OP", "get_attributes"
-	--if filename is not a string or it is an empty string
-	if type(filename) ~= "string" or filename == "" then
-		--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
-		--logprint(log_domain, function_name..": END. filename not a valid string, returning ENOENT")
-		return ENOENT
-	end
-	--logs entrance
-	--logprint(log_domain, function_name..": START. filename=", filename)
-	--gets the inode from the DB
-	local inode = get_inode_from_filename(filename)
-	--logs
-	--logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned =")
-	--logprint(log_domain, tbl2str("inode", 0, inode))
-	--if there is no inode
-	if not inode then
-		--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
-		--logprint(log_domain, function_name..": END. no inode found, returning ENOENT")
-		return ENOENT
-	end
-	--copies all metadata into the variable x
-	local x = inode.meta
-	--flushes all logs
-	--last_logprint(log_domain, function_name..": END")
+--function common_getattr: gets the attributes of a file
+local function common_getattr(inode)
+	--for all the logprint functions: the log domain is "FILE_INODE_OP" and the function name is "common_getattr"
+	local log_domain, function_name = "FILE_INODE_OP", "common_getattr"
+	--logs entrance/exit
+	last_logprint(log_domain, function_name..": START-END.")
 	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, inode change time
-	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
+	return 0, inode.meta.mode, inode.meta.ino, inode.meta.dev, inode.meta.nlink, inode.meta.uid, inode.meta.gid, inode.meta.size, inode.meta.atime, inode.meta.mtime, inode.meta.ctime
 end
 
---function fuse_write_oc: performs a write operation under the open-close consistency model
-local function fuse_write_oc(buf, offset, inode)
-	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "fuse_write_oc"
-	local log_domain, function_name = "READ_WRITE_OP", "fuse_write_oc"
+--function common_mknod: creates a node in the filesystem
+local function common_mknod(filename, mode, nlink, size, dev)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "common_mknod"
+	local log_domain, function_name = "FILE_MISC_OP", "common_mknod"
+	--tries to get the inode first
+	local inode = get_inode_from_filename(filename)
+	--if the inode exists, returns with error EEXIST
+	if inode then
+		return EEXIST
+	end
+	--splits the filename
+	local dir, base = filename:splitfilename()
+	--gets the parent dir inode
+	local parent = get_inode_from_filename(dir)
+	--if the parent inode does not exist, logs error and returns with error ENOENT
+	if not parent then
+		last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
+		return ENOENT
+	end
+	--gets the inode number
+	local inode_number = get_inode_number()
+	--takes userID, groupID, and processID from FUSE context
+	local uid, gid, pid = fuse.context()
+	--creates an empty dir inode
+	inode = {
+		meta = {
+			ino = inode_number,
+			uid = uid,
+			gid = gid,
+			mode = mode,
+			nlink = nlink,
+			size = size,
+			atime = os.time(),
+			mtime = os.time(),
+			ctime = os.time(),
+			dev = dev,
+			xattr = {}
+		},
+		content = {}
+	}
+	--adds the entry into the parent contents table
+	parent.content[base]=true
+	--adds one link to the parent (the ".." link)
+	parent.meta.nlink = parent.meta.nlink + 1
+
+	--puts the inode, because it's new
+	put_inode(inode_number, inode)
+	--puts the file, because it's new
+	put_file(filename, inode_number)
+	--updates the parent's inode, because the contents changed
+	put_inode(parent.meta.ino, parent)
+	--returns 0
+	return 0, inode
+end
+
+local function common_rmnod(filename, inode)
+	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "common_rmnod"
+	local log_domain, function_name = "FILE_MISC_OP", "common_rmnod"
+	--logs entrance
+	logprint(log_domain, function_name..": START.")
+	--splits the filename
+	local dir, base = filename:splitfilename()
+	--gets the parent dir inode
+	local parent = get_inode_from_filename(dir)
+	--deletes the entry from the contents of the parent node
+	parent.content[base] = nil
+	--decrements the number of links in the parent node (one less dir pointing to it with the ".." element)
+	parent.meta.nlink = parent.meta.nlink - 1
+	--updates the parent inode
+	put_inode(parent.meta.ino, parent)
+	--removes the file from the DB
+	delete_file(filename)
+	--removes the inode from the DB
+	delete_dir_inode(inode.meta.ino)
+end
+
+--function common_write: common routine for writing in a file
+local function common_write(buf, offset, inode)
+	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "common_write"
+	local log_domain, function_name = "READ_WRITE_OP", "common_write"
+	--logs entrance
+	logprint(log_domain, function_name..": START.")
 	--stores the size reported by the inode in the variable orig_size
 	local orig_size = inode.meta.size
 	--size is initially equal to the size of the buffer
@@ -728,22 +784,50 @@ local splayfuse = {
 		logprint(log_domain, function_name..": START. filename=", filename)
 		--gets the inode from the DB
 		local inode = get_inode_from_filename(filename)
+		--logs
+		--logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned=")
+		--logprint(log_domain, tbl2str("inode", 0, inode))
 		--if there is no inode
 		if not inode then
 			--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
-			--last_logprint(log_domain, function_name..": END. no inode found, returns ENOENT")
+			--logprint(log_domain, function_name..": END. no inode found, returning ENOENT")
 			return ENOENT
 		end
+		--returns the attributes of a file
+		return common_getattr(inode)
+	end,
+
+	--function fgetattr: gets the attributes of a requested file
+	fgetattr = function(self, filename, inode, ...)
+		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "fgetattr"
+		local log_domain, function_name = "FILE_MISC_OP", "fgetattr"
+		--logs entrance
+		logprint(log_domain, function_name..": START. filename=", filename)
+		--gets the inode from the DB
+		local inode = get_inode_from_filename(filename)
 		--logs
 		--logprint(log_domain, function_name..": for filename=", filename, " get_inode_from_filename returned=")
-		--logs the inode
 		--logprint(log_domain, tbl2str("inode", 0, inode))
-		--flushes all logs
-		--last_logprint(log_domain, function_name..": END.")
-		--copies the metadata into the variable x
-		local x = inode.meta
-		--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, inode change time
-		return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
+		--if there is no inode
+		if not inode then
+			--reports the error, flushes all logs and returns error code ENOENT (No such file or directory)
+			--logprint(log_domain, function_name..": END. no inode found, returning ENOENT")
+			return ENOENT
+		end
+		--returns the attributes of a file
+		return common_getattr(inode)
+	end,
+
+	--function mkdir: creates a directory
+	mkdir = function(self, filename, mode, ...)
+		--for all the logprint functions: the log domain is "DIR_OP" and the function name is "mkdir"
+		local log_domain, function_name = "DIR_OP", "mkdir"
+		--logs entrance
+		logprint(log_domain, function_name..": START. filename=", filename)
+		--makes the node with the function common_mknod, the number of links = 2, size = 0, dev = 0. TODO: CHECK IF SIZE IS NOT block_size
+		local ok = common_mknod(filename, set_bits(mode, S_IFDIR), 2, 0, 0)
+		--returns the result of the operation
+		return ok
 	end,
 
 	--function opendir: opens a directory
@@ -809,56 +893,39 @@ local splayfuse = {
 		return 0
 	end,
 
-	--function mknod: creates a new regular, special or fifo file. TODO: revisar otros errores
+	--function rmdir: removes a directory from the filesystem
+	rmdir = function(self, filename)
+		--for all the logprint functions: the log domain is "DIR_OP" and the function name is "rmdir"
+		local log_domain, function_name = "DIR_OP", "rmdir"
+		--logs entrance
+		logprint(log_domain, function_name..": START. filename=", filename)
+		--gets the inode
+		local inode = get_inode_from_filename(filename)
+		--if there is no inode, returns the error code ENOENT (No such file or directory)
+		if not inode then
+			return ENOENT
+		end
+		--logs
+		--logprint(log_domain, function_name..": got inode=", tbl2str("inode", 0, inode))
+		--if there is at least one entry in inode.content, returns error ENOTEMPTY
+		for i,v in pairs(inode.content) do
+			--last_logprint(log_domain, function_name..": dir entry=", i)
+			return ENOTEMPTY
+		end
+		--logprint(log_domain, function_name..": everything's fine")
+		common_rmnod(filename, inode)
+		--returns 0
+		return 0
+	end,
+
+	--function mknod: creates a new regular, special or fifo file
 	mknod = function(self, filename, mode, rdev)
 		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "mknod"
 		local log_domain, function_name = "FILE_MISC_OP", "mknod"
 		--logs entrance
 		logprint(log_domain, function_name..": START. filename=", filename)
-		--gets the inode from the DB
-		local inode = get_inode_from_filename(filename)
-		--if the inode exists, returns with error EEXIST
-		if inode then
-			return EEXIST
-		end
-		--extracts dir and base from filename
-		local dir, base = filename:splitfilename()
-		--looks for the parent inode by using the dir
-		local parent = get_inode_from_filename(dir)
-		--gets the inode number
-		local inode_number = get_inode_number()
-		--takes userID, groupID, and processID from FUSE context
-		local uid, gid, pid = fuse.context()
-		--creates an empty inode
-		inode = {
-			meta = {
-				ino = inode_number,
-				xattr = {},
-				mode = mode,
-				dev = rdev,
-				nlink = 1,
-				uid = uid,
-				gid = gid,
-				size = 0,
-				atime = os.time(),
-				mtime = os.time(),
-				ctime = os.time()
-			},
-			--content is empty
-			content = {}
-		}
-		--logs
-		--logprint(log_domain, function_name..": what is parent_parent?=", parent.parent)
-		--adds the entry in the parent's inode
-		parent.content[base]=true
-		--puts the inode itself
-		put_inode(inode_number, inode)
-		--puts a file that points to that inode
-		put_file(filename, inode_number)
-		--puts the parent's inode (changed because it has one more entry)
-		put_inode(parent.meta.ino, parent)
-		--returns 0 and the inode
-		return 0, inode
+		--makes the node with the function common_mknod, the number of links is 1, size is 0 and the dev is rdev
+		return common_mknod(filename, mode, 1, 0, rdev)
 	end,
 
 	--function read: reads data from an open file. TODO: CHANGE MDATE and ADATE WHEN WRITING
@@ -951,7 +1018,7 @@ local splayfuse = {
 		--timestamp logging
 		--logprint(log_domain, function_name..": inode retrieved. elapsed_time="..(misc.time()-start_time))
 		--performs a FUSE write with Open-Close consistency
-		inode = fuse_write_oc(buf, offset, inode)
+		inode = common_write(buf, offset, inode)
 		--puts the inode into the DB
 		put_inode(inode.meta.ino, inode)
 		--logs
@@ -999,7 +1066,7 @@ local splayfuse = {
 		logprint(log_domain, function_name..": START. filename=", filename)
 
 		--[[
-		--NOTE: CODE RELATED TO SESSION ORIENTED MODE
+		--NOTE: CODE RELATED TO OPEN-CLOSE MODE
 		inode.open = inode.open - 1
 		--logprint(log_domain, function_name..": for filename=", filename, {inode_open=inode.open})
 		if inode.open < 1 then
@@ -1022,175 +1089,14 @@ local splayfuse = {
 		return 0
 	end,
 
-	--function fgetattr:
-	--TODO: CHECK IF fgetattr IS USEFUL, IT IS! TODO: CHECK WITH filename
-	fgetattr = function(self, filename, inode, ...)
-		--logs entrance
-		logprint("FILE_MISC_OP", "fgetattr: START. filename=", filename)
-		--last_logprint("FILE_MISC_OP", tbl2str("inode", 0, inode))
-		--returns the attributes of a file
-		return get_attributes(filename)
-	end,
-
-	--function rmdir: removes a directory from the filesystem
-	rmdir = function(self, filename)
-		--for all the logprint functions: the log domain is "DIR_OP" and the function name is "rmdir"
-		local log_domain, function_name = "DIR_OP", "rmdir"
-		--logs entrance
-		logprint(log_domain, function_name..": START. filename=", filename)
-		--gets the inode
-		local inode = get_inode_from_filename(filename)
-		--if there is no inode, returns the error code ENOENT (No such file or directory)
-		if not inode then
-			return ENOENT
-		end
-		--logs
-		--logprint(log_domain, function_name..": got inode=", tbl2str("inode", 0, inode))
-		--if there is at least one entry in inode.content, returns error ENOTEMPTY
-		for i,v in pairs(inode.content) do
-			--last_logprint(log_domain, function_name..": dir entry=", i)
-			return ENOTEMPTY
-		end
-		--logprint(log_domain, function_name..": everything's fine")
-		--splits the filename
-		local dir, base = filename:splitfilename()
-		--gets the parent dir inode
-		local parent = get_inode_from_filename(dir)
-		--deletes the entry from the contents of the parent node. TODO: CHECK WHAT HAPPENS WHEN TRYING TO ERASE A NON-EMPTY DIR
-		parent.content[base] = nil
-		--decrements the number of links in the parent node (one less dir pointing to it with the ".." element)
-		parent.meta.nlink = parent.meta.nlink - 1
-		--updates the parent inode
-		put_inode(parent.ino, parent)
-		--removes the file from the DB
-		delete_file(filename)
-		--removes the inode from the DB
-		delete_dir_inode(inode.meta.ino)
-		--returns 0
-		return 0
-	end,
-
-	--function mkdir: creates a directory
-	--TODO: CHECK WHAT HAPPENS WHEN TRYING TO MKDIR A DIR THAT EXISTS
-	--TODO: MERGE THESE CODES (MKDIR, MKNODE, CREATE) ON 1 FUNCTION
-	mkdir = function(self, filename, mode, ...)
-		--for all the logprint functions: the log domain is "DIR_OP" and the function name is "mkdir"
-		local log_domain, function_name = "DIR_OP", "mkdir"
-		--logs entrance
-		logprint(log_domain, function_name..": START. filename=", filename)
-		--tries to get the inode first
-		local inode = get_inode_from_filename(filename)
-		--if the inode exists, returns with error EEXIST
-		if inode then
-			return EEXIST
-		end
-		--splits the filename
-		local dir, base = filename:splitfilename()
-		--gets the parent dir inode
-		local parent = get_inode_from_filename(dir)
-		--if the parent inode does not exist, logs error and returns with error ENOENT
-		if not parent then
-			last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
-			return ENOENT
-		end
-		--gets the inode number
-		local inode_number = get_inode_number()
-		--takes userID, groupID, and processID from FUSE context
-		local uid, gid, pid = fuse.context()
-		--creates an empty dir inode
-		inode = {
-			meta = {
-				ino = inode_number,
-				uid = uid,
-				gid = gid,
-				mode = set_bits(mode, S_IFDIR),
-				nlink = 2,
-				size = 0,
-				--number of links is 2
-				--size is 0. TODO: CHECK IF SIZE IS NOT block_size
-				atime = os.time(),
-				mtime = os.time(),
-				ctime = os.time(),
-				dev = 0,
-				xattr = {}
-			},
-			content = {}
-		}
-		--adds the entry into the parent contents table
-		parent.content[base]=true
-		--adds one link to the parent (the ".." link)
-		parent.meta.nlink = parent.meta.nlink + 1
-
-		--puts the inode, because it's new
-		put_inode(inode_number, inode)
-		--puts the file, because it's new
-		put_file(filename, inode_number)
-		--updates the parent's inode, because the contents changed
-		put_inode(parent.meta.ino, parent)
-		--returns 0
-		return 0
-	end,
-
 	--function create: creates and opens a file
-	create = function(self, filename, mode, flag, ...)
+	create = function(self, filename, mode, flags, ...)
 		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "create"
 		local log_domain, function_name = "FILE_MISC_OP", "create"
 		--logs entrance
-		logprint(log_domain, function_name..": START. filename=", filename)
-		--gets inode from the DB
-		local inode = get_inode_from_filename(filename)
-		--if the inode exists, logs error and returns with error EEXIST
-		if inode then
-			last_logprint(log_domain, function_name..": END. file exists, returning EEXIST")
-			return EEXIST
-		end
-		--splits the filename
-		local dir, base = filename:splitfilename()
-		--logs
-		--logprint(log_domain, function_name..": dir=", dir, "base=", base)
-		--gets the parent dir inode
-		local parent = get_inode_from_filename(dir)
-		--logs
-		--logprint(log_domain, function_name..": parent retrieved=", tbl2str("parent", 0, parent))
-		--if the parent inode does not exist, logs error and returns with error ENOENT
-		if not parent then
-			last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
-			return ENOENT
-		end
-		--gets the inode number
-		local inode_number = get_inode_number()
-		--logs
-		--logprint(log_domain, function_name..": inode_number=", inode_number)
-		--takes userID, groupID, and processID from FUSE context
-		local uid, gid, pid = fuse.context()
-		--creates an empty inode
-		inode = {
-			meta = {
-				ino = inode_number, 
-				uid = uid,
-				gid = gid,
-				mode  = set_bits(mode, S_IFREG),
-				nlink = 1,
-				size = 0,
-				atime = os.time(),
-				mtime = os.time(),
-				ctime = os.time(),
-				dev = 0, 
-				xattr = {}
-			},
-			content = {}
-		}
-		--adds the entry in the parent dir inode
-		parent.content[base]=true
-
-		--puts the inode, because it's new
-		put_inode(inode_number, inode)
-		--puts the file, because it's new
-		put_file(filename, inode_number)
-		--updates the parent's inode, because the contents changed
-		put_inode(parent.meta.ino, parent)
-		--returns 0 and the inode element
-		return 0, inode
+		logprint(log_domain, function_name..": START. type_flags=", type(flags), "filename=", filename)
+		--makes the node with the function common_mknod, the number of links = 1, size = 0, dev = 0.
+		return common_mknod(filename, set_bits(mode, S_IFREG), 1, 0, 0)
 	end,
 
 	--function flush: cleans local record about an open file
@@ -1322,7 +1228,7 @@ local splayfuse = {
 		return 0
 	end,
 
-	--function link: makes a hard link
+	--function link: makes a hard link. TODO: not permitted for dir EPERM
 	link = function(self, from, to, ...)
 		--for all the logprint functions: the log domain is "LINK_OP" and the function name is "link"
 		local log_domain, function_name = "LINK_OP", "link"
@@ -1475,7 +1381,7 @@ local splayfuse = {
 		--if the original size is less than the new size, append zeros
 		if orig_size < size then
 			local buf = string.rep("\0", size - orig_size)
-			inode = fuse_write_oc(buf, orig_size, inode)
+			inode = common_write(buf, orig_size, inode)
 			put_inode(inode.meta.ino, inode)
 			return 0
 		end
@@ -1545,7 +1451,7 @@ local splayfuse = {
 		--if the original size is less than the new size, append zeros
 		if orig_size < size then
 			local buf = string.rep("\0", size - orig_size)
-			inode = fuse_write_oc(buf, orig_size, inode)
+			inode = common_write(buf, orig_size, inode)
 			put_inode(inode.meta.ino, inode)
 			return 0
 		end
