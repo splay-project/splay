@@ -156,8 +156,8 @@ function send_put(url, key, type_of_transaction, value)
 	return send_command("PUT", url, key, type_of_transaction, value)
 end
 
-function send_delete(url, key, type_of_transaction)
-	logprint("DIST_DB_CLIENT", "send_delete: START.")
+function send_del(url, key, type_of_transaction)
+	logprint("DIST_DB_CLIENT", "send_del: START.")
 	if _LOCAL then
 		kv_records[key] = nil
 		return true

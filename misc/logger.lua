@@ -1,9 +1,10 @@
 local misc = require"splay.misc"
 
-_LOGMODE = "file"
+_LOGMODE = "print"
 _LOGFILE = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 _TIMESTAMP = true
 local log_tbl = {}
+local start_time = nil
 log_domains = {}
 
 
@@ -91,4 +92,21 @@ function tbl2str(name, order, input_table)
 	end
 	--returns the concatenation of all lines
 	return table.concat(output_tbl)
+end
+
+--creates a logger object; start_time is to display elapsed time, tags is an array of strings (keywords), timestamp and elapsed are booleans
+function new_logger(start_time, tags, timestamp, elapsed)
+	local logger = {
+		start_time = start_time,
+		tags = tags,
+		logprint = function(self, message)
+			print("Executes logprint, message="..message..", tags:")
+			for i,v in ipairs(self.tags) do
+				print(v)
+			end
+		end,
+		last_logprint = function() print("Executes last_logprint") end,
+		logflush = function() print("Executes logflush") end
+	}
+	return logger
 end
