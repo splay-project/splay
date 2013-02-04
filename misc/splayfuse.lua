@@ -524,15 +524,9 @@ local function common_getattr(inode)
 end
 
 --function common_mknod: creates a node in the filesystem
-local function common_mknod(filename, mode, nlink, size, dev)
+local function common_mknod(filename, mode, nlink, size, dev, content)
 	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "common_mknod"
 	local log_domain, function_name = "FILE_MISC_OP", "common_mknod"
-	--tries to get the inode first
-	local inode = get_inode_from_filename(filename)
-	--if the inode exists, returns with error EEXIST
-	if inode then
-		return EEXIST
-	end
 	--splits the filename
 	local dir, base = filename:splitfilename()
 	--gets the parent dir inode
@@ -547,21 +541,21 @@ local function common_mknod(filename, mode, nlink, size, dev)
 	--takes userID, groupID, and processID from FUSE context
 	local uid, gid, pid = fuse.context()
 	--creates an empty dir inode
-	inode = {
+	local inode = {
 		meta = {
 			ino = inode_number,
 			uid = uid,
 			gid = gid,
 			mode = mode,
-			nlink = nlink,
-			size = size,
+			nlink = nlink or 1,
+			size = size or 0,
 			atime = os.time(),
 			mtime = os.time(),
 			ctime = os.time(),
-			dev = dev,
+			dev = dev or 0,
 			xattr = {}
 		},
-		content = {}
+		content = content or {}
 	}
 	--adds the entry into the parent contents table
 	parent.content[base]=true
@@ -578,7 +572,7 @@ local function common_mknod(filename, mode, nlink, size, dev)
 	return 0, inode
 end
 
-local function common_rmnod(filename, inode)
+local function common_rmnod(filename)
 	--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "common_rmnod"
 	local log_domain, function_name = "FILE_MISC_OP", "common_rmnod"
 	--logs entrance
@@ -589,14 +583,66 @@ local function common_rmnod(filename, inode)
 	local parent = get_inode_from_filename(dir)
 	--deletes the entry from the contents of the parent node
 	parent.content[base] = nil
-	--decrements the number of links in the parent node (one less dir pointing to it with the ".." element)
-	parent.meta.nlink = parent.meta.nlink - 1
-	--updates the parent inode
-	put_inode(parent.meta.ino, parent)
 	--removes the file from the DB
 	delete_file(filename)
-	--removes the inode from the DB
-	delete_dir_inode(inode.meta.ino)
+	--returns the parent inode
+	return parent
+end
+
+--function common_read: common routine for reading from a file
+local function common_read(size, offset, inode)
+	--calculates the starting block ID
+	local start_block_idx = math.floor(offset / block_size)+1
+	--calculates the offset on the starting block
+	local rem_start_offset = offset % block_size
+	--calculates the end block ID
+	local end_block_idx = math.floor((offset+size-1) / block_size)+1
+	--calculates the offset on the end block
+	local rem_end_offset = (offset+size-1) % block_size
+
+	--logs
+	--logprint(log_domain, function_name..": offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
+	--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
+	--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
+	--timestamp logging
+	--logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
+	--gets the first block; if the result of the get OP is empty, fills it out with an empty string
+	local block = get_block(inode.content[start_block_idx]) or ""
+	--table that contains the data, then it gets concatenated (just a final concatenation shows better performance than concatenating inside the loop)
+	local data_t = {}
+	--timestamp logging
+	--logprint(log_domain, function_name..": first block retrieved. elapsed_time="..(misc.time()-start_time))
+	--if the starting block and the end block are the same, it does nothing but logging (the first block was retrieved above)
+	if start_block_idx == end_block_idx then
+		--logs
+		--logprint(log_domain, function_name..": just one block to read")
+		--timestamp logging
+		table.insert(data_t, string.sub(block, rem_start_offset+1, rem_end_offset))
+	--if not
+	else
+		--logs
+		--logprint(log_domain, function_name..": several blocks to read")
+		table.insert(data_t, string.sub(block, rem_start_offset+1))
+		--for all blocks, from the second to the second last one
+		for i=start_block_idx+1,end_block_idx-1 do
+			--timestamp logging
+			--logprint(log_domain, function_name..": getting new block. elapsed_time="..(misc.time()-start_time))
+			--gets the block
+			block = get_block(inode.content[i]) or ""
+			--inserts the block in data_t
+			table.insert(data_t, block)
+		end
+		--timestamp logging
+		--logprint(log_domain, function_name..": getting new block. elapsed_time="..(misc.time()-start_time))
+		--gets last block
+		block = get_block(inode.content[end_block_idx]) or ""
+		--inserts it only until the offset
+		table.insert(data_t, string.sub(block, 1, rem_end_offset))
+	end
+	--flushes all timestamp logs
+	--last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
+	--returns 0 and the concatenation of the data table
+	return 0, table.concat(data_t)
 end
 
 --function common_write: common routine for writing in a file
@@ -824,8 +870,14 @@ local splayfuse = {
 		local log_domain, function_name = "DIR_OP", "mkdir"
 		--logs entrance
 		logprint(log_domain, function_name..": START. filename=", filename)
-		--makes the node with the function common_mknod, the number of links = 2, size = 0, dev = 0. TODO: CHECK IF SIZE IS NOT block_size
-		local ok = common_mknod(filename, set_bits(mode, S_IFDIR), 2, 0, 0)
+		--tries to get the inode first
+		local inode = get_inode_from_filename(filename)
+		--if the inode exists, returns with error EEXIST
+		if inode then
+			return EEXIST
+		end
+		--makes the node with the function common_mknod, the number of links = 2. TODO: CHECK IF SIZE IS NOT block_size
+		local ok = common_mknod(filename, set_bits(mode, S_IFDIR), 2)
 		--returns the result of the operation
 		return ok
 	end,
@@ -913,7 +965,13 @@ local splayfuse = {
 			return ENOTEMPTY
 		end
 		--logprint(log_domain, function_name..": everything's fine")
-		common_rmnod(filename, inode)
+		local parent = common_rmnod(filename)
+		--decrements the number of links in the parent node (one less dir pointing to it with the ".." element)
+		parent.meta.nlink = parent.meta.nlink - 1
+		--updates the parent inode
+		put_inode(parent.meta.ino, parent)
+		--removes the inode from the DB
+		delete_dir_inode(inode.meta.ino)
 		--returns 0
 		return 0
 	end,
@@ -924,6 +982,12 @@ local splayfuse = {
 		local log_domain, function_name = "FILE_MISC_OP", "mknod"
 		--logs entrance
 		logprint(log_domain, function_name..": START. filename=", filename)
+		--tries to get the inode first
+		local inode = get_inode_from_filename(filename)
+		--if the inode exists, returns with error EEXIST
+		if inode then
+			return EEXIST
+		end
 		--makes the node with the function common_mknod, the number of links is 1, size is 0 and the dev is rdev
 		return common_mknod(filename, mode, 1, 0, rdev)
 	end,
@@ -941,65 +1005,13 @@ local splayfuse = {
 		--logs
 		--logprint(log_domain, function_name..": inode retrieved =")
 		--logprint(log_domain, tbl2str("inode", 0, inode))
-		--if there is no inode, returns 1
+		--if there is no inode, returns 1. TODO: see how to handle this error
 		if not inode then
 			return 1
 		end
 		--timestamp logging
 		--logprint(log_domain, function_name..": inode retrieved. elapsed_time="..(misc.time()-start_time))
-
-		--calculates the starting block ID
-		local start_block_idx = math.floor(offset / block_size)+1
-		--calculates the offset on the starting block
-		local rem_start_offset = offset % block_size
-		--calculates the end block ID
-		local end_block_idx = math.floor((offset+size-1) / block_size)+1
-		--calculates the offset on the end block
-		local rem_end_offset = (offset+size-1) % block_size
-
-		--logs
-		--logprint(log_domain, function_name..": offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
-		--logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
-		--logprint(log_domain, function_name..": about to get block", {block_n = inode.content[start_block_idx]})
-		--timestamp logging
-		--logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
-		--gets the first block; if the result of the get OP is empty, fills it out with an empty string
-		local block = get_block(inode.content[start_block_idx]) or ""
-		--table that contains the data, then it gets concatenated (just a final concatenation shows better performance than concatenating inside the loop)
-		local data_t = {}
-		--timestamp logging
-		--logprint(log_domain, function_name..": first block retrieved. elapsed_time="..(misc.time()-start_time))
-		--if the starting block and the end block are the same, it does nothing but logging (the first block was retrieved above)
-		if start_block_idx == end_block_idx then
-			--logs
-			--logprint(log_domain, function_name..": just one block to read")
-			--timestamp logging
-			table.insert(data_t, string.sub(block, rem_start_offset+1, rem_end_offset))
-		--if not
-		else
-			--logs
-			--logprint(log_domain, function_name..": several blocks to read")
-			table.insert(data_t, string.sub(block, rem_start_offset+1))
-			--for all blocks, from the second to the second last one
-			for i=start_block_idx+1,end_block_idx-1 do
-				--timestamp logging
-				--logprint(log_domain, function_name..": getting new block. elapsed_time="..(misc.time()-start_time))
-				--gets the block
-				block = get_block(inode.content[i]) or ""
-				--inserts the block in data_t
-				table.insert(data_t, block)
-			end
-			--timestamp logging
-			--logprint(log_domain, function_name..": getting new block. elapsed_time="..(misc.time()-start_time))
-			--gets last block
-			block = get_block(inode.content[end_block_idx]) or ""
-			--inserts it only until the offset
-			table.insert(data_t, string.sub(block, 1, rem_end_offset))
-		end
-		--flushes all timestamp logs
-		--last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
-		--returns 0 and the concatenation of the data table
-		return 0, table.concat(data_t)
+		return common_read(size, offset, inode)
 	end,
 
 	--function write: writes data into a file. TODO: CHANGE MDATE and ADATE WHEN WRITING
@@ -1030,8 +1042,6 @@ local splayfuse = {
 	end,
 
 	--function open: opens a file for read/write operations
-	--NOTE: WHEN DOING ATOMIC WRITE READ, LONG SESSIONS WITH THE LIKES OF OPEN HAVE NO SENSE.
-	--TODO: CHECK ABOUT MODE AND USER RIGHTS.
 	open = function(self, filename, mode)
 		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "open"
 		local log_domain, function_name = "FILE_MISC_OP", "open"
@@ -1096,7 +1106,7 @@ local splayfuse = {
 		--logs entrance
 		logprint(log_domain, function_name..": START. type_flags=", type(flags), "filename=", filename)
 		--makes the node with the function common_mknod, the number of links = 1, size = 0, dev = 0.
-		return common_mknod(filename, set_bits(mode, S_IFREG), 1, 0, 0)
+		return common_mknod(filename, set_bits(mode, S_IFREG))
 	end,
 
 	--function flush: cleans local record about an open file
@@ -1125,53 +1135,15 @@ local splayfuse = {
 		return ENOENT
 	end,
 
-	--function symlink: makes a symbolic link
+	--function symlink: makes a symbolic link.
 	symlink = function(self, from, to)
 		--for all the logprint functions: the log domain is "LINK_OP" and the function name is "symlink"
 		local log_domain, function_name = "LINK_OP", "symlink"
 		--logs entrance
 		logprint(log_domain, function_name..": START. from=", from, "to=", to)
-		--splits the "to" filename
-		local to_dir, to_base = to:splitfilename()
-		--gets the  parent dir of the "to" file
-		local to_parent = get_inode_from_filename(to_dir)
-		--if the parent inode does not exist, logs error and returns with error ENOENT
-		if not parent then
-			last_logprint(log_domain, function_name..": END. the parent dir does not exist, returning ENOENT")
-			return ENOENT
-		end
-		--gets the inode number
-		local inode_number = get_inode_number()
-		--takes userID, groupID, and processID from FUSE context
-		local uid, gid, pid = fuse.context()
-		--creates an empty inode
-		local to_inode = {
-			meta = {
-				ino = inode_number,
-				uid = uid,
-				gid = gid,
-				mode= S_IFLNK + mk_mode(7,7,7),
-				nlink = 1,
-				size = string.len(from),
-				atime = os.time(),
-				mtime = os.time(),
-				ctime = os.time(),
-				dev = 0,
-				xattr = {}
-			},
-			content = {from}
-		}
-		--adds the entry into the parent dir inode of the "to" file
-		to_parent.content[to_base]=true
-
-		--puts the to_inode, because it's new
-		put_inode(inode_number, to_inode)
-		--puts the file, because it's new
-		put_file(to, inode_number)
-		--updates the to_parent's inode, because the contents changed
-		put_inode(to_parent.meta.ino, to_parent)
-		--returns 0. TODO: this return 0 was inside an IF
-		return 0
+		--makes the node with the function common_mknod, the number of links = 1, dev = 0, content is the string "from"
+		local ok = common_mknod(to, S_IFLNK + mk_mode(7,7,7), 1, string.len(from), 0, {from})
+		return ok
 	end,
 
 	--function rename: moves/renames a file
@@ -1285,24 +1257,13 @@ local splayfuse = {
 		if not inode then
 			return ENOENT
 		end
-		--splits the filename
-		local dir, base = filename:splitfilename()
-		--gets the parent
-		local parent = get_inode_from_filename(dir)
-		--logs
-		--logprint(log_domain, function_name..":", {parent=parent})
-		--deletes the entry in the parent inode
-		parent.content[base] = nil
-		--logs
-		--logprint(log_domain, function_name..": link to file in parent removed", {parent=parent})
-		--increments the number of links
+		local parent = common_rmnod(filename)
+		--updates the parent inode
+		put_inode(parent.meta.ino, parent)
+		--decrements the number of links
 		inode.meta.nlink = inode.meta.nlink - 1
 		--logs
 		--logprint(log_domain, function_name..": now inode has less links=", tbl2str("inode", 0, inode))
-		--deletes the file element, because it's being unlinked
-		delete_file(filename)
-		--puts the parent ino, because the record of the file was deleted
-		put_inode(parent.meta.ino, parent)
 		--if the inode has no more links
 		if inode.meta.nlink == 0 then
 			--logprint(log_domain, function_name..": i have to delete the inode too")
