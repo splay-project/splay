@@ -1,7 +1,7 @@
 local misc = require"splay.misc"
 
 _LOGMODE = "file"
-_LOGFILE = "/home/unine/Desktop/logfusesplay/log.txt"
+_LOGFILE = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 _TIMESTAMP = true
 local log_tbl = {}
 log_domains = {}

@@ -50,7 +50,7 @@ local ENOSYS = -38
 --LOCAL VARIABLES
 
 local block_size = 48
-local blank_block = string.rep("0", block_size)
+local blank_block = string.rep("\0", block_size)
 local open_mode = {'rb','wb','rb+'}
 
 --consistency types can be "evtl_consistent", "paxos" or "consistent"
@@ -506,6 +506,13 @@ local function delete_file(filename)
 	return true
 end
 
+--function send_block_GC: sends a block to the Garbage Collector
+local function send_block_GC(block_id)
+end
+
+
+--COMMON ROUTINES FOR FUSE OPERATIONS
+
 --function get_attributes: gets the attributes of a file
 --BIG TODOS: cambiar block a id=hash(content) e inode a id=hash(random). pierre dice que el Entry Point debe ser stateful.
 local function get_attributes(filename)
@@ -536,6 +543,111 @@ local function get_attributes(filename)
 	--last_logprint(log_domain, function_name..": END")
 	--returns 0 (successful), mode, inode number, device, number of links, userID, groupID, size, access time, modif time, inode change time
 	return 0, x.mode, x.ino, x.dev, x.nlink, x.uid, x.gid, x.size, x.atime, x.mtime, x.ctime
+end
+
+--function fuse_write_oc: performs a write operation under the open-close consistency model
+local function fuse_write_oc(buf, offset, inode)
+	--for all the logprint functions: the log domain is "READ_WRITE_OP" and the function name is "fuse_write_oc"
+	local log_domain, function_name = "READ_WRITE_OP", "fuse_write_oc"
+	--stores the size reported by the inode in the variable orig_size
+	local orig_size = inode.meta.size
+	--size is initially equal to the size of the buffer
+	local size = #buf
+	--calculates the starting block ID
+	local start_block_idx = math.floor(offset / block_size)+1
+	--calculates the offset on the starting block
+	local rem_start_offset = offset % block_size
+	--calculates the end block ID
+	local end_block_idx = math.floor((offset+size-1) / block_size)+1
+	--calculates the offset on the end block
+	local rem_end_offset = ((offset+size-1) % block_size)
+	--logs
+	logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
+	logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
+	logprint(log_domain, function_name..": about to get block. block_id=", inode.content[start_block_idx])
+	--timestamp logging
+	--logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
+	--block, block_id and to_write_in_block are initialized to nil
+	local block, block_id, to_write_in_block
+	--initializes the block offset as the offset in the starting block
+	local block_offset = rem_start_offset
+	--calculates if the size of the file changed; if the offset+size is bigger than the original size, yes.
+	local size_changed = ((offset+size) > orig_size)
+	--initializes the remaining buffer as the whole buffer
+	local remaining_buf = buf
+	--timestamp logging
+	--logprint(log_domain, function_name..": calculated more stuff. elapsed_time="..(misc.time()-start_time))
+	--logs
+	--logprint(log_domain, function_name..": buf=\""..buf.."\"")
+	--for all blocks from the starting to the end block
+	for i = start_block_idx, end_block_idx do
+		--logs
+		logprint(log_domain, function_name..": im in the for loop, i=", i)
+		--if the block exists
+		if inode.content[i] then
+			--logs
+			--logprint(log_domain, function_name..": block exists, so get the block")
+			--gets the block; the block_id is the ith entry of inode contents table
+			block = get_block(inode.content[i])
+			--sends the block to GC
+			send_block_GC(inode.content[i])
+		--if not
+		else
+			--logs
+			--logprint(log_domain, function_name..": block doesnt exists, so create the block")
+			--the block initially is an empty string
+			block = ""
+		end
+		--logs
+		logprint(log_domain, function_name..": remaining_buf=\""..remaining_buf.."\"")
+		logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
+		logprint(log_domain, function_name..": block_size=", block_size)
+		--if the size of the remaining buffer + the block offset is bigger than a full block size (it means we need to trunk the remaining buffer cause it does not fit in one block)
+		if (#remaining_buf+block_offset) > block_size then
+			--logs
+			--logprint(log_domain, function_name..": more than block size")
+			--fills out to_write_in_block with enough data to reach the end of the block
+			to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
+			--cuts that data from the remaining buffer
+			remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
+		--if not (all the remaining buffer fits in the block)
+		else
+			--logs
+			--logprint(log_domain, function_name..": less than block size")
+			--to_write_in_block is equal to the remaining buffer
+			to_write_in_block = remaining_buf
+		end
+		--logs
+		logprint(log_domain, function_name..": block=\""..block.."\"")
+		logprint(log_domain, function_name..": to_write_in_block=\""..to_write_in_block.."\"")
+		--logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
+		--inserts the to_write_in_block segment into the block. TODO: CHECK IF THE +1 AT THE END IS OK
+		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset + #to_write_in_block + 1))
+		--logs
+		logprint(log_domain, function_name..": now block="..block)
+		--the blockID is the hash of the inode number concatenated with the block data
+		block_id = hash_string(tostring(inode.meta.ino)..block)
+		--logs
+		logprint(log_domain, function_name..": before putting the block, blockID=\""..block_id.."\"")
+		--puts the block
+		put_block(block_id, block)
+		--logs
+		logprint(log_domain, function_name..": after putting the block, inode.content["..i.."]=", inode.content[i])
+		--inserts the new block number in the contents table
+		inode.content[i] = block_id
+		--the block offset is set to 0
+		--logs
+		logprint(log_domain, function_name..": after changing the inode, inode.content["..i.."]="..inode.content[i])
+		block_offset = 0
+		--timestamp logging
+		--logprint(log_domain, function_name..": timestamp at the end of each cycle. elapsed_time="..(misc.time()-start_time))
+	end
+	--if the size changed
+	if size_changed then
+		--changes the metadata in the inode
+		inode.meta.size = offset+size
+	end
+	return inode
 end
 
 
@@ -832,116 +944,18 @@ local splayfuse = {
 		logprint(log_domain, function_name..": START. filename=", filename, "elapsed_time=0")
 		--gets inode from the DB
 		local inode = get_inode_from_filename(filename)
+		--TODO: falta si el inode no existe
 		--logs
-		--logprint(log_domain, function_name..": inode retrieved =")
+		logprint(log_domain, function_name..": inode retrieved=")
 		--logprint(log_domain, tbl2str("inode", 0, inode))
 		--timestamp logging
 		--logprint(log_domain, function_name..": inode retrieved. elapsed_time="..(misc.time()-start_time))
-		--stores the size reported by the inode in the variable orig_size
-		local orig_size = inode.meta.size
-		--size is initially equal to the size of the buffer
-		local size = #buf
-		--calculates the starting block ID
-		local start_block_idx = math.floor(offset / block_size)+1
-		--calculates the offset on the starting block
-		local rem_start_offset = offset % block_size
-		--calculates the end block ID
-		local end_block_idx = math.floor((offset+size-1) / block_size)+1
-		--calculates the offset on the end block
-		local rem_end_offset = ((offset+size-1) % block_size)
+		--performs a FUSE write with Open-Close consistency
+		inode = fuse_write_oc(buf, offset, inode)
+		--puts the inode into the DB
+		put_inode(inode.meta.ino, inode)
 		--logs
-		logprint(log_domain, function_name..": orig_size=", orig_size..", offset=", offset..", size=", size..", start_block_idx=", start_block_idx)
-		logprint(log_domain, function_name..": rem_start_offset=", rem_start_offset..", end_block_idx=", end_block_idx..", rem_end_offset=", rem_end_offset)
-		logprint(log_domain, function_name..": about to get block. block_id=", inode.content[start_block_idx])
-		--timestamp logging
-		--logprint(log_domain, function_name..": orig_size et al. calculated, size="..size..". elapsed_time="..(misc.time()-start_time))
-		--block, block_id and to_write_in_block are initialized to nil
-		local block, block_id, to_write_in_block
-		--initializes the block offset as the offset in the starting block
-		local block_offset = rem_start_offset
-		--calculates if the size of the file changed; if the offset+size is bigger than the original size, yes.
-		local size_changed = ((offset+size) > orig_size)
-		--initializes the remaining buffer as the whole buffer
-		local remaining_buf = buf
-		--timestamp logging
-		--logprint(log_domain, function_name..": calculated more stuff. elapsed_time="..(misc.time()-start_time))
-		--timestamp logging
-		--logprint(log_domain, function_name..": root might have been retrieved. elapsed_time="..(misc.time()-start_time))
-		--logs
-		--logprint(log_domain, function_name..": new file is bigger? size_changed="..tostring(size_changed))
-		--logprint(log_domain, function_name..": buf=\""..buf.."\"")
-		--for all blocks from the starting to the end block
-		for i=start_block_idx, end_block_idx do
-			--logs
-			--logprint(log_domain, function_name..": im in the for loop, i=", i)
-			--if the block exists
-			if inode.content[i] then
-				--logs
-				--logprint(log_domain, function_name..": block exists, so get the block")
-				--gets the block; the block_id is the ith entry of inode contents table
-				block = get_block(inode.content[i])
-				--sends the block to GC
-				send_block_GC(inode.content[i])
-				--removes the block from the content table
-				table.remove(inode.content, i)
-			--if not
-			else
-				--logs
-				--logprint(log_domain, function_name..": block doesnt exists, so create the block")
-				--the block initially is an empty string
-				block = ""
-			end
-			--logs
-			logprint(log_domain, function_name..": remaining_buf=\""..remaining_buf.."\"")
-			logprint(log_domain, function_name..": (#remaining_buf+block_offset)=", (#remaining_buf+block_offset))
-			logprint(log_domain, function_name..": block_size=", block_size)
-			--if the size of the remaining buffer + the block offset is bigger than a full block size (it means we need to trunk the remaining buffer cause it does not fit in one block)
-			if (#remaining_buf+block_offset) > block_size then
-				--logs
-				--logprint(log_domain, function_name..": more than block size")
-				--fills out to_write_in_block with enough data to reach the end of the block
-				to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
-				--cuts that data from the remaining buffer
-				remaining_buf = string.sub(remaining_buf, (block_size - block_offset)+1, -1)
-			--if not (all the remaining buffer fits in the block)
-			else
-				--logs
-				--logprint(log_domain, function_name..": less than block size")
-				--to_write_in_block is equal to the remaining buffer
-				to_write_in_block = remaining_buf
-			end
-			--logs
-			--logprint(log_domain, function_name..": block=\""..block.."\"")
-			--logprint(log_domain, function_name..": to_write_in_block=\""..to_write_in_block.."\"")
-			--logprint(log_domain, function_name..": block_offset=", block_offset..", size of to_write_in_block=", #to_write_in_block)
-			--inserts the to_write_in_block segment into the block. TODO: CHECK IF THE +1 AT THE END IS OK
-			block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset + #to_write_in_block + 1))
-			--logs
-			--logprint(log_domain, function_name..": now block=", block)
-			--timestamp logging
-			--logprint(log_domain, function_name..": before putting the block. elapsed_time="..(misc.time()-start_time))
-			--the blockID is the hash of the inode number concatenated with the block data
-			block_id = hash_string(tostring(inode.meta.ino)..block)
-			--puts the block. TODO: delete the other block if existed through GC
-			put_block(block_id, block)
-			--timestamp logging
-			--logprint(log_domain, function_name..": after putting the block. elapsed_time="..(misc.time()-start_time))
-			--inserts the new block number in the contents table
-			table.insert(inode.content, block_id)
-			--the block offset is set to 0
-			block_offset = 0
-			--timestamp logging
-			--logprint(log_domain, function_name..": timestamp at the end of each cycle. elapsed_time="..(misc.time()-start_time))
-		end
-		--if the size changed
-		if size_changed then
-			--changes the metadata in the inode
-			inode.meta.size = offset+size
-			--puts the inode into the DB
-			put_inode(inode.meta.ino, inode)
-			--logs
-			--logprint(log_domain, function_name..": inode was written. elapsed_time="..(misc.time()-start_time))
-		end
+		--logprint(log_domain, function_name..": inode was written. elapsed_time="..(misc.time()-start_time))
 		--flushes all timestamp loggings
 		last_logprint(log_domain, function_name..": END. elapsed_time="..(misc.time()-start_time))
 		--returns the size of the written buffer
@@ -1458,6 +1472,13 @@ local splayfuse = {
 		end
 		--stores the size reported by the inode in the variable orig_size
 		local orig_size = inode.meta.size
+		--if the original size is less than the new size, append zeros
+		if orig_size < size then
+			local buf = string.rep("\0", size - orig_size)
+			inode = fuse_write_oc(buf, orig_size, inode)
+			put_inode(inode.meta.ino, inode)
+			return 0
+		end
 		--calculates the index (in the inode contents table) of the block where the pruning takes place
 		local block_idx = math.floor((size - 1) / block_size) + 1
 		--calculates the offset on the block
@@ -1467,28 +1488,29 @@ local splayfuse = {
 		--from the last block until the second last to be deleted (decremented for loop)
 		for i=#inode.content, block_idx+1,-1 do
 			--logs
-			--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
+			logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
 			--sends the block to GC
 			send_block_GC(inode.content[i])
 			--removes the block from the inode contents
 			table.remove(inode.content, i)
 		end
 		--logs
-		--logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
+		logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
 		--if the remainding offset is 0
 		if rem_offset == 0 then
-			--logprint(log_domain, function_name..": last block must be empty, so we delete it")
+			logprint(log_domain, function_name..": last block must be empty, so we delete it")
 			--removes the block from the inode contents
 			table.remove(inode.content, block_idx)
 		--if not, we must truncate the block and rewrite it
 		else
 			--logs
-			--logprint(log_domain, function_name..": last block is not empty")
-			local last_block = get_block(block_idx)
+			logprint(log_domain, function_name..": last block will not be empty")
+			--gets the last block
+			local last_block = get_block(inode.content[block_idx])
 			--logprint(log_domain, function_name..": it already has this=", last_block)
 			local write_in_last_block = string.sub(last_block, 1, rem_offset)
 			--logs
-			--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
+			logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
 			--the blockID is the hash of the inode number concatenated with the block data
 			local block_id = hash_string(tostring(inode.meta.ino)..write_in_last_block)
 			--puts the block
@@ -1505,6 +1527,8 @@ local splayfuse = {
 	end,
 
 	truncate = function(self, filename, size)
+		--for all the logprint functions: the log domain is "FILE_MISC_OP" and the function name is "truncate"
+		local log_domain, function_name = "FILE_MISC_OP", "truncate"
 		--logs entrance
 		logprint(log_domain, function_name..": START. filename=", filename, "size=", size)
 		--gets inode from DB
@@ -1518,6 +1542,13 @@ local splayfuse = {
 		end
 		--stores the size reported by the inode in the variable orig_size
 		local orig_size = inode.meta.size
+		--if the original size is less than the new size, append zeros
+		if orig_size < size then
+			local buf = string.rep("\0", size - orig_size)
+			inode = fuse_write_oc(buf, orig_size, inode)
+			put_inode(inode.meta.ino, inode)
+			return 0
+		end
 		--calculates the index (in the inode contents table) of the block where the pruning takes place
 		local block_idx = math.floor((size - 1) / block_size) + 1
 		--calculates the offset on the block
@@ -1527,28 +1558,29 @@ local splayfuse = {
 		--from the last block until the second last to be deleted (decremented for loop)
 		for i=#inode.content, block_idx+1,-1 do
 			--logs
-			--logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
+			logprint(log_domain, function_name..": about to remove block number inode.content["..i.."]=", inode.content[i])
 			--sends the block to GC
 			send_block_GC(inode.content[i])
 			--removes the block from the inode contents
 			table.remove(inode.content, i)
 		end
 		--logs
-		--logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
+		logprint(log_domain, function_name..": about to change block number inode.content["..block_idx.."]=", inode.content[block_idx])
 		--if the remainding offset is 0
 		if rem_offset == 0 then
-			--logprint(log_domain, function_name..": last block must be empty, so we delete it")
+			logprint(log_domain, function_name..": last block must be empty, so we delete it")
 			--removes the block from the inode contents
 			table.remove(inode.content, block_idx)
 		--if not, we must truncate the block and rewrite it
 		else
 			--logs
-			--logprint(log_domain, function_name..": last block is not empty")
-			local last_block = get_block(block_idx)
+			logprint(log_domain, function_name..": last block will not be empty")
+			--gets the last block
+			local last_block = get_block(inode.content[block_idx])
 			--logprint(log_domain, function_name..": it already has this=", last_block)
 			local write_in_last_block = string.sub(last_block, 1, rem_offset)
 			--logs
-			--logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
+			logprint(log_domain, function_name..": and we change to this=", write_in_last_block)
 			--the blockID is the hash of the inode number concatenated with the block data
 			local block_id = hash_string(tostring(inode.meta.ino)..write_in_last_block)
 			--puts the block
