@@ -23,6 +23,7 @@ local kv_records = {}
 
 --FUNCTIONS
 
+--function send_command: sends a command to the Entry Point
 function send_command(command_name, url, key, type_of_transaction, value)
 	--initializes the logger
 	local log1 = new_logger(".DIST_DB_CLIENT send_command")
@@ -88,27 +89,23 @@ function send_command(command_name, url, key, type_of_transaction, value)
 	return true
 end
 
---function send_get
+--function send_get: sends a "GET" command to the Entry Point, then merges vector clocks if necessary
 function send_get(url, key, type_of_transaction)
 	--initializes the logger
-	local log1 = new_logger(".DIST_DB_CLIENT send_get")
-	--logs START of the function
-	log1:logprint("START")
+	local log1 = start_logger(".DIST_DB_CLIENT send_get", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", type of trans="..tostring(type_of_transaction))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--logs END of the function
-		log1:logprint("END", "local storage")
-		--flushes all logs
-		log1:logflush()
+		log1:logprint_flush("END", "using local storage")
 		--returns true and the value
 		return true, kv_records[key]
 	end
 
-	local get_ok, answer = send_command("GET", url, key, type_of_transaction)
+	local ok, answer = send_command("GET", url, key, type_of_transaction)
 	
 	local chosen_value = nil
 
-	if not get_ok then
+	if not ok then
 		return false
 	end
 
@@ -128,8 +125,8 @@ function send_get(url, key, type_of_transaction)
 	--for evtl_consistent get
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
-		log1:logprint("RAW_DATA", "value="..v2.value)
-		log1:logprint("RAW_DATA", "chosen_value="..chosen_value)
+		log1:logprint(".RAW_DATA", "value="..v2.value)
+		log1:logprint(".RAW_DATA", "chosen_value="..chosen_value)
 		if type(v2.value) == "string" then
 			if string.len(v2.value) > string.len(chosen_value) then --in this case is the max length, but it could be other criteria
 				log1:logprint("", "replacing value")
@@ -150,85 +147,94 @@ function send_get(url, key, type_of_transaction)
 			end
 		end
 	end
+	log1:logprint(".RAW_DATA", "value="..chosen_value)
+	log1:logprint(".TABLE", table2str("merged VC", 0, max_vc))
 	--logs END of the function
-	log1:logprint("END", "", "key="..key..", value="..chosen_value..", merged vector_clock="..table2str("max_vc", 0, max_vc))
-	--flushes all logs
-	log1:logflush()
+	log1:logprint_flush("END")
+	--returns true, the value and the merged vector clock
 	return true, chosen_value, max_vc
 end
 
---function send_put
+--function send_put: sends a "PUT" command to the Entry Point
 function send_put(url, key, type_of_transaction, value)
 	--initializes the logger
-	local log1 = new_logger(".DIST_DB_CLIENT send_put")
-	--logs START of the function
-	log1:logprint("START", "", "key="..key)
+	local log1 = new_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", type of trans="..tostring(type_of_transaction))
+	--logs
+	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
-		--logs END of the function
-		log1:logprint("END", "local storage")
-		--flushes all logs
-		log1:logflush()
+		--sets the value
 		kv_records[key] = value
+		--logs END of the function
+		log1:logprint_flush("END", "using local storage")
+		--returns true
 		return true
 	end
 	--logs END of the function
-	log1:logprint("END")
-	--flushes all logs
-	log1:logflush()
+	log1:logprint_flush("END", "calling send_command")
+	--calls send_command("PUT") and returns the results
 	return send_command("PUT", url, key, type_of_transaction, value)
 end
 
+--function send_del: sends a "DELETE" command to the Entry Point
 function send_del(url, key, type_of_transaction)
 	--initializes the logger
-	local log1 = new_logger(".DIST_DB_CLIENT send_del")
-	--logs START of the function
-	log1:logprint("START")
+	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", type of trans="..tostring(type_of_transaction))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
+		--deletes the record
+		kv_records[key] = nil
 		--logs END of the function
-		log1:logprint("END", "local storage")
+		log1:logprint("END", "using local storage")
 		--flushes all logs
 		log1:logflush()
-		kv_records[key] = nil
+		--returns true
 		return true
 	end
 	--logs END of the function
-	log1:logprint("END")
-	--flushes all logs
-	log1:logflush()
+	log1:logprint_flush("END", "calling send_command")
+	--returns the result of send_command
 	return send_command("DELETE", url, key, type_of_transaction)
 end
 
+--function send_get_node_list: alias to send_command("GET_NODE_LIST")
 function send_get_node_list(url)
-	--logprint("DIST_DB_CLIENT", "send_get_node_list: START.")
-	local send_ok, node_list = send_command("GET_NODE_LIST", url)
-	--logprint("DIST_DB_CLIENT", "send_get_node_list:")
-	--logprint("DIST_DB_CLIENT", table2str("node_list", 0, node_list))
-	--logprint("DIST_DB_CLIENT", "send_get_node_list: END.")
-	return send_ok, node_list
+	return send_command("GET_NODE_LIST", url)
 end
 
+--function send_get_key_list: alias to send_command("GET_KEY_LIST")
 function send_get_key_list(url)
-	--logprint("DIST_DB_CLIENT", "send_get_key_list: START.")
-	local send_ok, key_list = send_command("GET_KEY_LIST", url)
-	--logprint("DIST_DB_CLIENT", "send_get_key_list:")
-	--logprint("DIST_DB_CLIENT", table2str("key_list", 0, key_list))
-	--logprint("DIST_DB_CLIENT", "send_get_key_list: END.")
-	return send_ok, key_list
+	--initializes the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url))
+	--if the transaction is local (bypass distributed DB)
+	if _LOCAL then
+		local key_list = {}
+		for i,v in pairs(kv_records) do
+			table.insert(key_list, i)
+			log1:logprint("", "key="..i)
+		end
+		--logs END of the function
+		log1:logprint_flush("END", "using local storage")
+		--returns true and the list of keys
+		return true, key_list
+	end
+	--logs END of the function
+	log1:logprint_flush("END", "calling send_command")
+	--returns the result of send_command
+	return send_command("GET_KEY_LIST", url)
 end
 
+--function send_get_master: alias to send_command("GET_MASTER")
 function send_get_master(url, key)
-	--logprint("DIST_DB_CLIENT", "send_get_master: START.")
 	return send_command("GET_MASTER", url, key)
 end
 
+--function send_get_all_records: alias to send_command("GET_ALL_RECORDS")
 function send_get_all_records(url)
-	--logprint("DIST_DB_CLIENT", "send_get_all_records: START.")
 	return send_command("GET_ALL_RECORDS", url)
 end
 
+--function send_change_log_lvl: alias to send_command("GET_CHANGE_LOG_LVL")
 function send_change_log_lvl(url, log_level)
-	--logprint("DIST_DB_CLIENT", "send_change_log_lvl: START.")
 	return send_command("CHANGE_LOG_LVL", url, log_level)
 end

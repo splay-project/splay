@@ -1,6 +1,6 @@
 local misc = require"splay.misc"
 
-local logfile, logrules, logbatching
+local logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed
 
 
 --LOGGING FUNCTIONS
@@ -31,19 +31,16 @@ local function generate_tag_string(tag_tbl)
 	if not tag_tbl then
 		return ""
 	end
-	--for all entries of the table (checks from last to first to keep order when removing)
-	for i = #tag_tbl, 1, -1 do
-		--if the tag starts with the character "." (hidden tag), removes it
-		if tag_tbl[i]:byte() == 46 then
-			table.remove(tag_tbl, i)
+	local tag_string = ""
+	--for all entries of the table (not done with table.remove and table.concat, because it corrupts tag_tbl!!! :O )
+	for i,v in ipairs(tag_tbl) do
+		--if the tag does not start with the character "." (hidden tag), concatenates the tag
+		if v:byte() ~= 46 then
+			tag_string = tag_string.."["..v.."] "
 		end
 	end
-	--if the resulting table is empty, returns an empty string
-	if #tag_tbl == 0 then
-		return ""
-	end
 	--returns table.concat of tag_tbl, enclosed by brackets
-	return "["..table.concat(tag_tbl, "] [").."] "
+	return tag_string
 end
 
 --function apply_filter: checks all tags; if any tag matches with a rule, returns the corresponding action; if none matches, returns "deny" by default
@@ -114,11 +111,14 @@ function tbl2str(name, order, in_data)
 end
 
 --function init_logger: initializes the logger
-function init_logger(log_file, log_rules, log_batching)
+function init_logger(log_file, log_rules, log_batching, g_details, g_timestamp, g_elapsed)
 	--global variables logfile, logrules and logbatching take values from the paremeters
 	logfile = log_file
 	logrules = log_rules
 	logbatching = log_batching
+	global_details = g_details
+	global_timestamp = g_timestamp
+	global_elapsed = g_elapsed
 	--if log_file is "<print>" we are just printing in screen
 	if log_file == "<print>" then
 		--write_log is just equal to the io.write function
@@ -140,9 +140,9 @@ function new_logger(tag_string, details, timestamp, elapsed)
 	local logger = {
 		--generates a tag table and stores it in tags
 		tags = string_deconcat(tag_string),
-		details = details,
-		timestamp = timestamp,
-		elapsed = elapsed,
+		details = global_details or details,
+		timestamp = global_timestamp or timestamp,
+		elapsed = global_elapsed or elapsed,
 		log_tbl = {},
 		--logflush writes the logs contained in self.log_tbl and then it cleans it
 		logflush = function(self)
@@ -185,6 +185,10 @@ function new_logger(tag_string, details, timestamp, elapsed)
 					self.log_tbl = {}
 				end
 			end
+		end,
+		logprint_flush = function(self, extra_tag_string, message, msg_details)
+			self:logprint(extra_tag_string, message, msg_details)
+			self:logflush()
 		end
 	}
 	--if the elapsed flag is set
@@ -196,4 +200,15 @@ function new_logger(tag_string, details, timestamp, elapsed)
 	logger.tag_string = generate_tag_string(logger.tags)
 	--returns the object
 	return logger
+end
+
+function start_logger(tag_string, message, start_msg_details, details, timestamp, elapsed)
+	local log1 = new_logger(tag_string, details, timestamp, elapsed)
+	log1:logprint("START", start_message, start_msg_details)
+	return log1
+end
+
+function start_end_logger(tag_string, message, msg_details, details, timestamp, elapsed)
+	local log1 = new_logger(tag_string, details, timestamp, elapsed)
+	log1:logprint_flush("START END", message, msg_details)
 end
