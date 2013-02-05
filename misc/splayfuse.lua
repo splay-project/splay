@@ -398,7 +398,7 @@ end
 --function cmn_getattr: gets the attributes of an iblock
 local function cmn_getattr(iblock)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP cmn_getattr")
+	local log1 = start_logger(".COMMON_OP cmn_getattr")
 	--prints the iblock
 	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--logs END of the function and flushes all logs
@@ -407,10 +407,10 @@ local function cmn_getattr(iblock)
 	return 0, iblock.meta.mode, iblock.meta.ino, iblock.meta.dev, iblock.meta.nlink, iblock.meta.uid, iblock.meta.gid, iblock.meta.size, iblock.meta.atime, iblock.meta.mtime, iblock.meta.ctime
 end
 
---function cmn_mk_file: creates a file in the FS
+--function cmn_mk_file: creates a file in the FS; if iblock_n is specified, it does not creates a new iblock
 local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, content)
 	--starts the logger
-	local log1 = start_logger(".FILE_MISC_OP cmn_mk_file", "INPUT", "filename="..filename..", iblock_n="..tostring(iblock_n), true)
+	local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_mk_file", "INPUT", "filename="..filename..", iblock_n="..tostring(iblock_n), true)
 	--initializes iblock
 	local iblock = nil
 	--if the function must check first if the iblock exists already
@@ -487,7 +487,7 @@ end
 --function cmn_rm_file: removes a file from the FS
 local function cmn_rm_file(filename, flags)
 	--starts the logger
-	local log1 = start_logger(".FILE_MISC_OP cmn_rm_file", "INPUT", "filename="..filename)
+	local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_rm_file", "INPUT", "filename="..filename)
 	--gets iblock from DB
 	local iblock = get_iblock_from_filename(filename)
 	--if the iblock does not exist (ERROR), returns ENOENT
@@ -550,7 +550,7 @@ end
 --function cmn_read: common routine for reading from a file
 local function cmn_read(size, offset, iblock)
 	--starts the logger
-	local log1 = start_logger(".READ_WRITE_OP cmn_read", "INPUT", "size="..size..", offset="..offset)
+	local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_read", "INPUT", "size="..size..", offset="..offset)
 	--prints the iblock
 	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--calculates the starting block ID
@@ -607,7 +607,7 @@ end
 --function cmn_write: common routine for writing in a file
 local function cmn_write(buf, offset, iblock)
 	--starts the logger
-	local log1 = start_logger(".READ_WRITE_OP cmn_write", "INPUT", "offset="..offset)
+	local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_write", "INPUT", "offset="..offset)
 	--prints the buffer
 	log1:logprint(".RAW_DATA", "INPUT", "buf=\""..buf.."\"")
 	--prints the iblock
@@ -712,7 +712,7 @@ end
 --function cmn_truncate: truncates a file to a given size, or appends zeros if the requested size is bigger than the original
 local function cmn_truncate(iblock, size)
 	--starts the logger
-	local log1 = start_logger(".READ_WRITE_OP cmn_truncate", "INPUT", "size="..size)
+	local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_truncate", "INPUT", "size="..size)
 	--prints the iblock
 	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--stores the size reported by the iblock in the variable orig_size
@@ -859,7 +859,7 @@ local splayfuse = {
 		}
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "calling cmn_mk_file")
-		--makes a file with iblock=nil (creates iblock), number_links=1, size=0, dev=rdev and returns the result of the operation
+		--makes a file with iblock_n=nil (creates iblock), number_links=1, size=0, dev=rdev and returns the result of the operation
 		return cmn_mk_file(filename, nil, flags, mode, 1, 0, rdev)
 	end,
 
@@ -1063,7 +1063,7 @@ local splayfuse = {
 		mode = set_bits(mode, S_IFDIR)
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "calling cmn_mk_file")
-		--makes a file with iblock=nil (creates iblock), number_links=2 and returns the result of the operation. TODO: CHECK IF SIZE IS NOT block_size
+		--makes a file with iblock_n=nil (creates iblock), number_links=2 and returns the result of the operation. TODO: CHECK IF SIZE IS NOT block_size
 		return cmn_mk_file(filename, nil, flags, mode, 2)
 	end,
 
@@ -1148,7 +1148,7 @@ local splayfuse = {
 		}
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "calling cmn_rm_file")
-		--removes the file from the FS
+		--removes the file from the FS and returns the result of the operation
 		return cmn_rm_file(filename, flags)
 
 	end,
@@ -1170,7 +1170,7 @@ local splayfuse = {
 		mode = set_bits(mode, S_IFREG)
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "calling cmn_mk_file")
-		--makes a file with iblock=nil (creates iblock) and returns the result of the operation
+		--makes a file with iblock_n=nil (creates iblock) and returns the result of the operation
 		return cmn_mk_file(filename, nil, flags, mode)
 	end,
 
@@ -1360,7 +1360,7 @@ local splayfuse = {
 		local log1 = start_logger(".FUSE_API .MV_CP_OP rename", "INPUT", "from="..from..", to="..to)
 		--if the "from" file is equal to the "to" file. TODO: the man page says it should do that, but BASH's "mv" sends an error
 		if from == to then
-			log1:logprint_flush("END", "from and to are the samem nothing to do here")
+			log1:logprint_flush("END", "from and to are the same, nothing to do here")
 			return 0
 		end
 		--gets "from" iblock from DB
@@ -1408,42 +1408,38 @@ local splayfuse = {
 		return 0
 	end,
 
-	--function link: makes a hard link. TODO: not permitted for dir EPERM
+	--function link: makes a hard link
 	link = function(self, from, to, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .LINK_OP link", "INPUT", "from="..from..", to="..to)
+		local log1 = start_logger(".FUSE_API .LINK_OP link", "INPUT", "from="..from..", to="..to, true)
 		--if the "from" file is equal to the "to" file. TODO: the man page says it should do that, but BASH's "mv" sends an error
 		if from == to then
-			log1:logprint_flush("END", "from and to are the samem nothing to do here")
+			log1:logprint_flush("END", "from and to are the same, nothing to do here")
 			return 0
 		end
 		--gets "from" iblock from DB
 		local from_iblock = get_iblock_from_filename(from)
+		--prints iblock
+		log1:logprint(".TABLE", "\"from\" iblock retrieved", tbl2str("iblock", 0, iblock))
 		--if the "from" iblock does not exist (ERROR), returns ENOENT
 		if not from_iblock then
 			log1:logprint_flush("ERROR END", "", "\"from\" iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
-		--splits the "to" filename
-		local to_dir, to_base = split_filename(to)
-		--logs
-		--log1:logprint("", "", "to_dir="..to_dir..", to_base="..to_base)
-		--gets the parent dblock of the "to" file
-		local to_parent = get_iblock_from_filename(to_dir)
-		--logs
-		--log1:logprint("", "", "to_parent", {to_parent=to_parent})
-		--adds an entry to the "to" parent dblock
-		to_parent.content[to_base] = true
-		--logs
-		--log1:logprint("", "", "added file in to_parent", {to_parent=to_parent})
-		--increments the number of links in the iblock
+		--flags:
+		local flags = {
+			CHECK_EXIST=false,
+			IS_DIR=false,
+			UPDATE_PARENT=true
+		}
+		--makes a file with iblock_n=iblock.meta.ino (does not creates iblock)
+		cmn_mk_file(to, from_iblock.meta.ino, flags)
+		--increments the number of links in from_iblock
 		from_iblock.meta.nlink = from_iblock.meta.nlink + 1
-		--updates the to_parent dblock, because the contents changed
-		put_iblock(to_parent.meta.ino, to_parent)
+		--prints iblock
+		log1:logprint(".TABLE", "new \"from\" iblock", tbl2str("iblock", 0, iblock))
 		--puts the iblock, because nlink was incremented
 		put_iblock(from_iblock.meta.ino, from_iblock)
-		--puts the "to" file, because it's new
-		put_file(to, from_iblock.meta.ino)
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END")
 		--returns 0
@@ -1479,7 +1475,7 @@ local splayfuse = {
 		local mode = S_IFLNK + mk_mode(7,7,7)
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END")
-		--makes a file with iblock=nil (creates iblock), number_links=1, size=0, dev=rdev, content is the string "from" and returns the result of the operation
+		--makes a file with iblock_n=nil (creates iblock), number_links=1, size=0, dev=rdev, content is the string "from" and returns the result of the operation
 		return cmn_mk_file(to, nil, flags, mode, 1, string.len(from), 0, {from})
 	end,
 
