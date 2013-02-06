@@ -17,7 +17,7 @@
 --fuse is for the Lua bindings
 local fuse = require"fuse"
 --distdb-client contains APIs send-get, -put, -delete to communicate with the distDB
-local dbclient = require"distdb-client"
+local dbclient = require"distdb-client-async"
 --lbinenc is used for serialization
 local serializer = require"splay.lbinenc"
 --crypto is used for hashing
@@ -57,7 +57,7 @@ local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 --the URL of the Entry Point to the distDB
-local DB_URL = "127.0.0.1:15272"
+local DB_URL = "127.0.0.1:15091"
 
 
 --LOCAL VARIABLES
@@ -78,7 +78,8 @@ local logrules = {
 	"deny DIST_DB_CLIENT",
 	"deny RAW_DATA",
 	"deny MEGA_DEBUG",
-	"allow FUSE_API"
+	"allow FUSE_API",
+	"allow TEST_TAG"
 }
 --[["deny FS2DB_OP",
 	"allow *",
@@ -314,7 +315,7 @@ local function put_block(block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
 	--writes the block in the DB
-	local ok = send_put(DB_URL, block_id, BLOCK_CONSIST, block)
+	local ok = async_send_put(DB_URL, block_id, BLOCK_CONSIST, block)
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
 		log1:logprint_flush("ERROR END", "", "send_put was not OK")
