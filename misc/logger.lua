@@ -87,24 +87,44 @@ local function apply_filter(tags, extra_tags)
 	return "deny"
 end
 
---function tbl2str: creates a printable string that shows the contents of a table
-function tbl2str(name, order, in_data)
+local function any2str(in_data)
 	--if in_data is a string, concatenates the value between quotes
 	if type(in_data) == "string" then
-		return name.."=\""..in_data.."\""
+		return in_data
 	--if it is a number, boolean or nil, concatenates the string version of it
 	elseif type(in_data) == "number" or type(in_data) == "boolean" or type(in_data) == "nil" then
-		return name.."="..tostring(in_data)
+		return tostring(in_data)
+	elseif type(in_data) == "function" then
+		return "function"
+	elseif type(in_data) == "userdata" then
+		return "userdata"
+	end
+	print("WTF?! type="..type(in_data))
+end
+
+--function tbl2str: creates a printable string that shows the contents of a table
+function tbl2str(name, order, in_data)
+	local name_str = any2str(name)
+	--if in_data is a string, concatenates the value between quotes
+	if type(in_data) == "string" then
+		return name_str.."=\""..in_data.."\""
+	--if it is a number, boolean or nil, concatenates the string version of it
+	elseif type(in_data) == "number" or type(in_data) == "boolean" or type(in_data) == "nil" then
+		return name_str.."="..tostring(in_data)
+	elseif type(in_data) == "function" then
+		return name_str.."=function"
+	elseif type(in_data) == "userdata" then
+		return name_str.."=userdata"
 	end
 	--if not, in_data is a table
 	--creates a table to store all strings; more efficient to do a final table.concat than to concatenate all the way
-	local out_tbl = {"table: "..name.."\n"}
+	local out_tbl = {"table: "..name_str.."\n"}
 	--indentation is a series of n x "\t" (tab characters), where n = order
-	local indentation = string.rep("\t", order)
+	local indentation = string.rep("\t", order + 1)
 	--for all elements of the table
 	for i,v in pairs(in_data) do
 		--the start of the line is the indentation + table_indx
-		table.insert(out_tbl, indentation..tbl2str(i, order+1, v).."\n")
+		table.insert(out_tbl, indentation..tbl2str(i, order + 1, v).."\n")
 	end
 	--returns the concatenation of all lines
 	return table.concat(out_tbl)
@@ -202,7 +222,7 @@ function new_logger(tag_string, details, timestamp, elapsed)
 	return logger
 end
 
-function start_logger(tag_string, message, start_msg_details, details, timestamp, elapsed)
+function start_logger(tag_string, start_message, start_msg_details, details, timestamp, elapsed)
 	local log1 = new_logger(tag_string, details, timestamp, elapsed)
 	log1:logprint("START", start_message, start_msg_details)
 	return log1

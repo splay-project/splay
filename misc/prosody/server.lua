@@ -20,7 +20,7 @@ local table_concat = table.concat;
 local mem_free = collectgarbage
 
 ----------------------------------// DECLARATION //--
-
+require"logger"
 --// constants //--
 
 local STAT_UNIT = 1 -- byte
@@ -280,18 +280,22 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
 	local handler = bufferqueue -- saves a table ^_^
 
 	handler.dispatch = function( )
+		local log1 = start_logger("wrapclient_dispatch")
 		return dispatch
 	end
 	handler.disconnect = function( )
+		local log1 = start_logger("wrapclient_disconnect")
 		return disconnect
 	end
 	handler.setlistener = function( self, listeners )
+		local log1 = start_logger("wrapclient_setlistener")
 		dispatch = listeners.onincoming
 		disconnect = listeners.ondisconnect
 		status = listeners.onstatus
 		drain = listeners.ondrain
 	end
 	handler.getstats = function( )
+		local log1 = start_logger("wrapclient_getstats")
 		return readtraffic, sendtraffic
 	end
 	handler.ssl = function( )
@@ -301,21 +305,26 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
 		return sslctx
 	end
 	handler.send = function( _, data, i, j )
+		local log1 = start_logger("wrapclient_send")
 		return send( socket, data, i, j )
 	end
 	handler.receive = function( pattern, prefix )
+		local log1 = start_logger("wrapclient_receive")
 		return receive( socket, pattern, prefix )
 	end
 	handler.shutdown = function( pattern )
+		local log1 = start_logger("wrapclient_shutdown")
 		return shutdown( socket, pattern )
 	end
 	handler.setoption = function (self, option, value)
+		local log1 = start_logger("wrapclient_setoption")
 		if socket.setoption then
 			return socket:setoption(option, value);
 		end
 		return false, "setoption not implemented";
 	end
 	handler.close = function( self, forced )
+		local log1 = start_logger("wrapclient_close")
 		if not handler then return true; end
 		_readlistlen = removesocket( _readlist, socket, _readlistlen )
 		_readtimes[ handler ] = nil
@@ -354,6 +363,7 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
 		return true
 	end
 	handler.ip = function( )
+		local log1 = start_logger("wrapclient_ip", "IP="..type(ip))
 		return ip
 	end
 	handler.serverport = function( )
@@ -363,7 +373,9 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
 		return clientport
 	end
 	local write = function( self, data )
+		local log1 = start_logger("wrapclient_write", "data="..data)
 		bufferlen = bufferlen + string_len( data )
+		log1:logprint("", "bufferlen="..bufferlen..", data="..data)
 		if bufferlen > maxsendlen then
 			_closelist[ handler ] = "send buffer exceeded"	 -- cannot close the client at the moment, have to wait to the end of the cycle
 			handler.write = idfalse -- dont write anymore
@@ -380,16 +392,19 @@ wrapconnection = function( server, listeners, socket, ip, serverport, clientport
 	end
 	handler.write = write
 	handler.bufferqueue = function( self )
+		local log1 = start_logger("wrapclient_bufferqueue")
 		return bufferqueue
 	end
 	handler.socket = function( self )
 		return socket
 	end
 	handler.set_mode = function( self, new )
+		local log1 = start_logger("wrapclient_set_mode")
 		pattern = new or pattern
 		return pattern
 	end
 	handler.set_send = function ( self, newsend )
+		local log1 = start_logger("wrapclient_send")
 		send = newsend or send
 		return send
 	end
@@ -638,7 +653,9 @@ idfalse = function( )
 end
 
 addsocket = function( list, socket, len )
+	local log1 = start_logger("addsocket")
 	if not list[ socket ] then
+		log1:logprint("", "not list socket")
 		len = len + 1
 		list[ len ] = socket
 		list[ socket ] = len
@@ -856,9 +873,14 @@ end
 
 local wrapclient = function( socket, ip, serverport, listeners, pattern, sslctx )
 	local handler = wrapconnection( nil, listeners, socket, ip, serverport, "clientport", pattern, sslctx )
+	local log1 = start_logger("wrapclient")
 	_socketlist[ socket ] = handler
 	_sendlistlen = addsocket(_sendlist, socket, _sendlistlen)
+	log1:logprint("", tbl2str("_sendlist", 0, _sendlist))
+	log1:logprint("", tbl2str("listeners", 0, listeners))
+	
 	if listeners.onconnect then
+		log1:logprint("", "onconnect!!!")
 		-- When socket is writeable, call onconnect
 		local _sendbuffer = handler.sendbuffer;
 		handler.sendbuffer = function ()
@@ -870,6 +892,7 @@ local wrapclient = function( socket, ip, serverport, listeners, pattern, sslctx 
 			end
 		end
 	end
+	log1:logprint("END")
 	return handler, socket
 end
 

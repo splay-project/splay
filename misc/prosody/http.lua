@@ -11,8 +11,12 @@ local socket = require "socket"
 local mime = require "mime"
 local url = require "socket.url"
 local httpstream_new = require "prosody.httpstream".new;
-
 local server = require "prosody.server"
+
+require"logger"
+local start_logger = start_logger
+local tbl2str = tbl2str
+local type = type
 
 local connlisteners_get = require "prosody.connlisteners".get;
 local listener = connlisteners_get("httpclient") or error("No httpclient listener!");
@@ -36,6 +40,7 @@ local function _formencodepart(s)
 		end
 	end));
 end
+
 function formencode(form)
 	local result = {};
 	for _, field in ipairs(form) do
@@ -69,8 +74,13 @@ local function request_reader(request, data, startpos)
 	request.parser:feed(data);
 end
 
-local function handleerr(err) end
+local function handleerr(err)
+	local log1 = start_logger("http_handle_error")
+	log1:logprint("ERROR", "Traceback[http]: "..tostring(err)..": "..debug_traceback())
+end
+
 function request(u, ex, callback)
+	local log1 = start_logger("http_request")
 	local req = url.parse(u);
 	
 	if not (req and req.host) then
@@ -139,12 +149,18 @@ function request(u, ex, callback)
 		req.write(body);
 	end
 	
-	req.callback = function (content, code, request) return select(2, xpcall(function () return callback(content, code, request) end, handleerr)); end
+	req.callback = function (content, code, request)
+		local log1 = start_logger("http_request DEBUG", "Calling callback, status "..(code or "---"))
+		--local x1, x2, x3, x4, x5, x6, x7 = select(2, xpcall(function () return callback(content, code, request) end, handleerr))
+		local x1, x2, x3, x4, x5, x6, x7 = xpcall(function () local log1 = start_logger("CALLBACK") return callback(content, code, request) end, handleerr)
+		log1:logprint("", "x1="..tostring(x1)..", x2="..type(x2)..", x3="..type(x3)..", x4="..type(x4)..", x5="..type(x5)..", x6="..type(x6)..", x7="..type(x7))
+		return x3, x4, x5, x6, x7
+	end
+	
 	req.reader = request_reader;
 	req.state = "status";
-	
+	log1:logprint("", "CHECKPOINT!, type req="..type(req))
 	listener.register_request(req.handler, req);
-
 	return req;
 end
 

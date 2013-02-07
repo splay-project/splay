@@ -1,5 +1,5 @@
--- Client for the Splay Distributed DB Module
---To be used as library
+-- Client for the Splay Distributed DB Module - Asynchronous Version (Uses splay.events)
+-- To be used as library
 -- Created by José Valerio
 -- Neuchâtel 2011-2012
 
@@ -7,10 +7,12 @@
 --for the communication over HTTP
 local socket = require"socket"
 local http   = require"socket.http"
+local async_http = require"prosody.http"
 local ltn12  = require"ltn12"
 local serializer = require"splay.lbinenc"
 --logger provides some fine tunable logging functions
-local logger = require"logger"
+require"logger"
+local rpc = require"splay.rpc"
 -- END LIBRARIES
 
 _LOCAL = true
@@ -19,17 +21,16 @@ socket.BLOCKSIZE = 10000000
 
 --to be used as RAM storage (_LOCAL mode)
 local kv_records = {}
+local mini_proxy_ip = "127.0.0.1"
+local mini_proxy_port = 33500
 
 
 --FUNCTIONS
 
 --function send_command: sends a command to the Entry Point
-function send_command(command_name, url, key, type_of_transaction, value)
-	--initializes the logger
-	local log1 = new_logger(".DIST_DB_CLIENT send_command")
-	--logs entrance in the function
-	log1:logprint("START")
-	log1:logprint("", "", "url="..url..", key="..key..", type_of_transaction="..type_of_transaction..", value="..value)
+function send_command(command_name, url, key, consistency, value)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "url="..url..", key="..key..", consistency="..consistency..", value="..(value or "nil"))
 	--response_body will contain the returning data from the web-service call
 	local response_body = {}
 	--request_source contains the input data
@@ -49,10 +50,10 @@ function send_command(command_name, url, key, type_of_transaction, value)
 		request_source = ltn12.source.empty()
 	end
 
-	--if type_of_transaction is specified
-	if type_of_transaction then
+	--if consistency is specified
+	if consistency then
 		--header Type is filled with it
-		request_headers["Type"] = type_of_transaction
+		request_headers["Type"] = consistency
 	end
 
 	--makes the HTTP request
@@ -76,10 +77,8 @@ function send_command(command_name, url, key, type_of_transaction, value)
 
 	--if it arrives here, it means it didn't enter inside the if
 	log1:logprint("", "200 OK received")
-	--logs END of the function
-	log1:logprint("END", "", "result_mode="..result_mode)
-	--flushes all logs
-	log1:logflush()
+	--logs END of the function and flushes all logs
+	log1:logprint("END", "", "result_mode="..tostring(result_mode))
 	--if there is a response_body
 	if type(response_body) == "table" and response_body[1] then
 		--returns true (indicates a succesful call), and the return value
@@ -90,18 +89,18 @@ function send_command(command_name, url, key, type_of_transaction, value)
 end
 
 --function send_get: sends a "GET" command to the Entry Point, then merges vector clocks if necessary
-function send_get(url, key, type_of_transaction)
-	--initializes the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_get", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", type of trans="..tostring(type_of_transaction))
+function send_get(url, key, consistency)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_get", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
-		--logs END of the function
+		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "using local storage")
 		--returns true and the value
 		return true, kv_records[key]
 	end
 
-	local ok, answer = send_command("GET", url, key, type_of_transaction)
+	local ok, answer = send_command("GET", url, key, consistency)
 	
 	local chosen_value = nil
 
@@ -125,8 +124,8 @@ function send_get(url, key, type_of_transaction)
 	--for evtl_consistent get
 	local max_vc = {}
 	for i2,v2 in ipairs(answer) do
-		log1:logprint(".RAW_DATA", "value="..v2.value)
-		log1:logprint(".RAW_DATA", "chosen_value="..chosen_value)
+		log1:logprint(".RAW_DATA", "value="..(v2.value or "nil"))
+		log1:logprint(".RAW_DATA", "chosen_value="..(chosen_value or "nil"))
 		if type(v2.value) == "string" then
 			if string.len(v2.value) > string.len(chosen_value) then --in this case is the max length, but it could be other criteria
 				log1:logprint("", "replacing value")
@@ -147,54 +146,87 @@ function send_get(url, key, type_of_transaction)
 			end
 		end
 	end
-	log1:logprint(".RAW_DATA", "value="..chosen_value)
-	log1:logprint(".TABLE", table2str("merged VC", 0, max_vc))
-	--logs END of the function
+	log1:logprint(".RAW_DATA", "value="..(chosen_value or "nil"))
+	log1:logprint(".TABLE", tbl2str("merged VC", 0, max_vc))
+	--logs END of the function and flushes all logs
 	log1:logprint_flush("END")
 	--returns true, the value and the merged vector clock
 	return true, chosen_value, max_vc
 end
 
 --function send_put: sends a "PUT" command to the Entry Point
-function send_put(url, key, type_of_transaction, value)
-	--initializes the logger
-	local log1 = new_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", type of trans="..tostring(type_of_transaction))
+function send_put(url, key, consistency, value)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--sets the value
 		kv_records[key] = value
-		--logs END of the function
+		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "using local storage")
 		--returns true
 		return true
 	end
-	--logs END of the function
+	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--calls send_command("PUT") and returns the results
-	return send_command("PUT", url, key, type_of_transaction, value)
+	return send_command("PUT", url, key, consistency, value)
 end
 
---function send_del: sends a "DELETE" command to the Entry Point
-function send_del(url, key, type_of_transaction)
+--function async_send_put: sends a "PUT" command to the Entry Point (asynchronous mode)
+function async_send_put(tid, url, key, consistency, value)
 	--initializes the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", type of trans="..tostring(type_of_transaction))
+	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	--logs
+	log1:logprint(".RAW_DATA", "INPUT", "value=\""..(value or "nil").."\"")
+	--if the transaction is local (bypass distributed DB)
+	if _LOCAL then
+		--sets the value
+		kv_records[key] = value
+		--logs END of the function and flushes all logs
+		log1:logprint_flush("END", "using local storage")
+		--returns true
+		return true
+	end
+	local sock1 = socket.tcp()
+	local ok1, err1 = sock1:connect(mini_proxy_ip, mini_proxy_port)
+	local clt1_peer_ip, clt1_peer_port = sock1:getpeername()
+	log1:logprint("", "client peer name: "..clt1_peer_ip..":"..clt1_peer_port)
+
+	log1:logprint("", "Sending to "..clt1_peer_ip..":"..clt1_peer_port)
+	local i,j = sock1:send(tid.." "..url.." "..key.." "..consistency.." "..value:len().."\n"..value)
+	log1:logprint("", "Result of the sending ="..tostring(i)..", "..tostring(j))
+	--local rec_str1 = receive_message(sock1)
+	--print("Received from "..clt1_peer_ip..":"..clt1_peer_port.." = \""..rec_str1.."\"")
+	sock1:close()
+	return true
+end
+
+--function async_send_put_cb: callback function for async_send_put
+function async_send_put_cb(url, key, consistency, value)
+
+end
+
+
+--function send_del: sends a "DELETE" command to the Entry Point
+function send_del(url, key, consistency)
+	--initializes the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--deletes the record
 		kv_records[key] = nil
-		--logs END of the function
-		log1:logprint("END", "using local storage")
-		--flushes all logs
-		log1:logflush()
+		--logs END of the function and flushes all logs
+		log1:logprint_flush("END", "using local storage")
 		--returns true
 		return true
 	end
-	--logs END of the function
+	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--returns the result of send_command
-	return send_command("DELETE", url, key, type_of_transaction)
+	return send_command("DELETE", url, key, consistency)
 end
 
 --function send_get_node_list: alias to send_command("GET_NODE_LIST")
@@ -213,12 +245,12 @@ function send_get_key_list(url)
 			table.insert(key_list, i)
 			log1:logprint("", "key="..i)
 		end
-		--logs END of the function
+		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "using local storage")
 		--returns true and the list of keys
 		return true, key_list
 	end
-	--logs END of the function
+	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--returns the result of send_command
 	return send_command("GET_KEY_LIST", url)

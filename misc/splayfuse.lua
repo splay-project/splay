@@ -68,6 +68,7 @@ local blank_block = string.rep("\0", block_size)
 local open_mode = {'rb','wb','rb+'}
 local session_id = nil
 local seq_number = 0
+local tid = 100
 
 --VARIABLES FOR LOGGING
 
@@ -75,11 +76,14 @@ local seq_number = 0
 local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny DIST_DB_CLIENT",
+	"allow async_send_put",
 	"deny RAW_DATA",
-	"deny MEGA_DEBUG",
+	"deny TABLE",
+	"allow DIST_DB_CLIENT",
+	"allow cmn_write",
+	"allow put_block",
+	"allow MEGA_DEBUG",
 	"allow FUSE_API",
-	"allow TEST_TAG"
 }
 --[["deny FS2DB_OP",
 	"allow *",
@@ -92,8 +96,8 @@ local logrules = {
 	"allow MV_CP_OP"]]
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
-local global_details = false
-local global_timestamp = false
+local global_details = true
+local global_timestamp = true
 local global_elapsed = false
 
 --MISC FUNCTIONS
@@ -315,7 +319,9 @@ local function put_block(block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
 	--writes the block in the DB
-	local ok = async_send_put(DB_URL, block_id, BLOCK_CONSIST, block)
+	local ok = async_send_put(tid, DB_URL, block_id, BLOCK_CONSIST, block)
+	--increments the transactionID
+	tid = tid + 1
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
 		log1:logprint_flush("ERROR END", "", "send_put was not OK")
@@ -795,9 +801,11 @@ local session_reg_key = hash_string("session_id")
 --logs
 mainlog:logprint("", "session_register="..session_reg_key)
 --gets the session register from the DB
-session_id = tonumber(send_get(DB_URL, session_reg_key, "paxos"))
+local ok, session_id_str = send_get(DB_URL, session_reg_key, "paxos")
+--logs
+mainlog:logprint("", "sessionID="..(session_id_str or "nil"))
 --increments the sessionID. NOTE + TODO: the read + increment + write of the session register is not an atomic process
-session_id = (1 + (session_id or 0)) % 10000
+session_id = (1 + (tonumber(session_id_str) or 0)) % 10000
 --logs
 mainlog:logprint("", "new sessionID="..session_id)
 --puts the new sessionID into the DB
