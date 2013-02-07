@@ -155,11 +155,16 @@ function send_get(url, key, consistency)
 end
 
 --function send_put: sends a "PUT" command to the Entry Point
-function send_put(url, key, consistency, value)
+function send_put(url, key, consistency, value, delay)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
+	if delay then
+		log1:logprint("", "Starting delay")
+		os.execute("sleep "..delay)
+		log1:logprint("", "Ending delay")
+	end
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--sets the value
@@ -177,7 +182,7 @@ end
 
 --function async_send_put: sends a "PUT" command to the Entry Point (asynchronous mode)
 function async_send_put(tid, url, key, consistency, value)
-	--initializes the logger
+	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..(value or "nil").."\"")
@@ -188,7 +193,7 @@ function async_send_put(tid, url, key, consistency, value)
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "using local storage")
 		--returns true
-		return true
+		--return true
 	end
 	local sock1 = socket.tcp()
 	local ok1, err1 = sock1:connect(mini_proxy_ip, mini_proxy_port)
@@ -196,23 +201,34 @@ function async_send_put(tid, url, key, consistency, value)
 	log1:logprint("", "client peer name: "..clt1_peer_ip..":"..clt1_peer_port)
 
 	log1:logprint("", "Sending to "..clt1_peer_ip..":"..clt1_peer_port)
-	local i,j = sock1:send(tid.." "..url.." "..key.." "..consistency.." "..value:len().."\n"..value)
+	local i,j = sock1:send("PUT "..tid.." "..url.." "..key.." "..consistency.." "..value:len().."\n"..value)
 	log1:logprint("", "Result of the sending ="..tostring(i)..", "..tostring(j))
-	--local rec_str1 = receive_message(sock1)
-	--print("Received from "..clt1_peer_ip..":"..clt1_peer_port.." = \""..rec_str1.."\"")
+	local answer = sock1:receive()
+	log1:logprint("", "Received \""..answer.."\"")
 	sock1:close()
 	return true
 end
 
---function async_send_put_cb: callback function for async_send_put
-function async_send_put_cb(url, key, consistency, value)
-
+--function send_ask_tids: asks the proxy if some TIDs are still open
+function send_ask_tids(tid_list)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_ask_tids")
+	--logs
+	log1:logprint(".TABLE JUST_THAT", "INPUT", tbl2str("TID List", 0, tid_list))
+	local sock1 = socket.tcp()
+	local ok1, err1 = sock1:connect(mini_proxy_ip, mini_proxy_port)
+	log1:logprint("JUST_THAT", "Sending ASK")
+	local i,j = sock1:send(table.concat(tid_list, " ").."\n")
+	log1:logprint("", "Result of the sending ="..tostring(i)..", "..tostring(j))
+	local answer = sock1:receive()
+	log1:logprint("", "Received \""..answer.."\"")
+	sock1:close()
+	return answer
 end
-
 
 --function send_del: sends a "DELETE" command to the Entry Point
 function send_del(url, key, consistency)
-	--initializes the logger
+	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
@@ -236,7 +252,7 @@ end
 
 --function send_get_key_list: alias to send_command("GET_KEY_LIST")
 function send_get_key_list(url)
-	--initializes the logger
+	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then

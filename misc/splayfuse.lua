@@ -17,7 +17,7 @@
 --fuse is for the Lua bindings
 local fuse = require"fuse"
 --distdb-client contains APIs send-get, -put, -delete to communicate with the distDB
-local dbclient = require"distdb-client-async"
+local dbclient = require"distdb-client"
 --lbinenc is used for serialization
 local serializer = require"splay.lbinenc"
 --crypto is used for hashing
@@ -76,14 +76,15 @@ local tid = 100
 local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"allow async_send_put",
+	"allow JUST_THAT",
 	"deny RAW_DATA",
-	"deny TABLE",
-	"allow DIST_DB_CLIENT",
+	"deny *",
+	"allow async_send_put",
+	"allow send_ask_tids",
 	"allow cmn_write",
 	"allow put_block",
-	"allow MEGA_DEBUG",
-	"allow FUSE_API",
+	"allow release",
+	"allow write"
 }
 --[["deny FS2DB_OP",
 	"allow *",
@@ -97,7 +98,7 @@ local logrules = {
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
 local global_details = true
-local global_timestamp = true
+local global_timestamp = false
 local global_elapsed = false
 
 --MISC FUNCTIONS
@@ -315,13 +316,11 @@ local get_dblock_from_filename = get_iblock_from_filename
 --PUT FUNCTIONS
 
 --function put_block: puts a block into the DB
-local function put_block(block_id, block)
+local function put_block(tid, block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
 	--writes the block in the DB
 	local ok = async_send_put(tid, DB_URL, block_id, BLOCK_CONSIST, block)
-	--increments the transactionID
-	tid = tid + 1
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
 		log1:logprint_flush("ERROR END", "", "send_put was not OK")
@@ -698,9 +697,15 @@ local function cmn_write(buf, offset, iblock)
 		--logs
 		log1:logprint("", "about to put the block", "blockID="..block_id)
 		--puts the block
-		put_block(block_id, block)
+		put_block(tid, block_id, block)
 		--logs
-		log1:logprint("", "block written, about to change iblock", "iblock.content["..i.."]="..tostring(iblock.content[i]))
+		log1:logprint("", "block written, about to add "..tid.." in the iblock's open transactions list")
+		--inserts tid in the list of open transactions
+		table.insert(iblock.open_transactions, tid)
+		--increments the transactionID
+		tid = tid + 1
+		--logs
+		log1:logprint("", "about to change iblock", "iblock.content["..i.."]="..tostring(iblock.content[i]))
 		--inserts the new block number in the contents table
 		iblock.content[i] = block_id
 		--the block offset is set to 0
@@ -770,7 +775,11 @@ local function cmn_truncate(iblock, size)
 		--the blockID is the hash of the iblock number concatenated with the block data
 		local block_id = hash_string(tostring(iblock.ino)..write_in_last_block)
 		--puts the block
-		put_block(block_id, write_in_last_block)
+		put_block(tid, block_id, write_in_last_block)
+		--inserts tid in the list of open transactions
+		table.insert(iblock.open_transactions, tid)
+		--increments the transactionID
+		tid = tid + 1
 		--replaces with the new blockID the entry blockIdx in the contents table
 		iblock.content[block_idx] = block_id
 	end
@@ -1174,8 +1183,12 @@ local flexifs = {
 		log1:logprint_flush("END", "calling cmn_mk_file")
 		--makes a file with iblock_n=nil (creates iblock)
 		local ok, iblock = cmn_mk_file(filename, nil, flags, mode)
+		--if ok is 0 (no error)
 		if ok == 0 then
+			--open sessions is = 1 (create leaves the file open)
 			iblock.open_sessions = 1
+			--initializes the table open_transaction for subsequent put_block operations
+			iblock.open_transactions = {}
 		end
 		return ok, iblock
 	end,
@@ -1201,8 +1214,10 @@ local flexifs = {
 		log1:logprint(".MEGA_DEBUG", "mode="..mode)
 		--increments the number of open sessions
 		iblock.open_sessions = iblock.open_sessions + 1
+		--initializes the table open_transaction for subsequent put_block operations
+		iblock.open_transactions = {}
+		--logs
 		log1:logprint(".MEGA_DEBUG .TABLE", "iblock changed", tbl2str("iblock", 0, iblock))
-		
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END")
 		--returns 0 and the iblock
@@ -1302,6 +1317,20 @@ local flexifs = {
 		--if the number of open sessions reaches 0
 		if iblock.open_sessions == 0 and iblock.changed then
 			log1:logprint("", "the number of open sessions reached 0 and the iblock has changed; must be updated in the DB")
+			while true do
+				log1:logprint("", "iblock.open_transactions="..type(iblock.open_transactions))
+				if type(iblock.open_transactions) == "table" then
+					for i,v in pairs(iblock.open_transactions) do
+						log1:logprint("", "open_transaction="..v)
+					end
+				end
+				if send_ask_tids(iblock.open_transactions) == "false" then
+					break
+				end
+				log1:logprint("", "Transactions are still open, will ask in half a second...")
+				os.execute("sleep 0.5")
+			end
+			iblock.open_transactions = nil
 			--flag "changed" is cleared
 			iblock.changed = nil
 			--puts iblock into DB
