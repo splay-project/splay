@@ -75,12 +75,12 @@ local function request_reader(request, data, startpos)
 end
 
 local function handleerr(err)
-	local log1 = start_logger("http_handle_error")
+	local log1 = start_logger(".PROSODY_MODULE .HTTP_LIB http_handle_error")
 	log1:logprint("ERROR", "Traceback[http]: "..tostring(err)..": "..debug_traceback())
 end
 
 function request(u, ex, callback)
-	local log1 = start_logger("http_request")
+	local log1 = start_logger(".PROSODY_MODULE .HTTP_LIB http_request")
 	local req = url.parse(u);
 	
 	if not (req and req.host) then
@@ -150,9 +150,9 @@ function request(u, ex, callback)
 	end
 	
 	req.callback = function (content, code, request)
-		local log1 = start_logger("http_request DEBUG", "Calling callback, status "..(code or "---"))
+		local log1 = start_logger(".PROSODY_MODULE .HTTP_LIB http_request", "Calling callback, status "..(code or "---"))
 		--local x1, x2, x3, x4, x5, x6, x7 = select(2, xpcall(function () return callback(content, code, request) end, handleerr))
-		local x1, x2, x3, x4, x5, x6, x7 = xpcall(function () local log1 = start_logger("CALLBACK") return callback(content, code, request) end, handleerr)
+		local x1, x2, x3, x4, x5, x6, x7 = xpcall(function () local log1 = start_logger(".PROSODY_MODULE .HTTP_LIB CALLBACK") return callback(content, code, request) end, handleerr)
 		log1:logprint("", "x1="..tostring(x1)..", x2="..type(x2)..", x3="..type(x3)..", x4="..type(x4)..", x5="..type(x5)..", x6="..type(x6)..", x7="..type(x7))
 		return x3, x4, x5, x6, x7
 	end

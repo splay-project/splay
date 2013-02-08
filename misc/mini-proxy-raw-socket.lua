@@ -1,7 +1,10 @@
-local events = require"splay.events"
-socket = require"socket"
+--the prosody libraries where taken from Prosody (http://www.prosody.im); used for HTTP asynchronous clients
+local http = require"prosody.http"
+local server = require"prosody.server"
+--logger provides some fine tunable logging functions
 require"logger"
-require"distdb-client"
+--for raw socket communication
+socket = require"socket"
 
 local ip = "127.0.0.1"
 local port = 33500
@@ -14,8 +17,11 @@ local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 --local logfile = "<print>"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny *",
+	"deny PROSODY_MODULE",
 	"deny RAW_DATA",
+	"deny COMPARE",
+	"allow ADD_DEL_TIDS",
+	"allow DB_OP",
 	"allow *"
 }
 local logbatching = false
@@ -25,52 +31,146 @@ local global_elapsed = false
 
 init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 
---MAIN
-events.run(function()
-	local log1 = start_logger("MAIN", "Starting Mini Proxy (Raw Socket), IP address="..ip..", port="..port)
+--function send_command_cb: callback function for send_command (gets executed when the HTTP request is answered)
+local function send_command_cb(response, code, request)
+	--starts the logger
+	local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..type(response)..", code="..type(code)..", request="..type(request))
+	
+	--[[
+	--TODO: check if the response is a 200, and the DB response is positive
+	CODE FROM send_command IN distdb_client
 
-	local sock1 = socket.tcp()
-	sock1:bind(ip, port)
-	sock1:listen()
-	local clt1, clt1_peer_ip, clt1_peer_port, command_headers, tid, url, key, consistency, value_len, value
-	local asked_tids = {}
-	sock1:settimeout(0)
-	while true do
-		clt1 = sock1:accept()
-		if clt1 then
-			--clt1_peer_ip, clt1_peer_port = clt1:getpeername()
-			command_headers = clt1:receive()
-			if command_headers:sub(1, 3) == "PUT" then
-				tid, url, key, consistency, value_len = command_headers:match("PUT (%d+) ([^ ]*) ([^ ]*) ([^ ]*) (%d+)")
-				log1:logprint("", "PUT: transactionID="..tid..", URL="..url..", key="..key..", consistency model="..consistency..", value length="..value_len)
+	--if the response is not a 200 OK
+	if response_status ~= 200 then
+		--logs the error
+		log1:logprint("END ERROR", "response_status="..response_status)
+		--flushes all logs
+		log1:logflush()
+		--returns false and the error
+		return false, response_status
+	end
+
+	--if it arrives here, it means it didn't enter inside the if
+	log1:logprint("", "200 OK received")
+	--logs END of the function and flushes all logs
+	log1:logprint("END", "", "result_mode="..tostring(result_mode))
+	--if there is a response_body
+	if type(response_body) == "table" and response_body[1] then
+		--returns true (indicates a succesful call), and the return value
+		return true, serializer.decode(response_body[1])
+	end
+	--if there was no response body, returns only "true"
+	--]]
+
+	if request.piggyback then
+		log1:logprint(".TABLE", "Shutting down "..request.piggyback_tid)
+		log1:logprint(".ADD_DEL_TIDS", "Shutting down "..request.piggyback_tid)
+		open_transactions[request.piggyback_tid] = nil
+	end
+end
+
+--function send_put: sends a PUT command to the Entry Point
+function send_command(tid, command_name, url, consistency, value, value_len)
+	--starts the logger
+	local log1 = start_logger(".DB_OP send_put", "INPUT", "TID="..tid..", command_name="..command_name..", URL="..url)
+	--logs more input
+	log1:logprint("INPUT", "consistency="..consistency..", value="..(value or "nil")..", value length="..value_len)
+	--defines the options:
+	local options = {
+		--Headers: content length is the size in bytes of the value to be put, content type is plain text, and "Type" holds the consistency model
+		headers = {
+			["Content-Length"] = value_len,
+			["Content-Type"] =  "plain/text",
+			["Type"] = consistency
+		},
+		--the body contains the value to be put
+		body = tostring(value),
+		--the method is "PUT " (trailing space required by the prosody libs)
+		method = command_name.." "
+	}
+	--makes the HTTP request
+	local req = http.request(url, options, send_put_cb)
+	--stamps the TID as a piggyback on the request (to be used by send_put_cb)
+	req.piggyback_tid = tid
+
+end
+
+--START MAIN ROUTINE
+
+--initializes variables
+local msg, clt1, clt1_peer_ip, rec_str, command_name, tid, url, key, consistency, value_len, value, asked_tids, still_open
+--starts log
+local log1 = start_logger("MAIN", "Starting Mini Proxy (Raw Socket), IP address="..ip..", port="..port)
+--opens a new socket
+local sock1 = socket.tcp()
+--binds the socket (server mode)
+sock1:bind(ip, port)
+--listens (waits for client connections)
+sock1:listen()
+--sets the accept timeout as 0 (non-blocking)
+sock1:settimeout(0)
+
+--main loop (alternates socket_accept -facing FlexiFS Client- and server.loop -facing FlexiFS DB)
+repeat
+	--accept incoming connections
+	clt1 = sock1:accept()
+	--if there is a client connected
+	if clt1 then
+		--receives a line of text from the client (a string ending with "\n" - the "\n" is pruned automatically)
+		rec_str = clt1:receive()
+		--if the first three bytes are "PUT" it is a PUT command
+		if rec_str:sub(1, 3) == "PUT" or rec_str:sub(1, 3) == "DEL" then
+			--parses the the received string
+			command_name, tid, url, key, consistency, value_len = rec_str:match("([^ ]*) (%d+) ([^ ]*) ([^ ]*) ([^ ]*) (%d+)")
+			--logs
+			log1:logprint("", command_name..": transactionID="..tid..", URL="..url..", key="..key..", consistency model="..consistency..", value length="..value_len)
+			--if the command is a PUT
+			if command_name == "PUT" then
+				--retrieves the value to be written, according to the value length received in the previous line
 				value = clt1:receive(tonumber(value_len))
-				log1:logprint(".RAW_DATA", "value="..value)
-				open_transactions[tid] = true
-				events.thread(function()
-					--send_put(url, key, consistency, value, 15)
-					events.sleep(3)
-					open_transactions[tid] = nil
-				end)
-				clt1:send("YES!\n")
-			else
-				log1:logprint("", "It's an ASK")
-				for numbers in command_headers:gmatch("%d+") do
-					table.insert(asked_tids, numbers)
-				end
-				log1:logprint("", "ASK for open transactions: "..tbl2str("Asked TIDs", 0, asked_tids))
-				local still_open = "false"
-				for i,v in ipairs(asked_tids) do
-					for i2,v2 in pairs(open_transactions) do
-						log1:logprint("", "comparing "..v.." and "..i2)
-						if v2 and v == i2 then
-							log1:logprint("", "They are the same!!")
-							still_open = "true"
-						end
+			end
+			--logs
+			log1:logprint(".RAW_DATA", "value="..value)
+			--registers the transaction
+			open_transactions[tid] = true
+			--answers "OK" to the FlexiFS client
+			clt1:send("OK\n")
+			--sends the command to the DB
+			send_command(command_name, tid, url.."/"..(key or ""), consistency, value, value_len)
+		--if not, it is an ASK command
+		else
+			--initializes the table of "Asked TIDs" (the TIDs whose status is being asked)
+			asked_tids = {}
+			--parses the received string; TIDs are under the format: "TID1 TID2 TID3" (numbers separated by one space)
+			for numbers in rec_str:gmatch("%d+") do
+				--fills the table of Asked TIDs
+				table.insert(asked_tids, numbers)
+			end
+			--logs the table of open transactions and the table of Asked TIDs
+			log1:logprint(".COMPARE", tbl2str("Open Transactions", 0, open_transactions))
+			log1:logprint(".COMPARE", "ASK for open transactions: "..tbl2str("Asked TIDs", 0, asked_tids))
+			--initializes still_open as "false"
+			still_open = "false"
+			--for all asked TIDs
+			for i,v in ipairs(asked_tids) do
+				--and for all open transactions
+				for i2,v2 in pairs(open_transactions) do
+					--compares; if they are the same (it means that the asked TIDs is in the list of open transactions)
+					if v == i2 then
+						--logs
+						log1:logprint(".COMPARE", v.." and "..i2.." are the same!!")
+						--still_open is true. TODO: this can be improved; we need to break the two loops
+						still_open = "true"
 					end
 				end
-				clt1:send(still_open.."\n")
 			end
-			clt1:close()
+			--sends the answer
+			clt1:send(still_open.."\n")
 		end
+		--closes the client socket
+		clt1:close()
 	end
-end)
+	--performs the server loop (needed for the Prosody's ansychronous HTTP clients)
+	msg = server.loop(true)
+--until the server sends "quitting" (not sure when that happens... i quit with Ctrl+C)
+until msg == "quitting"

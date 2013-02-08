@@ -21,11 +21,14 @@ socket.BLOCKSIZE = 10000000
 
 --to be used as RAM storage (_LOCAL mode)
 local kv_records = {}
+--the mini proxy handles asynchronous put
 local mini_proxy_ip = "127.0.0.1"
 local mini_proxy_port = 33500
 
 
 --FUNCTIONS
+
+--SYNCHRONOUS DB OPERATIONS
 
 --function send_command: sends a command to the Entry Point
 function send_command(command_name, url, key, consistency, value)
@@ -180,52 +183,6 @@ function send_put(url, key, consistency, value, delay)
 	return send_command("PUT", url, key, consistency, value)
 end
 
---function async_send_put: sends a "PUT" command to the Entry Point (asynchronous mode)
-function async_send_put(tid, url, key, consistency, value)
-	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
-	--logs
-	log1:logprint(".RAW_DATA", "INPUT", "value=\""..(value or "nil").."\"")
-	--if the transaction is local (bypass distributed DB)
-	if _LOCAL then
-		--sets the value
-		kv_records[key] = value
-		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "using local storage")
-		--returns true
-		--return true
-	end
-	local sock1 = socket.tcp()
-	local ok1, err1 = sock1:connect(mini_proxy_ip, mini_proxy_port)
-	local clt1_peer_ip, clt1_peer_port = sock1:getpeername()
-	log1:logprint("", "client peer name: "..clt1_peer_ip..":"..clt1_peer_port)
-
-	log1:logprint("", "Sending to "..clt1_peer_ip..":"..clt1_peer_port)
-	local i,j = sock1:send("PUT "..tid.." "..url.." "..key.." "..consistency.." "..value:len().."\n"..value)
-	log1:logprint("", "Result of the sending ="..tostring(i)..", "..tostring(j))
-	local answer = sock1:receive()
-	log1:logprint("", "Received \""..answer.."\"")
-	sock1:close()
-	return true
-end
-
---function send_ask_tids: asks the proxy if some TIDs are still open
-function send_ask_tids(tid_list)
-	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_ask_tids")
-	--logs
-	log1:logprint(".TABLE JUST_THAT", "INPUT", tbl2str("TID List", 0, tid_list))
-	local sock1 = socket.tcp()
-	local ok1, err1 = sock1:connect(mini_proxy_ip, mini_proxy_port)
-	log1:logprint("JUST_THAT", "Sending ASK")
-	local i,j = sock1:send(table.concat(tid_list, " ").."\n")
-	log1:logprint("", "Result of the sending ="..tostring(i)..", "..tostring(j))
-	local answer = sock1:receive()
-	log1:logprint("", "Received \""..answer.."\"")
-	sock1:close()
-	return answer
-end
-
 --function send_del: sends a "DELETE" command to the Entry Point
 function send_del(url, key, consistency)
 	--starts the logger
@@ -285,4 +242,95 @@ end
 --function send_change_log_lvl: alias to send_command("GET_CHANGE_LOG_LVL")
 function send_change_log_lvl(url, log_level)
 	return send_command("CHANGE_LOG_LVL", url, log_level)
+end
+
+--ASYNCHRONOUS DB OPERATIONS
+
+--function async_send_put: sends a "PUT" command to the Entry Point (asynchronous mode)
+function async_send_put(tid, url, key, consistency, value)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	--logs
+	log1:logprint(".RAW_DATA", "INPUT", "value=\""..(value or "nil").."\"")
+	--if the transaction is local (bypass distributed DB)
+	if _LOCAL then
+		--sets the value
+		kv_records[key] = value
+		--logs END of the function and flushes all logs
+		log1:logprint_flush("END", "using local storage")
+		--returns true
+		return true
+	end
+	--opens a new socket
+	local sock1 = socket.tcp()
+	--tries to connect to the mini proxy
+	sock1:connect(mini_proxy_ip, mini_proxy_port)
+	--send the PUT command through raw TCP
+	sock1:send("PUT "..tid.." "..url.." "..key.." "..consistency.." "..value:len().."\n"..value)
+	--waits for the answer (the proxy answers as soon as the PUT command is received)
+	local answer = sock1:receive()
+	--closes the socket
+	sock1:close()
+	--logs END of the function and flushes all logs
+	log1:logprint_flush("END")
+	--if the answer is OK returns true, if it is anything else, returns false
+	if answer == "OK" then
+		return true
+	else
+		return false
+	end
+end
+
+--function async_send_del: sends a "DELETE" command to the Entry Point (asynchronous mode)
+function async_send_del(tid, url, key, consistency)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	--if the transaction is local (bypass distributed DB)
+	if _LOCAL then
+		--sets the value
+		kv_records[key] = value
+		--logs END of the function and flushes all logs
+		log1:logprint_flush("END", "using local storage")
+		--returns true
+		return true
+	end
+	--opens a new socket
+	local sock1 = socket.tcp()
+	--tries to connect to the mini proxy
+	sock1:connect(mini_proxy_ip, mini_proxy_port)
+	--send the PUT command through raw TCP
+	sock1:send("DEL "..tid.." "..url.." "..key.." "..consistency.." 0")
+	--waits for the answer (the proxy answers as soon as the PUT command is received)
+	local answer = sock1:receive()
+	--closes the socket
+	sock1:close()
+	--logs END of the function and flushes all logs
+	log1:logprint_flush("END")
+	--if the answer is OK returns true, if it is anything else, returns false
+	if answer == "OK" then
+		return true
+	else
+		return false
+	end
+end
+
+--function send_ask_tids: asks the proxy if some TIDs are still open
+function send_ask_tids(tid_list)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_ask_tids")
+	--logs
+	--retrieves new socket
+	local sock1 = socket.tcp()
+	--tries to connect to the mini proxy
+	sock1:connect(mini_proxy_ip, mini_proxy_port)
+	--sends the list of TIDs to the mini proxy
+	local i,j = sock1:send(table.concat(tid_list, " ").."\n")
+	--waits for the answer (the proxy answers as soon as the PUT command is received)
+	local answer = sock1:receive()
+	--closes the socket
+	sock1:close()
+	--logs END of the function and flushes all logs
+	log1:logprint_flush("END")
+	--returns the answer
+	return answer
 end

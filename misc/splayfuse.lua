@@ -57,12 +57,12 @@ local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 --the URL of the Entry Point to the distDB
-local DB_URL = "127.0.0.1:15091"
+local DB_URL = "127.0.0.1:15108"
 
 
 --LOCAL VARIABLES
 
-local block_size = 48
+local block_size = 32 * 1024
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -76,30 +76,15 @@ local tid = 100
 local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"allow JUST_THAT",
 	"deny RAW_DATA",
-	"deny *",
-	"allow async_send_put",
-	"allow send_ask_tids",
-	"allow cmn_write",
-	"allow put_block",
-	"allow release",
-	"allow write"
+	"allow START",
+	"allow END"
 }
---[["deny FS2DB_OP",
-	"allow *",
-	"allow MAIN",
-	"allow FILE_IBLOCK_OP",
-	"allow DIR_OP",
-	"allow LINK_OP",
-	"allow READ_WRITE_OP",
-	"allow FILE_MISC_OP",
-	"allow MV_CP_OP"]]
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
 local global_details = true
-local global_timestamp = false
-local global_elapsed = false
+local global_timestamp = true
+local global_elapsed = true
 
 --MISC FUNCTIONS
 
@@ -319,7 +304,7 @@ local get_dblock_from_filename = get_iblock_from_filename
 local function put_block(tid, block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
-	--writes the block in the DB
+	--writes the block in the DB (write block operations are asynchronous)
 	local ok = async_send_put(tid, DB_URL, block_id, BLOCK_CONSIST, block)
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
@@ -357,11 +342,11 @@ end
 --DELETE FUNCTIONS
 
 --function del_block: deletes a block from the DB
-local function del_block(block_id)
+local function del_block(tid, block_id)
 	--starts and ends the logger
 	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_n="..block_n)
-	--returns the result of send_del
-	return send_del(DB_URL, block_id, BLOCK_CONSIST)
+	--returns the result of async_send_del (write block operations are asynchronous)
+	return async_send_del(tid, DB_URL, block_id, BLOCK_CONSIST)
 end
 
 --function del_iblock: deletes an iblock from the DB
@@ -377,7 +362,12 @@ local function del_iblock(iblock_n, is_dblock)
 			--logs
 			log1:logprint_flush("", "about to delete block with ID="..v)
 			--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
-			del_block(v)
+			del_block(tid, v)
+			--TODO: NOT CHECKING WITH ASK_TIDS like in the case of PUT
+			--inserts tid in the list of open transactions
+			--table.insert(iblock.open_transactions, tid)
+			--increments the transactionID
+			tid = tid + 1
 		end
 	end
 	--logs END of the function and flushes all logs
@@ -635,7 +625,7 @@ local function cmn_write(buf, offset, iblock)
 	--calculates the offset on the end block
 	local rem_end_offset = ((offset+size-1) % block_size)
 	--logs
-	log1:logprint("", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
+	log1:logprint(".BLOCK_SIZE_WRITE", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
 	log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
 	--block, block_id and to_write_in_block are initialized to nil
 	local block, block_id, to_write_in_block
@@ -1316,20 +1306,24 @@ local flexifs = {
 		iblock.open_sessions = iblock.open_sessions - 1
 		--if the number of open sessions reaches 0
 		if iblock.open_sessions == 0 and iblock.changed then
+			--logs
 			log1:logprint("", "the number of open sessions reached 0 and the iblock has changed; must be updated in the DB")
+			--loop to ask if all transactions belonging to the file are done
 			while true do
-				log1:logprint("", "iblock.open_transactions="..type(iblock.open_transactions))
-				if type(iblock.open_transactions) == "table" then
-					for i,v in pairs(iblock.open_transactions) do
-						log1:logprint("", "open_transaction="..v)
-					end
+				--if the table of open transactions is empty, breaks the while loop (no need to ask anything to the mini proxy)
+				if #(iblock.open_transactions) == 0 then
+					break
 				end
+				--asks the mini proxy for the pending transactions; if none of the list is still open (the function returns "false"), breaks the loop
 				if send_ask_tids(iblock.open_transactions) == "false" then
 					break
 				end
+				--logs
 				log1:logprint("", "Transactions are still open, will ask in half a second...")
+				--waits half a second and asks again
 				os.execute("sleep 0.5")
 			end
+			--clears the variable open_transactions (this table does not belong to the info that will be sent to the DB)
 			iblock.open_transactions = nil
 			--flag "changed" is cleared
 			iblock.changed = nil

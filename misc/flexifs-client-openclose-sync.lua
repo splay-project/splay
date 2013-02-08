@@ -57,12 +57,12 @@ local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 --the URL of the Entry Point to the distDB
-local DB_URL = "127.0.0.1:15272"
+local DB_URL = "127.0.0.1:15108"
 
 
 --LOCAL VARIABLES
 
-local block_size = 48
+local block_size = 32 * 1024
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -75,25 +75,13 @@ local seq_number = 0
 local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny DIST_DB_CLIENT",
-	"deny RAW_DATA",
-	"deny MEGA_DEBUG",
-	"allow FUSE_API"
+	"deny *"
 }
---[["deny FS2DB_OP",
-	"allow *",
-	"allow MAIN",
-	"allow FILE_IBLOCK_OP",
-	"allow DIR_OP",
-	"allow LINK_OP",
-	"allow READ_WRITE_OP",
-	"allow FILE_MISC_OP",
-	"allow MV_CP_OP"]]
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
-local global_details = false
-local global_timestamp = false
-local global_elapsed = false
+local global_details = true
+local global_timestamp = true
+local global_elapsed = true
 
 --MISC FUNCTIONS
 
@@ -794,9 +782,11 @@ local session_reg_key = hash_string("session_id")
 --logs
 mainlog:logprint("", "session_register="..session_reg_key)
 --gets the session register from the DB
-session_id = tonumber(send_get(DB_URL, session_reg_key, "paxos"))
+local ok, session_id_str = send_get(DB_URL, session_reg_key, "paxos")
+--logs
+mainlog:logprint("", "sessionID="..(session_id_str or "nil"))
 --increments the sessionID. NOTE + TODO: the read + increment + write of the session register is not an atomic process
-session_id = (1 + (session_id or 0)) % 10000
+session_id = (1 + (tonumber(session_id_str) or 0)) % 10000
 --logs
 mainlog:logprint("", "new sessionID="..session_id)
 --puts the new sessionID into the DB
@@ -1165,8 +1155,11 @@ local flexifs = {
 		log1:logprint_flush("END", "calling cmn_mk_file")
 		--makes a file with iblock_n=nil (creates iblock)
 		local ok, iblock = cmn_mk_file(filename, nil, flags, mode)
+		--if ok is 0 (no error)
 		if ok == 0 then
+			--open sessions is = 1 (create leaves the file open)
 			iblock.open_sessions = 1
+			--initializes the table open_transaction for subsequent put_block operations
 		end
 		return ok, iblock
 	end,
@@ -1192,6 +1185,7 @@ local flexifs = {
 		log1:logprint(".MEGA_DEBUG", "mode="..mode)
 		--increments the number of open sessions
 		iblock.open_sessions = iblock.open_sessions + 1
+		--logs
 		log1:logprint(".MEGA_DEBUG .TABLE", "iblock changed", tbl2str("iblock", 0, iblock))
 		
 		--logs END of the function and flushes all logs
@@ -1292,6 +1286,7 @@ local flexifs = {
 		iblock.open_sessions = iblock.open_sessions - 1
 		--if the number of open sessions reaches 0
 		if iblock.open_sessions == 0 and iblock.changed then
+			--logs
 			log1:logprint("", "the number of open sessions reached 0 and the iblock has changed; must be updated in the DB")
 			--flag "changed" is cleared
 			iblock.changed = nil
