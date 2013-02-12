@@ -1,37 +1,43 @@
+require"splay.base"
 rpc = require"splay.rpc"
-events = require"splay.events"
 
-if #arg < 4 then
-	print("TCP Throughput Test: Usage: "..arg[0].." <server IP> <server port> <payload size> <number of times>")
-	os.exit()
+function recv_data(data)
+	return "OK"
 end
 
-local server_addr = {ip=arg[1], port=tonumber(arg[2])}
-local sock1 = nil
-local size = tonumber(arg[3])
-local n_times = tonumber(arg[4])
+--starts the server
+rpc.server(job.me.port)
 
---opens the file with random data
-local f1 = io.open("../random.dat", "r")
---reads the file and fills the payload
-local payload = f1:read(size)
---closes the file
-f1:close()
-local time0 = 0
-local time1 = 0
-local time2 = 0
-local time3 = 0
-local time4 = 0
 events.run(function()
-	--repeat n_times
-	for i = 1, n_times do
-		--registers the starting time in seconds (with .4 digit precision)
-		time0 = socket.gettime()
-		--makees the rpc call
-		rpc.call(server_addr, {"recv_data", payload})
-		--registers 2nd timestamp
-		time1 = time1 + socket.gettime() - time0
+	--if node 1 (server)
+	if job.position == 1 then
+		log:print("Server on IP="..job.me.ip..", port="..job.me.port)
+	--if not (client)
+	else
+		events.sleep(10)
+		local job_nodes = job.nodes()
+		local server_addr = job_nodes[1]
+		local size = 1048576
+		local n_times = 10000
+		local payload = string.rep("a", size)
+		while size > 2000 do
+			local time1 = 0
+			--repeat n_times
+			for i = 1, n_times do
+				--registers the starting time in seconds (with .4 digit precision)
+				time0 = misc.time()
+				--makees the rpc call
+				rpc.call(server_addr, {"recv_data", payload})
+				--registers 2nd timestamp
+				time1 = time1 + misc.time() - time0
+				if i % 100 == 0 then
+					log:print("Size "..size.." "..i.."th test")
+				end
+			end
+			time1 = time1/n_times
+			log:print("Size = "..size..", Time 1 = "..time1)
+			size = size / 2
+			payload = string.rep("a", size)
+		end
 	end
-	time1 = time1/n_times
-	print("Time 1 = "..time1)
 end)
