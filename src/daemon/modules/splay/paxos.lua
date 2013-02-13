@@ -97,7 +97,9 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 		key = "default"
 	end
 	--logs entrance
-	l_o:debug("paxos_"..operation_type..": ENTERED, for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries..", value=", value)
+	--l_o:print("paxos_"..operation_type..": ENTERED, for key="..shorten_id(key)..", propID="..prop_id..", retriesLeft="..retries)
+	--prints the value
+	--l_o:print("value=", value)
 	--logs
 	for i,v in ipairs(peers) do
 		l_o:debug("paxos_"..operation_type..": peer="..v.ip..":"..v.port)

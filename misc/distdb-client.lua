@@ -15,7 +15,7 @@ require"logger"
 local rpc = require"splay.rpc"
 -- END LIBRARIES
 
-_LOCAL = true
+_LOCAL = false
 
 socket.BLOCKSIZE = 10000000
 

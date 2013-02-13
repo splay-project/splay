@@ -24,7 +24,7 @@ local _PINGING = false
 local _USE_KYOTO = true
 
 local local_db
-local dbs
+local dbs = {}
 --if KyotoCabinet is used; TODO maybe the kyoto vs mem mode can be set inside the restricted_db
 if _USE_KYOTO then
 	--for local DB handling, use splay.restricted_db
@@ -746,27 +746,14 @@ end
 --function handle_put: handles a PUT request as the Entry Point; TODO check about setting N,R,W on the transaction
 function handle_put(key, type_of_transaction, value)
 	--logs entrance
-	--l_o:print(n.short_id..":handle_put: START for key=", shorten_id(key))
+	--local log1 = start_logger("handle_put", "INPUT", "key="..shorten_id(key)..", consistency="..type_of_transaction)
 	--l_o:debug(n.short_id..":handle_put: value=", value)
 	--timestamp logging
 	--local start_time = misc.time()
 	--local to_report_t = {n.short_id..":handle_put: key="..shorten_id(key).." START. elapsed_time=0\n"}
 	
-	--initializes chosen_node
-	local chosen_node
-	--if the transaction is of type "consistent"
-	if type_of_transaction == "consistent" then
-		--the chosen_node is the master of the key
-		chosen_node = get_master(key)
-	--if not
-	else
-		--takes a random node from the responsibles list
-		local responsibles = get_responsibles(key)
-		local chosen_node_id = math.random(#responsibles)
-		--logs
-		--l_o:debug(n.short_id..":handle_put: choosing responsible n. "..chosen_node_id)
-		chosen_node = responsibles[chosen_node_id]
-	end
+	--the chosen_node is the master of the key
+	local chosen_node = get_master(key)
 	--logs
 	--l_o:debug(n.short_id..":handle_put: Chosen node="..chosen_node.short_id)
 	
@@ -953,7 +940,6 @@ function init(job)
 	if not init_done then
 		--make the init_done flag true
 		init_done = true
-
 		--if not in SPLAY
 		if not job then
 			--logs error
@@ -1117,26 +1103,26 @@ function consistent_put(key, value)
         local responsibles = get_responsibles(key)
 	--puts the key locally; TODO maybe this can change to a sequential approach: first node itself
 	events.thread(function()
-		local put_local_result
+		local local_put_result
 		--logs
 		--l_o:debug(n.short_id..":consistent_put: value_type=", type(value))
 		--if there's a value to put
 		if value then
 			--timestamp logging
 			--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Local put done, value size="..string.len(value))
-			--makes a put_local
-			put_local_result = put_local(key, value, n)
+			--makes a local_put
+			local_put_result = local_put(key, value, n)
 		--if value is nil
 		else
 			--timestamp logging
 			--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Local put done, it's a delete")
-			--makes a del_local
-			put_local_result = del_local(key)
+			--makes a local_del
+			local_put_result = local_del(key)
 		end
 			--timestamp logging
 		--table.insert(to_report_t, ". elapsed_time="..(misc.time() - start_time).."\n")
 			--if the "put" action is successful
-		if put_local_result then
+		if local_put_result then
 			--increment answers
 			answers = answers + 1
 			--if answers reaches the number of replicas
@@ -1159,12 +1145,12 @@ function consistent_put(key, value)
 				--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Gonna do put in "..v.id..". elapsed_time="..(misc.time() - start_time).."\n")
 				--if there's a value to put
 				if value then
-					--makes RPC call to put_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"put_local", key, value, n})
+					--makes RPC call to local_put
+					rpc_ok, rpc_answer = rpc.acall(v, {"local_put", key, value, n})
 				--if value is nil
 				else
-					--makes RPC call to del_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"del_local", key})
+					--makes RPC call to local_del
+					rpc_ok, rpc_answer = rpc.acall(v, {"local_del", key})
 				end
 					--timestamp logging
 				--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Put in "..v.id.." done. elapsed_time="..(misc.time() - start_time).."\n")
@@ -1182,7 +1168,7 @@ function consistent_put(key, value)
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--logs the error
-					--l_o:error(n.short_id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
+					--l_o:error(n.short_id..":consistent_put: SOMETHING WENT WRONG ON THE RPC CALL local_put TO NODE="..v.short_id)
 				end
 			end)
 		end
@@ -1257,24 +1243,24 @@ function evtl_consistent_put(key, value)
 	--puts the key locally; TODO maybe this can change to a sequential approach: first node itself
 	--checks the version and writes the k,v, then it writes to others
 	events.thread(function()
-		local put_local_result
+		local local_put_result
 		--if there's a value to put
 		if value then
 			--timestamp logging
 			--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." Local put done, value size="..string.len(value))
-			--calls put_local
-			put_local_result = put_local(key, value, n)
+			--calls local_put
+			local_put_result = local_put(key, value, n)
 		--if value is nil
 		else
 			--timestamp logging
 			--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." Local put done, it's a delete")
-			--calls del_local
-			put_local_result = del_local(key)
+			--calls local_del
+			local_put_result = local_del(key)
 		end
 			--timestamp logging
 		--table.insert(to_report_t, ". elapsed_time="..(misc.time() - start_time).."\n")
 			--if the "put" action is successful
-		if put_local_result then
+		if local_put_result then
 			--increment answers
 			answers = answers + 1
 			--if answers reaches the minimum number of replicas that must write
@@ -1296,12 +1282,12 @@ function evtl_consistent_put(key, value)
 				--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." gonna do put in "..v.id..". elapsed_time="..(misc.time() - start_time).."\n")
 				--if there's a value to put
 				if value then
-					--makes RPC call to put_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"put_local", key, value, n})
+					--makes RPC call to local_put
+					rpc_ok, rpc_answer = rpc.acall(v, {"local_put", key, value, n})
 				--if value is nil
 				else
-					--makes RPC call to del_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"del_local", key})
+					--makes RPC call to local_del
+					rpc_ok, rpc_answer = rpc.acall(v, {"local_del", key})
 				end
 					--timestamp logging
 				--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." put in "..v.id.." done. elapsed_time="..(misc.time() - start_time).."\n")
@@ -1319,7 +1305,7 @@ function evtl_consistent_put(key, value)
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--logs the error
-					--l_o:error(n.short_id..":evtl_consistent_put: SOMETHING WENT WRONG ON THE RPC CALL PUT_LOCAL TO NODE="..v.short_id)
+					--l_o:error(n.short_id..":evtl_consistent_put: SOMETHING WENT WRONG ON THE RPC CALL local_put TO NODE="..v.short_id)
 				end
 			end)
 		end
@@ -1341,7 +1327,7 @@ end
 --function paxos_put: performs a Basic Paxos protocol in order to put a k,v pair
 function paxos_put(key, value)
 	--logs entrance
-	--l_o:debug(n.short_id..":paxos_put: START, for key=", shorten_id(key))
+	--local log1 = start_logger("paxos_put", "INPUT", "key="..shorten_id(key))
 	--l_o:debug(n.short_id..":paxos_put: value=", value)
 	--timestamp logging
 	--local start_time = misc.time()
@@ -1381,10 +1367,13 @@ function paxos_put(key, value)
 
 	--locks the key; TODO check if this is necessary
 	locked_keys[key] = true
-	--if no previous proposals have been done for this key; TODO why does it always start with 1???
+	--if no previous proposals have been done for this key
 	if not prop_ids[key] then
 		--first number to use is 1
 		prop_ids[key] = 1
+	--if not, the proposal ID is one more than the last recorded
+	else
+		prop_ids[key] = prop_ids[key] + 1
 	end
 	--logs
 	--l_o:debug(n.short_id..":paxos_put:key=", shorten_id(key), "propID="..prop_ids[key])
@@ -1424,7 +1413,7 @@ function consistent_get(key)
 			--flushes all timestamp logs
 			--l_o:notice(table.concat(to_report_t))
 			--returns the value of the key
-			return true, {get_local(key)}
+			return true, {local_get(key)}
 		end
 	end
 	--timestamp logging
@@ -1484,18 +1473,18 @@ function evtl_consistent_get(key)
 			--if the ID is the same as the node itself
 			if v.id == n.id then
 				--gets the value locally; TODO deal with attemps of writing a previous version
-				answer_data[v.id] = get_local(key)
+				answer_data[v.id] = local_get(key)
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
-				local rpc_ok, rpc_answer = rpc.acall(v, {"get_local", key})
+				local rpc_ok, rpc_answer = rpc.acall(v, {"local_get", key})
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--logs the error
-					--l_o:error(n.short_id..":evtl_consistent_get: SOMETHING WENT WRONG ON THE RPC CALL GET_LOCAL TO NODE="..v.short_id)
+					--l_o:error(n.short_id..":evtl_consistent_get: SOMETHING WENT WRONG ON THE RPC CALL local_get TO NODE="..v.short_id)
 				end
 			end
 			--timestamp logging
@@ -1734,15 +1723,15 @@ function send_paxos_learn(v, value, key)
 	--local start_time = misc.time()
 	--local to_report_t = {n.short_id..":send_paxos_learn: key="..shorten_id(key).." START. elapsed_time=0\n"}
 	
-	local ret_put_local
+	local ret_local_put
 	--if there's a value to put
 	if value then
-		--makes RPC call to put_local
-		ret_put_local = rpc.call(v, {"put_local", key, value})
+		--makes RPC call to local_put
+		ret_local_put = rpc.call(v, {"local_put", key, value})
 	--if value is nil
 	else
-		--makes RPC call to del_local
-		ret_put_local = rpc.call(v, {"del_local", key})
+		--makes RPC call to local_del
+		ret_local_put = rpc.call(v, {"local_del", key})
 	end
 
 	--timestamp logging
@@ -1751,7 +1740,7 @@ function send_paxos_learn(v, value, key)
 	--l_o:notice(table.concat(to_report_t))
 
 	--returns
-	return ret_put_local
+	return ret_local_put
 end
 
 --function receive_paxos_proposal:
@@ -1868,12 +1857,12 @@ function receive_paxos_accept(prop_id, peers, value, key)
 			if v.id == n.id then
 				--if there's a value to put
 				if value then
-					--calls put_local; TODO can we put n for src_write?
-					put_local(key, value)
+					--calls local_put; TODO can we put n for src_write?
+					local_put(key, value)
 				--if value is nil
 				else
-					--calls del_local
-					del_local(key)
+					--calls local_del
+					local_del(key)
 				end
 			--if it's not the same node
 			else
@@ -1891,25 +1880,25 @@ end
 
 --BACK-END FUNCTIONS
 
---function put_local: writes a k,v pair; TODO should be atomic? is it?
-function put_local(key, value, src_write)
+--function local_put: writes a k,v pair; TODO should be atomic? is it?
+function local_put(key, value, src_write)
 	--logs entrance
-	--l_o:debug(n.short_id..":put_local: START, for key=", shorten_id(key))
-	--l_o:debug(n.short_id..":put_local: value=", value)
+	--l_o:debug(n.short_id..":local_put: START, for key=", shorten_id(key))
+	--l_o:debug(n.short_id..":local_put: value=", value)
 	--timestamp logging
 	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":put_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
+	--local to_report_t = {n.short_id..":local_put: key="..shorten_id(key).." START. elapsed_time=0\n"}
 
 	--TODO how to check if the source node is valid?
 
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":local_put: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--logs
-		--l_o:debug(n.short_id..":put_local: RANDOMLY NOT writing key: "..key)
+		--l_o:debug(n.short_id..":local_put: RANDOMLY NOT writing key: "..key)
 		--returns with error message
 		return false, "404"
 	end
@@ -1922,25 +1911,25 @@ function put_local(key, value, src_write)
 
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
-		--l_o:error(n.short_id..":put_local: NOT writing key, wrong key type")
-		--table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
+		--l_o:error(n.short_id..":local_put: NOT writing key, wrong key type")
+		--table.insert(to_report_t, n.short_id..":local_put: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
 		--l_o:notice(table.concat(to_report_t))
 		return false, "wrong key type"
 	end
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":put_local: check key type done. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":local_put: check key type done. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--if value is not a string or a number, dont accept the transaction
 	if type(value) ~= "string" and type(value) ~= "number" then
-		--l_o:error(n.short_id..":put_local: NOT writing key, wrong value type")
-		--table.insert(to_report_t, n.short_id..":put_local: UNsuccessful END. elapsed_time="..(misc.time() - start_time))
+		--l_o:error(n.short_id..":local_put: NOT writing key, wrong value type")
+		--table.insert(to_report_t, n.short_id..":local_put: UNsuccessful END. elapsed_time="..(misc.time() - start_time))
 		--l_o:notice(table.concat(to_report_t))
 		return false, "wrong value type"
 	end
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":put_local: check value type done. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":local_put: check value type done. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--if the source is not specified
 	if not src_write then
@@ -1949,7 +1938,7 @@ function put_local(key, value, src_write)
 	end
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":put_local: setting up src_write when there isnt done. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":local_put: setting up src_write when there isnt done. elapsed_time="..(misc.time() - start_time).."\n")
 
 	local kv_record_serialized = local_db.get("db_records", key)
 	local kv_record
@@ -1966,26 +1955,26 @@ function put_local(key, value, src_write)
 	kv_record.vector_clock[src_write.id] = (kv_record.vector_clock[src_write.id] or 0)+ 1
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":put_local: k,v record written. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":local_put: k,v record written. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--serializes the KV record
 	local kv_record_serialized = serializer.encode(kv_record)
 
 	--logs
-	--l_o:debug(n.short_id..":put_local: type(key)=", type(key), "type(kv_record_serialized)=", type(kv_record_serialized))
+	--l_o:debug(n.short_id..":local_put: type(key)=", type(key), "type(kv_record_serialized)=", type(kv_record_serialized))
 
 	--writes the record
 	local set_ok = local_db.set("db_records", key, kv_record_serialized)
 	local_db.set("db_keys", key, 1)
 
 	--logs
-	--l_o:debug(n.short_id..":put_local: writing key=", shorten_id(key), "enabled=", kv_record.enabled, "writing was ok?", set_ok)
-	--l_o:debug(n.short_id..":put_local: value=", value)
+	--l_o:debug(n.short_id..":local_put: writing key=", shorten_id(key), "enabled=", kv_record.enabled, "writing was ok?", set_ok)
+	--l_o:debug(n.short_id..":local_put: value=", value)
 	for i,v in pairs(kv_record.vector_clock) do
-		--l_o:debug(n.short_id..":put_local: vector_clock=",i,v)
+		--l_o:debug(n.short_id..":local_put: vector_clock=",i,v)
 	end
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":put_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":local_put: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	--flushes all timestamp logs
 	--l_o:notice(table.concat(to_report_t))
 
@@ -1993,13 +1982,13 @@ function put_local(key, value, src_write)
 	return true
 end
 
---function del_local: deletes a k,v pair; TODO Consider this effing src_write and if the data is ever deleted; NOTE enabled is a field meant to handle this
-function del_local(key, src_write) 
+--function local_del: deletes a k,v pair; TODO Consider this effing src_write and if the data is ever deleted; NOTE enabled is a field meant to handle this
+function local_del(key, src_write) 
 	--logs entrance
-	--l_o:debug(n.short_id..":del_local: START, for key=", shorten_id(key))
+	--l_o:debug(n.short_id..":local_del: START, for key=", shorten_id(key))
 	--timestamp logging
 	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":del_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
+	--local to_report_t = {n.short_id..":local_del: key="..shorten_id(key).." START. elapsed_time=0\n"}
 	
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
@@ -2018,9 +2007,9 @@ function del_local(key, src_write)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		--logs
-		--l_o:error(n.short_id..":del_local: NOT writing key, wrong key type")
+		--l_o:error(n.short_id..":local_del: NOT writing key, wrong key type")
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":del_local: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":local_del: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error message
 		return false, "wrong key type"
@@ -2032,26 +2021,26 @@ function del_local(key, src_write)
 		local_db.remove("db_keys", key)
 	end
 	--logs
-	--l_o:debug(n.short_id..":del_local: deleting key="..shorten_id(key))
+	--l_o:debug(n.short_id..":local_del: deleting key="..shorten_id(key))
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":del_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":local_del: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	--l_o:notice(table.concat(to_report_t))
 	--returns true
 	return true
 end
 
---function get_local: returns v from a k,v pair.
-function get_local(key)
+--function local_get: returns v from a k,v pair.
+function local_get(key)
 	--logs entrance
-	--l_o:debug(n.short_id..":get_local: START, for key="..shorten_id(key))
+	--l_o:debug(n.short_id..":local_get: START, for key="..shorten_id(key))
 	--timestamp logging
 	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":get_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
+	--local to_report_t = {n.short_id..":local_get: key="..shorten_id(key).." START. elapsed_time=0\n"}
 
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":local_get: key="..shorten_id(key).." END success=false(on_purpose). elapsed_time="..(misc.time() - start_time))
 		--l_o:notice(table.concat(to_report_t))
 		--returns nil
 		return nil
@@ -2068,16 +2057,16 @@ function get_local(key)
 	--if there's no record
 	if not kv_record_serialized then
 		--logs error
-		--l_o:error(n.short_id..":get_local: record is nil")
+		--l_o:error(n.short_id..":local_get: record is nil")
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=false. elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":local_get: key="..shorten_id(key).." END success=false. elapsed_time="..(misc.time() - start_time))
 		--l_o:notice(table.concat(to_report_t))
 		--returns nil
 		return nil
 	end
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":get_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":local_get: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	--l_o:notice(table.concat(to_report_t))
 	--returns the record as table
 	return serializer.decode(kv_record_serialized)
@@ -2097,7 +2086,9 @@ local arg_my_pos = tonumber(arg[5])
 
 local job = {
 	me = {
+		--ip = arg_ip_prefix.."."..(arg_node1_end),
 		ip = arg_ip_prefix.."."..(arg_node1_end + arg_my_pos - 1),
+		--port = arg_port + 2*arg_my_pos - 2
 		port = arg_port
 	},
 	position = arg_my_pos,
@@ -2107,6 +2098,7 @@ local job = {
 
 for i = 1, arg_n_nodes do
 	table.insert(job.nodes, {ip = arg_ip_prefix.."."..(arg_node1_end + i - 1), port = arg_port})
+--	table.insert(job.nodes, {ip = arg_ip_prefix.."."..(arg_node1_end), port = arg_port + 2*i - 2})
 end
 
 dofile("../../../misc/logger.lua")
@@ -2122,7 +2114,7 @@ local global_elapsed = false
 
 init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 
---print(tbl2str("job", 0, job))
+print(tbl2str("job", 0, job))
 
 events.run(function()
 	init(job)
