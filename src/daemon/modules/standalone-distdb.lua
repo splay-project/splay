@@ -935,7 +935,7 @@ end
 --function init: initialization of the node
 function init(job)
 	--logs entrance
-	--l_o:debug("init: START")
+	local log1 = start_logger("init")
 	--if init has not been previously called
 	if not init_done then
 		--make the init_done flag true
@@ -979,12 +979,13 @@ function init(job)
 		--receive_paxos_accept = paxos.receive_accept
 		paxos.send_proposal = send_paxos_proposal
 
+		--prints message saying it is the RDV node
+		log1:logprint("", "node "..job.position.." UP, HTTP port = "..n.ip.." "..(n.port+1))
+
 		--if Bootstrapping is set
 		if _BOOTSTRAPPING then
 			--if it is the RDV node
 			if job.position == 1 then
-				--prints message saying it is the RDV node
-				l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
 				--neighborhood is only itself
 				neighborhood = {n}
 			--if we skip bootstrapping
@@ -1020,12 +1021,6 @@ function init(job)
 			--create a gossip to announce the adding
 			gossip_changes("add", n)
 		else
-			--if it is the RDV node
-			if job.position == 1 then
-				--prints the HTTP port in the log
-				l_o:print("RDV node HTTP port = "..n.ip.." "..(n.port+1))
-			end
-			
 			--creates the neighborhood table from job.nodes
 			local job_nodes = job.nodes
 			for i,v in ipairs(job_nodes) do
