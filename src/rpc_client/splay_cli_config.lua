@@ -26,10 +26,10 @@ config = {
 	username	= "admin",
 	password	= "admin",
 	job_options = {
-		network_nb_ports	= 4,
+	--[[	network_nb_ports	= 4,
 		max_mem			= 50331648,
 		network_max_send	= 549755813888,
-		network_max_receive	= 549755813888
+		network_max_receive	= 549755813888]]
 	}
 }
 

@@ -24,6 +24,7 @@ local _PINGING = false
 local _USE_KYOTO = true
 
 local local_db
+local dbs
 --if KyotoCabinet is used; TODO maybe the kyoto vs mem mode can be set inside the restricted_db
 if _USE_KYOTO then
 	--for local DB handling, use splay.restricted_db
@@ -53,6 +54,10 @@ else
 
 		totable = function(table_name)
 			return dbs[table_name]
+		end,
+
+		clear = function(table_name)
+			dbs[table_name] = {}
 		end,
 
 		remove = function(table_name, key)
@@ -274,16 +279,16 @@ end
 local function sanity_check()
 	--l_o:notice(n.short_id..":sanity_check: START")
 	--obtains the key list
-	local my_keys = local_db.totable("key_list")
+	local my_keys = local_db.totable("db_keys")
 	--for all the keys of the node
 	for i,v in pairs(my_keys) do
 		--if the node is not responsible for key i
 		if not is_responsible(i, n.id) then
 			--prints message
 			--l_o:debug(n.short_id..":sanity_check: removing key="..key)
-			--removes the key from "db_table" and "key_list"
-			local_db.remove("db_table", key)
-			local_db.remove("key_list", key)
+			--removes the key from "db_records" and "db_keys"
+			local_db.remove("db_records", key)
+			local_db.remove("db_keys", key)
 		end
 	end
 end
@@ -327,9 +332,9 @@ end
 function transfer_key(key, value)
 	--logs entrance
 	--l_o:debug(n.short_id..":transfer_key: receiving key=", key, "value type=", type(value))
-	--sets "db_table" and "key_list" with respective values
-	local_db.set("db_table", key, value)
-	local_db.set("key_list", key, 1)
+	--sets "db_records" and "db_keys" with respective values
+	local_db.set("db_records", key, value)
+	local_db.set("db_keys", key, 1)
 end
 
 --function add_node_to_neighborhood: adds a node to the neighborhood table, re-sorts and updates n.position
@@ -340,7 +345,7 @@ function add_node_to_neighborhood(node)
 	end
 
 	--retrieves the keys that are managed by itself
-	local my_keys = local_db.totable("key_list")
+	local my_keys = local_db.totable("db_keys")
 	--this variable will hold the set of keys that were managed by the old next-node
 	local old_next_node_keys = {}
 	--this variable will hold the set of keys that were managed by the old previous-node
@@ -414,7 +419,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_records", v)})
 		end
 	end
 
@@ -436,7 +441,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_records", v)})
 		end
 	end
 
@@ -450,7 +455,7 @@ end
 function remove_node_from_neighborhood(node_pos)
 
 	--retrieves the keys that are managed by itself
-	local my_keys = local_db.totable("key_list")
+	local my_keys = local_db.totable("db_keys")
 	--this variable will hold the set of keys that were managed by the old next-node
 	local old_next_node_keys = {}
  
@@ -512,7 +517,7 @@ function remove_node_from_neighborhood(node_pos)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_table", v)})
+			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_records", v)})
 		end
 	end
 
@@ -633,7 +638,7 @@ function parse_http_request(socket)
 	--the HTTP version is the third
 	local http_version = first_line_analyzer[3]
 	local headers = {}
-	--extract the headers line by line
+	--extracts the headers line by line
 	while true do
 		local data = socket:receive("*l")
 		if ( #data < 1 ) then
@@ -711,14 +716,14 @@ function handle_get(key, type_of_transaction)
 	return nil, "network problem"
 end
 
---function handle_get_all_records: handles a GET_ALL_RECORDS request, returns the whole database the node holds
-function handle_get_all_records()
-	return true, local_db.totable("db_table") 
+--function handle_get_all: handles a GET_ALL request, returns the whole database that the node holds
+function handle_get_all()
+	return true, local_db.totable("db_records") 
 end
 
---function handle_get_key_list: handles a GET_KEY_LIST request, returns the list of keys that the node holds
-function handle_get_key_list()
-	return true, local_db.totable("key_list") 
+--function handle_get_keys: handles a GET_KEYS request, returns the list of keys that the node holds
+function handle_get_keys()
+	return true, local_db.totable("db_keys") 
 end
 
 --function handle_get_master: handles a GET_MASTER request, returns a node object (IP, port, ID, short ID) of the node that is the master of a given key
@@ -726,9 +731,16 @@ function handle_get_master(key)
 	return true, get_master(key)
 end
 
---function handle_get_node_list: handles a GET_NODE_LIST request, returns the list of all currently active nodes
-function handle_get_node_list()
+--function handle_get_nodes: handles a GET_NODES request, returns the list of all currently active nodes
+function handle_get_nodes()
 	return true, neighborhood 
+end
+
+--function handle_del_all: handles a DEL_ALL request, deletes the whole database that the node holds
+function handle_del_all()
+	local_db.clear("db_records")
+	local_db.clear("db_keys")
+	return true
 end
 
 --function handle_put: handles a PUT request as the Entry Point; TODO check about setting N,R,W on the transaction
@@ -798,9 +810,9 @@ function handle_put(key, type_of_transaction, value)
 	return nil, "network problem"
 end
 
---function handle_delete: handles a DELETE request
-function handle_delete(key, type_of_transaction)
-	--l_o:print(n.short_id..":handle_delete: START for key=", shorten_id(key))
+--function handle_del: handles a DEL request
+function handle_del(key, type_of_transaction)
+	--l_o:print(n.short_id..":handle_del: START for key=", shorten_id(key))
 	--a delete is a put with a value = nil
 	return handle_put(key, type_of_transaction, nil)
 end
@@ -821,11 +833,12 @@ end
 local forward_request = {
 	["GET"] = handle_get,
 	["PUT"] = handle_put,
-	["DELETE"] = handle_delete,
+	["DEL"] = handle_del,
 	["GET_MASTER"] = handle_get_master,
-	["GET_NODE_LIST"] = handle_get_node_list,
-	["GET_ALL_RECORDS"] = handle_get_all_records,
-	["GET_KEY_LIST"] = handle_get_key_list,
+	["GET_NODES"] = handle_get_nodes,
+	["GET_ALL"] = handle_get_all,
+	["DEL_ALL"] = handle_del_all,
+	["GET_KEYS"] = handle_get_keys,
 	["CHANGE_LOG_LVL"] = handle_change_log_lvl,
 	["CHANGE_N_REPLICAS"] = handle_change_n_replicas
 	}
@@ -963,9 +976,9 @@ function init(job)
 		--HTTP server listens through the RPC port+1
 		net.server(n.port+1, handle_http_message)
 
-		--initializes DB tables ("db_table" and "key_list")
-		local_db.open("db_table", "hash")
-		local_db.open("key_list", "hash")
+		--initializes DB tables ("db_records" and "db_keys")
+		local_db.open("db_records", "hash")
+		local_db.open("db_keys", "hash")
 
 		--initializes variables related to replication; TODO this should be configurable
 		n_replicas = 3
@@ -1117,8 +1130,8 @@ function consistent_put(key, value)
 		else
 			--timestamp logging
 			--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Local put done, it's a delete")
-			--makes a delete_local
-			put_local_result = delete_local(key)
+			--makes a del_local
+			put_local_result = del_local(key)
 		end
 			--timestamp logging
 		--table.insert(to_report_t, ". elapsed_time="..(misc.time() - start_time).."\n")
@@ -1150,8 +1163,8 @@ function consistent_put(key, value)
 					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
 				--if value is nil
 				else
-					--makes RPC call to delete_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
+					--makes RPC call to del_local
+					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.del_local", key})
 				end
 					--timestamp logging
 				--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Put in "..v.id.." done. elapsed_time="..(misc.time() - start_time).."\n")
@@ -1255,8 +1268,8 @@ function evtl_consistent_put(key, value)
 		else
 			--timestamp logging
 			--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." Local put done, it's a delete")
-			--calls delete_local
-			put_local_result = delete_local(key)
+			--calls del_local
+			put_local_result = del_local(key)
 		end
 			--timestamp logging
 		--table.insert(to_report_t, ". elapsed_time="..(misc.time() - start_time).."\n")
@@ -1287,8 +1300,8 @@ function evtl_consistent_put(key, value)
 					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
 				--if value is nil
 				else
-					--makes RPC call to delete_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.delete_local", key})
+					--makes RPC call to del_local
+					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.del_local", key})
 				end
 					--timestamp logging
 				--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." put in "..v.id.." done. elapsed_time="..(misc.time() - start_time).."\n")
@@ -1728,8 +1741,8 @@ function send_paxos_learn(v, value, key)
 		ret_put_local = rpc.call(v, {"distdb.put_local", key, value})
 	--if value is nil
 	else
-		--makes RPC call to delete_local
-		ret_put_local = rpc.call(v, {"distdb.delete_local", key})
+		--makes RPC call to del_local
+		ret_put_local = rpc.call(v, {"distdb.del_local", key})
 	end
 
 	--timestamp logging
@@ -1767,7 +1780,7 @@ function receive_paxos_proposal(prop_id, key)
 	end
 
 	--if the k,v pair doesnt exist --BIG TODO: WHEN USING RAM DB, I SHOULD NOT SERIALIZE, IT'S A WASTE OF TIME
-	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record_serialized = local_db.get("db_records", key)
 	local kv_record
 	if kv_record_serialized then
 		kv_record = serializer.decode(kv_record_serialized)
@@ -1785,7 +1798,7 @@ function receive_paxos_proposal(prop_id, key)
 	kv_record.prop_id = prop_id
 
 	--writes the new proposal ID in the DB
-	local_db.set("db_table", key, serializer.encode(kv_record))
+	local_db.set("db_records", key, serializer.encode(kv_record))
 	
 	--returns the old Proposal ID and the KV record
 	return true, old_prop_id, kv_record
@@ -1811,7 +1824,7 @@ function receive_paxos_accept(prop_id, peers, value, key)
 		return false, "wrong key type"
 	end
 
-	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record_serialized = local_db.get("db_records", key)
 	local kv_record
 	if kv_record_serialized then
 		kv_record = serializer.decode(kv_record_serialized)
@@ -1859,8 +1872,8 @@ function receive_paxos_accept(prop_id, peers, value, key)
 					put_local(key, value)
 				--if value is nil
 				else
-					--calls delete_local
-					delete_local(key)
+					--calls del_local
+					del_local(key)
 				end
 			--if it's not the same node
 			else
@@ -1938,7 +1951,7 @@ function put_local(key, value, src_write)
 	--timestamp logging
 	--table.insert(to_report_t, n.short_id..":put_local: setting up src_write when there isnt done. elapsed_time="..(misc.time() - start_time).."\n")
 
-	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record_serialized = local_db.get("db_records", key)
 	local kv_record
 	if kv_record_serialized then
 		kv_record = serializer.decode(kv_record_serialized)
@@ -1962,8 +1975,8 @@ function put_local(key, value, src_write)
 	--l_o:debug(n.short_id..":put_local: type(key)=", type(key), "type(kv_record_serialized)=", type(kv_record_serialized))
 
 	--writes the record
-	local set_ok = local_db.set("db_table", key, kv_record_serialized)
-	local_db.set("key_list", key, 1)
+	local set_ok = local_db.set("db_records", key, kv_record_serialized)
+	local_db.set("db_keys", key, 1)
 
 	--logs
 	--l_o:debug(n.short_id..":put_local: writing key=", shorten_id(key), "enabled=", kv_record.enabled, "writing was ok?", set_ok)
@@ -1980,13 +1993,13 @@ function put_local(key, value, src_write)
 	return true
 end
 
---function delete_local: deletes a k,v pair; TODO Consider this effing src_write and if the data is ever deleted; NOTE enabled is a field meant to handle this
-function delete_local(key, src_write) 
+--function del_local: deletes a k,v pair; TODO Consider this effing src_write and if the data is ever deleted; NOTE enabled is a field meant to handle this
+function del_local(key, src_write) 
 	--logs entrance
-	--l_o:debug(n.short_id..":delete_local: START, for key=", shorten_id(key))
+	--l_o:debug(n.short_id..":del_local: START, for key=", shorten_id(key))
 	--timestamp logging
 	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":delete_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
+	--local to_report_t = {n.short_id..":del_local: key="..shorten_id(key).." START. elapsed_time=0\n"}
 	
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
@@ -2005,23 +2018,23 @@ function delete_local(key, src_write)
 	--if key is not a string, dont accept the transaction
 	if type(key) ~= "string" then
 		--logs
-		--l_o:error(n.short_id..":delete_local: NOT writing key, wrong key type")
+		--l_o:error(n.short_id..":del_local: NOT writing key, wrong key type")
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":del_local: key="..shorten_id(key).." END success=false(wrong_key_type). elapsed_time="..(misc.time() - start_time))
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error message
 		return false, "wrong key type"
 	end
 	
 	--if the k,v pair exists, delete it; TODO maybe can be improved with only db:remove, just 1 DB op
-	if local_db.check("db_table", key) ~= -1 then
-		local_db.remove("db_table", key)
-		local_db.remove("key_list", key)
+	if local_db.check("db_records", key) ~= -1 then
+		local_db.remove("db_records", key)
+		local_db.remove("db_keys", key)
 	end
 	--logs
-	--l_o:debug(n.short_id..":delete_local: deleting key="..shorten_id(key))
+	--l_o:debug(n.short_id..":del_local: deleting key="..shorten_id(key))
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":delete_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":del_local: key="..shorten_id(key).." END success=true. elapsed_time="..(misc.time() - start_time))
 	--l_o:notice(table.concat(to_report_t))
 	--returns true
 	return true
@@ -2051,7 +2064,7 @@ function get_local(key)
 	end
 
 	--retrieves the serialized version of the record
-	local kv_record_serialized = local_db.get("db_table", key)
+	local kv_record_serialized = local_db.get("db_records", key)
 	--if there's no record
 	if not kv_record_serialized then
 		--logs error

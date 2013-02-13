@@ -15,7 +15,7 @@ require"logger"
 local rpc = require"splay.rpc"
 -- END LIBRARIES
 
-_LOCAL = false
+_LOCAL = true
 
 socket.BLOCKSIZE = 10000000
 
@@ -34,6 +34,7 @@ local mini_proxy_port = 33500
 function send_command(command_name, url, key, consistency, value)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "url="..url..", key="..key..", consistency="..consistency)
+	--prints the value
 	log1:logprint(".RAW_DATA", "INPUT", "value="..(value or "nil"))
 	--response_body will contain the returning data from the web-service call
 	local response_body = {}
@@ -184,7 +185,7 @@ function send_put(url, key, consistency, value, delay)
 	return send_command("PUT", url, key, consistency, value)
 end
 
---function send_del: sends a "DELETE" command to the Entry Point
+--function send_del: sends a "DEL" command to the Entry Point
 function send_del(url, key, consistency)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
@@ -200,34 +201,34 @@ function send_del(url, key, consistency)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--returns the result of send_command
-	return send_command("DELETE", url, key, consistency)
+	return send_command("DEL", url, key, consistency)
 end
 
---function send_get_node_list: alias to send_command("GET_NODE_LIST")
-function send_get_node_list(url)
-	return send_command("GET_NODE_LIST", url)
+--function send_get_nodes: alias to send_command("GET_NODES")
+function send_get_nodes(url)
+	return send_command("GET_NODES", url)
 end
 
---function send_get_key_list: alias to send_command("GET_KEY_LIST")
-function send_get_key_list(url)
+--function send_get_keys: alias to send_command("GET_KEYS")
+function send_get_keys(url)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
-		local key_list = {}
+		local keys = {}
 		for i,v in pairs(kv_records) do
-			table.insert(key_list, i)
+			table.insert(keys, i)
 			log1:logprint("", "key="..i)
 		end
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END", "using local storage")
 		--returns true and the list of keys
-		return true, key_list
+		return true, keys
 	end
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--returns the result of send_command
-	return send_command("GET_KEY_LIST", url)
+	return send_command("GET_KEYS", url)
 end
 
 --function send_get_master: alias to send_command("GET_MASTER")
@@ -235,9 +236,9 @@ function send_get_master(url, key)
 	return send_command("GET_MASTER", url, key)
 end
 
---function send_get_all_records: alias to send_command("GET_ALL_RECORDS")
-function send_get_all_records(url)
-	return send_command("GET_ALL_RECORDS", url)
+--function send_get_all: alias to send_command("GET_ALL")
+function send_get_all(url)
+	return send_command("GET_ALL", url)
 end
 
 --function send_change_log_lvl: alias to send_command("GET_CHANGE_LOG_LVL")
@@ -282,7 +283,7 @@ function async_send_put(tid, url, key, consistency, value)
 	end
 end
 
---function async_send_del: sends a "DELETE" command to the Entry Point (asynchronous mode)
+--function async_send_del: sends a "DEL" command to the Entry Point (asynchronous mode)
 function async_send_del(tid, url, key, consistency)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
