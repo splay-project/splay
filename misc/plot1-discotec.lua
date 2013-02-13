@@ -58,43 +58,89 @@ f_tbl = {
 		send_del(url, key, "paxos")
 	end,
 }
-
+--[[
 key = nil
 start_time = nil
 end_time = nil
 
-modes = {1, 2, 3, 4, 5, 6}
+modes = {4, 5, 6}
 
 for _, mode in pairs(modes) do
 	elapsed = 0
  	elapsed_sq = 0
+	io.write(mode.. "th mode\n1st round: ")
 	for i = 1, n_times do
 		key = crypto.evp.digest("sha1", mode..":"..i)
-		if (i%100) == 0 then
-			print(os.time(), "1:", i, mode)
+		if (i%(n_times/5)) == 0 then
+			io.write("["..os.time().."] "..i.."th... ")
+			io.flush()
 		end
 		f_tbl[mode]()
 		--os.execute("sleep 0.5")
 		f_tbl[7 + ((mode-1)%3)]()
 		--os.execute("sleep 0.5")
 	end
+	io.write("\n2nd round: ")
 	for i = 1, n_times do
 		key = crypto.evp.digest("sha1", mode..":"..(2*i))
-		if (i%100) == 0 then
-			print(os.time(), "2:", i, mode)
+		if (i%(n_times/5)) == 0 then
+			io.write("["..os.time().."] "..i.."th... ")
+			io.flush()
 		end
 		start_time = socket.gettime()
 		f_tbl[mode]()
 		end_time = socket.gettime()
 		elapsed = elapsed + (end_time - start_time)
+		print("PUT done, elapsed time = "..(end_time - start_time))
 		elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
 		--os.execute("sleep 0.5")
+		start_time = socket.gettime()
 		f_tbl[7 + ((mode-1)%3)]()
+		end_time = socket.gettime()
+		print("DEL done, elapsed time = "..(end_time - start_time))
 		--os.execute("sleep 0.5")
 	end
 	elapsed = elapsed/n_times
-	print("Average elapsed time = "..elapsed)
+	print("\nAverage elapsed time = "..elapsed)
 	elapsed_sq = elapsed_sq/n_times
 	std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
 	print("Standard Dev  = "..std_dev)
 end
+--]]
+key = nil
+start_time = nil
+end_time = nil
+
+modes = {1, 2, 3, 4}
+
+f1 = io.open("log-plot1.txt", "w")
+
+key = crypto.evp.digest("sha1", "default")
+
+for _, mode in pairs(modes) do
+        elapsed = 0
+        elapsed_sq = 0
+        print(mode.. "th mode:")
+        f1:write(mode.. "th mode:\n")
+        for i = 1, n_times do
+                if (i%(n_times/5)) == 0 then
+                        io.write("["..os.time().."] "..i.."th... ")
+                        io.flush()
+                end
+                start_time = socket.gettime()
+                f_tbl[mode]()
+                end_time = socket.gettime()
+                elapsed = elapsed + (end_time - start_time)
+                elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
+                f1:write("elapsed time = "..(end_time - start_time).."\n")
+                f1:flush()
+        end
+        elapsed = elapsed/n_times
+        print("\nAverage elapsed time = "..elapsed)
+        f1:write("Average elapsed time = "..elapsed.."\n")
+        elapsed_sq = elapsed_sq/n_times
+        std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
+        print("Standard Dev  = "..std_dev)
+        f1:write("Standard Dev  = "..std_dev.."\n")
+end
+f1:close()
