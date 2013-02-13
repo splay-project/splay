@@ -37,25 +37,13 @@ f_tbl = {
 		send_put(url, key, "evtl_consistent", data)
 	end,
 	[3] = function()
-		send_put(url, key, "paxos", data)
+		send_put(url, key, "local", data)
 	end,
 	[4] = function()
-		async_send_put(tid, url, key, "consistent", data)
+		send_put(url, key, "paxos", data)
 	end,
 	[5] = function()
-		async_send_put(tid, url, key, "evtl_consistent", data)
-	end,
-	[6] = function()
-		async_send_put(tid, url, key, "paxos", data)
-	end,
-	[7] = function()
-		send_del(url, key, "consistent")
-	end,
-	[8] = function()
-		send_del(url, key, "evtl_consistent")
-	end,
-	[9] = function()
-		send_del(url, key, "paxos")
+		async_send_put(tid, url, key, "consistent", data)
 	end,
 }
 --[[
@@ -111,21 +99,23 @@ key = nil
 start_time = nil
 end_time = nil
 
-modes = {1, 2, 3, 4}
+modes = {1, 2, 3, 4, 5}
 
 f1 = io.open("log-plot1.txt", "w")
 
 key = crypto.evp.digest("sha1", "default")
 
+mode_names = {"SC", "EC", "LOC", "LIN", "A_SC"}
+
 for _, mode in pairs(modes) do
         elapsed = 0
         elapsed_sq = 0
-        print(mode.. "th mode:")
-        f1:write(mode.. "th mode:\n")
+        io.write(mode_names[mode].. " mode:\t")
+        f1:write(mode_names[mode].. " mode:\n")
         for i = 1, n_times do
                 if (i%(n_times/5)) == 0 then
-                        io.write("["..os.time().."] "..i.."th... ")
-                        io.flush()
+                        --io.write("["..os.time().."] "..i.."th... ")
+                        --io.flush()
                 end
                 start_time = socket.gettime()
                 f_tbl[mode]()
@@ -136,7 +126,7 @@ for _, mode in pairs(modes) do
                 f1:flush()
         end
         elapsed = elapsed/n_times
-        print("\nAverage elapsed time = "..elapsed)
+        io.write("Average elapsed time = "..elapsed.."\t")
         f1:write("Average elapsed time = "..elapsed.."\n")
         elapsed_sq = elapsed_sq/n_times
         std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
