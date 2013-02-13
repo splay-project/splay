@@ -57,12 +57,12 @@ local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 --the URL of the Entry Point to the distDB
-local DB_URL = "127.0.0.1:15108"
+local DB_URL = "10.0.2.20:13072"
 
 
 --LOCAL VARIABLES
 
-local block_size = 32 * 1024
+local block_size = 128 * 1024
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -72,10 +72,9 @@ local seq_number = 0
 --VARIABLES FOR LOGGING
 
 --the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
-local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
+local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny *"
 }
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false

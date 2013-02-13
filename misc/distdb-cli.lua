@@ -15,6 +15,7 @@ local function_list = {
 	["send_get_key_list"] = send_get_key_list,
 	["send_get_master"] = send_get_master,
 	["send_get_all_records"] = send_get_all_records,
+	["send_del_all_records"] = send_del_all_records,
 	["send_change_log_lvl"] = send_change_log_lvl
 }
 

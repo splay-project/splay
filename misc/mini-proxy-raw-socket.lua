@@ -13,16 +13,10 @@ local open_transactions = {}
 --VARIABLES FOR LOGGING
 
 --the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
-local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
---local logfile = "<print>"
+--local logfile = os.getenv("HOME").."/logflexifs/log.txt"
+local logfile = "<print>"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny PROSODY_MODULE",
-	"deny RAW_DATA",
-	"deny COMPARE",
-	"allow ADD_DEL_TIDS",
-	"allow DB_OP",
-	"allow *"
 }
 local logbatching = false
 local global_details = true
@@ -34,7 +28,7 @@ init_logger(logfile, logrules, logbatching, global_details, global_timestamp, gl
 --function send_command_cb: callback function for send_command (gets executed when the HTTP request is answered)
 local function send_command_cb(response, code, request)
 	--starts the logger
-	local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..type(response)..", code="..type(code)..", request="..type(request))
+	local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..type(response)..", code="..code..", request="..type(request))
 	
 	--[[
 	--TODO: check if the response is a 200, and the DB response is positive
@@ -72,9 +66,9 @@ end
 --function send_put: sends a PUT command to the Entry Point
 function send_command(tid, command_name, url, consistency, value, value_len)
 	--starts the logger
-	local log1 = start_logger(".DB_OP send_put", "INPUT", "TID="..tid..", command_name="..command_name..", URL="..url)
+	local log1 = start_logger(".DB_OP send_command", "INPUT", "TID="..tid..", command_name="..command_name..", URL="..url..", consistency="..consistency..", value length="..(value_len or 0))
 	--logs more input
-	log1:logprint("INPUT", "consistency="..consistency..", value="..(value or "nil")..", value length="..value_len)
+	log1:logprint("RAW_DATA INPUT", "value="..(value or "nil"))
 	--defines the options:
 	local options = {
 		--Headers: content length is the size in bytes of the value to be put, content type is plain text, and "Type" holds the consistency model
@@ -85,12 +79,12 @@ function send_command(tid, command_name, url, consistency, value, value_len)
 		},
 		--the body contains the value to be put
 		body = tostring(value),
-		--the method is "PUT " (trailing space required by the prosody libs)
+		--the method is the command name (trailing space required by the prosody libs)
 		method = command_name.." "
 	}
 	--makes the HTTP request
-	local req = http.request(url, options, send_put_cb)
-	--stamps the TID as a piggyback on the request (to be used by send_put_cb)
+	local req = http.request(url, options, send_command_cb)
+	--stamps the TID as a piggyback on the request (to be used by send_command_cb)
 	req.piggyback_tid = tid
 
 end
@@ -136,7 +130,7 @@ repeat
 			--answers "OK" to the FlexiFS client
 			clt1:send("OK\n")
 			--sends the command to the DB
-			send_command(command_name, tid, url.."/"..(key or ""), consistency, value, value_len)
+			send_command(tid, command_name, "http://"..url.."/"..(key or ""), consistency, value, value_len)
 		--if not, it is an ASK command
 		else
 			--initializes the table of "Asked TIDs" (the TIDs whose status is being asked)
