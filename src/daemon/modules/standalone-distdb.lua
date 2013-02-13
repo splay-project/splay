@@ -97,10 +97,10 @@ local locked_keys = {}
 local n_replicas = 3
 --min_replicas_write is the minimum number of nodes that must write a k,v to be considered
 --successful (only for eventually consistent put); TODO maybe this should match with some distdb settings object
-local min_replicas_write = 2
+local min_replicas_write = 1
 --min_replicas_write is the minimum number of nodes that must read k,v to have
 --quorum (only for eventually consistent get); TODO maybe this should match with some distdb settings object
-local min_replicas_read = 2
+local min_replicas_read = 1
 --rpc_timeout is the time in seconds that a node waits for an answer from another node on any rpc call
 local rpc_timeout = 15
 --paxos_propose_timeout is the time in seconds that a Proposer waits that all Acceptors answer a Propose message
@@ -419,7 +419,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_records", v)})
+			rpc.acall(next_node, {"transfer_key", v, local_db.get("db_records", v)})
 		end
 	end
 
@@ -441,7 +441,7 @@ function add_node_to_neighborhood(node)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(previous_node, {"distdb.transfer_key", v, local_db.get("db_records", v)})
+			rpc.acall(previous_node, {"transfer_key", v, local_db.get("db_records", v)})
 		end
 	end
 
@@ -517,7 +517,7 @@ function remove_node_from_neighborhood(node_pos)
 		--if the key is not in the new list
 		if not in_new then
 			--it transfers it to the new next-node AQUI ME QUEDE
-			rpc.acall(next_node, {"distdb.transfer_key", v, local_db.get("db_records", v)})
+			rpc.acall(next_node, {"transfer_key", v, local_db.get("db_records", v)})
 		end
 	end
 
@@ -558,7 +558,7 @@ function receive_gossip(message, neighbor_about)
 	--forward the gossip to the previous node
 	events.thread(function()
 		--l_o:notice(n.short_id..":receive_gossip: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-		rpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
+		rpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"receive_gossip", message, neighbor_about})
 	end)
 
 end
@@ -569,7 +569,7 @@ local function gossip_changes(message, neighbor_about)
 		--create the gossip to the previous node
 		events.thread(function()
 			--l_o:notice(n.short_id..":gossip_changes: gossiping to node="..previous_node.short_id..", message="..message..", about node="..neighbor_about.short_id)
-			rpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"distdb.receive_gossip", message, neighbor_about})
+			rpc.call({ip=previous_node.ip, port=(previous_node.port+2)}, {"receive_gossip", message, neighbor_about})
 		end)
 	end
 end
@@ -621,8 +621,8 @@ function add_me(node_to_add)
 	return neighborhood
 end
 
---function parse_http_request: parses the payload of the HTTP request
-function parse_http_request(socket)
+--function parse_http_req: parses the payload of the HTTP request
+function parse_http_req(socket)
 	--retrieves the first line, in order to get the method
 	local first_line = socket:receive("*l")
 	--initializes an auxiliary variable
@@ -693,7 +693,7 @@ function handle_get(key, type_of_transaction)
 	end
 
 	--constructs the function to call
-	local function_to_call = "distdb."..type_of_transaction.."_get"
+	local function_to_call = type_of_transaction.."_get"
 	--timestamp logging
 	--table.insert(to_report_t, n.short_id..":handle_get: responsible chosen, about to make RPC call. elapsed_time="..(misc.time() - start_time).."\n")
 	--makes the RPC call
@@ -780,7 +780,7 @@ function handle_put(key, type_of_transaction, value)
 	end
 
 	--constructs the function to call
-	local function_to_call = "distdb."..type_of_transaction.."_put"
+	local function_to_call = type_of_transaction.."_put"
 	--timestamp logging
 	--table.insert(to_report_t, n.short_id..":handle_put: responsible chosen, about to make RPC call. elapsed_time="..(misc.time() - start_time).."\n")
 	--makes the RPC call
@@ -846,38 +846,38 @@ local forward_request = {
 
 --FRONT-END FUNCTIONS
 
---function handle_http_message: handles the incoming messages (HTTP requests)
-function handle_http_message(socket)
+--function handle_http_req: handles the incoming messages (HTTP requests)
+function handle_http_req(socket)
 	--logs entrance
-	--l_o:debug(n.short_id..":handle_http_message: START")
+	--l_o:debug(n.short_id..":handle_http_req: START")
 	--timestamp logging
 	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":handle_http_message: START. elapsed_time=0\n"}
+	--local to_report_t = {n.short_id..":handle_http_req: START. elapsed_time=0\n"}
 
 	--gets the client IP address and port from the socket
 	local client_ip, client_port = socket:getpeername()
 	--parses the HTTP message and extracts the HTTP method, the requested resource, etc.
-	local method, resource, http_version, headers, body = parse_http_request(socket)
+	local method, resource, http_version, headers, body = parse_http_req(socket)
 	--the resource has the format /resource
 	resource = string.sub(resource, 2)
 	--logs
-	--l_o:debug(n.short_id..":handle_http_message: resource is "..resource)
+	--l_o:debug(n.short_id..":handle_http_req: resource is "..resource)
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":handle_http_message: http message parsed. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":handle_http_req: http message parsed. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--the value is the body if it exists
 	local value = body
 	--the header Type tells if the transaction is strongly consistent, eventually consistent, or paxos
 	local type_of_transaction = headers["Type"] or headers["type"]
 	--logs
-	--l_o:debug(n.short_id..":handle_http_message: http request parsed, a "..method.." request will be forwarded")
-	--l_o:debug(n.short_id..":handle_http_message: resource=", resource)
-	--l_o:debug(n.short_id..":handle_http_message: value=", value)
+	--l_o:debug(n.short_id..":handle_http_req: http request parsed, a "..method.." request will be forwarded")
+	--l_o:debug(n.short_id..":handle_http_req: resource=", resource)
+	--l_o:debug(n.short_id..":handle_http_req: value=", value)
 	--forwards the request to a specific handle function
 	local ok, answer = forward_request[method](resource, type_of_transaction, value)
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":handle_http_message: method was performed. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":handle_http_req: method was performed. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--initializes the response body, code and content type as nil
 	local http_response_body, http_response_code, http_response_content_type
@@ -905,7 +905,7 @@ function handle_http_message(socket)
 	end
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":handle_http_message: answer was encoded. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":handle_http_req: answer was encoded. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
@@ -922,13 +922,13 @@ function handle_http_message(socket)
 	end
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":handle_http_message: all work is done, ready to send. elapsed_time="..(misc.time() - start_time).."\n")
+	--table.insert(to_report_t, n.short_id..":handle_http_req: all work is done, ready to send. elapsed_time="..(misc.time() - start_time).."\n")
 
 	--send the HTTP response
 	socket:send(http_response)
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":handle_http_message: sent. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":handle_http_req: sent. elapsed_time="..(misc.time() - start_time))
 	--flushes all timestamp logs
 	--l_o:notice(table.concat(to_report_t))
 end
@@ -974,7 +974,7 @@ function init(job)
 		--starts the RPC server for internal communication
 		rpc.server(n.port)
 		--HTTP server listens through the RPC port+1
-		net.server(n.port+1, handle_http_message)
+		net.server(n.port+1, handle_http_req)
 
 		--initializes DB tables ("db_records" and "db_keys")
 		local_db.open("db_records", "hash")
@@ -1011,7 +1011,7 @@ function init(job)
 					--waits for random(0.2-0.4) sec
 					events.sleep(0.2 + (math.random(20)/100))
 					--asks the RDV if it's busy gossiping
-					ok1, answer1 = rpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"distdb.is_gossiping"})
+					ok1, answer1 = rpc.acall({ip=job_nodes[1].ip, port=(job_nodes[1].port+2)}, {"is_gossiping"})
 					--if answer is not OK, we keep trying
 					if not ok1 then
 						rdv_busy = true
@@ -1021,7 +1021,7 @@ function init(job)
 					end
 				end
 				--makes RPC call "add_me" to RDV node
-				neighborhood = rpc.call(job_nodes[1], {"distdb.add_me", n})
+				neighborhood = rpc.call(job_nodes[1], {"add_me", n})
 			end
 
 			--gets the position from the neighborhood table
@@ -1160,11 +1160,11 @@ function consistent_put(key, value)
 				--if there's a value to put
 				if value then
 					--makes RPC call to put_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					rpc_ok, rpc_answer = rpc.acall(v, {"put_local", key, value, n})
 				--if value is nil
 				else
 					--makes RPC call to del_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.del_local", key})
+					rpc_ok, rpc_answer = rpc.acall(v, {"del_local", key})
 				end
 					--timestamp logging
 				--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." Put in "..v.id.." done. elapsed_time="..(misc.time() - start_time).."\n")
@@ -1297,11 +1297,11 @@ function evtl_consistent_put(key, value)
 				--if there's a value to put
 				if value then
 					--makes RPC call to put_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.put_local", key, value, n})
+					rpc_ok, rpc_answer = rpc.acall(v, {"put_local", key, value, n})
 				--if value is nil
 				else
 					--makes RPC call to del_local
-					rpc_ok, rpc_answer = rpc.acall(v, {"distdb.del_local", key})
+					rpc_ok, rpc_answer = rpc.acall(v, {"del_local", key})
 				end
 					--timestamp logging
 				--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." put in "..v.id.." done. elapsed_time="..(misc.time() - start_time).."\n")
@@ -1488,7 +1488,7 @@ function evtl_consistent_get(key)
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
-				local rpc_ok, rpc_answer = rpc.acall(v, {"distdb.get_local", key})
+				local rpc_ok, rpc_answer = rpc.acall(v, {"get_local", key})
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
@@ -1711,7 +1711,7 @@ end
 function send_paxos_proposal(v, prop_id, key)
 	--logs entrance
 	--l_o:debug(n.short_id..":send_paxos_proposal: START, for node=", shorten_id(v.id), "key=", shorten_id(key), "propID=", prop_id)
-	return rpc.acall(v, {"distdb.receive_paxos_proposal", prop_id, key})
+	return rpc.acall(v, {"receive_paxos_proposal", prop_id, key})
 end
 
 --function send_paxos_accept:
@@ -1722,7 +1722,7 @@ function send_paxos_accept(v, prop_id, peers, value, key)
 	for i2,v2 in ipairs(peers) do
 		--l_o:debug(n.short_id..":send_paxos_accept: peers: node="..shorten_id(v2.id))
 	end
-	return rpc.acall(v, {"distdb.receive_paxos_accept", prop_id, peers, value, key})
+	return rpc.acall(v, {"receive_paxos_accept", prop_id, peers, value, key})
 end
 
 --function send_paxos_learn: replaces paxos.send_learn
@@ -1738,11 +1738,11 @@ function send_paxos_learn(v, value, key)
 	--if there's a value to put
 	if value then
 		--makes RPC call to put_local
-		ret_put_local = rpc.call(v, {"distdb.put_local", key, value})
+		ret_put_local = rpc.call(v, {"put_local", key, value})
 	--if value is nil
 	else
 		--makes RPC call to del_local
-		ret_put_local = rpc.call(v, {"distdb.del_local", key})
+		ret_put_local = rpc.call(v, {"del_local", key})
 	end
 
 	--timestamp logging
@@ -2113,6 +2113,7 @@ dofile("../../../misc/logger.lua")
 
 local logfile = "<print>"
 local logrules = {
+	"allow *"
 }
 local logbatching = false
 local global_details = true
