@@ -75,7 +75,6 @@ function send_command(tid, command_name, url, consistency, value, value_len)
 		headers = {
 			["Content-Length"] = value_len,
 			["Content-Type"] =  "plain/text",
-			["No-Ack"] = "false",
 			["Type"] = consistency
 		},
 		--the body contains the value to be put
