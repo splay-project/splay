@@ -144,13 +144,13 @@ l_o = log.new(2, "[".._NAME.."]")
 --locked_keys contains all the keys that are being modified, thus are locked; stored in RAM, i don't think there is need to store in disk - not so big
 local locked_keys = {}
 --n_replicas is the number of nodes that store a k,v record; TODO maybe this should match with some distdb settings object
-local n_replicas = 0
+local n_replicas = 3
 --min_replicas_write is the minimum number of nodes that must write a k,v to be considered
 --successful (only for eventually consistent put); TODO maybe this should match with some distdb settings object
-local min_replicas_write = 0
+local min_replicas_write = 2
 --min_replicas_write is the minimum number of nodes that must read k,v to have
 --quorum (only for eventually consistent get); TODO maybe this should match with some distdb settings object
-local min_replicas_read = 0
+local min_replicas_read = 2
 --rpc_timeout is the time in seconds that a node waits for an answer from another node on any rpc call
 local rpc_timeout = 15
 --paxos_propose_timeout is the time in seconds that a Proposer waits that all Acceptors answer a Propose message
@@ -802,11 +802,7 @@ function handle_put(key, type_of_transaction, value)
 	--local start_time = misc.time()
 	--local to_report_t = {n.short_id..":handle_put: key="..shorten_id(key).." START. elapsed_time=0\n"}
 	
-	--initializes chosen_node
-	local chosen_node
-	--if the transaction is of type "consistent"
-	if type_of_transaction == "consistent" then
-		--the chosen_node is the master of the key
+	--the chosen_node is the master of the key
 	local chosen_node = get_master(key)
 	--logs
 	--l_o:debug(n.short_id..":handle_put: Chosen node="..chosen_node.short_id)
@@ -858,15 +854,19 @@ function handle_del(key, type_of_transaction)
 	return handle_put(key, type_of_transaction, nil)
 end
 
---function handle_change_log_lvl: handles a CHANGE_LOG_LVL request, to set the logging threshold in a new level (1-5)
-function handle_change_log_lvl(log_level)
+--function handle_set_log_lvl: handles a SET_LOG_LVL request, to set the logging threshold in a new level (1-5)
+function handle_set_log_lvl(key, type_of_transaction, log_level)
 	l_o.level = tonumber(log_level)
 	return true
 end
 
---function handle_change__n_replicas: handles a CHANGE_N_REPLICAS request; changes locally in the node the number of replicas that its keys will have
-function handle_change_n_replicas(n_replicas)
-	n_replicas = tonumber(n_replicas)
+--function handle_set_rep_params: handles a SET_REP_PARAMS request; sets locally in the node the replication parameters
+function handle_set_rep_params(key, type_of_transaction, params)
+	local rep_params = serializer.decode(params)
+	n_replicas = rep_params[1]
+	min_replicas_read = rep_params[2]
+	min_replicas_write = rep_params[3]
+	--TODO: GOSSIP THE MESSAGE
 	return true
 end
 
@@ -880,9 +880,9 @@ local forward_request = {
 	["GET_ALL"] = handle_get_all,
 	["DEL_ALL"] = handle_del_all,
 	["GET_KEYS"] = handle_get_keys,
-	["CHANGE_LOG_LVL"] = handle_change_log_lvl,
-	["CHANGE_N_REPLICAS"] = handle_change_n_replicas
-	}
+	["SET_REP_PARAMS"] = handle_set_rep_params,
+	["SET_LOG_LVL"] = handle_set_log_lvl,
+}
 
 
 --FRONT-END FUNCTIONS
@@ -910,13 +910,23 @@ function handle_http_req(socket)
 	local value = body
 	--the header Type tells if the transaction is strongly consistent, eventually consistent, or paxos
 	local type_of_transaction = headers["Type"] or headers["type"]
+	--the header Ack tells whether the client wants to wait for an acknowlegment or not
+	local no_ack = headers["No-Ack"] or headers["no-ack"]
 	--logs
 	--l_o:debug(n.short_id..":handle_http_req: http request parsed, a "..method.." request will be forwarded")
 	--l_o:debug(n.short_id..":handle_http_req: resource=", resource)
 	--l_o:debug(n.short_id..":handle_http_req: value=", value)
 	--forwards the request to a specific handle function
-	local ok, answer = forward_request[method](resource, type_of_transaction, value)
-
+	local ok, answer
+	if no_ack == "true" then
+		events.thread(function()
+			forward_request[method](resource, type_of_transaction, value)
+		end)
+		ok = true
+	else
+		ok, answer = forward_request[method](resource, type_of_transaction, value)
+	end
+	
 	--timestamp logging
 	--table.insert(to_report_t, n.short_id..":handle_http_req: method was performed. elapsed_time="..(misc.time() - start_time).."\n")
 
@@ -994,7 +1004,6 @@ function init(job)
 	if not init_done then
 		--make the init_done flag true
 		init_done = true
-
 		--if not in SPLAY
 		if not job then
 			--logs error
@@ -1021,11 +1030,6 @@ function init(job)
 		local_db.open("db_records", "hash")
 		local_db.open("db_keys", "hash")
 
-		--initializes variables related to replication; TODO this should be configurable
-		n_replicas = 3
-		min_replicas_write = 2
-		min_replicas_read = 2
-		
 		--changing pointers of paxos functions
 		paxos.send_proposal = send_paxos_proposal
 		--receive_paxos_proposal = paxos.receive_proposal
@@ -1114,7 +1118,7 @@ function stop()
 	rpc.stop_server(n.port)
 end
 
---function consistent_put: puts a k,v and waits until all the replicas assure they have a copy; TODO this code can be merged with "evtl_consistent" by setting min_replicas to the total
+--function consistent_put: puts a k,v and waits until all the replicas assure they have a copy; TODO this code can be merged with "evtl_consistent" by setting min_write_replicas to the total
 function consistent_put(key, value)
 	--logs entrance
 	--l_o:debug(n.short_id..":consistent_put: START, for key=", shorten_id(key))
@@ -1233,7 +1237,7 @@ function consistent_put(key, value)
 			end)
 		end
 	end
-	--waits until min_write replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	--waits until min_replicas_write answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
 	successful = events.wait(key, rpc_timeout)
 	--unlocks the key
 	locked_keys[key] = nil
@@ -1569,7 +1573,7 @@ function evtl_consistent_get(key)
 			end
 		end)
 	end
-	--waits until min_read replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	--waits until min_replicas_read replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
 	successful = events.wait(key, rpc_timeout)
 	--if it is not a successful read
 	if not successful then
