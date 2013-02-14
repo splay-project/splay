@@ -21,7 +21,7 @@ local _PINGING = false
 -- _USE_KYOTO controls if the local k,v store uses KyotoCabinet (through splay.restricted_db) or RAM
 local _USE_KYOTO = false
 -- _CLUSTER is set to true if DistDB is running on a cluster
-local _CLUSTER = false
+local _CLUSTER = true
 
 local local_db
 local dbs = {}
@@ -903,6 +903,12 @@ function handle_http_req(socket)
 	log1:logprint("", "answer was encoded")
 	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
+	http_response = http_response.."Date: Thu, 14 Feb 2013 21:04:15 GMT\r\n"
+	http_response = http_response.."Server: Apache\r\n"
+	http_response = http_response.."Location: http://"..n.ip..":"..n.port.."/"..resource.."/\r\n"
+	http_response = http_response.."Content-Length: 0\r\n"
+	http_response = http_response.."Content-Type: text/html; charset=iso-8859-1\r\n"
+	http_response = http_response.."Accept-Ranges: bytes\r\nCache-Control: private, max-age=30\r\nAge: 0\r\nExpires: Thu, 14 Feb 2013 21:04:45 GMT\r\nConnection: Keep-Alive\r\n"
 	--if there is a response body
 	if http_response_body then
 		--concatenates headers "Content-Length" and "Content-Type" describing the body
