@@ -57,7 +57,7 @@ local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 --the URL of the Entry Point to the distDB
-local DB_URL = "10.0.2.20:13072"
+local DB_URL = "10.0.2.20:3001"
 
 
 --LOCAL VARIABLES

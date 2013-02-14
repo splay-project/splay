@@ -54,13 +54,13 @@ key = nil
 start_time = nil
 end_time = nil
 
-modes = {1, 2, 3, 4, 5}
+modes = {1, 2, 3, 4, 5, 6}
 
 f1 = io.open("log-plot1.txt", "w")
 
 key = crypto.evp.digest("sha1", "default")
 
-mode_names = {"SC", "EC", "LOC", "LIN", "ASYNC_SC" "NOACK_LOC"}
+mode_names = {"SC", "EC", "LOC", "LIN", "ASYNC_SC", "NOACK_LOC"}
 
 for _, mode in pairs(modes) do
 		elapsed = 0
