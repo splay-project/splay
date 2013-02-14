@@ -17,6 +17,10 @@ local open_transactions = {}
 local logfile = "<print>"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
+	"deny COMPARE",
+	"deny RAW_DATA",
+	--"deny PROSODY_MODULE",
+	"allow *"
 }
 local logbatching = false
 local global_details = true
@@ -28,7 +32,8 @@ init_logger(logfile, logrules, logbatching, global_details, global_timestamp, gl
 --function send_command_cb: callback function for send_command (gets executed when the HTTP request is answered)
 local function send_command_cb(response, code, request)
 	--starts the logger
-	local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..type(response)..", code="..code..", request="..type(request))
+	--local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..response..", code="..tostring(code)..", request="..type(request))
+	local log1 = start_logger(".DB_OP send_command_cb")
 	
 	--[[
 	--TODO: check if the response is a 200, and the DB response is positive
@@ -68,13 +73,14 @@ function send_command(tid, command_name, url, consistency, value, value_len)
 	--starts the logger
 	local log1 = start_logger(".DB_OP send_command", "INPUT", "TID="..tid..", command_name="..command_name..", URL="..url..", consistency="..consistency..", value length="..(value_len or 0))
 	--logs more input
-	log1:logprint("RAW_DATA INPUT", "value="..(value or "nil"))
+	log1:logprint(".RAW_DATA INPUT", "value="..(value or "nil"))
 	--defines the options:
 	local options = {
 		--Headers: content length is the size in bytes of the value to be put, content type is plain text, and "Type" holds the consistency model
 		headers = {
 			["Content-Length"] = value_len,
 			["Content-Type"] =  "plain/text",
+			["No-Ack"] = "false",
 			["Type"] = consistency
 		},
 		--the body contains the value to be put
@@ -86,7 +92,8 @@ function send_command(tid, command_name, url, consistency, value, value_len)
 	local req = http.request(url, options, send_command_cb)
 	--stamps the TID as a piggyback on the request (to be used by send_command_cb)
 	req.piggyback_tid = tid
-
+	--logs end
+	log1:logprint_flush("END")
 end
 
 --START MAIN ROUTINE

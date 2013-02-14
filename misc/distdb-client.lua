@@ -269,7 +269,7 @@ function send_async_put(tid, url, key, consistency, value)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_async_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--logs
-	log1:logprint(".RAW_DATA", "INPUT", "value=\""..(value or "nil").."\"")
+	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--sets the value

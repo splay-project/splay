@@ -26,8 +26,6 @@ local crypto = require"crypto"
 local misc = require"splay.misc"
 --logger provides some fine tunable logging functions
 require"logger"
---profiler is used for Lua profiling
---require'profiler'
 
 --"CONSTANTS"
 
@@ -57,12 +55,14 @@ local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 --the URL of the Entry Point to the distDB
-local DB_URL = "127.0.0.1:15272"
+--local DB_URL = "10.0.2.19:3001"
+local DB_URL = "127.0.0.1:5003"
 
 
 --LOCAL VARIABLES
 
-local block_size = 128 * 1024
+--local block_size = 128 * 1024
+local block_size = 48
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -75,6 +75,10 @@ local seq_number = 0
 local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
+	"allow cmn_write",
+	"allow write",
+	"allow put_block",
+	"allow send_put"
 }
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
@@ -301,7 +305,7 @@ local function put_block(block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
 	--writes the block in the DB
-	local ok = send_put(DB_URL, block_id, BLOCK_CONSIST, block)
+	local ok = send_put(DB_URL, block_id, nil, BLOCK_CONSIST, block)
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
 		log1:logprint_flush("ERROR END", "", "send_put was not OK")
@@ -766,6 +770,13 @@ end
 
 --START MAIN ROUTINE
 
+--if the amount of argumenst is less than two
+if select('#', ...) < 2 then
+	--prints usage
+	print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
+	--exits
+	os.exit(1)
+end
 --starts the logger
 init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 --starts the logger
@@ -788,7 +799,7 @@ session_id = (1 + (tonumber(session_id_str) or 0)) % 10000
 --logs
 mainlog:logprint("", "new sessionID="..session_id)
 --puts the new sessionID into the DB
-send_put(DB_URL, session_reg_key, "paxos", session_id)
+send_put(DB_URL, session_reg_key, nil, "paxos", session_id)
 --looks if the root_dblock is already in the DB
 local root_dblock = get_dblock(1)
 --logs
@@ -1452,16 +1463,7 @@ mainlog:logprint("", "FlexiFS object created, about to define FUSE options")
 --fills the fuse options out
 fuse_opt = {'flexifs', 'mnt', '-f', '-s', '-d', '-oallow_other'}
 --logs
-mainlog:logprint("", "FUSE options defined")
---if the amount of argumenst is less than two
-if select('#', ...) < 2 then
-	--prints usage
-	print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
-	--exits
-	os.exit(1)
-end
---logs
-mainlog:logprint_flush("END", "about to execute fuse.main")
+mainlog:logprint_flush("END", "FUSE options defined; about to execute fuse.main")
 --cleans the logger
 mainlog = nil
 --starts FUSE
