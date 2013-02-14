@@ -841,7 +841,7 @@ function handle_put(key, type_of_transaction, value)
 			--l_o:error(n.short_id..":handle_put: something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=true. elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=true. elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns the answer of the RPC call
@@ -851,7 +851,7 @@ function handle_put(key, type_of_transaction, value)
 	--logs error
 	--l_o:error(n.short_id..":handle_put: RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":handle_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false. elapsed_time="..(misc.time() - start_time))
 	--flushes all timestamp logs
 	--l_o:notice(table.concat(to_report_t))
 	--returns with error message
@@ -1147,7 +1147,7 @@ function consistent_put(key, value)
 	--if the node is not the master
 	if master_node.id ~= n.id then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error
@@ -1161,7 +1161,7 @@ function consistent_put(key, value)
 	--if the key is locked
 	if false and locked_keys[key] then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error
@@ -1254,7 +1254,7 @@ function consistent_put(key, value)
 	locked_keys[key] = nil
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":consistent_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
 	--flushes all timestamp logs
 	--l_o:notice(table.concat(to_report_t))
 
@@ -1288,7 +1288,7 @@ function evtl_consistent_put(key, value)
 	--if the node is not responsible
 	if not_responsible then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error
@@ -1302,7 +1302,7 @@ function evtl_consistent_put(key, value)
 	--if the key is locked
 	if false and locked_keys[key] then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error
@@ -1391,7 +1391,7 @@ function evtl_consistent_put(key, value)
 	locked_keys[key] = nil
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":evtl_consistent_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success="..tostring(successful)..". elapsed_time="..(misc.time() - start_time))
 	--flushes all timestamp logs
 	--l_o:notice(table.concat(to_report_t))
 
@@ -1423,7 +1423,7 @@ function paxos_put(key, value)
 	--if the node is not responsible
 	if not_responsible then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false(wrong_node). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error
@@ -1433,7 +1433,7 @@ function paxos_put(key, value)
 	--if the key is being modified right now
 	if false and locked_keys[key] then
 		--timestamp logging
-		--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
+		--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=false(locked_key). elapsed_time="..(misc.time() - start_time))
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns with error
@@ -1462,7 +1462,7 @@ function paxos_put(key, value)
 	locked_keys[key] = false
 
 	--timestamp logging
-	--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..tostring(value and value:len()).." success=true. elapsed_time="..(misc.time() - start_time))
+	--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=true. elapsed_time="..(misc.time() - start_time))
 	--flushes all timestamp logs
 	--l_o:notice(table.concat(to_report_t))
 
