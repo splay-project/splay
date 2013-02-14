@@ -246,15 +246,20 @@ function send_get_all(url)
 	return send_command("GET_ALL", url)
 end
 
+--function send_del_all: alias to send_command("DEL_ALL")
+function send_del_all(url)
+	return send_command("DEL_ALL", url)
+end
+
 --function send_set_log_lvl: alias to send_command("SET_LOG_LVL")... key is nil
 function send_set_log_lvl(url, log_level)
-	return send_command("SET_LOG_LVL", url, nil, nil, log_level)
+	return send_command("SET_LOG_LVL", url, nil, nil, nil, log_level)
 end
 
 --function send_set_rep_params: alias to send_command("SET_REP_PARAMS")... key is nil
-function send_rep_params(url, n_replicas, min_replicas_read, min_replicas_write)
+function send_set_rep_params(url, n_replicas, min_replicas_read, min_replicas_write)
 	local rep_params = {n_replicas, min_replicas_read, min_replicas_write}
-	return send_command("SET_REP_PARAMS", url, nil, nil, serializer.encode(rep_params))
+	return send_command("SET_REP_PARAMS", url, nil, nil, nil, serializer.encode(rep_params))
 end
 
 --ASYNCHRONOUS DB OPERATIONS

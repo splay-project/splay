@@ -21,8 +21,23 @@ You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
 
+--REQUIRED FUNCTIONS AND OBJECTS
+
+--assert and error not used but could be
+local assert = assert
+local error = error
+local ipairs = ipairs
+local next = next
+local pairs = pairs
+local pcall = pcall
+local type = type
+local tonumber = tonumber
+local tostring = tostring
+local base = _G
+
 --REQUIRED LIBRARIES
 
+local log = require"splay.log"
 local table = require"table"
 local math = require"math"
 local string = require"string"
@@ -42,21 +57,6 @@ local events	= require"splay.events"
 local serializer	= require"splay.lbinenc"
 --splay.paxos for consistency model through paxos
 local paxos	= require"splay.paxos"
-
---REQUIRED FUNCTIONS AND OBJECTS
-
---assert and error not used but could be
-local assert = assert
-local error = error
-local ipairs = ipairs
-local next = next
-local pairs = pairs
-local pcall = pcall
-local type = type
-local tonumber = tonumber
-local tostring = tostring
-local log = require"splay.log"
-local base = _G
 
 -- _BOOTSTRAPPING controls if the DHT is progressively created by adding nodes to it, or immediately (by taking info from job.nodes)
 local _BOOTSTRAPPING = false
@@ -100,6 +100,17 @@ else
 
 		clear = function(table_name)
 			dbs[table_name] = {}
+		end,
+
+		count = function(table_name)
+			if not dbs[table_name] then
+				return -1
+			end
+			local db_size = 0
+			for i,v in pairs(dbs[table_name]) do
+				db_size = db_size + 1
+			end
+			return db_size
 		end,
 
 		remove = function(table_name, key)
@@ -1118,7 +1129,7 @@ function stop()
 	rpc.stop_server(n.port)
 end
 
---function consistent_put: puts a k,v and waits until all the replicas assure they have a copy; TODO this code can be merged with "evtl_consistent" by setting min_write_replicas to the total
+--function consistent_put: puts a k,v and waits until all the replicas assure they have a copy; TODO this code can be merged with "evtl_consistent" by setting min_replicas_write to the total
 function consistent_put(key, value)
 	--logs entrance
 	--l_o:debug(n.short_id..":consistent_put: START, for key=", shorten_id(key))
@@ -1374,7 +1385,7 @@ function evtl_consistent_put(key, value)
 			end)
 		end
 	end
-	--waits until min_write replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	--waits until min_replicas_write answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
 	successful = events.wait(key, rpc_timeout)
 	--unlocks the key
 	locked_keys[key] = nil

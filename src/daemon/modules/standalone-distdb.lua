@@ -14,8 +14,6 @@ local serializer	= require"splay.lbinenc"
 --splay.paxos for consistency model through paxos
 local paxos	= require"splay.paxos"
 
-local log = require"splay.log"
-
 -- _BOOTSTRAPPING controls if the DHT is progressively created by adding nodes to it, or immediately (by taking info from job.nodes)
 local _BOOTSTRAPPING = false
 -- _PINGING controls if the node pings their neighbors or not
@@ -58,6 +56,17 @@ else
 
 		clear = function(table_name)
 			dbs[table_name] = {}
+		end,
+
+		count = function(table_name)
+			if not dbs[table_name] then
+				return -1
+			end
+			local db_size = 0
+			for i,v in pairs(dbs[table_name]) do
+				db_size = db_size + 1
+			end
+			return db_size
 		end,
 
 		remove = function(table_name, key)
@@ -738,8 +747,11 @@ end
 
 --function handle_del_all: handles a DEL_ALL request, deletes the whole database that the node holds
 function handle_del_all()
+	local log1 = start_logger("handle_del_all")
+	log1:logprint("", "before: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
 	local_db.clear("db_records")
 	local_db.clear("db_keys")
+	log1:logprint("", "after: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
 	return true
 end
 
@@ -806,16 +818,19 @@ end
 
 --function handle_set_log_lvl: handles a SET_LOG_LVL request, to set the logging threshold in a new level (1-5)
 function handle_set_log_lvl(key, type_of_transaction, log_level)
+	local log1 = start_logger("handle_set_log_lvl", "INPUT", "new log level="..log_level)
 	l_o.level = tonumber(log_level)
 	return true
 end
 
 --function handle_set_rep_params: handles a SET_REP_PARAMS request; sets locally in the node the replication parameters
 function handle_set_rep_params(key, type_of_transaction, params)
+	local log1 = start_logger("handle_set_rep_params")
 	local rep_params = serializer.decode(params)
 	n_replicas = rep_params[1]
 	min_replicas_read = rep_params[2]
 	min_replicas_write = rep_params[3]
+	log1:logprint_flush("END", "nº replicas="..n_replicas..", minimum replicas read="..min_replicas_read..", minimum replicas write="..min_replicas_write)
 	--TODO: GOSSIP THE MESSAGE
 	return true
 end
@@ -1063,7 +1078,7 @@ function stop()
 	rpc.stop_server(n.port)
 end
 
---function consistent_put: puts a k,v and waits until all the replicas assure they have a copy; TODO this code can be merged with "evtl_consistent" by setting min_write_replicas to the total
+--function consistent_put: puts a k,v and waits until all the replicas assure they have a copy; TODO this code can be merged with "evtl_consistent" by setting min_replicas_write to the total
 function consistent_put(key, value)
 	--logs entrance
 	--l_o:debug(n.short_id..":consistent_put: START, for key=", shorten_id(key))
@@ -1319,7 +1334,7 @@ function evtl_consistent_put(key, value)
 			end)
 		end
 	end
-	--waits until min_write replicas answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
+	--waits until min_replicas_write answer, or until the rpc_timeout is depleted; TODO match rpc_timeout with settings
 	successful = events.wait(key, rpc_timeout)
 	--unlocks the key
 	locked_keys[key] = nil
@@ -2103,8 +2118,8 @@ local arg_my_pos = tonumber(arg[5])
 local job = {
 	me = {
 		--ip = arg_ip_prefix.."."..(arg_node1_end),
-		ip = arg_ip_prefix.."."..(arg_node1_end + arg_my_pos - 1),
 		--port = arg_port + 2*arg_my_pos - 2
+		ip = arg_ip_prefix.."."..(arg_node1_end + arg_my_pos - 1),
 		port = arg_port
 	},
 	position = arg_my_pos,
@@ -2114,7 +2129,7 @@ local job = {
 
 for i = 1, arg_n_nodes do
 	table.insert(job.nodes, {ip = arg_ip_prefix.."."..(arg_node1_end + i - 1), port = arg_port})
---	table.insert(job.nodes, {ip = arg_ip_prefix.."."..(arg_node1_end), port = arg_port + 2*i - 2})
+	--table.insert(job.nodes, {ip = arg_ip_prefix.."."..(arg_node1_end), port = arg_port + 2*i - 2})
 end
 
 dofile("../../../misc/logger.lua")
