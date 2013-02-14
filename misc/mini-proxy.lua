@@ -17,10 +17,6 @@ local open_transactions = {}
 local logfile = "<print>"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny COMPARE",
-	"deny RAW_DATA",
-	--"deny PROSODY_MODULE",
-	"allow *"
 }
 local logbatching = false
 local global_details = true

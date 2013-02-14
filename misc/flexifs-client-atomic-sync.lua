@@ -54,6 +54,7 @@ local ENOTEMPTY = -39
 local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
+local _NOACK = "false"
 --the URL of the Entry Point to the distDB
 --local DB_URL = "10.0.2.19:3001"
 local DB_URL = "127.0.0.1:5003"
@@ -61,8 +62,8 @@ local DB_URL = "127.0.0.1:5003"
 
 --LOCAL VARIABLES
 
---local block_size = 128 * 1024
-local block_size = 48
+local block_size = 128 * 1024
+--local block_size = 48
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -75,10 +76,6 @@ local seq_number = 0
 local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"allow cmn_write",
-	"allow write",
-	"allow put_block",
-	"allow send_put"
 }
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
@@ -305,7 +302,7 @@ local function put_block(block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
 	--writes the block in the DB
-	local ok = send_put(DB_URL, block_id, nil, BLOCK_CONSIST, block)
+	local ok = send_put(DB_URL, block_id, _NOACK, BLOCK_CONSIST, block)
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
 		log1:logprint_flush("ERROR END", "", "send_put was not OK")

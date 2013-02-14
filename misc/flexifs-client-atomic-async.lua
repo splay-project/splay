@@ -61,8 +61,8 @@ local DB_URL = "127.0.0.1:5003"
 
 --LOCAL VARIABLES
 
---local block_size = 128 * 1024
-local block_size = 48
+local block_size = 128 * 1024
+--local block_size = 48
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -76,12 +76,6 @@ local tid = 100
 local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny RAW_DATA",
-	"allow cmn_write",
-	"allow write",
-	"allow put_block",
-	"allow send_put",
-	"allow send_async_put",
 }
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
@@ -720,7 +714,7 @@ local function cmn_write(buf, offset, iblock)
 			break
 		end
 		--logs
-		log1:logprint("", "Transactions are still open, will ask in half a second...")
+		log1:logprint("", "Transactions are still open, will ask in 0.1s...")
 		--waits half a second and asks again
 		os.execute("sleep 0.1")
 	end
