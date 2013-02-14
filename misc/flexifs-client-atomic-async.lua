@@ -76,6 +76,7 @@ local tid = 100
 local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
+	"deny RAW_DATA",
 	"allow cmn_write",
 	"allow write",
 	"allow put_block",

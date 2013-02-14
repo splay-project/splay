@@ -32,9 +32,8 @@ init_logger(logfile, logrules, logbatching, global_details, global_timestamp, gl
 --function send_command_cb: callback function for send_command (gets executed when the HTTP request is answered)
 local function send_command_cb(response, code, request)
 	--starts the logger
-	--local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..response..", code="..tostring(code)..", request="..type(request))
-	local log1 = start_logger(".DB_OP send_command_cb")
-	
+	local log1 = start_logger(".DB_OP send_command_cb", "INPUT", "response="..response..", code="..tostring(code)..", request="..type(request))
+
 	--[[
 	--TODO: check if the response is a 200, and the DB response is positive
 	CODE FROM send_command IN distdb_client
@@ -61,7 +60,7 @@ local function send_command_cb(response, code, request)
 	--if there was no response body, returns only "true"
 	--]]
 
-	if request.piggyback then
+	if request.piggyback_tid then
 		log1:logprint(".TABLE", "Shutting down "..request.piggyback_tid)
 		log1:logprint(".ADD_DEL_TIDS", "Shutting down "..request.piggyback_tid)
 		open_transactions[request.piggyback_tid] = nil
