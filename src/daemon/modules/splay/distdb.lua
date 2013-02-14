@@ -979,6 +979,8 @@ function handle_http_req(socket)
 			"Content-Type: "..http_response_content_type.."\r\n\r\n"..http_response_body
 	--else
 	else
+		--"Content-Length" is 0
+		http_response = http_response.."Content-Length: 0\r\n"
 		--closes the HTTP message
 		http_response = http_response.."\r\n"
 	end
