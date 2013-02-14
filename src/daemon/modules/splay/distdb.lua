@@ -793,9 +793,6 @@ function handle_del_all()
 	return true
 end
 
-function handle_del_all_noack()
-end
-
 --function handle_put: handles a PUT request as the Entry Point; TODO check about setting N,R,W on the transaction
 function handle_put(key, type_of_transaction, value)
 	--logs entrance
@@ -1443,7 +1440,9 @@ function paxos_put(key, value)
 	--timestamp logging
 	--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." Before calling paxos_write. elapsed_time="..(misc.time() - start_time).."\n")
 	--performs a paxos_write operation
-	local ok, answer = paxos.paxos_write(prop_ids[key], responsibles, paxos_max_retries, value, key)
+	local ok, prop_id, answer = paxos.paxos_write(prop_ids[key], responsibles, paxos_max_retries, value, key)
+	--updates the prop_id (since retries are done inside paxos, the prop ID can change)
+	prop_ids[key] = prop_id
 	--unlocks the key
 	locked_keys[key] = false
 
@@ -1736,17 +1735,22 @@ function paxos_get(key)
 
 	--locks the key; TODO check if this is necessary
 	locked_keys[key] = true
-	--if no previous proposals have been done for this key; TODO why does it always start with 1???
+	--if no previous proposals have been done for this key
 	if not prop_ids[key] then
 		--first number to use is 1
 		prop_ids[key] = 1
+	--if not, the proposal ID is one more than the last recorded
+	else
+		prop_ids[key] = prop_ids[key] + 1
 	end
 	--logs
 	--l_o:debug(n.short_id..":paxos_get: key=", shorten_id(key), "propID=", prop_ids[key])
 	--timestamp logging
 	--table.insert(to_report_t, n.short_id..":paxos_get: key="..shorten_id(key).." Before calling paxos_read. elapsed_time="..(misc.time() - start_time).."\n")
 	--performs a paxos_read operation
-	local ok, answer = paxos.paxos_read(prop_ids[key], responsibles, paxos_max_retries, key)
+	local ok, prop_id, answer = paxos.paxos_read(prop_ids[key], responsibles, paxos_max_retries, key)
+	--updates the prop_id (since retries are done inside paxos, the prop ID can change)
+	prop_ids[key] = prop_id
 	--unlocks the key
 	locked_keys[key] = false
 

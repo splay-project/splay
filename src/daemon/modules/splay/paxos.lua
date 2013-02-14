@@ -197,20 +197,19 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 			--returns failure
 			return false, "failed at Propose phase after "..paxos_max_retries.."retries"
 		end
-		--if a higher prop_id was indicated by the acceptors
-		if newest_prop_id > 0 then
-			--propose 1 more than that prop_id
+		--if a higher prop_id was indicated by the acceptors.
+		if newest_prop_id >= prop_id then
+			--propose 1 more than the newest prop_id
 			prop_id = newest_prop_id + 1
 		end
-		--retries (with retries-1)
+		--tries again (with retries-1)
 		return paxos_operation(operation_type, prop_id, peers, retries-1, value, key)
 	end
 
-	--if it is a "read" operation, return the newest value and finish
+	--if it is a "read" operation, returns true, the successful propID, and the newest value
 	if operation_type == "read" then
-		return true, {newest_value}
+		return true, prop_id, {newest_value}
 	end
-
 
 	local accept_answers = 0
 	--for all acceptors
@@ -249,7 +248,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 	successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout)
 
 	--returns
-	return successful, paxos_op_error_msg
+	return successful, prop_id, paxos_op_error_msg
 end
 
 --to be replaced if paxos is used as a library inside a library; TODO it can maybe improved, with the logic "if it's the same node dont do RPC"
