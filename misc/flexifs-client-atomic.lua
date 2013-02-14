@@ -25,7 +25,7 @@ local crypto = require"crypto"
 --splay.misc used for misc.time
 local misc = require"splay.misc"
 --logger provides some fine tunable logging functions
-local logger = require"logger"
+require"logger"
 --profiler is used for Lua profiling
 --require'profiler'
 
@@ -41,12 +41,17 @@ local S_IFDIR = 4*2^12
 local S_IFBLK = 6*2^12
 local S_IFREG = 2^15
 local S_IFLNK = S_IFREG + S_IFCHR
+
 --standard error codes (errno.h)
 --ENOENT = "No such file or directory"
 local ENOENT = -2
---ENOTEMPTY = "Dir is not empty"
-local ENOTEMPTY = -39
+--EACCES = "Permission denied"
+local EACCES = -13
+--ENOSYS = "Function not implemented"
 local ENOSYS = -38
+--ENOTEMPTY = "Directory not empty"
+local ENOTEMPTY = -39
+
 --consistency types can be "evtl_consistent", "paxos" or "consistent"
 local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
@@ -57,7 +62,7 @@ local DB_URL = "127.0.0.1:15272"
 
 --LOCAL VARIABLES
 
-local block_size = 48
+local block_size = 128 * 1024
 local blank_block = string.rep("\0", block_size)
 --TODO: what is this for? check in memfs
 local open_mode = {'rb','wb','rb+'}
@@ -67,22 +72,10 @@ local seq_number = 0
 --VARIABLES FOR LOGGING
 
 --the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
-local logfile = os.getenv("HOME").."/Desktop/logfusesplay/log.txt"
+local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
-	"deny DIST_DB_CLIENT",
-	"allow FUSE_API",
-	"allow COMMON_OP"
 }
---[["deny FS2DB_OP",
-	"allow *",
-	"allow MAIN",
-	"allow FILE_IBLOCK_OP",
-	"allow DIR_OP",
-	"allow LINK_OP",
-	"allow READ_WRITE_OP",
-	"allow FILE_MISC_OP",
-	"allow MV_CP_OP"]]
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
 local global_details = true
@@ -329,7 +322,7 @@ local function put_iblock(iblock_n, iblock)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_put")
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("iblock:"..iblock_n), IBLOCK_CONSIST, serializer.encode(iblock))
+	return send_put(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST, serializer.encode(iblock))
 end
 --put_dblock does the same as put_iblock
 local put_dblock = put_iblock
@@ -339,7 +332,7 @@ local function put_file(filename, iblock_n)
 	--starts and ends the logger
 	local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("file:"..filename), IBLOCK_CONSIST, iblock_n)
+	return send_put(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST, iblock_n)
 end
 
 --DELETE FUNCTIONS
@@ -371,7 +364,7 @@ local function del_iblock(iblock_n, is_dblock)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_del")
 	--returns the result of send_del
-	return send_del(DB_URL, hash_string("iblock:"..iblock_n), IBLOCK_CONSIST)
+	return send_del(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST)
 end
 
 --function del_dblock: alias to del_iblock with flag is_dblock set to true
@@ -384,7 +377,7 @@ local function del_file(filename)
 	--starts the logger
 	local log1 = start_end_logger(".FS2DB_OP del_file", "calling send_del", "filename="..filename)
 	--returns the result of send_del
-	return send_del(DB_URL, hash_string("file:"..filename), IBLOCK_CONSIST)
+	return send_del(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST)
 end
 
 --function gc_block: sends a block to the Garbage Collector
@@ -397,7 +390,7 @@ end
 --function cmn_getattr: gets the attributes of an iblock
 local function cmn_getattr(iblock)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP cmn_getattr", "", "")
+	local log1 = start_logger(".COMMON_OP cmn_getattr")
 	--prints the iblock
 	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--logs END of the function and flushes all logs
@@ -456,7 +449,7 @@ local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, co
 		}
 		--prints the iblock
 		log1:logprint(".TABLE", "iblock created", tbl2str("iblock", 0, iblock))
-		--puts the iblock, because it's new
+		--puts iblock in the DB, because it's new
 		put_iblock(iblock_n, iblock)
 	end
 	--puts the file, because it's new
@@ -622,7 +615,7 @@ local function cmn_write(buf, offset, iblock)
 	--calculates the offset on the end block
 	local rem_end_offset = ((offset+size-1) % block_size)
 	--logs
-	log1:logprint("", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
+	log1:logprint(".BLOCK_SIZE_WRITE", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
 	log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
 	--block, block_id and to_write_in_block are initialized to nil
 	local block, block_id, to_write_in_block
@@ -787,9 +780,11 @@ local session_reg_key = hash_string("session_id")
 --logs
 mainlog:logprint("", "session_register="..session_reg_key)
 --gets the session register from the DB
-session_id = tonumber(send_get(DB_URL, session_reg_key, "paxos"))
+local ok, session_id_str = send_get(DB_URL, session_reg_key, "paxos")
+--logs
+mainlog:logprint("", "sessionID="..(session_id_str or "nil"))
 --increments the sessionID. NOTE + TODO: the read + increment + write of the session register is not an atomic process
-session_id = (1 + (session_id or 0)) % 10000
+session_id = (1 + (tonumber(session_id_str) or 0)) % 10000
 --logs
 mainlog:logprint("", "new sessionID="..session_id)
 --puts the new sessionID into the DB

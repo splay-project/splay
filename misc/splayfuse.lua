@@ -25,7 +25,7 @@ local crypto = require"crypto"
 --splay.misc used for misc.time
 local misc = require"splay.misc"
 --logger provides some fine tunable logging functions
-local logger = require"logger"
+require"logger"
 --profiler is used for Lua profiling
 --require'profiler'
 
@@ -80,8 +80,8 @@ local logrules = {
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
 local global_details = true
-local global_timestamp = true
-local global_elapsed = true
+local global_timestamp = false
+local global_elapsed = false
 
 --MISC FUNCTIONS
 
@@ -227,7 +227,7 @@ end
 --function get_iblock: gets an iblock from the DB
 local function get_iblock(iblock_n)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_iblock", "INPUT", "iblock_n="..tostring(iblock_n), true)
+	local log1 = start_logger(".FS2DB_OP get_iblock", "INPUT", "iblock_n="..tostring(iblock_n))
 	--if the iblock is nil, returns nil
 	if not iblock_n then
 		log1:logprint_flush("END", "block_n is nil")
@@ -263,7 +263,7 @@ local get_dblock = get_iblock
 --function get_iblock_n: gets an iblock number from the DB, by identifying it with the filename
 local function get_iblock_n(filename)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_iblock_n", "INPUT", "filename="..filename, true)
+	local log1 = start_logger(".FS2DB_OP get_iblock_n", "INPUT", "filename="..filename)
 	--reads the file from the DB
 	local ok, iblock_n = send_get(DB_URL, hash_string("file:"..filename), IBLOCK_CONSIST)
 	--if the reading was not successful (ERROR), returns nil
@@ -283,7 +283,7 @@ local get_dblock_n = get_iblock_n
 --function get_iblock_from_filename: gets an iblock from the DB, by identifying it with the filename
 local function get_iblock_from_filename(filename)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_iblock_from_filename", "INPUT", "filename="..filename, true)
+	local log1 = start_logger(".FS2DB_OP get_iblock_from_filename", "INPUT", "filename="..filename)
 	--the iblock number is extracted by calling get_iblock_n
 	local iblock_n = get_iblock_n(filename)
 	--logs END of the function and flushes all logs
@@ -302,7 +302,7 @@ local function put_block(tid, block_id, block)
 	--starts the logger
 	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
 	--writes the block in the DB (write block operations are asynchronous)
-	local ok = async_send_put(tid, DB_URL, block_id, BLOCK_CONSIST, block)
+	local ok = send_async_put(tid, DB_URL, block_id, BLOCK_CONSIST, block)
 	--if the writing was not successful (ERROR), returns nil
 	if not ok then
 		log1:logprint_flush("ERROR END", "", "send_put was not OK")
@@ -323,7 +323,7 @@ local function put_iblock(iblock_n, iblock)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_put")
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("iblock:"..iblock_n), IBLOCK_CONSIST, serializer.encode(iblock))
+	return send_put(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST, serializer.encode(iblock))
 end
 --put_dblock does the same as put_iblock
 local put_dblock = put_iblock
@@ -333,7 +333,7 @@ local function put_file(filename, iblock_n)
 	--starts and ends the logger
 	local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("file:"..filename), IBLOCK_CONSIST, iblock_n)
+	return send_put(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST, iblock_n)
 end
 
 --DELETE FUNCTIONS
@@ -341,9 +341,9 @@ end
 --function del_block: deletes a block from the DB
 local function del_block(tid, block_id)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_n="..block_n)
-	--returns the result of async_send_del (write block operations are asynchronous)
-	return async_send_del(tid, DB_URL, block_id, BLOCK_CONSIST)
+	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_async_del", "block_n="..block_n)
+	--returns the result of send_async_del (write block operations are asynchronous)
+	return send_async_del(tid, DB_URL, block_id, BLOCK_CONSIST)
 end
 
 --function del_iblock: deletes an iblock from the DB
@@ -370,7 +370,7 @@ local function del_iblock(iblock_n, is_dblock)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_del")
 	--returns the result of send_del
-	return send_del(DB_URL, hash_string("iblock:"..iblock_n), IBLOCK_CONSIST)
+	return send_del(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST)
 end
 
 --function del_dblock: alias to del_iblock with flag is_dblock set to true
@@ -383,7 +383,7 @@ local function del_file(filename)
 	--starts the logger
 	local log1 = start_end_logger(".FS2DB_OP del_file", "calling send_del", "filename="..filename)
 	--returns the result of send_del
-	return send_del(DB_URL, hash_string("file:"..filename), IBLOCK_CONSIST)
+	return send_del(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST)
 end
 
 --function gc_block: sends a block to the Garbage Collector
@@ -408,7 +408,7 @@ end
 --function cmn_mk_file: creates a file in the FS; if iblock_n is specified, it does not creates a new iblock
 local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, content)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_mk_file", "INPUT", "filename="..filename..", iblock_n="..tostring(iblock_n), true)
+	local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_mk_file", "INPUT", "filename="..filename..", iblock_n="..tostring(iblock_n))
 	--initializes iblock
 	local iblock = nil
 	--if the function must check first if the iblock exists already
@@ -805,7 +805,7 @@ session_id = (1 + (tonumber(session_id_str) or 0)) % 10000
 --logs
 mainlog:logprint("", "new sessionID="..session_id)
 --puts the new sessionID into the DB
-send_put(DB_URL, session_reg_key, "paxos", session_id)
+send_put(DB_URL, session_reg_key, nil, "paxos", session_id)
 --looks if the root_dblock is already in the DB
 local root_dblock = get_dblock(1)
 --logs
@@ -872,7 +872,7 @@ local flexifs = {
 	--function getattr: gets the attributes of a requested file
 	getattr = function(self, filename)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP getattr", "INPUT", "filename="..filename, true)
+		local log1 = start_logger(".FUSE_API .FILE_MISC_OP getattr", "INPUT", "filename="..filename)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
@@ -1464,7 +1464,7 @@ local flexifs = {
 	--function symlink: makes a symbolic link
 	symlink = function(self, from, to)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .LINK_OP symlink", "INPUT", "from="..from.."to="..to, true)
+		local log1 = start_logger(".FUSE_API .LINK_OP symlink", "INPUT", "from="..from.."to="..to)
 		--flags:
 		local flags = {
 			CHECK_EXIST=true,

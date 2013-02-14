@@ -31,19 +31,22 @@ f1:close()
 
 f_tbl = {
 	[1] = function()
-		send_put(url, key, "consistent", data)
+		send_put(url, key, nil, "consistent", data)
 	end,
 	[2] = function()
-		send_put(url, key, "evtl_consistent", data)
+		send_put(url, key, nil, "evtl_consistent", data)
 	end,
 	[3] = function()
-		send_put(url, key, "local", data)
+		send_put(url, key, nil, "local", data)
 	end,
 	[4] = function()
-		send_put(url, key, "paxos", data)
+		send_put(url, key, nil, "paxos", data)
 	end,
 	[5] = function()
-		async_send_put(tid, url, key, "consistent", data)
+		send_async_put(tid, url, key, "consistent", data)
+	end,
+	[6] = function()
+		send_put(url, key, "true", "local", data)
 	end,
 }
 --[[
@@ -105,32 +108,47 @@ f1 = io.open("log-plot1.txt", "w")
 
 key = crypto.evp.digest("sha1", "default")
 
-mode_names = {"SC", "EC", "LOC", "LIN", "A_SC"}
+mode_names = {"SC", "EC", "LOC", "LIN", "ASYNC_SC" "NOACK_LOC"}
 
 for _, mode in pairs(modes) do
-        elapsed = 0
-        elapsed_sq = 0
-        io.write(mode_names[mode].. " mode:\t")
-        f1:write(mode_names[mode].. " mode:\n")
-        for i = 1, n_times do
-                if (i%(n_times/5)) == 0 then
-                        --io.write("["..os.time().."] "..i.."th... ")
-                        --io.flush()
-                end
-                start_time = socket.gettime()
-                f_tbl[mode]()
-                end_time = socket.gettime()
-                elapsed = elapsed + (end_time - start_time)
-                elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
-                f1:write("elapsed time = "..(end_time - start_time).."\n")
-                f1:flush()
-        end
-        elapsed = elapsed/n_times
-        io.write("Average elapsed time = "..elapsed.."\t")
-        f1:write("Average elapsed time = "..elapsed.."\n")
-        elapsed_sq = elapsed_sq/n_times
-        std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
-        print("Standard Dev  = "..std_dev)
-        f1:write("Standard Dev  = "..std_dev.."\n")
+		elapsed = 0
+		elapsed_sq = 0
+		io.write(mode_names[mode].. ":\t")
+		f1:write(mode_names[mode].. ":\n")
+		for i = 1, n_times do
+			start_time = socket.gettime()
+			f_tbl[mode]()
+			end_time = socket.gettime()
+			elapsed = elapsed + (end_time - start_time)
+			elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
+			f1:write(i.."th: elapsed time = "..(end_time - start_time).."\n")
+			f1:flush()
+		end
+		elapsed = elapsed/n_times
+		io.write("Average elapsed time = "..elapsed.."\t")
+		f1:write("Average elapsed time = "..elapsed.."\n")
+		elapsed_sq = elapsed_sq/n_times
+		std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
+		print("Standard Dev  = "..std_dev)
+		f1:write("Standard Dev  = "..std_dev.."\n")
+		--we dispose the first n_times experiments, but i'm interested in seeing the results anyway
+		elapsed = 0
+		elapsed_sq = 0
+		for i = 1, n_times do
+			start_time = socket.gettime()
+			f_tbl[mode]()
+			end_time = socket.gettime()
+			elapsed = elapsed + (end_time - start_time)
+			elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
+			f1:write((n_times + i).."th: elapsed time = "..(end_time - start_time).."\n")
+			f1:flush()
+		end
+		elapsed = elapsed/n_times
+		io.write("Average elapsed time = "..elapsed.."\t")
+		f1:write("Average elapsed time = "..elapsed.."\n")
+		elapsed_sq = elapsed_sq/n_times
+		std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
+		print("Standard Dev  = "..std_dev)
+		f1:write("Standard Dev  = "..std_dev.."\n")
 end
 f1:close()

@@ -4,15 +4,16 @@
 -- Neuchâtel 2011-2012
 
 -- BEGIN LIBRARIES
---for the communication over HTTP
+--for the synchronous HTTP client
 local socket = require"socket"
 local http   = require"socket.http"
-local async_http = require"prosody.http"
 local ltn12  = require"ltn12"
+--for the asynchronous HTTP client
+local async_http = require"prosody.http"
+-- splay.lbinenc handles native encoding/decoding for HTTP messages
 local serializer = require"splay.lbinenc"
 --logger provides some fine tunable logging functions
 require"logger"
-local rpc = require"splay.rpc"
 -- END LIBRARIES
 
 _LOCAL = false
@@ -31,9 +32,10 @@ local mini_proxy_port = 33500
 --SYNCHRONOUS DB OPERATIONS
 
 --function send_command: sends a command to the Entry Point
-function send_command(command_name, url, key, consistency, value)
+function send_command(command_name, url, key, no_ack, consistency, value)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "url="..url..", key="..key..", consistency="..consistency)
+	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "url="..url..", key="..tostring(key)
+		..", don't wait for ACK="..tostring(no_ack)..", consistency="..tostring(consistency))
 	--prints the value
 	log1:logprint(".RAW_DATA", "INPUT", "value="..(value or "nil"))
 	--response_body will contain the returning data from the web-service call
@@ -59,6 +61,12 @@ function send_command(command_name, url, key, consistency, value)
 	if consistency then
 		--header Type is filled with it
 		request_headers["Type"] = consistency
+	end
+
+	--if no_ack is specified
+	if no_ack then
+		--header No-Ack is filled with it
+		request_headers["No-Ack"] = no_ack
 	end
 
 	--makes the HTTP request
@@ -105,7 +113,7 @@ function send_get(url, key, consistency)
 		return true, kv_records[key]
 	end
 
-	local ok, answer = send_command("GET", url, key, consistency)
+	local ok, answer = send_command("GET", url, key, nil, consistency)
 	
 	local chosen_value = nil
 
@@ -160,16 +168,12 @@ function send_get(url, key, consistency)
 end
 
 --function send_put: sends a "PUT" command to the Entry Point
-function send_put(url, key, consistency, value, delay)
+function send_put(url, key, no_ack, consistency, value)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)
+		..", don't wait for ACK="..tostring(no_ack)..", consistency model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
-	if delay then
-		log1:logprint("", "Starting delay")
-		os.execute("sleep "..delay)
-		log1:logprint("", "Ending delay")
-	end
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--sets the value
@@ -182,13 +186,14 @@ function send_put(url, key, consistency, value, delay)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--calls send_command("PUT") and returns the results
-	return send_command("PUT", url, key, consistency, value)
+	return send_command("PUT", url, key, no_ack, consistency, value)
 end
 
 --function send_del: sends a "DEL" command to the Entry Point
-function send_del(url, key, consistency)
+function send_del(url, key, no_ack, consistency)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)
+		..", don't wait for ACK="..tostring(no_ack)..", consistency model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--deletes the record
@@ -201,7 +206,7 @@ function send_del(url, key, consistency)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--returns the result of send_command
-	return send_command("DEL", url, key, consistency)
+	return send_command("DEL", url, key, no_ack, consistency)
 end
 
 --function send_get_nodes: alias to send_command("GET_NODES")
@@ -241,17 +246,23 @@ function send_get_all(url)
 	return send_command("GET_ALL", url)
 end
 
---function send_change_log_lvl: alias to send_command("GET_CHANGE_LOG_LVL")
-function send_change_log_lvl(url, log_level)
-	return send_command("CHANGE_LOG_LVL", url, log_level)
+--function send_set_log_lvl: alias to send_command("SET_LOG_LVL")... key is nil
+function send_set_log_lvl(url, log_level)
+	return send_command("SET_LOG_LVL", url, nil, nil, log_level)
+end
+
+--function send_set_rep_params: alias to send_command("SET_REP_PARAMS")... key is nil
+function send_rep_params(url, n_replicas, min_replicas_read, min_replicas_write)
+	local rep_params = {n_replicas, min_replicas_read, min_replicas_write}
+	return send_command("SET_REP_PARAMS", url, nil, nil, serializer.encode(rep_params))
 end
 
 --ASYNCHRONOUS DB OPERATIONS
 
---function async_send_put: sends a "PUT" command to the Entry Point (asynchronous mode)
-function async_send_put(tid, url, key, consistency, value)
+--function send_async_put: sends a "PUT" command to the Entry Point (asynchronous mode)
+function send_async_put(tid, url, key, consistency, value)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_async_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..(value or "nil").."\"")
 	--if the transaction is local (bypass distributed DB)
@@ -283,10 +294,10 @@ function async_send_put(tid, url, key, consistency, value)
 	end
 end
 
---function async_send_del: sends a "DEL" command to the Entry Point (asynchronous mode)
-function async_send_del(tid, url, key, consistency)
+--function send_async_del: sends a "DEL" command to the Entry Point (asynchronous mode)
+function send_async_del(tid, url, key, consistency)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT async_send_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_async_del", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--sets the value
