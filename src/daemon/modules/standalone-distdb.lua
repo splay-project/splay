@@ -18,10 +18,18 @@ local paxos	= require"splay.paxos"
 local _BOOTSTRAPPING = false
 -- _PINGING controls if the node pings their neighbors or not
 local _PINGING = false
--- _USE_KYOTO controls if the local k,v store uses KyotoCabinet (through splay.restricted_db) or RAM
-local _USE_KYOTO = false
 -- _CLUSTER is set to true if DistDB is running on a cluster
 local _CLUSTER = true
+--if the IP address is localhost, is not a cluster
+if arg[1] == "127.0.0" and arg[2] == "1" then
+	_CLUSTER = false
+end
+-- _USE_KYOTO controls if the local k,v store uses KyotoCabinet (through splay.restricted_db) or RAM
+local _USE_KYOTO = true
+--if not a cluster, no kyoto
+if not _CLUSTER then
+	_USE_KYOTO = false
+end
 
 local local_db
 local dbs = {}
@@ -903,20 +911,16 @@ function handle_http_req(socket)
 	log1:logprint("", "answer was encoded")
 	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
-	http_response = http_response.."Date: Thu, 14 Feb 2013 21:04:15 GMT\r\n"
-	http_response = http_response.."Server: Apache\r\n"
-	http_response = http_response.."Location: http://"..n.ip..":"..n.port.."/"..resource.."/\r\n"
-	http_response = http_response.."Content-Length: 0\r\n"
-	http_response = http_response.."Content-Type: text/html; charset=iso-8859-1\r\n"
-	http_response = http_response.."Accept-Ranges: bytes\r\nCache-Control: private, max-age=30\r\nAge: 0\r\nExpires: Thu, 14 Feb 2013 21:04:45 GMT\r\nConnection: Keep-Alive\r\n"
 	--if there is a response body
 	if http_response_body then
 		--concatenates headers "Content-Length" and "Content-Type" describing the body
 		http_response = http_response..
-			"Content-Length: "..#http_response_body.."\r\n"..
+			"Content-Length: "..http_response_body:len().."\r\n"..
 			"Content-Type: "..http_response_content_type.."\r\n\r\n"..http_response_body
 	--else
 	else
+		--"Content-Length" is 0
+		http_response = http_response.."Content-Length: 0\r\n"
 		--closes the HTTP message
 		http_response = http_response.."\r\n"
 	end
