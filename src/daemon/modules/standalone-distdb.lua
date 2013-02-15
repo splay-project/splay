@@ -1477,11 +1477,7 @@ end
 --function evtl_consistent_get: returns the value of a certain key; reads the value from a minimum of replicas
 function evtl_consistent_get(key)
 	--logs entrance
-	--log1:logprint("DEBUG", ":evtl_consistent_get: START, for key=", shorten_id(key))
-	--logs
-	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":evtl_consistent_get: key="..shorten_id(key).." START. elapsed_time=0\n"}
-
+	--local log1 = start_logger("evtl_consistent_get", "INPUT", "key=", shorten_id(key))
 	--initializes not_responsible as false
 	local not_responsible = true
 	--gets the responsibles of the key
@@ -1499,7 +1495,7 @@ function evtl_consistent_get(key)
 	--if the node is not one of the responsibles
 	if not_responsible then
 		--logs
-		--table.insert(to_report_t, n.short_id..":evtl_consistent_get: key="..shorten_id(key).." END success=false(wrong_node)")
+		log1:logprint_flush("END", "success=false(wrong_node)")
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns false with an error message
@@ -1507,7 +1503,7 @@ function evtl_consistent_get(key)
 	end
 
 	--logs
-	--table.insert(to_report_t, n.short_id..":evtl_consistent_get: key="..shorten_id(key).." Im a responsible. elapsed_time="..(misc.time() - start_time).."\n")
+	log1:logprint("", "Im a responsible")
 
 	--initializes variables
 	local answers = 0
@@ -1523,6 +1519,13 @@ function evtl_consistent_get(key)
 			if v.id == n.id then
 				--gets the value locally; TODO deal with attemps of writing a previous version
 				answer_data[v.id] = local_get(key)
+				log1:logprint("", "got from myself="..type(answer_data[v.id]))
+				answers = answers + 1
+				--if answers reaches the minimum number of replicas that must read
+				if answers >= min_replicas_read then
+					--triggers the unlocking of the key
+					events.fire(key)
+				end
 			--if it is not the same ID as the node
 			else
 				--gets the value remotely with an RPC call
@@ -1530,8 +1533,14 @@ function evtl_consistent_get(key)
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
+					log1:logprint("", "got from "..v.id.."="..type(answer_data[v.id]))
 					--increments answers
 					answers = answers + 1
+					--if answers reaches the minimum number of replicas that must read
+					if answers >= min_replicas_read then
+						--triggers the unlocking of the key
+						events.fire(key)
+					end
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--logs the error
@@ -1547,11 +1556,6 @@ function evtl_consistent_get(key)
 				--log1:logprint("DEBUG", ":evtl_consistent_get: value=", answer_data[v.id].value)
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
 					--log1:logprint("DEBUG", ":evtl_consistent_get: vector_clock=",i2,v2)
-				end
-				--if answers reaches the minimum number of replicas that must read
-				if answers >= min_replicas_read then
-					--triggers the unlocking of the key
-					events.fire(key)
 				end
 			end
 		end)
@@ -2086,11 +2090,7 @@ end
 --function local_get: returns v from a k,v pair.
 function local_get(key)
 	--logs entrance
-	--log1:logprint("DEBUG", ":local_get: START, for key="..shorten_id(key))
-	--logs
-	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":local_get: key="..shorten_id(key).." START. elapsed_time=0\n"}
-
+	local log1 = start_logger("local_get", "INPUT", "key="..shorten_id(key))
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
 		--logs
@@ -2099,30 +2099,22 @@ function local_get(key)
 		--returns nil
 		return nil
 	end
-
 	--if delay is simulated
 	if sim_delay then
 		--adding a random waiting time to simulate different response times
 		events.sleep(math.random(100)/100)
 	end
-
 	--retrieves the serialized version of the record
 	local kv_record_serialized = local_db.get("db_records", key)
 	--if there's no record
 	if not kv_record_serialized then
 		--logs error
-		--log1:logprint("ERROR", ":local_get: record is nil")
-		--logs
-		--table.insert(to_report_t, n.short_id..":local_get: key="..shorten_id(key).." END success=false")
-		--l_o:notice(table.concat(to_report_t))
+		log1:logprint_flush("END", "record is nil")
 		--returns nil
 		return nil
 	end
-
 	--logs
-	--table.insert(to_report_t, n.short_id..":local_get: key="..shorten_id(key).." END success=true")
-	--l_o:notice(table.concat(to_report_t))
-	--returns the record as table
+	log1:logprint_flush("END", "success=true")
 	return serializer.decode(kv_record_serialized)
 end
 
@@ -2167,6 +2159,8 @@ local logfile = "<print>"
 local logrules = {
 	"allow MAIN",
 	"allow handle_get_tids_status",
+	"allow evtl_consistent_get",
+	"allow local_get"
 }
 local logbatching = false
 local global_details = true

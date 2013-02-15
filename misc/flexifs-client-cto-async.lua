@@ -51,7 +51,7 @@ local ENOSYS = -38
 local ENOTEMPTY = -39
 
 --consistency types can be "evtl_consistent", "paxos" or "consistent"
-local IBLOCK_CONSIST = "consistent"
+local IBLOCK_CONSIST = "evtl_consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
 local _POLL_INTERVAL = 0.1
@@ -77,8 +77,11 @@ local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
 local logrules = {
 	"deny RAW_DATA",
-	"allow release",
-	"allow wait_all_transactions"
+	"deny TABLE",
+	"allow get_iblock",
+	"allow unlink",
+	"allow del_iblock",
+	"allow wait_all_transactions",
 }
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
 local logbatching = false
@@ -335,7 +338,7 @@ end
 --function del_block: deletes a block from the DB
 local function del_block(block_id, sync_mode)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_n="..block_n)
+	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_id="..block_id)
 	--returns the result of send_del
 	return send_del(DB_URL, block_id, sync_mode, BLOCK_CONSIST)
 end
@@ -348,10 +351,10 @@ local function del_iblock(iblock_n, is_dblock)
 	local iblock = get_iblock(iblock_n)
 	--if the iblock is not a dblock, it has pointers to block that must be deleted too.TODO Try to pass this part to unlink, so i have identical versions of del_iblock
 	if not is_dblock then
- 		--for all the blocks refered by the iblock
+		--for all the blocks refered by the iblock
 		for i = 1, (#(iblock.content) - 1) do
 			--logs
-			log1:logprint_flush("", "about to delete block with ID="..v)
+			log1:logprint("", "about to delete block with ID="..iblock.content[i])
 			--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
 			del_block(iblock.content[i], "async")
 			--TODO: NOT CHECKING WITH ASK_TIDS/GET_TIDS_STATUS like in the case of PUT
@@ -535,8 +538,8 @@ local function cmn_rm_file(filename, flags)
 	if flags.IS_DIR then
 		--decrements the number of links in the parent dblock (one less dir pointing to it with the ".." element)
 		parent.nlink = parent.nlink - 1
-		--removes the iblock from the DB
-		del_iblock(iblock.ino)
+		--removes the dblock from the DB
+		del_dblock(iblock.ino)
 	--if not
 	else
 		--decrements the number of links
