@@ -2125,8 +2125,6 @@ dofile("../../../misc/logger.lua")
 
 local logfile = "<print>"
 local logrules = {
---	"deny RAW_DATA",
-	"allow *"
 }
 local logbatching = false
 local global_details = true
