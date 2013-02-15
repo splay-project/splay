@@ -146,6 +146,8 @@ local im_gossiping = false
 local gossiping_elpsd_t = 0
 --times_waiting_before_ping: trick variable to make the node wait n periods of 5s to start pinging its neighbor
 local times_waiting_before_ping = 4
+local current_tid = 1
+local open_transactions = {}
 local ping_period = 5
 
 --Testers:
@@ -761,7 +763,33 @@ function handle_del_all()
 	log1:logprint("", "before: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
 	local_db.clear("db_records")
 	local_db.clear("db_keys")
-	log1:logprint("", "after: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
+	log1:logprint_flush("END", "after: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
+	return true
+end
+
+--function handle_get_tids_status: handles a GET_TIDS_STATUS request, looks if the TIDs included in the received list are still open or not
+function handle_get_tids_status(key, type_of_transaction, tid_list_str)
+	local log1 = start_logger("handle_get_tids_status")
+	--deserializes the list of TIDs
+	local tid_list = serializer.decode(tid_list_str)
+	--logs the received TID List and the table of open transactions
+	log1:logprint(".TABLE", tbl2str("TID List", 0, tid_list))
+	log1:logprint(".TABLE", tbl2str("Open Transactions", 0, open_transactions))
+	--for all the TIDs in the received list
+	for i,v in ipairs(tid_list) do
+		--and for all open transactions
+		for i2,v2 in pairs(open_transactions) do
+			--logs
+			log1:logprint(".COMPARE", "comparing "..v.." and "..i2)
+			--compares; if they are the same (it means that the asked TIDs is in the list of open transactions)
+			if v == i2 then
+				--logs
+				log1:logprint(".COMPARE", v.." and "..i2.." are the same!!")
+				--returns true, true
+				return true, true
+			end
+		end
+	end
 	return true
 end
 
@@ -848,6 +876,7 @@ local forward_request = {
 	["GET_KEYS"] = handle_get_keys,
 	["SET_REP_PARAMS"] = handle_set_rep_params,
 	["SET_LOG_LVL"] = handle_set_log_lvl,
+	["GET_TIDS_STATUS"] = handle_get_tids_status,
 }
 
 
@@ -868,12 +897,23 @@ function handle_http_req(socket)
 	--the header Type tells if the transaction is strongly consistent, eventually consistent, or paxos
 	local type_of_transaction = headers["Type"] or headers["type"]
 	--the header Ack tells whether the client wants to wait for an acknowlegment or not
-	local no_ack = headers["No-Ack"] or headers["no-ack"]
+	local sync_mode = headers["Sync-Mode"] or headers["sync-mode"]
 	--logs
 	log1:logprint("", "http request parsed, method="..method..", resource="..resource)
 	--forwards the request to a specific handle function
 	local ok, answer
-	if no_ack == "true" then
+	if sync_mode == "async" then
+		current_tid = current_tid + 1
+		local tid = current_tid
+		events.thread(function()
+			open_transactions[tid] = true
+			forward_request[method](resource, type_of_transaction, value)
+			--TODO: instead of true or false/nil, i should write the result of forward_request
+			open_transactions[tid] = nil
+		end)
+		ok = true
+		answer = tid
+	elseif sync_mode == "noack" then
 		events.thread(function()
 			forward_request[method](resource, type_of_transaction, value)
 		end)
@@ -1490,6 +1530,8 @@ function evtl_consistent_get(key)
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
+					--increments answers
+					answers = answers + 1
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--logs the error
@@ -1498,7 +1540,7 @@ function evtl_consistent_get(key)
 			end
 			--logs
 			--table.insert(to_report_t, n.short_id..":evtl_consistent_get: key="..shorten_id(key).." Get on "..v.short_id.."done. elapsed_time="..(misc.time() - start_time).."\n")
-			--if there is an answer
+			--if there is an answer	
 			if answer_data[v.id] then
 				--logs
 				--log1:logprint("DEBUG", ":evtl_consistent_get: received from node=", v.short_id, "key=", shorten_id(key), "enabled=", answer_data[v.id].enabled)
@@ -1506,8 +1548,6 @@ function evtl_consistent_get(key)
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
 					--log1:logprint("DEBUG", ":evtl_consistent_get: vector_clock=",i2,v2)
 				end
-				--increments answers
-				answers = answers + 1
 				--if answers reaches the minimum number of replicas that must read
 				if answers >= min_replicas_read then
 					--triggers the unlocking of the key
@@ -2125,6 +2165,8 @@ dofile("../../../misc/logger.lua")
 
 local logfile = "<print>"
 local logrules = {
+	"allow MAIN",
+	"allow handle_get_tids_status",
 }
 local logbatching = false
 local global_details = true

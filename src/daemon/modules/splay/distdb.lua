@@ -804,6 +804,24 @@ function handle_del_all()
 	return true
 end
 
+--function handle_get_tids_status: handles a GET_TIDS_STATUS request, looks if the TIDs included in the received list are still open or not
+function handle_get_tids_status(key, type_of_transaction, tid_list_str)
+	--deserializes the list of TIDs
+	local tid_list = serializer.decode(tid_list_str)
+	--for all the TIDs in the received list
+	for i,v in ipairs(tid_list) do
+		--and for all open transactions
+		for i2,v2 in pairs(open_transactions) do
+			--compares; if they are the same (it means that the asked TIDs is in the list of open transactions)
+			if v == i2 then
+				--returns true, true
+				return true, true
+			end
+		end
+	end
+	return true
+end
+
 --function handle_put: handles a PUT request as the Entry Point; TODO check about setting N,R,W on the transaction
 function handle_put(key, type_of_transaction, value)
 	--logs entrance
@@ -893,6 +911,7 @@ local forward_request = {
 	["GET_KEYS"] = handle_get_keys,
 	["SET_REP_PARAMS"] = handle_set_rep_params,
 	["SET_LOG_LVL"] = handle_set_log_lvl,
+	["GET_TIDS_STATUS"] = handle_get_tids_status,
 }
 
 
@@ -922,14 +941,25 @@ function handle_http_req(socket)
 	--the header Type tells if the transaction is strongly consistent, eventually consistent, or paxos
 	local type_of_transaction = headers["Type"] or headers["type"]
 	--the header Ack tells whether the client wants to wait for an acknowlegment or not
-	local no_ack = headers["No-Ack"] or headers["no-ack"]
+	local sync_mode = headers["Sync-Mode"] or headers["sync-mode"]
 	--logs
 	--l_o:debug(n.short_id..":handle_http_req: http request parsed, a "..method.." request will be forwarded")
 	--l_o:debug(n.short_id..":handle_http_req: resource=", resource)
 	--l_o:debug(n.short_id..":handle_http_req: value=", value)
 	--forwards the request to a specific handle function
 	local ok, answer
-	if no_ack == "true" then
+	if sync_mode == "async" then
+		current_tid = current_tid + 1
+		local tid = current_tid
+		events.thread(function()
+			open_transactions[tid] = true
+			forward_request[method](resource, type_of_transaction, value)
+			--TODO: instead of true or false/nil, i should write the result of forward_request
+			open_transactions[tid] = nil
+		end)
+		ok = true
+		answer = tid
+	elseif sync_mode == "noack" then
 		events.thread(function()
 			forward_request[method](resource, type_of_transaction, value)
 		end)
@@ -975,7 +1005,7 @@ function handle_http_req(socket)
 	if http_response_body then
 		--concatenates headers "Content-Length" and "Content-Type" describing the body
 		http_response = http_response..
-			"Content-Length: "..#http_response_body.."\r\n"..
+			"Content-Length: "..http_response_body:len().."\r\n"..
 			"Content-Type: "..http_response_content_type.."\r\n\r\n"..http_response_body
 	--else
 	else
@@ -1560,6 +1590,8 @@ function evtl_consistent_get(key)
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
+					--increments answers
+					answers = answers + 1
 				--else (maybe network problem, dropped message) TODO also consider timeouts!
 				else
 					--logs the error
@@ -1576,8 +1608,6 @@ function evtl_consistent_get(key)
 				for i2,v2 in pairs(answer_data[v.id].vector_clock) do
 					--l_o:debug(n.short_id..":evtl_consistent_get: vector_clock=",i2,v2)
 				end
-				--increments answers
-				answers = answers + 1
 				--if answers reaches the minimum number of replicas that must read
 				if answers >= min_replicas_read then
 					--triggers the unlocking of the key

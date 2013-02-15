@@ -32,10 +32,10 @@ local mini_proxy_port = 33500
 --SYNCHRONOUS DB OPERATIONS
 
 --function send_command: sends a command to the Entry Point
-function send_command(command_name, url, key, no_ack, consistency, value)
+function send_command(command_name, url, resource, sync_mode, consistency, value)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "url="..url..", key="..tostring(key)
-		..", don't wait for ACK="..tostring(no_ack)..", consistency="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "URL="..url..", resource="..tostring(resource)
+		..", Synchronization Mode="..tostring(sync_mode)..", consistency="..tostring(consistency))
 	--prints the value
 	log1:logprint(".RAW_DATA", "INPUT", "value="..(value or "nil"))
 	--response_body will contain the returning data from the web-service call
@@ -57,21 +57,18 @@ function send_command(command_name, url, key, no_ack, consistency, value)
 		request_source = ltn12.source.empty()
 	end
 
-	--if consistency is specified
+	--if consistency is specified. TODO: test if the "if" statement can be deleted
 	if consistency then
-		--header Type is filled with it
+		--header Type is filled with it. TODO: change the name of the header to "Consistency"
 		request_headers["Type"] = consistency
 	end
 
-	--if no_ack is specified
-	if no_ack then
-		--header No-Ack is filled with it
-		request_headers["No-Ack"] = no_ack
-	end
-
+	--fills the header Sync-Mode ("sync" is the default)
+	request_headers["Sync-Mode"] = sync_mode or "sync"
+	
 	--makes the HTTP request
 	local response_to_discard, response_status, response_headers, response_status_line = http.request({
-		url = "http://"..url.."/"..(key or ""),
+		url = "http://"..url.."/"..(resource or ""),
 		method = command_name,
 		headers = request_headers,
 		source = request_source,
@@ -91,9 +88,10 @@ function send_command(command_name, url, key, no_ack, consistency, value)
 	--if it arrives here, it means it didn't enter inside the if
 	log1:logprint("", "200 OK received")
 	--logs END of the function and flushes all logs
-	log1:logprint("END", "", "result_mode="..tostring(result_mode))
+	log1:logprint("END")
 	--if there is a response_body
 	if type(response_body) == "table" and response_body[1] then
+		log1:logprint(".TABLE", tbl2str("Response Body", 0, serializer.decode(response_body[1])))
 		--returns true (indicates a succesful call), and the return value
 		return true, serializer.decode(response_body[1])
 	end
@@ -104,7 +102,7 @@ end
 --function send_get: sends a "GET" command to the Entry Point, then merges vector clocks if necessary
 function send_get(url, key, consistency)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_get", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_get", "INPUT", "url="..tostring(url)..", key="..tostring(key)..", Consistency Model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--logs END of the function and flushes all logs
@@ -113,7 +111,7 @@ function send_get(url, key, consistency)
 		return true, kv_records[key]
 	end
 
-	local ok, answer = send_command("GET", url, key, nil, consistency)
+	local ok, answer = send_command("GET", url, key, "sync", consistency)
 	
 	local chosen_value = nil
 
@@ -168,10 +166,10 @@ function send_get(url, key, consistency)
 end
 
 --function send_put: sends a "PUT" command to the Entry Point
-function send_put(url, key, no_ack, consistency, value)
+function send_put(url, key, sync_mode, consistency, value)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_put", "INPUT", "url="..tostring(url)..", key="..tostring(key)
-		..", don't wait for ACK="..tostring(no_ack)..", consistency model="..tostring(consistency))
+		..", Synchronization Mode="..tostring(sync_mode)..", Consistency Model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
 	--if the transaction is local (bypass distributed DB)
@@ -186,14 +184,14 @@ function send_put(url, key, no_ack, consistency, value)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--calls send_command("PUT") and returns the results
-	return send_command("PUT", url, key, no_ack, consistency, value)
+	return send_command("PUT", url, key, sync_mode, consistency, value)
 end
 
 --function send_del: sends a "DEL" command to the Entry Point
-function send_del(url, key, no_ack, consistency)
+function send_del(url, key, sync_mode, consistency)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_del", "INPUT", "url="..tostring(url)..", key="..tostring(key)
-		..", don't wait for ACK="..tostring(no_ack)..", consistency model="..tostring(consistency))
+		..", Synchronization Mode="..tostring(sync_mode)..", Consistency Model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--deletes the record
@@ -206,7 +204,7 @@ function send_del(url, key, no_ack, consistency)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_command")
 	--returns the result of send_command
-	return send_command("DEL", url, key, no_ack, consistency)
+	return send_command("DEL", url, key, sync_mode, consistency)
 end
 
 --function send_get_nodes: alias to send_command("GET_NODES")
@@ -253,13 +251,13 @@ end
 
 --function send_set_log_lvl: alias to send_command("SET_LOG_LVL")... key is nil
 function send_set_log_lvl(url, log_level)
-	return send_command("SET_LOG_LVL", url, nil, nil, nil, log_level)
+	return send_command("SET_LOG_LVL", url, nil, "sync", nil, log_level)
 end
 
 --function send_set_rep_params: alias to send_command("SET_REP_PARAMS")... key is nil
 function send_set_rep_params(url, n_replicas, min_replicas_read, min_replicas_write)
 	local rep_params = {n_replicas, min_replicas_read, min_replicas_write}
-	return send_command("SET_REP_PARAMS", url, nil, nil, nil, serializer.encode(rep_params))
+	return send_command("SET_REP_PARAMS", url, nil, "sync", nil, serializer.encode(rep_params))
 end
 
 --ASYNCHRONOUS DB OPERATIONS
@@ -267,7 +265,7 @@ end
 --function send_async_put: sends a "PUT" command to the Entry Point (asynchronous mode)
 function send_async_put(tid, url, key, consistency, value)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_async_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_async_put", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", Consistency Model="..tostring(consistency))
 	--logs
 	log1:logprint(".RAW_DATA", "INPUT", "value=\""..value.."\"")
 	--if the transaction is local (bypass distributed DB)
@@ -302,7 +300,7 @@ end
 --function send_async_del: sends a "DEL" command to the Entry Point (asynchronous mode)
 function send_async_del(tid, url, key, consistency)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_async_del", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", consistency model="..tostring(consistency))
+	local log1 = start_logger(".DIST_DB_CLIENT send_async_del", "INPUT", "tid="..tid..", url="..tostring(url)..", key="..tostring(key)..", Consistency Model="..tostring(consistency))
 	--if the transaction is local (bypass distributed DB)
 	if _LOCAL then
 		--sets the value
@@ -337,6 +335,7 @@ function send_ask_tids(tid_list)
 	--starts the logger
 	local log1 = start_logger(".DIST_DB_CLIENT send_ask_tids")
 	--logs
+	log1:logprint(".TABLE", "INPUT", tbl2str("tid_list", 0, tid_list))
 	--retrieves new socket
 	local sock1 = socket.tcp()
 	--tries to connect to the mini proxy
@@ -351,4 +350,16 @@ function send_ask_tids(tid_list)
 	log1:logprint_flush("END")
 	--returns the answer
 	return answer
+end
+
+--function send_get_tids_status: asks if some TIDs are still open
+function send_get_tids_status(url, tid_list)
+	--starts the logger
+	local log1 = start_logger(".DIST_DB_CLIENT send_get_tids_status", "INPUT", "URL="..url)
+	--logs
+	log1:logprint(".TABLE", "INPUT", tbl2str("tid_list", 0, tid_list))
+	--logs END of the function and flushes all logs
+	log1:logprint_flush("END")
+	--returns the answer
+	return send_command("GET_TIDS_STATUS", url, nil, "sync", nil, serializer.encode(tid_list))
 end

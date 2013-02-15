@@ -51,9 +51,10 @@ local ENOSYS = -38
 local ENOTEMPTY = -39
 
 --consistency types can be "evtl_consistent", "paxos" or "consistent"
-local IBLOCK_CONSIST = "consistent"
+local IBLOCK_CONSIST = "evtl_consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
+local _POLL_INTERVAL = 0.1
 --the URL of the Entry Point to the distDB
 --local DB_URL = "10.0.2.19:3001"
 local DB_URL = "127.0.0.1:5003"
@@ -68,7 +69,6 @@ local blank_block = string.rep("\0", block_size)
 local open_mode = {'rb','wb','rb+'}
 local session_id = nil
 local seq_number = 0
-local tid = 100
 
 --VARIABLES FOR LOGGING
 
@@ -298,20 +298,11 @@ local get_dblock_from_filename = get_iblock_from_filename
 --PUT FUNCTIONS
 
 --function put_block: puts a block into the DB
-local function put_block(tid, block_id, block)
+local function put_block(block_id, sync_mode, block)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "tid="..tid..", block_id="..block_id..", block_size="..string.len(block))
-	--writes the block in the DB (write block operations are asynchronous)
-	local ok = send_async_put(tid, DB_URL, block_id, BLOCK_CONSIST, block)
-	--if the writing was not successful (ERROR), returns nil
-	if not ok then
-		log1:logprint_flush("ERROR END", "", "send_put was not OK")
-		return nil
-	end
-	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
-	--returns true
-	return true
+	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", sync_mode="..sync_mode..", block_size="..string.len(block))
+	--writes the block in the DB and returns the result
+	return send_put(DB_URL, block_id, sync_mode, BLOCK_CONSIST, block)
 end
 
 --function put_iblock: puts an iblock into the DB
@@ -323,7 +314,7 @@ local function put_iblock(iblock_n, iblock)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_put")
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST, serializer.encode(iblock))
+	return send_put(DB_URL, hash_string("iblock:"..iblock_n), "sync", IBLOCK_CONSIST, serializer.encode(iblock))
 end
 --put_dblock does the same as put_iblock
 local put_dblock = put_iblock
@@ -333,17 +324,17 @@ local function put_file(filename, iblock_n)
 	--starts and ends the logger
 	local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST, iblock_n)
+	return send_put(DB_URL, hash_string("file:"..filename), "sync", IBLOCK_CONSIST, iblock_n)
 end
 
 --DELETE FUNCTIONS
 
 --function del_block: deletes a block from the DB
-local function del_block(tid, block_id)
+local function del_block(block_id, sync_mode)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_async_del", "block_n="..block_n)
-	--returns the result of send_async_del (write block operations are asynchronous)
-	return send_async_del(tid, DB_URL, block_id, BLOCK_CONSIST)
+	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_n="..block_n)
+	--returns the result of send_del
+	return send_del(DB_URL, block_id, sync_mode, BLOCK_CONSIST)
 end
 
 --function del_iblock: deletes an iblock from the DB
@@ -352,25 +343,26 @@ local function del_iblock(iblock_n, is_dblock)
 	local log1 = start_logger(".FS2DB_OP del_iblock", "INPUT", "iblock_n="..iblock_n..", is_dblock="..tostring(is_dblock))
 	--reads the iblock from the DB
 	local iblock = get_iblock(iblock_n)
-	--if the iblock is not a dblock, it has pointers to block that must be deleted too
+	--if the iblock is not a dblock, it has pointers to block that must be deleted too.TODO Try to pass this part to unlink, so i have identical versions of del_iblock
 	if not is_dblock then
  		--for all the blocks refered by the iblock
-		for i,v in ipairs(iblock.content) do
+		for i = 1, (#(iblock.content) - 1) do
 			--logs
 			log1:logprint_flush("", "about to delete block with ID="..v)
 			--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
-			del_block(tid, v)
-			--TODO: NOT CHECKING WITH ASK_TIDS like in the case of PUT
+			del_block(iblock.content[i], "async")
+			--TODO: NOT CHECKING WITH ASK_TIDS/GET_TIDS_STATUS like in the case of PUT
 			--inserts tid in the list of open transactions
 			--table.insert(iblock.open_transactions, tid)
 			--increments the transactionID
-			tid = tid + 1
 		end
+		--the last one is sync
+		del_block(iblock.content[#(iblock.content)], "sync")
 	end
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_del")
 	--returns the result of send_del
-	return send_del(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST)
+	return send_del(DB_URL, hash_string("iblock:"..iblock_n), "sync", IBLOCK_CONSIST)
 end
 
 --function del_dblock: alias to del_iblock with flag is_dblock set to true
@@ -388,9 +380,37 @@ end
 
 --function gc_block: sends a block to the Garbage Collector
 local function gc_block(block_id)
+		--TODO: fill this
 end
 
-
+--function wait_all_transactions: asks every 0.1 sec if a list of transactions is done and exits only if the answer is positive
+local function wait_all_transactions(open_transactions)
+	--starts the logger
+	local log1 = start_logger(".FS2DB_OP wait_all_transactions")
+	--prints the iblock
+	log1:logprint(".TABLE", "INPUT", tbl2str("open_transactions", 0, open_transactions))
+	--loop to ask if all transactions belonging to the file are done
+	local ok, still_open
+	while true do
+		log1:logprint("", "doing the loop...")
+		--if the table of open transactions is empty, breaks the while loop (no need to ask anything to the mini proxy)
+		if #(open_transactions) == 0 then
+			log1:logprint("", "empty table???")
+			break
+		end
+		--asks the mini proxy for the pending transactions; if none of the list is still open (the function returns "false"), breaks the loop
+		ok, still_open = send_get_tids_status(DB_URL, open_transactions)
+		log1:logprint("", "ok="..tostring(ok)..", still_open="..tostring(still_open))
+		if  ok and not still_open then
+			break
+		end
+		--logs
+		log1:logprint("", "Transactions are still open, will ask in 0.1s...")
+		--waits half a second and asks again
+		os.execute("sleep ".._POLL_INTERVAL)
+	end
+end
+	
 --COMMON ROUTINES FOR FUSE OPERATIONS
 
 --function cmn_getattr: gets the attributes of an iblock
@@ -623,8 +643,8 @@ local function cmn_write(buf, offset, iblock)
 	--logs
 	log1:logprint(".BLOCK_SIZE_WRITE", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
 	log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
-	--block, block_id and to_write_in_block are initialized to nil
-	local block, block_id, to_write_in_block
+	--block, block_id, to_write_in_block, ok and tid are initialized to nil
+	local block, block_id, to_write_in_block, ok, tid
 	--initializes the block offset as the offset in the starting block
 	local block_offset = rem_start_offset
 	--calculates if the size of the file changed; if the offset+size is bigger than the original size, yes.
@@ -684,40 +704,32 @@ local function cmn_write(buf, offset, iblock)
 		block_id = hash_string(tostring(iblock.ino)..block)
 		--logs
 		log1:logprint("", "about to put the block", "blockID="..block_id)
-		--puts the block
-		put_block(tid, block_id, block)
-		--logs
-		log1:logprint("", "block written, about to add "..tid.." in the iblock's open transactions list")
-		--inserts tid in the list of open transactions
-		table.insert(open_transactions, tid)
-		--increments the transactionID
-		tid = tid + 1
+		--if it is the last block
+		if i == end_block_idx then
+			--puts the block in a synchronous fashion
+			put_block(block_id, "sync", block)
+		--if not
+		else
+			--puts the block in an asynchronous fashion
+			ok, tid = put_block(block_id, "async", block)
+			--logs
+			log1:logprint("", "block written, about to add "..tid.." in the iblock's open transactions list")
+			--inserts tid in the list of open transactions
+			table.insert(open_transactions, tid)
+		end
 		--logs
 		log1:logprint("", "about to change iblock", "iblock.content["..i.."]="..tostring(iblock.content[i]))
 		--inserts the new block number in the contents table
 		iblock.content[i] = block_id
-		--the block offset is set to 0
 		--logs
 		log1:logprint("", "iblock changed,", "iblock.content["..i.."]="..tostring(iblock.content[i]))
+		--the block offset is set to 0
 		block_offset = 0
 		--logs
 		log1:logprint("", "end of a cycle")
 	end
-	--loop to ask if all transactions belonging to the file are done
-	while true do
-		--if the table of open transactions is empty, breaks the while loop (no need to ask anything to the mini proxy)
-		if #(open_transactions) == 0 then
-			break
-		end
-		--asks the mini proxy for the pending transactions; if none of the list is still open (the function returns "false"), breaks the loop
-		if send_ask_tids(open_transactions) == "false" then
-			break
-		end
-		--logs
-		log1:logprint("", "Transactions are still open, will ask in 0.1s...")
-		--waits half a second and asks again
-		os.execute("sleep 0.1")
-	end
+	--waits that all transactions are done
+	wait_all_transactions(open_transactions)
 	--if the size changed
 	if size_changed then
 		--changes the metadata in the iblock
@@ -778,7 +790,7 @@ local function cmn_truncate(iblock, size)
 		--the blockID is the hash of the iblock number concatenated with the block data
 		local block_id = hash_string(tostring(iblock.ino)..write_in_last_block)
 		--puts the block
-		put_block(block_id, write_in_last_block)
+		put_block(block_id, "sync", write_in_last_block)
 		--replaces with the new blockID the entry blockIdx in the contents table
 		iblock.content[block_idx] = block_id
 	end
@@ -1403,7 +1415,7 @@ local flexifs = {
 		from_iblock.nlink = from_iblock.nlink + 1
 		--prints iblock
 		log1:logprint(".TABLE", "new \"from\" iblock", tbl2str("iblock", 0, iblock))
-		--puts the iblock, because nlink was incremented
+		--updates iblock in DB, because nlink was incremented
 		put_iblock(from_iblock.ino, from_iblock)
 		--logs END of the function and flushes all logs
 		log1:logprint_flush("END")

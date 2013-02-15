@@ -54,7 +54,6 @@ local ENOTEMPTY = -39
 local IBLOCK_CONSIST = "consistent"
 local DBLOCK_CONSIST = IBLOCK_CONSIST
 local BLOCK_CONSIST = "consistent"
-local _NOACK = "false"
 --the URL of the Entry Point to the distDB
 --local DB_URL = "10.0.2.18:3001"
 local DB_URL = "127.0.0.1:5005"
@@ -298,20 +297,11 @@ local get_dblock_from_filename = get_iblock_from_filename
 --PUT FUNCTIONS
 
 --function put_block: puts a block into the DB
-local function put_block(block_id, block)
+local function put_block(block_id, sync_mode, block)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", block_size="..string.len(block))
-	--writes the block in the DB
-	local ok = send_put(DB_URL, block_id, _NOACK, BLOCK_CONSIST, block)
-	--if the writing was not successful (ERROR), returns nil
-	if not ok then
-		log1:logprint_flush("ERROR END", "", "send_put was not OK")
-		return nil
-	end
-	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
-	--returns true
-	return true
+	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", sync_mode="..sync_mode..", block_size="..string.len(block))
+	--writes the block in the DB and returns the result
+	return send_put(DB_URL, block_id, sync_mode, BLOCK_CONSIST, block)
 end
 
 --function put_iblock: puts an iblock into the DB
@@ -323,7 +313,7 @@ local function put_iblock(iblock_n, iblock)
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_put")
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("iblock:"..iblock_n), nil, IBLOCK_CONSIST, serializer.encode(iblock))
+	return send_put(DB_URL, hash_string("iblock:"..iblock_n), "sync", IBLOCK_CONSIST, serializer.encode(iblock))
 end
 --put_dblock does the same as put_iblock
 local put_dblock = put_iblock
@@ -333,17 +323,17 @@ local function put_file(filename, iblock_n)
 	--starts and ends the logger
 	local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
 	--returns the result of send_put
-	return send_put(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST, iblock_n)
+	return send_put(DB_URL, hash_string("file:"..filename), "sync", IBLOCK_CONSIST, iblock_n)
 end
 
 --DELETE FUNCTIONS
 
 --function del_block: deletes a block from the DB
-local function del_block(block_id)
+local function del_block(block_id, sync_mode)
 	--starts and ends the logger
 	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_n="..block_n)
 	--returns the result of send_del
-	return send_del(DB_URL, block_id, nil, BLOCK_CONSIST)
+	return send_del(DB_URL, block_id, sync_mode, BLOCK_CONSIST)
 end
 
 --function del_iblock: deletes an iblock from the DB
@@ -359,13 +349,13 @@ local function del_iblock(iblock_n, is_dblock)
 			--logs
 			log1:logprint_flush("", "about to delete block with ID="..v)
 			--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
-			del_block(v)
+			del_block(v, "sync")
 		end
 	end
 	--logs END of the function and flushes all logs
 	log1:logprint_flush("END", "calling send_del")
 	--returns the result of send_del
-	return send_del(DB_URL, hash_string("iblock:"..iblock_n), IBLOCK_CONSIST)
+	return send_del(DB_URL, hash_string("iblock:"..iblock_n), "sync", IBLOCK_CONSIST)
 end
 
 --function del_dblock: alias to del_iblock with flag is_dblock set to true
@@ -383,6 +373,7 @@ end
 
 --function gc_block: sends a block to the Garbage Collector
 local function gc_block(block_id)
+		--TODO: fill this
 end
 
 
@@ -679,14 +670,14 @@ local function cmn_write(buf, offset, iblock)
 		--logs
 		log1:logprint("", "about to put the block", "blockID="..block_id)
 		--puts the block
-		put_block(block_id, block)
+		put_block(block_id, "sync", block)
 		--logs
 		log1:logprint("", "block written, about to change iblock", "iblock.content["..i.."]="..tostring(iblock.content[i]))
 		--inserts the new block number in the contents table
 		iblock.content[i] = block_id
-		--the block offset is set to 0
 		--logs
 		log1:logprint("", "iblock changed,", "iblock.content["..i.."]="..tostring(iblock.content[i]))
+		--the block offset is set to 0
 		block_offset = 0
 		--logs
 		log1:logprint("", "end of a cycle")
@@ -751,7 +742,7 @@ local function cmn_truncate(iblock, size)
 		--the blockID is the hash of the iblock number concatenated with the block data
 		local block_id = hash_string(tostring(iblock.ino)..write_in_last_block)
 		--puts the block
-		put_block(block_id, write_in_last_block)
+		put_block(block_id, "sync", write_in_last_block)
 		--replaces with the new blockID the entry blockIdx in the contents table
 		iblock.content[block_idx] = block_id
 	end
@@ -1383,7 +1374,7 @@ local flexifs = {
 	--function link: makes a hard link
 	link = function(self, from, to, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .LINK_OP link", "INPUT", "from="..from..", to="..to, true)
+		local log1 = start_logger(".FUSE_API .LINK_OP link", "INPUT", "from="..from..", to="..to)
 		--if the "from" file is equal to the "to" file. TODO: the man page says it should do that, but BASH's "mv" sends an error
 		if from == to then
 			log1:logprint_flush("END", "from and to are the same, nothing to do here")

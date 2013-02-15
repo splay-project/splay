@@ -1,6 +1,7 @@
 require"splay.base"
 require"distdb-client"
 require"logger"
+json = require"json"
 
 local function_list = {
 	["get"] = send_get,
@@ -13,6 +14,7 @@ local function_list = {
 	["del_all"] = send_del_all,
 	["set_log_lvl"] = send_set_log_lvl,
 	["set_rep_params"] = send_set_rep_params,
+	["get_tids_status"] = send_get_tids_status,
 }
 
 local n_params = {
@@ -26,6 +28,7 @@ local n_params = {
 	["del_all"] = 0,
 	["set_log_lvl"] = 1,
 	["set_rep_params"] = 3,
+	["get_tids_status"] = 1,
 }
 
 if #arg < 3 then
@@ -49,6 +52,7 @@ print("calling function = "..function_name)
 
 local logfile = "<print>"
 local logrules = {
+	"deny RAW_DATA",
 	"allow *"
 }
 local logbatching = false
@@ -58,6 +62,13 @@ local global_elapsed = false
 init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 
 events.run(function()
-	function_list[function_name](url, arg[4], arg[5], arg[6], arg[7])
+	if function_name == "get_tids_status" then
+		--e.g. get_tids_status "[1,2,3,4,5,6]"
+		local tid_list = json.decode(arg[4])
+		print(tbl2str("TID List", 0, tid_list))
+		function_list[function_name](url, tid_list)
+	else
+		function_list[function_name](url, arg[4], arg[5], arg[6], arg[7])
+	end
 end)
 
