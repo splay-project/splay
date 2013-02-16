@@ -8,9 +8,9 @@ ip_prefix=$1
 base_last_oct=$2
 base_port=$3
 n_nodes=$4
+base_port=`expr $base_port + 1`
 if [[ $ip_prefix = "127.0.0" ]] && [[ $base_last_oct = "1" ]]
 then
-	base_port=`expr $base_port + 1`
 	for ((i = 0; i < n_nodes; i++ ))
 	do
 		((port = i * 2))
