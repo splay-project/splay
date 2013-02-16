@@ -31,6 +31,10 @@ int main(int argc, char *argv[]) {
 		elapsed = tv1.tv_sec - tv0.tv_sec + ((tv1.tv_usec - tv0.tv_usec)/1000000.0);
 		average += elapsed;
 		average_sq += elapsed * elapsed;
+		if (i % (n_times / 5) == 0) {
+			printf("%dth... ", i);
+			fflush(stdout);
+		}
 	}
 	average = average/n_times;
 	std_dev = sqrt(fabs((average * average) - (average_sq/n_times)));
