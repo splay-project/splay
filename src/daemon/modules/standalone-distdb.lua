@@ -698,11 +698,8 @@ function handle_get(key, type_of_transaction)
 
 	--gets the list of responsibles for the given key
 	local responsibles = get_responsibles(key)
-	--choses a random responsible node
-	local chosen_node_id = math.random(#responsibles)
-	--logs
-	--log1:logprint("DEBUG", ":handle_get: choosing responsible n. "..chosen_node_id)
-	local chosen_node = responsibles[chosen_node_id]
+	--choses the responsible node. TODO: chosing always master, one could chose also a random responsible
+	local chosen_node = get_master(key)
 
 	--probability of sending the request to a wrong node (for testing purposes)
 	if math.random(100) < sim_wrong_node_rate then
@@ -759,32 +756,32 @@ end
 
 --function handle_del_all: handles a DEL_ALL request, deletes the whole database that the node holds
 function handle_del_all()
-	local log1 = start_logger("handle_del_all")
-	log1:logprint("", "before: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
+	--local log1 = start_logger("handle_del_all")
+	--log1:logprint("", "before: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
 	local_db.clear("db_records")
 	local_db.clear("db_keys")
-	log1:logprint_flush("END", "after: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
+	--log1:logprint_flush("END", "after: nº keys="..local_db.count("db_keys")..", nº records="..local_db.count("db_records"))
 	return true
 end
 
 --function handle_get_tids_status: handles a GET_TIDS_STATUS request, looks if the TIDs included in the received list are still open or not
 function handle_get_tids_status(key, type_of_transaction, tid_list_str)
-	local log1 = start_logger("handle_get_tids_status")
+	--local log1 = start_logger("handle_get_tids_status")
 	--deserializes the list of TIDs
 	local tid_list = serializer.decode(tid_list_str)
 	--logs the received TID List and the table of open transactions
-	log1:logprint(".TABLE", tbl2str("TID List", 0, tid_list))
-	log1:logprint(".TABLE", tbl2str("Open Transactions", 0, open_transactions))
+	--log1:logprint(".TABLE", tbl2str("TID List", 0, tid_list))
+	--log1:logprint(".TABLE", tbl2str("Open Transactions", 0, open_transactions))
 	--for all the TIDs in the received list
 	for i,v in ipairs(tid_list) do
 		--and for all open transactions
 		for i2,v2 in pairs(open_transactions) do
 			--logs
-			log1:logprint(".COMPARE", "comparing "..v.." and "..i2)
+			--log1:logprint(".COMPARE", "comparing "..v.." and "..i2)
 			--compares; if they are the same (it means that the asked TIDs is in the list of open transactions)
 			if v == i2 then
 				--logs
-				log1:logprint(".COMPARE", v.." and "..i2.." are the same!!")
+				--log1:logprint(".COMPARE", v.." and "..i2.." are the same!!")
 				--returns true, true
 				return true, true
 			end
@@ -796,25 +793,25 @@ end
 --function handle_put: handles a PUT request as the Entry Point; TODO check about setting N,R,W on the transaction
 function handle_put(key, type_of_transaction, value)
 	--logs entrance
-	local log1 = start_logger("handle_put", "INPUT", "key="..shorten_id(key)..", consistency="..type_of_transaction)
+	--local log1 = start_logger("handle_put", "INPUT", "key="..shorten_id(key)..", consistency="..type_of_transaction)
 	--prints the value
-	log1:logprint(".RAW_DATA INPUT", "value=", value)
-	--the chosen_node is the master of the key
+	--log1:logprint(".RAW_DATA INPUT", "value=", value)
+	--the chosen_node is the master of the key. TODO: chosing always master, one could chose also a random responsible
 	local chosen_node = get_master(key)
 	--logs
-	log1:logprint("", "Chosen node="..chosen_node.short_id)
+	--log1:logprint("", "Chosen node="..chosen_node.short_id)
 	--probability of sending the request to a wrong node (for testing purposes)
 	if math.random(100) < sim_wrong_node_rate then
 		--choses a random node from the whole network
 		local new_node_id = math.random(#neighborhood)
 		chosen_node = neighborhood[new_node_id]
 		--logs
-		log1:logprint("", "Chosen node changed to="..chosen_node.short_id)
+		--log1:logprint("", "Chosen node changed to="..chosen_node.short_id)
 	end
 	--constructs the function to call
 	local function_to_call = type_of_transaction.."_put"
 	--logs
-	log1:logprint("", "responsible chosen, about to make RPC call")
+	--log1:logprint("", "responsible chosen, about to make RPC call")
 	--makes the RPC call
 	local rpc_ok, rpc_answer = rpc.acall(chosen_node, {function_to_call, key, value})
 	--if the call went OK
@@ -822,18 +819,18 @@ function handle_put(key, type_of_transaction, value)
 		--if something went wrong (internal answer from the remote function)
 		if not rpc_answer[1] then
 			--logs error
-			log1:logprint("ERROR", "something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
+			--log1:logprint("ERROR", "something went wrong; node="..chosen_node.ip..":"..chosen_node.port.." answered=", rpc_answer[2])
 		end
 		--logs and flushes all logs
-		log1:logprint_flush("END", "key="..shorten_id(key)..", value_sz="..(value or ""):len()..", success=true")
+		--log1:logprint_flush("END", "key="..shorten_id(key)..", value_sz="..(value or ""):len()..", success=true")
 		--returns the answer of the RPC call
 		return rpc_answer[1], rpc_answer[2]
 	end
 	--if the call did not go OK (the previous if has a return)
 	--logs error
-	log1:logprint("ERROR", "RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
+	--log1:logprint("ERROR", "RPC call to node="..chosen_node.ip..":"..chosen_node.port.." was unsuccessful")
 	--logs and flushes all logs
-	log1:logprint_flush("END", "key="..shorten_id(key)..", value_sz="..(value or ""):len()..", success=false")
+	--log1:logprint_flush("END", "key="..shorten_id(key)..", value_sz="..(value or ""):len()..", success=false")
 	--returns with error message
 	return nil, "network problem"
 end
@@ -847,19 +844,19 @@ end
 
 --function handle_set_log_lvl: handles a SET_LOG_LVL request, to set the logging threshold in a new level (1-5)
 function handle_set_log_lvl(key, type_of_transaction, log_level)
-	local log1 = start_logger("handle_set_log_lvl", "INPUT", "new log level="..log_level)
+	--local log1 = start_logger("handle_set_log_lvl", "INPUT", "new log level="..log_level)
 	l_o.level = tonumber(log_level)
 	return true
 end
 
 --function handle_set_rep_params: handles a SET_REP_PARAMS request; sets locally in the node the replication parameters
 function handle_set_rep_params(key, type_of_transaction, params)
-	local log1 = start_logger("handle_set_rep_params")
+	--local log1 = start_logger("handle_set_rep_params")
 	local rep_params = serializer.decode(params)
 	n_replicas = rep_params[1]
 	min_replicas_read = rep_params[2]
 	min_replicas_write = rep_params[3]
-	log1:logprint_flush("END", "nº replicas="..n_replicas..", minimum replicas read="..min_replicas_read..", minimum replicas write="..min_replicas_write)
+	--log1:logprint_flush("END", "nº replicas="..n_replicas..", minimum replicas read="..min_replicas_read..", minimum replicas write="..min_replicas_write)
 	--TODO: GOSSIP THE MESSAGE
 	return true
 end
@@ -885,7 +882,7 @@ local forward_request = {
 --function handle_http_req: handles the incoming messages (HTTP requests)
 function handle_http_req(socket)
 	--logs entrance
-	local log1 = start_logger("handle_http_req")
+	--local log1 = start_logger("handle_http_req")
 	--gets the client IP address and port from the socket
 	local client_ip, client_port = socket:getpeername()
 	--parses the HTTP message and extracts the HTTP method, the requested resource, etc.
@@ -899,7 +896,7 @@ function handle_http_req(socket)
 	--the header Ack tells whether the client wants to wait for an acknowlegment or not
 	local sync_mode = headers["Sync-Mode"] or headers["sync-mode"]
 	--logs
-	log1:logprint("", "http request parsed, method="..method..", resource="..resource)
+	--log1:logprint("", "http request parsed, method="..method..", resource="..resource)
 	--forwards the request to a specific handle function
 	local ok, answer
 	if sync_mode == "async" then
@@ -922,7 +919,7 @@ function handle_http_req(socket)
 		ok, answer = forward_request[method](resource, type_of_transaction, value)
 	end
 	--logs
-	log1:logprint("", "method was performed")
+	--log1:logprint("", "method was performed")
 	--initializes the response body, code and content type as nil
 	local http_response_body, http_response_code, http_response_content_type
 	--if the call was OK
@@ -948,7 +945,7 @@ function handle_http_req(socket)
 		end
 	end
 	--logs
-	log1:logprint("", "answer was encoded")
+	--log1:logprint("", "answer was encoded")
 	--constructs the HTTP message's first line
 	local http_response = "HTTP/1.1 "..http_response_code.."\r\n"
 	--if there is a response body
@@ -965,11 +962,11 @@ function handle_http_req(socket)
 		http_response = http_response.."\r\n"
 	end
 	--logs
-	log1:logprint("", "all work is done, ready to send")
+	--log1:logprint("", "all work is done, ready to send")
 	--send the HTTP response
 	socket:send(http_response)
 	--logs and flushes all logs
-	log1:logprint_flush("END", "sent")
+	--log1:logprint_flush("END", "sent")
 end
 
 --function create_distdb_node: makes a node element (IP, port, ID, short ID) from an IP-port tuple
@@ -987,7 +984,7 @@ end
 --function init: initialization of the node
 function init(job)
 	--logs entrance
-	local log1 = start_logger("init")
+	--local log1 = start_logger("init")
 	--if init has not been previously called
 	if not init_done then
 		--make the init_done flag true
@@ -1026,7 +1023,7 @@ function init(job)
 		paxos.send_proposal = send_paxos_proposal
 
 		--prints message saying it is the RDV node
-		log1:logprint("", "node "..job.position.." UP, HTTP port = "..n.ip.." "..(n.port+1))
+		--log1:logprint("", "node "..job.position.." UP, HTTP port = "..n.ip.." "..(n.port+1))
 
 		--if Bootstrapping is set
 		if _BOOTSTRAPPING then
@@ -1375,11 +1372,7 @@ end
 function paxos_put(key, value)
 	--logs entrance
 	--local log1 = start_logger("paxos_put", "INPUT", "key="..shorten_id(key))
-	--log1:logprint("DEBUG", ":paxos_put: value=", value)
-	--logs
-	--local start_time = misc.time()
-	--local to_report_t = {n.short_id..":paxos_put: key="..shorten_id(key).." START. elapsed_time=0\n"}
-	
+	--log1:logprint(".RAW_DATA", "value=\""..value.."\"")
 	--initializes boolean not_responsible
 	local not_responsible = true
 	--gets all responsibles for the key
@@ -1423,21 +1416,15 @@ function paxos_put(key, value)
 		prop_ids[key] = prop_ids[key] + 1
 	end
 	--logs
-	--log1:logprint("DEBUG", ":paxos_put:key=", shorten_id(key), "propID="..prop_ids[key])
-	--logs
-	--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." Before calling paxos_write. elapsed_time="..(misc.time() - start_time).."\n")
+	--log1:logprint("", "calling paxos_write. key="..shorten_id(key)..", propID="..prop_ids[key])
 	--performs a paxos_write operation
 	local ok, prop_id, answer = paxos.paxos_write(prop_ids[key], responsibles, paxos_max_retries, value, key)
 	--updates the prop_id (since retries are done inside paxos, the prop ID can change)
 	prop_ids[key] = prop_id
 	--unlocks the key
 	locked_keys[key] = false
-
-	--logs
-	--table.insert(to_report_t, n.short_id..":paxos_put: key="..shorten_id(key).." END value_sz="..(value or ""):len().." success=true")
-	--flushes all timestamp logs
-	--l_o:notice(table.concat(to_report_t))
-
+	--logs end and flushes
+	--log1:logprint_flush("END")
 	--returns the answer of paxos_operation
 	return ok, answer
 end
@@ -1495,7 +1482,7 @@ function evtl_consistent_get(key)
 	--if the node is not one of the responsibles
 	if not_responsible then
 		--logs
-		log1:logprint_flush("END", "success=false(wrong_node)")
+		--log1:logprint_flush("END", "success=false(wrong_node)")
 		--flushes all timestamp logs
 		--l_o:notice(table.concat(to_report_t))
 		--returns false with an error message
@@ -1503,7 +1490,7 @@ function evtl_consistent_get(key)
 	end
 
 	--logs
-	log1:logprint("", "Im a responsible")
+	--log1:logprint("", "Im a responsible")
 
 	--initializes variables
 	local answers = 0
@@ -1519,7 +1506,7 @@ function evtl_consistent_get(key)
 			if v.id == n.id then
 				--gets the value locally; TODO deal with attemps of writing a previous version
 				answer_data[v.id] = local_get(key)
-				log1:logprint("", "got from myself="..type(answer_data[v.id]))
+				--log1:logprint("", "got from myself="..type(answer_data[v.id]))
 				answers = answers + 1
 				--if answers reaches the minimum number of replicas that must read
 				if answers >= min_replicas_read then
@@ -1533,7 +1520,7 @@ function evtl_consistent_get(key)
 				--if the RPC call was OK
 				if rpc_ok then
 					answer_data[v.id] = rpc_answer[1]
-					log1:logprint("", "got from "..v.id.."="..type(answer_data[v.id]))
+					--log1:logprint("", "got from "..v.id.."="..type(answer_data[v.id]))
 					--increments answers
 					answers = answers + 1
 					--if answers reaches the minimum number of replicas that must read
@@ -1804,7 +1791,7 @@ end
 --function receive_paxos_proposal:
 function receive_paxos_proposal(prop_id, key)
 	--logs entrance
-	--log1:logprint("DEBUG", ":receive_paxos_proposal: START, for key=", shorten_id(key), ", propID=", prop_id)
+	--local log1 = start_logger("receive_paxos_proposal", "INPUT", "key="..shorten_id(key)..", propID="..prop_id)
 	
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
@@ -1832,6 +1819,7 @@ function receive_paxos_proposal(prop_id, key)
 	if kv_record_serialized then
 		kv_record = serializer.decode(kv_record_serialized)
 	end
+	--log1:logprint("", "type kvrecord="..type(kv_record))
 	--creates it with a new vector clock, enabled=true
 	if not kv_record then
 		kv_record = {enabled=true, vector_clock={}}
@@ -1854,7 +1842,7 @@ end
 --function receive_paxos_accept: replaces paxos.receive_accept
 function receive_paxos_accept(prop_id, peers, value, key)
 	--logs entrance
-	--log1:logprint("DEBUG", ":receive_paxos_accept: START, for key=", shorten_id(key), "propID=", prop_id)
+	--local log1 = start_logger("receive_paxos_accept", "key="..shorten_id(key)..", propID="..prop_id)
 	--log1:logprint("DEBUG", ":receive_paxos_accept: value=", value)
 	
 	--if delay simulation is activated
@@ -1877,20 +1865,20 @@ function receive_paxos_accept(prop_id, peers, value, key)
 		kv_record = serializer.decode(kv_record_serialized)
 	end
 
-	--if the k,v pair doesnt exist
+	--if the k,v pair doesnt exist. TODO: for the moment, not checking this
 	if not kv_record then
 		--BIZARRE: because this is not meant to happen (an Accept comes after a Propose, and a record for the key
 		-- is always created at a Propose)
 		--logs
-		--log1:logprint("ERROR", ":receive_paxos_accept: BIZARRE! wrong key=", shorten_id(key), ", key does not exist")
+		--log1:logprint("", "BIZARRE! key="..shorten_id(key).." does not exist")
 		--returns with error message
-		return false, "BIZARRE! wrong key, key does not exist"
+		return true, "BIZARRE! wrong key, key does not exist"
 	end
 	
 	--if it exists, and the locally stored prop_id is bigger than the proposed prop_id
 	if kv_record.prop_id > prop_id then
 		--logs
-		--log1:logprint("ERROR", ":receive_paxos_accept: REJECTED, higher prop_id")
+		--log1:logprint("", "REJECTED, higher prop_id")
 		--returns with error message
 		return false, "higher prop_id"
 	end
@@ -1899,7 +1887,7 @@ function receive_paxos_accept(prop_id, peers, value, key)
 	if kv_record.prop_id < prop_id then
 		--BIZARRE: again, Accept comes after Propose, and a later Propose can only increase the prop_id
 		--logs
-		--log1:logprint("ERROR", ":receive_paxos_accept: BIZARRE! lower prop_id")
+		--log1:logprint("", "BIZARRE! lower prop_id")
 		--returns with error message
 		return false, "BIZARRE! lower prop_id"
 	end
@@ -2090,7 +2078,7 @@ end
 --function local_get: returns v from a k,v pair.
 function local_get(key)
 	--logs entrance
-	local log1 = start_logger("local_get", "INPUT", "key="..shorten_id(key))
+	--local log1 = start_logger("local_get", "INPUT", "key="..shorten_id(key))
 	--probability of having a fail (for testing purposes)
 	if math.random(100) < sim_fail_rate then
 		--logs
@@ -2109,12 +2097,12 @@ function local_get(key)
 	--if there's no record
 	if not kv_record_serialized then
 		--logs error
-		log1:logprint_flush("END", "record is nil")
+		--log1:logprint_flush("END", "record is nil")
 		--returns nil
 		return nil
 	end
 	--logs
-	log1:logprint_flush("END", "success=true")
+	--log1:logprint_flush("END", "success=true")
 	return serializer.decode(kv_record_serialized)
 end
 
@@ -2157,10 +2145,7 @@ dofile("../../../misc/logger.lua")
 
 local logfile = "<print>"
 local logrules = {
-	"allow MAIN",
-	"allow handle_get_tids_status",
-	"allow evtl_consistent_get",
-	"allow local_get"
+	"allow *"
 }
 local logbatching = false
 local global_details = true

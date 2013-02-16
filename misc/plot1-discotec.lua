@@ -1,6 +1,5 @@
 require"socket"
 crypto = require"crypto"
-logger = require"logger"
 require"distdb-client"
 
 if #arg < 3 then
@@ -8,99 +7,59 @@ if #arg < 3 then
 	os.exit()
 end
 
---the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
-logfile = "<print>"
---to allow all logs, there must be the rule "allow *"
-logrules = {
-}
---if logbatching is set to true, log printing is performed only when explicitely running logflush()
-logbatching = false
-global_details = true
-global_timestamp = false
-global_elapsed = false
-init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
-
-tid = 1
-url = arg[1]
-size = tonumber(arg[2])
-n_times = tonumber(arg[3])
+local url = arg[1]
+local size = tonumber(arg[2])
+local n_times = tonumber(arg[3])
 --f1 = io.open("/home/unine/rand_files/rand_10MB.txt", "r")
-f1 = io.open("test-tcp-throughput/random.dat", "r")
-data = f1:read(size)
+local f1 = io.open("test-tcp-throughput/random.dat", "r")
+local data = f1:read(size)
 f1:close()
 
-f_tbl = {
-	[1] = function()
-		send_put(url, key, nil, "consistent", data)
-	end,
-	[2] = function()
-		send_put(url, key, nil, "evtl_consistent", data)
-	end,
-	[3] = function()
-		send_put(url, key, nil, "local", data)
-	end,
-	[4] = function()
-		send_put(url, key, nil, "paxos", data)
-	end,
-	[5] = function()
-		send_async_put(tid, url, key, "consistent", data)
-	end,
-	[6] = function()
-		send_put(url, key, "true", "local", data)
-	end,
-}
+local sync_modes = {"sync", "async", "noack"}
+local consistency_models = {"consistent", "evtl_consistent", "paxos", "local"}
+local key, time0, time1, time2, time3
+local elapsed_put, elapsed_sq_put, elapsed_del, elapsed_sq_del, elapsed_get, elapsed_sq_get
+local std_dev_put, std_dev_get, std_dev_del
 
-key = nil
-start_time = nil
-end_time = nil
-
-modes = {1, 2, 3, 4, 5, 6}
-
-f1 = io.open("log-plot1.txt", "w")
-
-key = crypto.evp.digest("sha1", "default")
-
-mode_names = {"SC", "EC", "LOC", "LIN", "ASYNC_SC", "NOACK_LOC"}
-
-for _, mode in pairs(modes) do
-		elapsed = 0
-		elapsed_sq = 0
-		io.write(mode_names[mode]..":\t")
-		f1:write(mode_names[mode]..":\n")
-		for i = 1, n_times do
-			start_time = socket.gettime()
-			f_tbl[mode]()
-			end_time = socket.gettime()
-			elapsed = elapsed + (end_time - start_time)
-			elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
-			f1:write(i.."th: elapsed time = "..(end_time - start_time).."\n")
-			f1:flush()
+for i1, sync_mode in ipairs(sync_modes) do
+	for i2, consistency in ipairs(consistency_models) do
+		for i3 = 1, 2 do
+			elapsed_put = 0
+			elapsed_sq_put = 0
+			elapsed_get = 0
+			elapsed_sq_get = 0
+			elapsed_del = 0
+			elapsed_sq_del = 0
+			io.write(sync_mode.." "..consistency..":\t")
+			for i = 1, n_times do
+				key = crypto.evp.digest("sha1", sync_mode..":"..consistency..":"..i3..":"..i)
+				time0 = socket.gettime()
+				send_put(url, key, sync_mode, consistency, data)
+				time1 = socket.gettime()
+				send_get(url, key, consistency)
+				time2 = socket.gettime()
+				send_del(url, key, sync_mode, consistency)
+				time3 = socket.gettime()
+				elapsed_put = elapsed_put + (time1 - time0)
+				elapsed_sq_put = elapsed_sq_put + math.pow((time1 - time0), 2)
+				elapsed_get = elapsed_get + (time2 - time1)
+				elapsed_sq_get = elapsed_sq_get + math.pow((time2 - time1), 2)
+				elapsed_del = elapsed_del + (time3 - time2)
+				elapsed_sq_del = elapsed_sq_del + math.pow((time3 - time2), 2)
+				if (i % (n_times / 5) == 0) then
+					io.write(i.."th... ")
+					io.flush()
+				end
+			end
+			elapsed_put = elapsed_put/n_times
+			std_dev_put = math.sqrt(math.abs(math.pow(elapsed_put, 2) - (elapsed_sq_put/n_times)))
+			elapsed_get = elapsed_get/n_times
+			std_dev_get = math.sqrt(math.abs(math.pow(elapsed_get, 2) - (elapsed_sq_get/n_times)))
+			elapsed_del = elapsed_del/n_times
+			std_dev_del = math.sqrt(math.abs(math.pow(elapsed_del, 2) - (elapsed_sq_del/n_times)))
+			print("PUT\telapsed="..elapsed_put.."\t".."std_dev="..std_dev_put)
+			print("GET\telapsed="..elapsed_get.."\t".."std_dev="..std_dev_get)
+			print("DEL\telapsed="..elapsed_del.."\t".."std_dev="..std_dev_del)
 		end
-		elapsed = elapsed/n_times
-		io.write("Average elapsed time = "..elapsed.."\t")
-		f1:write("Average elapsed time = "..elapsed.."\n")
-		elapsed_sq = elapsed_sq/n_times
-		std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
-		print("Standard Dev  = "..std_dev)
-		f1:write("Standard Dev  = "..std_dev.."\n")
-		--we dispose the first n_times experiments, but i'm interested in seeing the results anyway
-		elapsed = 0
-		elapsed_sq = 0
-		for i = 1, n_times do
-			start_time = socket.gettime()
-			f_tbl[mode]()
-			end_time = socket.gettime()
-			elapsed = elapsed + (end_time - start_time)
-			elapsed_sq = elapsed_sq + math.pow((end_time - start_time), 2)
-			f1:write((n_times + i).."th: elapsed time = "..(end_time - start_time).."\n")
-			f1:flush()
-		end
-		elapsed = elapsed/n_times
-		io.write("Average elapsed time = "..elapsed.."\t")
-		f1:write("Average elapsed time = "..elapsed.."\n")
-		elapsed_sq = elapsed_sq/n_times
-		std_dev = math.sqrt(math.abs(math.pow(elapsed, 2) - elapsed_sq))
-		print("Standard Dev  = "..std_dev)
-		f1:write("Standard Dev  = "..std_dev.."\n")
+	end
 end
-f1:close()

@@ -1,6 +1,27 @@
 #!/bin/bash
-lua distdb-cli.lua 10.0.2.16 3001 del_all
-lua distdb-cli.lua 10.0.2.17 3001 del_all
-lua distdb-cli.lua 10.0.2.18 3001 del_all
-lua distdb-cli.lua 10.0.2.19 3001 del_all
-lua distdb-cli.lua 10.0.2.20 3001 del_all
+if [[ $# -lt 4 ]]
+then
+	echo "Syntax: ${0} <ip prefix> <ip last octet> <port> <n_nodes>"
+	exit 1
+fi
+ip_prefix=$1
+base_last_oct=$2
+base_port=$3
+n_nodes=$4
+if [[ $ip_prefix = "127.0.0" ]] && [[ $base_last_oct = "1" ]]
+then
+	base_port=`expr $base_port + 1`
+	for ((i = 0; i < n_nodes; i++ ))
+	do
+		((port = i * 2))
+		((port = base_port + port))
+		lua distdb-cli.lua $ip_prefix.$base_last_oct $port del_all
+	done
+else
+	for ((i = 0; i < n_nodes; i++ ))
+	do
+		((last_oct = base_last_oct + i))
+		lua distdb-cli.lua $ip_prefix.$last_oct $base_port del_all
+	done
+fi
+exit 0

@@ -34,7 +34,7 @@ local mini_proxy_port = 33500
 --function send_command: sends a command to the Entry Point
 function send_command(command_name, url, resource, sync_mode, consistency, value)
 	--starts the logger
-	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "URL="..url..", resource="..tostring(resource)
+	local log1 = start_logger(".DIST_DB_CLIENT send_command", "INPUT", "command name="..command_name..", URL="..url..", resource="..tostring(resource)
 		..", Synchronization Mode="..tostring(sync_mode)..", consistency="..tostring(consistency))
 	--prints the value
 	log1:logprint(".RAW_DATA", "INPUT", "value="..(value or "nil"))
