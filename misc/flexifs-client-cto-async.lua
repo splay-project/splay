@@ -51,13 +51,8 @@ local ENOSYS = -38
 local ENOTEMPTY = -39
 
 --consistency types can be "evtl_consistent", "paxos" or "consistent"
-local IBLOCK_CONSIST = "evtl_consistent"
-local DBLOCK_CONSIST = IBLOCK_CONSIST
+local IBLOCK_CONSIST, DBLOCK_CONSIST, DB_URL
 local BLOCK_CONSIST = "consistent"
-local _POLL_INTERVAL = 0.1
---the URL of the Entry Point to the distDB
---local DB_URL = "10.0.2.19:3001"
-local DB_URL = "127.0.0.1:5001"
 
 
 --LOCAL VARIABLES
@@ -799,10 +794,14 @@ end
 --if the amount of argumenst is less than two
 if select('#', ...) < 2 then
 	--prints usage
-	print(string.format("Usage: %s <fsname> <mount point> [fuse mount options]", arg[0]))
+	--print("Usage: "..arg[0].." <fsname> <mount point> [fuse mount options]")
+	print("Syntax: "..arg[0].." <iblock consistency model> <URL>")
 	--exits
 	os.exit(1)
 end
+IBLOCK_CONSIST = arg[1]
+DBLOCK_CONSIST = IBLOCK_CONSIST
+DB_URL = arg[2]
 --starts the logger
 --init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 --starts the logger
@@ -1534,4 +1533,4 @@ fuse_opt = {'flexifs', 'mnt', '-f', '-s', '-d', '-oallow_other'}
 --cleans the logger
 mainlog = nil
 --starts FUSE
-fuse.main(flexifs, {...})
+fuse.main(flexifs, {"testflexifs", os.getenv("HOME").."/testflexifs", "-ouse_ino,big_writes"})

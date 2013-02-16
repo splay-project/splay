@@ -150,7 +150,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 				--if answers reaches the majority
 				if propose_answers >= majority then
 					--triggers the Accept phase
-					events.fire("propose_"..key)
+					events.fire("propose_"..prop_id..":"..key)
 				end
 			else
 				--l_o:print("paxos_"..operation_type..": PROPOSE: Received a negative answer from node="..acceptor.ip..":"..acceptor.port.." , highest prop ID=", propose_answer[2])
@@ -176,7 +176,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 	end
 
 	--waits until majority replicas answer, or until paxos_propose_timeout is depleted; TODO match this with settings
-	successful = events.wait("propose_"..key, paxos_propose_timeout)
+	successful = events.wait("propose_"..prop_id..":"..key, paxos_propose_timeout)
 
 	--takes a snapshot of the number of acceptors - related to the command "n_acceptors = n_acceptors + 1" (see above). This
 	-- is done because even after the triggering of event "key", acceptors can continue engrossing the
@@ -232,7 +232,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 				--if answers reaches the number of acceptors
 				if accept_answers >= n_acceptors then
 					--unlocks the waiting call below (events.wait)
-					events.fire("accept_"..key)
+					events.fire("accept_"..prop_id..":"..key)
 				end
 			else
 				--l_o:print("paxos_"..operation_type..": ACCEPT: Received a negative answer from node="..acceptor.ip..":"..acceptor.port.." , something went WRONG")
@@ -242,7 +242,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 
 
 	--waits until all acceptors answer, or until the paxos_accept_timeout is depleted; TODO match this with settings
-	successful, paxos_op_error_msg = events.wait("accept_"..key, paxos_accept_timeout)
+	successful, paxos_op_error_msg = events.wait("accept_"..prop_id..":"..key, paxos_accept_timeout)
 
 	--returns
 	return successful, prop_id, paxos_op_error_msg

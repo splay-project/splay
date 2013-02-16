@@ -80,7 +80,7 @@ function send_command(command_name, url, resource, sync_mode, consistency, value
 		--logs the error
 		--log1:logprint("END ERROR", "response_status="..response_status)
 		--flushes all logs
-		log1:logflush()
+		--log1:logflush()
 		--returns false and the error
 		return false, response_status
 	end
