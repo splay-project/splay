@@ -72,15 +72,14 @@ local seq_number = 0
 --VARIABLES FOR LOGGING
 
 --the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
-local logfile = os.getenv("HOME").."/logflexifs/log.txt"
+--local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
-local logrules = {
-}
+--local logrules = {}
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
-local logbatching = false
-local global_details = true
-local global_timestamp = false
-local global_elapsed = false
+--local logbatching = false
+--local global_details = true
+--local global_timestamp = false
+--local global_elapsed = false
 
 --MISC FUNCTIONS
 
@@ -151,7 +150,7 @@ end
 --function decode_acl: TODO check what this does in memfs.lua
 local function decode_acl(acl)
 	--starts the logger
-	local log1 = start_logger(".FILE_IBLOCK_OP decode_acl", "INPUT", "acl="..acl)
+	--local log1 = start_logger(".FILE_IBLOCK_OP decode_acl", "INPUT", "acl="..acl)
 	local version = acl:sub(1,4)
 	local n = 5
 	while true do
@@ -162,17 +161,17 @@ local function decode_acl(acl)
 		if n >= #acl then break end
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 end
 
 --function mk_mode: creates the mode from the owner, group, world rights and the sticky bit
 local function mk_mode(owner, group, world, sticky)
 	--starts the logger
-	local log1 = start_logger(".FILE_IBLOCK_OP mk_mode", "INPUT", "owner="..tostring(owner)..", group="..tostring(group)..", world="..tostring(world)..", sticky="..tostring(sticky))
+	--local log1 = start_logger(".FILE_IBLOCK_OP mk_mode", "INPUT", "owner="..tostring(owner)..", group="..tostring(group)..", world="..tostring(world)..", sticky="..tostring(sticky))
 	--result mode is the combination of the owner, group, world rights and the sticky mode
 	local result_mode = owner * S_UID + group * S_GID + world + ((sticky or 0) * S_SID)
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "", "result_mode="..result_mode)
+	--log1:logprint_flush("END", "", "result_mode="..result_mode)
 	--returns the mode
 	return result_mode
 end
@@ -185,13 +184,13 @@ end
 --function generate_iblock_n: generates an iblock number using the sessionID and sequence number
 local function generate_iblock_n()
 	--starts the logger
-	local log1 = start_logger(".FILE_IBLOCK_OP generate_iblock_n", "INPUT", "session_id="..session_id)
+	--local log1 = start_logger(".FILE_IBLOCK_OP generate_iblock_n", "INPUT", "session_id="..session_id)
 	--increments the seq number
 	seq_number = (seq_number + 1) % 1000
 	--the iblock number is 1000 times the session id + sequence number
 	local iblock_n = (1000 * session_id) + seq_number
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "", "seq number="..seq_number.."iblock_n="..iblock_n)
+	--log1:logprint_flush("END", "", "seq number="..seq_number.."iblock_n="..iblock_n)
 	--returns the iblock number
 	return iblock_n
 end
@@ -204,21 +203,21 @@ end
 --function get_block: gets a block from the DB
 local function get_block(block_id)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_block", "INPUT", "block_id="..tostring(block_id))
+	--local log1 = start_logger(".FS2DB_OP get_block", "INPUT", "block_id="..tostring(block_id))
 	--if the blockID is nil, returns nil
 	if not block_id then
-		log1:logprint_flush("END", "blockID is nil")
+		--log1:logprint_flush("END", "blockID is nil")
 		return nil
 	end
 	--reads the file from the DB
 	local ok, block = send_get(DB_URL, block_id, BLOCK_CONSIST)
 	--if the reading was not successful (ERROR), returns nil
 	if not ok then
-		log1:logprint("ERROR END", "send_get was not OK")
+		--log1:logprint("ERROR END", "send_get was not OK")
 		return nil
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "", "block=\""..tostring(block).."\"")
+	--log1:logprint_flush("END", "", "block=\""..tostring(block).."\"")
 	--returns the block data
 	return block
 end
@@ -226,32 +225,32 @@ end
 --function get_iblock: gets an iblock from the DB
 local function get_iblock(iblock_n)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_iblock", "INPUT", "iblock_n="..tostring(iblock_n))
+	--local log1 = start_logger(".FS2DB_OP get_iblock", "INPUT", "iblock_n="..tostring(iblock_n))
 	--if the iblock is nil, returns nil
 	if not iblock_n then
-		log1:logprint_flush("END", "block_n is nil")
+		--log1:logprint_flush("END", "block_n is nil")
 		return nil
 	end
 	--reads the iblock from the DB
 	local ok, iblock_serial = send_get(DB_URL, hash_string("iblock:"..iblock_n), IBLOCK_CONSIST)
 	--logs
-	log1:logprint(".RAW_DATA", "serialized iblock retrieved", "ok="..tostring(ok)..", iblock_serial=\""..tostring(iblock_serial).."\"")
+	--log1:logprint(".RAW_DATA", "serialized iblock retrieved", "ok="..tostring(ok)..", iblock_serial=\""..tostring(iblock_serial).."\"")
 	--if the reading was not successful (ERROR), returns nil
 	if not ok then
-		log1:logprint("ERROR END", "send_get was not OK")
+		--log1:logprint("ERROR END", "send_get was not OK")
 		return nil
 	end
 	--if the requested record is empty, returns nil
 	if not iblock_serial then
-		log1:logprint_flush("END", "iblock_serial is nil, returning nil")
+		--log1:logprint_flush("END", "iblock_serial is nil, returning nil")
 		return nil
 	end
 	--deserializes the iblock
 	local iblock = serializer.decode(iblock_serial)
 	--prints the iblock
-	log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	--returns the iblock
 	return iblock
 end
@@ -262,16 +261,16 @@ local get_dblock = get_iblock
 --function get_iblock_n: gets an iblock number from the DB, by identifying it with the filename
 local function get_iblock_n(filename)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_iblock_n", "INPUT", "filename="..filename)
+	--local log1 = start_logger(".FS2DB_OP get_iblock_n", "INPUT", "filename="..filename)
 	--reads the file from the DB
 	local ok, iblock_n = send_get(DB_URL, hash_string("file:"..filename), IBLOCK_CONSIST)
 	--if the reading was not successful (ERROR), returns nil
 	if not ok then
-		log1:logprint("ERROR END", "send_get was not OK")
+		--log1:logprint("ERROR END", "send_get was not OK")
 		return nil
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "", "iblock_n="..tostring(iblock_n))
+	--log1:logprint_flush("END", "", "iblock_n="..tostring(iblock_n))
 	--returns the iblock number
 	return tonumber(iblock_n)
 end
@@ -282,11 +281,11 @@ local get_dblock_n = get_iblock_n
 --function get_iblock_from_filename: gets an iblock from the DB, by identifying it with the filename
 local function get_iblock_from_filename(filename)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP get_iblock_from_filename", "INPUT", "filename="..filename)
+	--local log1 = start_logger(".FS2DB_OP get_iblock_from_filename", "INPUT", "filename="..filename)
 	--the iblock number is extracted by calling get_iblock_n
 	local iblock_n = get_iblock_n(filename)
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "", "iblock_n="..tostring(iblock_n))
+	--log1:logprint_flush("END", "", "iblock_n="..tostring(iblock_n))
 	--returns the corresponding iblock
 	return get_iblock(iblock_n)
 end
@@ -299,7 +298,7 @@ local get_dblock_from_filename = get_iblock_from_filename
 --function put_block: puts a block into the DB
 local function put_block(block_id, sync_mode, block)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", sync_mode="..sync_mode..", block_size="..string.len(block))
+	--local log1 = start_logger(".FS2DB_OP put_block", "INPUT", "block_id="..block_id..", sync_mode="..sync_mode..", block_size="..string.len(block))
 	--writes the block in the DB and returns the result
 	return send_put(DB_URL, block_id, sync_mode, BLOCK_CONSIST, block)
 end
@@ -307,11 +306,11 @@ end
 --function put_iblock: puts an iblock into the DB
 local function put_iblock(iblock_n, iblock)
 	--starts the logger
-	local log1 = start_logger(".FS2DB_OP put_iblock", "INPUT", "iblock_n="..iblock_n)
+	--local log1 = start_logger(".FS2DB_OP put_iblock", "INPUT", "iblock_n="..iblock_n)
 	--prints the iblock
-	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "calling send_put")
+	--log1:logprint_flush("END", "calling send_put")
 	--returns the result of send_put
 	return send_put(DB_URL, hash_string("iblock:"..iblock_n), "sync", IBLOCK_CONSIST, serializer.encode(iblock))
 end
@@ -339,7 +338,7 @@ end
 --function del_iblock: deletes an iblock from the DB
 local function del_iblock(iblock_n, is_dblock)
 	--starts the logger. TODO: WEIRD LATENCY IN del_LOCAL, I THINK THE iblock DOES NOT GET DELETED.
-	local log1 = start_logger(".FS2DB_OP del_iblock", "INPUT", "iblock_n="..iblock_n..", is_dblock="..tostring(is_dblock))
+	--local log1 = start_logger(".FS2DB_OP del_iblock", "INPUT", "iblock_n="..iblock_n..", is_dblock="..tostring(is_dblock))
 	--reads the iblock from the DB
 	local iblock = get_iblock(iblock_n)
 	--if the iblock is not a dblock, it has pointers to block that must be deleted too.TODO Try to pass this part to unlink, so i have identical versions of del_iblock
@@ -347,13 +346,13 @@ local function del_iblock(iblock_n, is_dblock)
  		--for all the blocks refered by the iblock
 		for i,v in ipairs(iblock.content) do
 			--logs
-			log1:logprint_flush("", "about to delete block with ID="..v)
+			--log1:logprint_flush("", "about to delete block with ID="..v)
 			--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
 			del_block(v, "sync")
 		end
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END", "calling send_del")
+	--log1:logprint_flush("END", "calling send_del")
 	--returns the result of send_del
 	return send_del(DB_URL, hash_string("iblock:"..iblock_n), "sync", IBLOCK_CONSIST)
 end
@@ -382,11 +381,11 @@ end
 --function cmn_getattr: gets the attributes of an iblock
 local function cmn_getattr(iblock)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP cmn_getattr")
+	--local log1 = start_logger(".COMMON_OP cmn_getattr")
 	--prints the iblock
-	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	--returns 0 (successful), mode, iblock number, device, number of links, userID, groupID, size, access time, modif time, iblock change time
 	return 0, iblock.mode, iblock.ino, iblock.dev, iblock.nlink, iblock.uid, iblock.gid, iblock.size, iblock.atime, iblock.mtime, iblock.ctime
 end
@@ -394,7 +393,7 @@ end
 --function cmn_mk_file: creates a file in the FS; if iblock_n is specified, it does not creates a new iblock
 local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, content)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_mk_file", "INPUT", "filename="..filename..", iblock_n="..tostring(iblock_n))
+	--local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_mk_file", "INPUT", "filename="..filename..", iblock_n="..tostring(iblock_n))
 	--initializes iblock
 	local iblock = nil
 	--if the function must check first if the iblock exists already
@@ -403,7 +402,7 @@ local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, co
 		iblock = get_iblock_from_filename(filename)
 		--if the iblock exists (ERROR), returns EEXIST
 		if iblock then
-			log1:logprint_flush("ERROR END", "iblock already exists, returning EEXIST")
+			--log1:logprint_flush("ERROR END", "iblock already exists, returning EEXIST")
 			return EEXIST
 		end
 	end
@@ -413,13 +412,13 @@ local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, co
 	local parent = get_dblock_from_filename(dir)
 	--if the parent dblock does not exist (ERROR), returns ENOENT
 	if not parent then
-		log1:logprint_flush("ERROR END", "", "the parent dblock does not exist, returning ENOENT")
+		--log1:logprint_flush("ERROR END", "", "the parent dblock does not exist, returning ENOENT")
 		return ENOENT
 	end
 	--if the iblock_n is not given (the iblock does not exist), creates it
 	if not iblock_n then
 		--logs
-		log1:logprint("", "iblock must be created")
+		--log1:logprint("", "iblock must be created")
 		--gets the iblock number
 		iblock_n = generate_iblock_n()
 		--takes userID, groupID, and processID from FUSE context
@@ -440,7 +439,7 @@ local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, co
 			content = content or {}
 		}
 		--prints the iblock
-		log1:logprint(".TABLE", "iblock created", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "iblock created", tbl2str("iblock", 0, iblock))
 		--puts iblock in the DB, because it's new
 		put_iblock(iblock_n, iblock)
 	end
@@ -461,7 +460,7 @@ local function cmn_mk_file(filename, iblock_n, flags, mode, nlink, size, dev, co
 		parent = nil
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	--returns 0
 	return 0, iblock, parent
 end
@@ -469,21 +468,21 @@ end
 --function cmn_rm_file: removes a file from the FS
 local function cmn_rm_file(filename, flags)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_rm_file", "INPUT", "filename="..filename)
+	--local log1 = start_logger(".COMMON_OP .FILE_MISC_OP cmn_rm_file", "INPUT", "filename="..filename)
 	--gets iblock from DB
 	local iblock = get_iblock_from_filename(filename)
 	--if the iblock does not exist (ERROR), returns ENOENT
 	if not iblock then
-		log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+		--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 		return ENOENT
 	end
 	--prints the iblock
-	log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
 	--if flag IS_DIR is set to true
 	if flags.IS_DIR then
 		--if there is at least one entry in iblock.content (ERROR), returns ENOTEMPTY
 		for i,v in pairs(iblock.content) do
-			log1:logprint_flush("ERROR END", "the dir is not empty", "dir entry="..i)
+			--log1:logprint_flush("ERROR END", "the dir is not empty", "dir entry="..i)
 			return ENOTEMPTY
 		end
 	end
@@ -504,10 +503,10 @@ local function cmn_rm_file(filename, flags)
 		--decrements the number of links
 		iblock.nlink = iblock.nlink - 1
 		--logs
-		log1:logprint("", "now the iblock has less links", "nlink="..iblock.nlink)
+		--log1:logprint("", "now the iblock has less links", "nlink="..iblock.nlink)
 		--if the iblock does not have any more links, deletes the iblock, since it's not linked anymore
 		if iblock.nlink == 0 then
-			log1:logprint("", "iblock has to be deleted too")
+			--log1:logprint("", "iblock has to be deleted too")
 			del_iblock(iblock.ino)
 		--if not, updates the iblock
 		else
@@ -524,7 +523,7 @@ local function cmn_rm_file(filename, flags)
 		parent = nil
 	end
 	--logs END of function
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	--returns 0 and the parent dblock
 	return 0, parent
 end
@@ -532,9 +531,9 @@ end
 --function cmn_read: common routine for reading from a file
 local function cmn_read(size, offset, iblock)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_read", "INPUT", "size="..size..", offset="..offset)
+	--local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_read", "INPUT", "size="..size..", offset="..offset)
 	--prints the iblock
-	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--calculates the starting block ID
 	local start_block_idx = math.floor(offset / block_size)+1
 	--calculates the offset on the starting block
@@ -544,44 +543,44 @@ local function cmn_read(size, offset, iblock)
 	--calculates the offset on the end block
 	local rem_end_offset = (offset+size-1) % block_size
 	--logs
-	log1:logprint("", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
-	log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
-	log1:logprint("", "about to get block", "block_n="..tostring(iblock.content[start_block_idx]))
+	--log1:logprint("", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
+	--log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
+	--log1:logprint("", "about to get block", "block_n="..tostring(iblock.content[start_block_idx]))
 	--gets the first block; if the result of the get OP is empty, fills it out with an empty string
 	local block = get_block(iblock.content[start_block_idx]) or ""
 	--table that contains the data, then it gets concatenated (just a final concatenation shows better performance than concatenating inside the loop)
 	local data_t = {}
 	--logs
-	log1:logprint(".RAW_DATA", "first block retrieved", "block=\""..block.."\"")
+	--log1:logprint(".RAW_DATA", "first block retrieved", "block=\""..block.."\"")
 	--if the starting block and the end block are the same, it does nothing but logging (the first block was retrieved above)
 	if start_block_idx == end_block_idx then
 		--logs
-		log1:logprint("", "just one block to read")
+		--log1:logprint("", "just one block to read")
 		--inserts the data from the block
 		table.insert(data_t, string.sub(block, rem_start_offset+1, rem_end_offset))
 	--if not
 	else
 		--logs
-		log1:logprint("", "several blocks to read")
+		--log1:logprint("", "several blocks to read")
 		table.insert(data_t, string.sub(block, rem_start_offset+1))
 		--for all blocks, from the second to the second last one
 		for i=start_block_idx+1,end_block_idx-1 do
 			--logs
-			log1:logprint("", "about to get a new block")
+			--log1:logprint("", "about to get a new block")
 			--gets the block
 			block = get_block(iblock.content[i]) or ""
 			--inserts the block in data_t
 			table.insert(data_t, block)
 		end
 		--logs
-		log1:logprint("", "about to get a new block")
+		--log1:logprint("", "about to get a new block")
 		--gets last block
 		block = get_block(iblock.content[end_block_idx]) or ""
 		--inserts it only until the offset
 		table.insert(data_t, string.sub(block, 1, rem_end_offset))
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	--returns 0 and the concatenation of the data table
 	return 0, table.concat(data_t)
 end
@@ -589,11 +588,11 @@ end
 --function cmn_write: common routine for writing in a file
 local function cmn_write(buf, offset, iblock)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_write", "INPUT", "offset="..offset)
+	--local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_write", "INPUT", "offset="..offset)
 	--prints the buffer
-	log1:logprint(".RAW_DATA", "INPUT", "buf=\""..buf.."\"")
+	--log1:logprint(".RAW_DATA", "INPUT", "buf=\""..buf.."\"")
 	--prints the iblock
-	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--stores the size reported by the iblock in the variable orig_size
 	local orig_size = iblock.size
 	--size is initially equal to the size of the buffer
@@ -607,8 +606,8 @@ local function cmn_write(buf, offset, iblock)
 	--calculates the offset on the end block
 	local rem_end_offset = ((offset+size-1) % block_size)
 	--logs
-	log1:logprint(".BLOCK_SIZE_WRITE", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
-	log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
+	--log1:logprint(".BLOCK_SIZE_WRITE", "offset="..offset..", size="..size..", start_block_idx="..start_block_idx)
+	--log1:logprint("", "rem_start_offset="..rem_start_offset..", end_block_idx="..end_block_idx..", rem_end_offset="..rem_end_offset)
 	--block, block_id and to_write_in_block are initialized to nil
 	local block, block_id, to_write_in_block
 	--initializes the block offset as the offset in the starting block
@@ -618,15 +617,15 @@ local function cmn_write(buf, offset, iblock)
 	--initializes the remaining buffer as the whole buffer
 	local remaining_buf = buf
 	--logs
-	log1:logprint("", "more things calculated")
+	--log1:logprint("", "more things calculated")
 	--for all blocks from the starting to the end block
 	for i = start_block_idx, end_block_idx do
 		--logs
-		log1:logprint("", "inside the for loop, i="..i)
+		--log1:logprint("", "inside the for loop, i="..i)
 		--if the block exists
 		if iblock.content[i] then
 			--logs
-			log1:logprint("", "block exists, so get the block")
+			--log1:logprint("", "block exists, so get the block")
 			--gets the block; the block_id is the ith entry of iblock contents table
 			block = get_block(iblock.content[i])
 			--sends the block to GC
@@ -634,17 +633,17 @@ local function cmn_write(buf, offset, iblock)
 		--if not
 		else
 			--logs
-			log1:logprint("", "block doesnt exists, so create the block")
+			--log1:logprint("", "block doesnt exists, so create the block")
 			--the block initially is an empty string
 			block = ""
 		end
 		--logs
-		log1:logprint(".RAW_DATA", "remaining_buf=\""..remaining_buf.."\"")
-		log1:logprint("", "size of remaining_buf + block_offset="..(#remaining_buf+block_offset)..", block_size="..block_size)
+		--log1:logprint(".RAW_DATA", "remaining_buf=\""..remaining_buf.."\"")
+		--log1:logprint("", "size of remaining_buf + block_offset="..(#remaining_buf+block_offset)..", block_size="..block_size)
 		--if the size of the remaining buffer + the block offset is bigger than a full block size (it means we need to trunk the remaining buffer cause it does not fit in one block)
 		if (#remaining_buf+block_offset) > block_size then
 			--logs
-			log1:logprint("", "more than block size")
+			--log1:logprint("", "more than block size")
 			--fills out to_write_in_block with enough data to reach the end of the block
 			to_write_in_block = string.sub(remaining_buf, 1, (block_size - block_offset))
 			--cuts that data from the remaining buffer
@@ -652,34 +651,34 @@ local function cmn_write(buf, offset, iblock)
 		--if not (all the remaining buffer fits in the block)
 		else
 			--logs
-			log1:logprint("", "less than block size")
+			--log1:logprint("", "less than block size")
 			--to_write_in_block is equal to the remaining buffer
 			to_write_in_block = remaining_buf
 		end
 		--logs
-		log1:logprint(".RAW_DATA", "block=\""..block.."\"")
-		log1:logprint(".RAW_DATA", "to_write_in_block=\""..to_write_in_block.."\"")
-		log1:logprint("", "block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block)
+		--log1:logprint(".RAW_DATA", "block=\""..block.."\"")
+		--log1:logprint(".RAW_DATA", "to_write_in_block=\""..to_write_in_block.."\"")
+		--log1:logprint("", "block_offset="..block_offset..", size of to_write_in_block="..#to_write_in_block)
 		--inserts the to_write_in_block segment into the block. TODO: CHECK IF THE +1 AT THE END IS OK
 		block = string.sub(block, 1, block_offset)..to_write_in_block..string.sub(block, (block_offset + #to_write_in_block + 1))
 		--logs
-		log1:logprint(".RAW_DATA", "now block=\""..block.."\"")
+		--log1:logprint(".RAW_DATA", "now block=\""..block.."\"")
 		--the blockID is the hash of the iblock number concatenated with the block data
 		block_id = hash_string(tostring(iblock.ino)..block)
 		--logs
-		log1:logprint("", "about to put the block", "blockID="..block_id)
+		--log1:logprint("", "about to put the block", "blockID="..block_id)
 		--puts the block
 		put_block(block_id, "sync", block)
 		--logs
-		log1:logprint("", "block written, about to change iblock", "iblock.content["..i.."]="..tostring(iblock.content[i]))
+		--log1:logprint("", "block written, about to change iblock", "iblock.content["..i.."]="..tostring(iblock.content[i]))
 		--inserts the new block number in the contents table
 		iblock.content[i] = block_id
 		--logs
-		log1:logprint("", "iblock changed,", "iblock.content["..i.."]="..tostring(iblock.content[i]))
+		--log1:logprint("", "iblock changed,", "iblock.content["..i.."]="..tostring(iblock.content[i]))
 		--the block offset is set to 0
 		block_offset = 0
 		--logs
-		log1:logprint("", "end of a cycle")
+		--log1:logprint("", "end of a cycle")
 	end
 	--if the size changed
 	if size_changed then
@@ -687,22 +686,22 @@ local function cmn_write(buf, offset, iblock)
 		iblock.size = offset+size
 	end
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	return iblock
 end
 
 --function cmn_truncate: truncates a file to a given size, or appends zeros if the requested size is bigger than the original
 local function cmn_truncate(iblock, size)
 	--starts the logger
-	local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_truncate", "INPUT", "size="..size)
+	--local log1 = start_logger(".COMMON_OP .READ_WRITE_OP cmn_truncate", "INPUT", "size="..size)
 	--prints the iblock
-	log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+	--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 	--stores the size reported by the iblock in the variable orig_size
 	local orig_size = iblock.size
 	--if the original size is less than the new size, append zeros
 	if orig_size < size then
 		local buf = string.rep("\0", size - orig_size)
-		log1:logprint_flush("END", "calling cmn_write")
+		--log1:logprint_flush("END", "calling cmn_write")
 		return cmn_write(buf, orig_size, iblock)
 	end
 	--calculates the index (in the iblock contents table) of the block where the pruning takes place
@@ -710,34 +709,34 @@ local function cmn_truncate(iblock, size)
 	--calculates the offset on the block
 	local rem_offset = size % block_size
 	--logs
-	log1:logprint("", "orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset)
+	--log1:logprint("", "orig_size="..orig_size..", new_size="..size..", block_idx="..block_idx..", rem_offset="..rem_offset)
 	--from the last block until the second last to be deleted (decremented for loop)
 	for i=#iblock.content, block_idx+1,-1 do
 		--logs
-		log1:logprint("", "about to remove block", "iblock.content["..i.."]="..tostring(iblock.content[i]))
+		--log1:logprint("", "about to remove block", "iblock.content["..i.."]="..tostring(iblock.content[i]))
 		--sends the block to GC
 		gc_block(iblock.content[i])
 		--removes the block from the iblock contents
 		table.remove(iblock.content, i)
 	end
 	--logs
-	log1:logprint("", "about to change block", "iblock.content["..block_idx.."]="..tostring(iblock.content[block_idx]))
+	--log1:logprint("", "about to change block", "iblock.content["..block_idx.."]="..tostring(iblock.content[block_idx]))
 	--if the remainding offset is 0
 	if rem_offset == 0 then
-		log1:logprint("", "last block must be empty, so we delete it")
+		--log1:logprint("", "last block must be empty, so we delete it")
 		--removes the block from the iblock contents
 		table.remove(iblock.content, block_idx)
 	--if not, we must truncate the block and rewrite it
 	else
 		--logs
-		log1:logprint("", "last block will not be empty")
+		--log1:logprint("", "last block will not be empty")
 		--gets the last block
 		local last_block = get_block(iblock.content[block_idx])
 		--logs
-		log1:logprint(".RAW_DATA", "it already has this=\""..last_block.."\"")
+		--log1:logprint(".RAW_DATA", "it already has this=\""..last_block.."\"")
 		local write_in_last_block = string.sub(last_block, 1, rem_offset)
 		--logs
-		log1:logprint(".RAW_DATA", "and we change it to this=\""..write_in_last_block.."\"")
+		--log1:logprint(".RAW_DATA", "and we change it to this=\""..write_in_last_block.."\"")
 		--the blockID is the hash of the iblock number concatenated with the block data
 		local block_id = hash_string(tostring(iblock.ino)..write_in_last_block)
 		--puts the block
@@ -750,7 +749,7 @@ local function cmn_truncate(iblock, size)
 	--updates the size
 	iblock.size = size
 	--logs END of the function and flushes all logs
-	log1:logprint_flush("END")
+	--log1:logprint_flush("END")
 	--returns the iblock
 	return iblock
 end
@@ -766,36 +765,36 @@ if select('#', ...) < 2 then
 	os.exit(1)
 end
 --starts the logger
-init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
+--init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 --starts the logger
 local mainlog = start_logger("MAIN", "starting FlexiFS")
 --takes userID, groupID, etc., from FUSE context
 local uid, gid, pid, puid, pgid = fuse.context()
 --logs
-mainlog:logprint("", "FUSE context taken", "uid="..tostring(uid)..", gid="..tostring(gid)..", pid="..tostring(pid)..", puid="..tostring(puid)..", pgid="..tostring(pgid))
+--mainlog:logprint("", "FUSE context taken", "uid="..tostring(uid)..", gid="..tostring(gid)..", pid="..tostring(pid)..", puid="..tostring(puid)..", pgid="..tostring(pgid))
 --the session register is identified with the hash of the string session_id
 --NOTE: thinking of have a register for each user, but then, iblock number = uid + sessionID + seq_number, instead of only sessionID + seq_number
 local session_reg_key = hash_string("session_id")
 --logs
-mainlog:logprint("", "session_register="..session_reg_key)
+--mainlog:logprint("", "session_register="..session_reg_key)
 --gets the session register from the DB
 local ok, session_id_str = send_get(DB_URL, session_reg_key, "paxos")
 --logs
-mainlog:logprint("", "sessionID="..(session_id_str or "nil"))
+--mainlog:logprint("", "sessionID="..(session_id_str or "nil"))
 --increments the sessionID. NOTE + TODO: the read + increment + write of the session register is not an atomic process
 session_id = (1 + (tonumber(session_id_str) or 0)) % 10000
 --logs
-mainlog:logprint("", "new sessionID="..session_id)
+--mainlog:logprint("", "new sessionID="..session_id)
 --puts the new sessionID into the DB
 send_put(DB_URL, session_reg_key, nil, "paxos", session_id)
 --looks if the root_dblock is already in the DB
 local root_dblock = get_dblock(1)
 --logs
-mainlog:logprint("", "root_dblock retrieved")
+--mainlog:logprint("", "root_dblock retrieved")
 --if there isn't any
 if not root_dblock then
 	--logs
-	mainlog:logprint(".FILE_IBLOCK_OP", "no root_dblock, creating root")
+	--mainlog:logprint(".FILE_IBLOCK_OP", "no root_dblock, creating root")
 	--creates the root dblock
 	root_dblock = {
 		--iblock number is 1
@@ -815,11 +814,11 @@ if not root_dblock then
 		content = {}
 	}
 	--logs
-	mainlog:logprint(".FILE_IBLOCK_OP", "about to put the root file")
+	--mainlog:logprint(".FILE_IBLOCK_OP", "about to put the root file")
 	--puts root file
 	put_file("/", 1)
 	--logs
-	mainlog:logprint(".FILE_IBLOCK_OP", "about to put the root dblock")
+	--mainlog:logprint(".FILE_IBLOCK_OP", "about to put the root dblock")
 	--puts root iblock
 	put_dblock(1, root_dblock)
 end
@@ -838,7 +837,7 @@ local flexifs = {
 	--function mknod: creates a new regular, special or fifo file
 	mknod = function(self, filename, mode, rdev)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP mknod", "INPUT", "filename="..filename..", mode="..mode..", rdev="..rdev)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP mknod", "INPUT", "filename="..filename..", mode="..mode..", rdev="..rdev)
 		--flags:
 		local flags = {
 			CHECK_EXIST=true,
@@ -846,7 +845,7 @@ local flexifs = {
 			UPDATE_PARENT=true
 		}
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_mk_file")
+		--log1:logprint_flush("END", "calling cmn_mk_file")
 		--makes a file with iblock_n=nil (creates iblock), number_links=1, size=0, dev=rdev and returns the result of the operation
 		return cmn_mk_file(filename, nil, flags, mode, 1, 0, rdev)
 	end,
@@ -854,16 +853,16 @@ local flexifs = {
 	--function getattr: gets the attributes of a requested file
 	getattr = function(self, filename)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP getattr", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP getattr", "INPUT", "filename="..filename)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_getattr")
+		--log1:logprint_flush("END", "calling cmn_getattr")
 		--returns the attributes of a file
 		return cmn_getattr(iblock)
 	end,
@@ -871,18 +870,18 @@ local flexifs = {
 	--function fgetattr: gets the attributes of a requested file
 	fgetattr = function(self, filename, iblock, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP fgetattr", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP fgetattr", "INPUT", "filename="..filename)
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_getattr")
+		--log1:logprint_flush("END", "calling cmn_getattr")
 		--returns the attributes of a file
 		return cmn_getattr(iblock)
 	end,
@@ -890,12 +889,12 @@ local flexifs = {
 	--function listxattr: lists the extended attributes of a file
 	listxattr = function(self, filename, size)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP listxattr", "INPUT", "filename="..filename..", size="..size)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP listxattr", "INPUT", "filename="..filename..", size="..size)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--initializes xattr_list as an empty table
@@ -905,9 +904,9 @@ local flexifs = {
 			--inserts the name of the extended attribute in the list (converts hashmap into array)
 			table.insert(xattr_list, i)
 		end
-		log1:logprint(".TABLE", "list of extended attributes filled", tbl2str("xattr_list", 0, xattr_list))
+		--log1:logprint(".TABLE", "list of extended attributes filled", tbl2str("xattr_list", 0, xattr_list))
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0 and the concatenation of xattr_list, separating the entries with 0's
 		return 0, table.concat(xattr_list, "\0").."\0"
 	end,
@@ -915,12 +914,12 @@ local flexifs = {
 	--function removexattr: removes an extended attribute from a file
 	removexattr = function(self, filename, xattr_name)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP removexattr", "INPUT", "filename="..filename..", xattr_name="..xattr_name)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP removexattr", "INPUT", "filename="..filename..", xattr_name="..xattr_name)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--deletes the entry with name xattr_name
@@ -928,7 +927,7 @@ local flexifs = {
 		--puts the iblock
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -936,12 +935,12 @@ local flexifs = {
 	--function setxattr: sets an extended attribute
 	setxattr = function(self, filename, xattr_name, val, flags)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP setxattr", "INPUT", "filename="..filename..", xattr_name="..xattr_name..", value="..tostring(val))
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP setxattr", "INPUT", "filename="..filename..", xattr_name="..xattr_name..", value="..tostring(val))
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--sets the extended attribute to val
@@ -949,7 +948,7 @@ local flexifs = {
 		--puts the iblock
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -957,16 +956,16 @@ local flexifs = {
 	--function getxattr: gets the value of an extended attribute
 	getxattr = function(self, filename, xattr_name, size)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP getxattr", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP getxattr", "INPUT", "filename="..filename)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0 and the value of the extended attribute (if not found, returns an empty string)
 		return 0, iblock.xattr[xattr_name] or ""
 	end,
@@ -974,12 +973,12 @@ local flexifs = {
 	--function chown: changes the owner and/or the group of a file
 	chown = function(self, filename, uid, gid)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP chown", "INPUT", "filename="..filename..", uid="..tostring(uid)..", gid="..tostring(gid))
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP chown", "INPUT", "filename="..filename..", uid="..tostring(uid)..", gid="..tostring(gid))
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--changes the uid and gid
@@ -988,7 +987,7 @@ local flexifs = {
 		--updates the iblock on the DB
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -996,12 +995,12 @@ local flexifs = {
 	--function chmod: changes the mode of a file
 	chmod = function(self, filename, mode)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP chmod", "INPUT", "filename="..filename..", mode="..mode)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP chmod", "INPUT", "filename="..filename..", mode="..mode)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--changes the mode
@@ -1009,19 +1008,19 @@ local flexifs = {
 		--updates the iblock on the DB
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
 
 	utime = function(self, filename, atime, mtime)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP utime", "INPUT", "filename="..filename.."atime="..atime.."mtime="..mtime)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP utime", "INPUT", "filename="..filename.."atime="..atime.."mtime="..mtime)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--changes the times
@@ -1030,7 +1029,7 @@ local flexifs = {
 		--updates the iblock on the DB
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1040,7 +1039,7 @@ local flexifs = {
 	--function mkdir: creates a directory
 	mkdir = function(self, filename, mode, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .DIR_OP mkdir", "INPUT", "filename="..filename..", mode="..mode)
+		--local log1 = start_logger(".FUSE_API .DIR_OP mkdir", "INPUT", "filename="..filename..", mode="..mode)
 		--flags:
 		local flags = {
 			CHECK_EXIST=true,
@@ -1050,7 +1049,7 @@ local flexifs = {
 		--the mode is mixed wit the flag S_IFDIR
 		mode = set_bits(mode, S_IFDIR)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_mk_file")
+		--log1:logprint_flush("END", "calling cmn_mk_file")
 		--makes a file with iblock_n=nil (creates iblock), number_links=2 and returns the result of the operation. TODO: CHECK IF SIZE IS NOT block_size
 		return cmn_mk_file(filename, nil, flags, mode, 2)
 	end,
@@ -1066,18 +1065,18 @@ local flexifs = {
 	--function readdir: retrieves the contents of a directory
 	readdir = function(self, filename, offset, dblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .DIR_OP readdir", "INPUT", "filename="..filename..", offset="..offset)
+		--local log1 = start_logger(".FUSE_API .DIR_OP readdir", "INPUT", "filename="..filename..", offset="..offset)
 		--prints the dblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("dblock", 0, dblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("dblock", 0, dblock))
 		--looks for the dblock
 		local dblock = get_dblock_from_filename(filename)
 		--if the dblock does not exist (ERROR), returns ENOENT
 		if not dblock then
-			log1:logprint_flush("END", "", "dblock does not exist, returning ENOENT")
+			--log1:logprint_flush("END", "", "dblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--logs
-		log1:logprint(".TABLE", "dblock retrieved", tbl2str("dblock", 0, dblock))
+		--log1:logprint(".TABLE", "dblock retrieved", tbl2str("dblock", 0, dblock))
 		--starts the file list with "." and ".."
 		local file_list={'.', '..'}
 		--for each entry in content, adds it in the file list
@@ -1085,7 +1084,7 @@ local flexifs = {
 			table.insert(file_list, i)
 		end
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0 and the list of files
 		return 0, file_list
 	end,
@@ -1093,11 +1092,11 @@ local flexifs = {
 	--function fsyncdir: synchronizes a directory; does nothing in atomic mode (no notion of open-close session)
 	fsyncdir = function(self, filename, isdatasync, dblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP fsyncdir", "INPUT", "filename="..filename..", isdatasync="..tostring(isdatasync))
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP fsyncdir", "INPUT", "filename="..filename..", isdatasync="..tostring(isdatasync))
 		--prints the dblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("dblock", 0, dblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("dblock", 0, dblock))
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1105,11 +1104,11 @@ local flexifs = {
 	--function releasedir: closes a directory; does nothing in atomic mode (no notion of open-close session)
 	releasedir = function(self, filename, dblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .DIR_OP releasedir", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .DIR_OP releasedir", "INPUT", "filename="..filename)
 		--prints the dblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("dblock", 0, dblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("dblock", 0, dblock))
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1117,14 +1116,14 @@ local flexifs = {
 	--function rmdir: removes a directory from the FS
 	rmdir = function(self, filename)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .DIR_OP rmdir", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .DIR_OP rmdir", "INPUT", "filename="..filename)
 		--flags:
 		local flags = {
 			IS_DIR = true,
 			UPDATE_PARENT = true
 		}
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_rm_file")
+		--log1:logprint_flush("END", "calling cmn_rm_file")
 		--removes the file from the FS and returns the result of the operation
 		return cmn_rm_file(filename, flags)
 
@@ -1135,7 +1134,7 @@ local flexifs = {
 	--function create: creates and opens a regular file
 	create = function(self, filename, mode, create_flags, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP create", "INPUT", "filename="..filename..", type create flags="..type(create_flags)..", mode="..mode)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP create", "INPUT", "filename="..filename..", type create flags="..type(create_flags)..", mode="..mode)
 		--flags:
 		local flags = {
 			CHECK_EXIST=false,
@@ -1145,7 +1144,7 @@ local flexifs = {
 		--the file is regular (S_IFREG set to true)
 		mode = set_bits(mode, S_IFREG)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_mk_file")
+		--log1:logprint_flush("END", "calling cmn_mk_file")
 		--makes a file with iblock_n=nil (creates iblock) and returns the result of the operation
 		return cmn_mk_file(filename, nil, flags, mode)
 	end,
@@ -1161,20 +1160,20 @@ local flexifs = {
 	--function read: reads data from an open file. TODO: CHANGE MDATE and ADATE WHEN READING/WRITING
 	read = function(self, filename, size, offset, iblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .READ_WRITE_OP read", "INPUT", "filename="..filename..", size="..size.."..offset="..offset)
+		--local log1 = start_logger(".FUSE_API .READ_WRITE_OP read", "INPUT", "filename="..filename..", size="..size.."..offset="..offset)
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--gets iblock from DB
 		iblock = get_iblock_from_filename(filename)
 		--prints the iblock
-		log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
 		----if the iblock does not exist (ERROR), returns 1. TODO: see how to handle this error
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning 1")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning 1")
 			return 1
 		end
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_read")
+		--log1:logprint_flush("END", "calling cmn_read")
 		--performs a cmn_read operation and returns the result of the operation
 		return cmn_read(size, offset, iblock)
 	end,
@@ -1182,22 +1181,22 @@ local flexifs = {
 	--function write: writes data into a file. TODO: CHANGE MDATE and ADATE WHEN WRITING
 	write = function(self, filename, buf, offset, iblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .READ_WRITE_OP write", "INPUT", "filename="..filename..", offset="..offset)
+		--local log1 = start_logger(".FUSE_API .READ_WRITE_OP write", "INPUT", "filename="..filename..", offset="..offset)
 		--prints the buffer
-		log1:logprint(".RAW_DATA", "INPUT", "buf=\""..buf.."\"")
+		--log1:logprint(".RAW_DATA", "INPUT", "buf=\""..buf.."\"")
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--TODO: falta si el iblock no existe
 		--prints the iblock
-		log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "iblock retrieved", tbl2str("iblock", 0, iblock))
 		--performs a cmn_write operation (puts blocks but does not update iblock in the DB - close-to-open consistency)
 		iblock = cmn_write(buf, offset, iblock)
 		--updates iblock in DB
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns the size of the written buffer
 		return #buf
 	end,
@@ -1205,11 +1204,11 @@ local flexifs = {
 	--function flush: cleans local record about an open file; does nothing in atomic mode (no notion of open-close session)
 	flush = function(self, filename, iblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP flush", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP flush", "INPUT", "filename="..filename)
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1217,14 +1216,14 @@ local flexifs = {
 	--function ftruncate: truncates a file using directly the iblock as reference.
 	ftruncate = function(self, filename, size, iblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP ftruncate", "INPUT", "filename="..filename..", size="..size)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP ftruncate", "INPUT", "filename="..filename..", size="..size)
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--performs a cmn_truncate operation (does not update iblock in the DB - close-to-open consistency)
@@ -1232,7 +1231,7 @@ local flexifs = {
 		--updates iblock in DB
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1240,11 +1239,11 @@ local flexifs = {
 	--function fsync: ...; does nothing in atomic mode (no notion of open-close session)
 	fsync = function(self, filename, isdatasync, iblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP fsync", "INPUT", "filename="..filename..", isdatasync="..isdatasync)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP fsync", "INPUT", "filename="..filename..", isdatasync="..isdatasync)
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1252,11 +1251,11 @@ local flexifs = {
 	--function release: closes an open file; does nothing in atomic mode (no notion of open-close session)
 	release = function(self, filename, iblock)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP release", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP release", "INPUT", "filename="..filename)
 		--prints the iblock
-		log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "INPUT", tbl2str("iblock", 0, iblock))
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1264,12 +1263,12 @@ local flexifs = {
 	--function truncate: truncates a file to a given size, or appends zeros if the requested size is bigger than the original
 	truncate = function(self, filename, size)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .FILE_MISC_OP truncate", "INPUT", "filename="..filename.."size="..size)
+		--local log1 = start_logger(".FUSE_API .FILE_MISC_OP truncate", "INPUT", "filename="..filename.."size="..size)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--performs a cmn_truncate operation (does not update iblock in the DB - close-to-open consistency)
@@ -1277,7 +1276,7 @@ local flexifs = {
 		--updates iblock in DB
 		put_iblock(iblock.ino, iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1285,17 +1284,17 @@ local flexifs = {
 	--function rename: moves/renames a file
 	rename = function(self, from, to)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .MV_CP_OP rename", "INPUT", "from="..from..", to="..to)
+		--local log1 = start_logger(".FUSE_API .MV_CP_OP rename", "INPUT", "from="..from..", to="..to)
 		--if the "from" file is equal to the "to" file. TODO: the man page says it should do that, but BASH's "mv" sends an error
 		if from == to then
-			log1:logprint_flush("END", "from and to are the same, nothing to do here")
+			--log1:logprint_flush("END", "from and to are the same, nothing to do here")
 			return 0
 		end
 		--gets "from" iblock from DB
 		local from_iblock = get_iblock_from_filename(from)
 		--if the "from" iblock does not exist (ERROR), returns ENOENT
 		if not from_iblock then
-			log1:logprint_flush("ERROR END", "", "\"from\" iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "\"from\" iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--splits the "from" filename
@@ -1331,7 +1330,7 @@ local flexifs = {
 		--deletes the "from" file
 		del_file(from)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1339,19 +1338,19 @@ local flexifs = {
 	--function link: makes a hard link
 	link = function(self, from, to, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .LINK_OP link", "INPUT", "from="..from..", to="..to)
+		--local log1 = start_logger(".FUSE_API .LINK_OP link", "INPUT", "from="..from..", to="..to)
 		--if the "from" file is equal to the "to" file. TODO: the man page says it should do that, but BASH's "mv" sends an error
 		if from == to then
-			log1:logprint_flush("END", "from and to are the same, nothing to do here")
+			--log1:logprint_flush("END", "from and to are the same, nothing to do here")
 			return 0
 		end
 		--gets "from" iblock from DB
 		local from_iblock = get_iblock_from_filename(from)
 		--prints iblock
-		log1:logprint(".TABLE", "\"from\" iblock retrieved", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "\"from\" iblock retrieved", tbl2str("iblock", 0, iblock))
 		--if the "from" iblock does not exist (ERROR), returns ENOENT
 		if not from_iblock then
-			log1:logprint_flush("ERROR END", "", "\"from\" iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "\"from\" iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--flags:
@@ -1365,11 +1364,11 @@ local flexifs = {
 		--increments the number of links in from_iblock
 		from_iblock.nlink = from_iblock.nlink + 1
 		--prints iblock
-		log1:logprint(".TABLE", "new \"from\" iblock", tbl2str("iblock", 0, iblock))
+		--log1:logprint(".TABLE", "new \"from\" iblock", tbl2str("iblock", 0, iblock))
 		--updates iblock in DB, because nlink was incremented
 		put_iblock(from_iblock.ino, from_iblock)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--returns 0
 		return 0
 	end,
@@ -1377,14 +1376,14 @@ local flexifs = {
 	--function unlink: deletes a link to an iblock
 	unlink = function(self, filename, ...)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .LINK_OP unlink", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API .LINK_OP unlink", "INPUT", "filename="..filename)
 		--flags:
 		local flags = {
 			IS_DIR = false,
 			UPDATE_PARENT = true
 		}
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "calling cmn_rm_file")
+		--log1:logprint_flush("END", "calling cmn_rm_file")
 		--removes the file from the FS and returns the result of the operation
 		return cmn_rm_file(filename, flags)
 	end,
@@ -1392,7 +1391,7 @@ local flexifs = {
 	--function symlink: makes a symbolic link
 	symlink = function(self, from, to)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API .LINK_OP symlink", "INPUT", "from="..from.."to="..to)
+		--local log1 = start_logger(".FUSE_API .LINK_OP symlink", "INPUT", "from="..from.."to="..to)
 		--flags:
 		local flags = {
 			CHECK_EXIST=true,
@@ -1402,7 +1401,7 @@ local flexifs = {
 		--the mode for symbolic link is 777 with the flag S_IFLNK set to true
 		local mode = S_IFLNK + mk_mode(7,7,7)
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END")
+		--log1:logprint_flush("END")
 		--makes a file with iblock_n=nil (creates iblock), number_links=1, size=0, dev=rdev, content is the string "from" and returns the result of the operation
 		return cmn_mk_file(to, nil, flags, mode, 1, string.len(from), 0, {from})
 	end,
@@ -1410,16 +1409,16 @@ local flexifs = {
 	--function readlink: reads a symbolic link
 	readlink = function(self, filename)
 		--starts the logger
-		local log1 = start_logger(".FUSE_API LINK_OP readlink", "INPUT", "filename="..filename)
+		--local log1 = start_logger(".FUSE_API LINK_OP readlink", "INPUT", "filename="..filename)
 		--gets iblock from DB
 		local iblock = get_iblock_from_filename(filename)
 		--if the iblock does not exist (ERROR), returns ENOENT
 		if not iblock then
-			log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
+			--log1:logprint_flush("ERROR END", "", "iblock does not exist, returning ENOENT")
 			return ENOENT
 		end
 		--logs END of the function and flushes all logs
-		log1:logprint_flush("END", "symlink="..iblock.content[1])
+		--log1:logprint_flush("END", "symlink="..iblock.content[1])
 		--returns 0 and the symbolic link
 		return 0, iblock.content[1]
 	end,
@@ -1447,11 +1446,11 @@ local flexifs = {
 }
 
 --logs
-mainlog:logprint("", "FlexiFS object created, about to define FUSE options")
+--mainlog:logprint("", "FlexiFS object created, about to define FUSE options")
 --fills the fuse options out
 fuse_opt = {'flexifs', 'mnt', '-f', '-s', '-d', '-oallow_other'}
 --logs
-mainlog:logprint_flush("END", "FUSE options defined; about to execute fuse.main")
+--mainlog:logprint_flush("END", "FUSE options defined; about to execute fuse.main")
 --cleans the logger
 mainlog = nil
 --starts FUSE
