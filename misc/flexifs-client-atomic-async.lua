@@ -68,14 +68,14 @@ local seq_number = 0
 --VARIABLES FOR LOGGING
 
 --the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
---local logfile = os.getenv("HOME").."/logflexifs/log.txt"
+local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
---local logrules = {}
+local logrules = {}
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
---local logbatching = false
---local global_details = true
---local global_timestamp = true
---local global_elapsed = true
+local logbatching = false
+local global_details = false
+local global_timestamp = false
+local global_elapsed = false
 
 --MISC FUNCTIONS
 
@@ -212,8 +212,10 @@ local function get_block(block_id)
 		--log1:logprint("ERROR END", "send_get was not OK")
 		return nil
 	end
+	--prints contents of the block
+	--log1:logprint(".RAW_DATA", "block=\""..tostring(block).."\"")
 	--logs END of the function and flushes all logs
-	--log1:logprint_flush("END", "", "block=\""..tostring(block).."\"")
+	--log1:logprint_flush("END")
 	--returns the block data
 	return block
 end
@@ -316,7 +318,7 @@ local put_dblock = put_iblock
 --function put_file: puts a file into the DB
 local function put_file(filename, iblock_n)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
+	--local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
 	--returns the result of send_put
 	return send_put(DB_URL, hash_string("file:"..filename), "sync", IBLOCK_CONSIST, iblock_n)
 end
@@ -326,7 +328,7 @@ end
 --function del_block: deletes a block from the DB
 local function del_block(block_id, sync_mode)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_id="..block_id)
+	--local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_id="..block_id)
 	--returns the result of send_del
 	return send_del(DB_URL, block_id, sync_mode, BLOCK_CONSIST)
 end
@@ -339,10 +341,10 @@ local function del_iblock(iblock_n, is_dblock)
 	local iblock = get_iblock(iblock_n)
 	--if the iblock is not a dblock, it has pointers to block that must be deleted too.TODO Try to pass this part to unlink, so i have identical versions of del_iblock
 	if not is_dblock then
- 		--for all the blocks refered by the iblock
+		--for all the blocks refered by the iblock
 		for i = 1, (#(iblock.content) - 1) do
 			--logs
-			--log1:logprint_flush("", "about to delete block with ID="..iblock.content[i])
+			--log1:logprint("", "about to delete block with ID="..iblock.content[i])
 			--deletes the blocks. TODO: NOT CHECKING IF SUCCESSFUL
 			del_block(iblock.content[i], "async")
 			--TODO: NOT CHECKING WITH ASK_TIDS/GET_TIDS_STATUS like in the case of PUT
@@ -367,7 +369,7 @@ end
 --function del_file: deletes a file from the DB
 local function del_file(filename)
 	--starts the logger
-	local log1 = start_end_logger(".FS2DB_OP del_file", "calling send_del", "filename="..filename)
+	--local log1 = start_end_logger(".FS2DB_OP del_file", "calling send_del", "filename="..filename)
 	--returns the result of send_del
 	return send_del(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST)
 end
@@ -383,8 +385,9 @@ local function wait_all_transactions(open_transactions)
 	--local log1 = start_logger(".FS2DB_OP wait_all_transactions")
 	--prints the iblock
 	--log1:logprint(".TABLE", "INPUT", tbl2str("open_transactions", 0, open_transactions))
-	--loop to ask if all transactions belonging to the file are done
+	--initializes variables ok and still_open
 	local ok, still_open
+	--loop to ask if all transactions belonging to the file are done
 	while true do
 		--log1:logprint("", "doing the loop...")
 		--if the table of open transactions is empty, breaks the while loop (no need to ask anything to the mini proxy)
@@ -404,7 +407,7 @@ local function wait_all_transactions(open_transactions)
 		os.execute("sleep ".._POLL_INTERVAL)
 	end
 end
-	
+
 --COMMON ROUTINES FOR FUSE OPERATIONS
 
 --function cmn_getattr: gets the attributes of an iblock
@@ -813,7 +816,7 @@ IBLOCK_CONSIST = arg[1]
 DBLOCK_CONSIST = IBLOCK_CONSIST
 DB_URL = arg[2]
 --starts the logger
---init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
+init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 --starts the logger
 local mainlog = start_logger("MAIN", "starting FlexiFS")
 --takes userID, groupID, etc., from FUSE context
@@ -877,7 +880,7 @@ local flexifs = {
 	--function pulse: used in Lua memFS for "pinging"
 	pulse = function()
 		--starts the logger
-		local log1 = start_end_logger(".FILE_MISC_OP pulse")
+		--local log1 = start_end_logger(".FILE_MISC_OP pulse")
 	end,
 
 	--GENERAL FILE OPERATIONS
@@ -1474,7 +1477,7 @@ local flexifs = {
 	--function access: ...
 	access = function(...)
 		--starts the logger
-		local log1 = start_end_logger(".FILE_MISC_OP access")
+		--local log1 = start_end_logger(".FILE_MISC_OP access")
 		--returns 0
 		return 0
 	end,

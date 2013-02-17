@@ -68,14 +68,14 @@ local seq_number = 0
 --VARIABLES FOR LOGGING
 
 --the path to the log file is stored in the variable logfile; to log directly on screen, logfile must be set to "<print>"
---local logfile = os.getenv("HOME").."/logflexifs/log.txt"
+local logfile = os.getenv("HOME").."/logflexifs/log.txt"
 --to allow all logs, there must be the rule "allow *"
---local logrules = {}
+local logrules = {}
 --if logbatching is set to true, log printing is performed only when explicitely running logflush()
---local logbatching = false
---local global_details = true
---local global_timestamp = true
---local global_elapsed = true
+local logbatching = false
+local global_details = false
+local global_timestamp = false
+local global_elapsed = false
 
 --MISC FUNCTIONS
 
@@ -212,8 +212,10 @@ local function get_block(block_id)
 		--log1:logprint("ERROR END", "send_get was not OK")
 		return nil
 	end
+	--prints contents of the block
+	--log1:logprint(".RAW_DATA", "block=\""..tostring(block).."\"")
 	--logs END of the function and flushes all logs
-	--log1:logprint_flush("END", "", "block=\""..tostring(block).."\"")
+	--log1:logprint_flush("END")
 	--returns the block data
 	return block
 end
@@ -316,7 +318,7 @@ local put_dblock = put_iblock
 --function put_file: puts a file into the DB
 local function put_file(filename, iblock_n)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
+	--local log1 = start_end_logger(".FS2DB_OP put_file", "calling send_put", "filename="..filename..", iblock_n="..iblock_n)
 	--returns the result of send_put
 	return send_put(DB_URL, hash_string("file:"..filename), "sync", IBLOCK_CONSIST, iblock_n)
 end
@@ -326,7 +328,7 @@ end
 --function del_block: deletes a block from the DB
 local function del_block(block_id, sync_mode)
 	--starts and ends the logger
-	local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_id="..block_id)
+	--local log1 = start_end_logger(".FS2DB_OP del_block", "calling send_del", "block_id="..block_id)
 	--returns the result of send_del
 	return send_del(DB_URL, block_id, sync_mode, BLOCK_CONSIST)
 end
@@ -361,7 +363,7 @@ end
 --function del_file: deletes a file from the DB
 local function del_file(filename)
 	--starts the logger
-	local log1 = start_end_logger(".FS2DB_OP del_file", "calling send_del", "filename="..filename)
+	--local log1 = start_end_logger(".FS2DB_OP del_file", "calling send_del", "filename="..filename)
 	--returns the result of send_del
 	return send_del(DB_URL, hash_string("file:"..filename), nil, IBLOCK_CONSIST)
 end
@@ -765,7 +767,7 @@ IBLOCK_CONSIST = arg[1]
 DBLOCK_CONSIST = IBLOCK_CONSIST
 DB_URL = arg[2]
 --starts the logger
---init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
+init_logger(logfile, logrules, logbatching, global_details, global_timestamp, global_elapsed)
 --starts the logger
 local mainlog = start_logger("MAIN", "starting FlexiFS")
 --takes userID, groupID, etc., from FUSE context
@@ -829,7 +831,7 @@ local flexifs = {
 	--function pulse: used in Lua memFS for "pinging"
 	pulse = function()
 		--starts the logger
-		local log1 = start_end_logger(".FILE_MISC_OP pulse")
+		--local log1 = start_end_logger(".FILE_MISC_OP pulse")
 	end,
 
 	--GENERAL FILE OPERATIONS
@@ -1426,7 +1428,7 @@ local flexifs = {
 	--function access: ...
 	access = function(...)
 		--starts the logger
-		local log1 = start_end_logger(".FILE_MISC_OP access")
+		--local log1 = start_end_logger(".FILE_MISC_OP access")
 		--returns 0
 		return 0
 	end,
