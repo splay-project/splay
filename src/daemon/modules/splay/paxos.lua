@@ -225,7 +225,7 @@ local function paxos_operation(operation_type, prop_id, peers, retries, value, k
 				--log the error
 				--l_o:error("paxos_"..operation_type..": SOMETHING WENT WRONG ON THE RPC CALL RECEIVE_ACCEPT TO NODE="..acceptor.ip..":"..acceptor.port)
 			end
-			if accept_answer[1] then
+			if accept_answer and accept_answer[1] then
 				--l_o:print("paxos_"..operation_type..": ACCEPT: Received a positive answer from node="..acceptor.ip..":"..acceptor.port)
 				--increments answers
 				accept_answers = accept_answers + 1
