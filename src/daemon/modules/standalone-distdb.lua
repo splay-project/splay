@@ -1,8 +1,9 @@
+#!/usr/bin/lua
 require"splay.base"
 -- crypto required for hashing
 local crypto	= require"crypto"
 -- splay.rpc for RPC calls
-local rpc	= require"splay.rpc"
+local rpc	= require"splay.rpcq"
 -- splay.net for the HTTP server
 local net	= require"splay.net"
 -- splay.benc for enconding/decoding
