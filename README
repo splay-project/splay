@@ -1,4 +1,4 @@
-rvm ruby-1.8.7 do gem install -v=2.3.18 rails
+rvm ruby-1.8.7 do gem install -v 2.3.18 rails
 rvm ruby-1.8.7 do gem install mysql 
 rvm use 1.8.7
 ruby -rubygems script/server -p8090
@@ -13,3 +13,48 @@ sudo iptables -t nat -A PREROUTING -p tcp --dport 8090 -j DNAT --to 10.0.0.13:80
 where:
 -- 8090 is the port used when starting the splayweb
 -- 10.0.0.13 is the machine hosting the splayweb application
+
+
+To test with Ruby 2.0.0:
+apply this patch:
+
+Index: script/server
+===================================================================
+--- script/server	(revisione 1815)
++++ script/server	(copia locale)
+@@ -1,3 +1,3 @@
+ #!/usr/bin/env ruby
+-require File.dirname(__FILE__) + '/../config/boot'
+-require 'commands/server'
+\ No newline at end of file
++require_relative '../config/boot'
++require 'commands/server'
+
+
+Then, install required runtime and dependencies:
+rvm install 2.0.0
+rvm use 2.0.0
+gem install rails -v 2.3.18
+gem install iconv
+
+
+Then, time to debug:
+%ruby -rubygems script/server -p8090
+=> Booting WEBrick
+=> Rails 2.3.18 application starting on http://0.0.0.0:8090
+/Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/rails-2.3.18/lib/rails/gem_dependency.rb:21:in `add_frozen_gem_path': undefined method `source_index' for Gem:Module (NoMethodError)
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/rails-2.3.18/lib/initializer.rb:298:in `add_gem_load_paths'
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/rails-2.3.18/lib/initializer.rb:132:in `process'
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/rails-2.3.18/lib/initializer.rb:113:in `run'
+	from /Users/veleno/workspace/splay-trunk/sources/branches/splayweb_rails2318/config/environment.rb:34:in `<top (required)>'
+	from /Users/veleno/.rvm/rubies/ruby-2.0.0-p0/lib/ruby/site_ruby/2.0.0/rubygems/core_ext/kernel_require.rb:106:in `require'
+	from /Users/veleno/.rvm/rubies/ruby-2.0.0-p0/lib/ruby/site_ruby/2.0.0/rubygems/core_ext/kernel_require.rb:106:in `require'
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/activesupport-2.3.18/lib/active_support/dependencies.rb:182:in `block in require'
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/activesupport-2.3.18/lib/active_support/dependencies.rb:547:in `new_constants_in'
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/activesupport-2.3.18/lib/active_support/dependencies.rb:182:in `require'
+	from /Users/veleno/.rvm/gems/ruby-2.0.0-p0/gems/rails-2.3.18/lib/commands/server.rb:84:in `<top (required)>'
+	from /Users/veleno/.rvm/rubies/ruby-2.0.0-p0/lib/ruby/site_ruby/2.0.0/rubygems/core_ext/kernel_require.rb:58:in `require'
+	from /Users/veleno/.rvm/rubies/ruby-2.0.0-p0/lib/ruby/site_ruby/2.0.0/rubygems/core_ext/kernel_require.rb:58:in `require'
+	from script/server:4:in `<main>'
+
+
