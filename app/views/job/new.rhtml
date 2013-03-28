@@ -1,0 +1,8 @@
+<%= link_to 'List', :action => 'list' %>
+
+<h1>Submit a new Job</h1>
+
+<% form_tag({:action => 'create', :id=>'newjobform'}, {:multipart => true}) do %>
+  <%= render :partial => 'form' %>
+  <%= submit_tag "Create" %>
+<% end %>
