@@ -2,11 +2,13 @@ rvm ruby-1.8.7 do gem install -v=2.3.18 rails
 rvm ruby-1.8.7 do gem install mysql 
 rvm use 1.8.7
 ruby -rubygems script/server -p8090
-pour les logs: 
-dans la config du controleur, faire LinkLogDir = "#{Dir.pwd}/links" -> LinkLogDir = "/log/"
+
+To see the logs from the web interface: 
+in the splay controller configuration, be sure to have:
+    LinkLogDir = "#{Dir.pwd}/links" -> LinkLogDir = "/log/"
 ln -s splaweb/logs controller/link
 
-Turn ON port-forwarding on clusterinfo machine:
+If you host the splayweb on a VM behind the clusterinfo machine, you must turn ON port-forwarding on clusterinfo machine:
 sudo iptables -t nat -A PREROUTING -p tcp --dport 8090 -j DNAT --to 10.0.0.13:8090 
 where:
 -- 8090 is the port used when starting the splayweb
