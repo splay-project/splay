@@ -25,7 +25,54 @@ require 'utils'
 
 class JobController < ApplicationController
 
-  @@hello_world = "-- SPLAYPUB tutorial\n\n-- BASE libraries (threads, events, sockets, ...)\nrequire\"splay.base\"\n\n-- RPC library\nrpc = require\"splay.rpc\"\n\n-- accept incoming RPCs\nrpc.server(job.me.port)\n\nfunction call_me(position)\n  log:print(\"I received an RPC from node \"..position)\nend\n\n-- our main function\nfunction SPLAYschool()\n  -- print bootstrap information about local node\n  log:print(\"I'm \"..job.me.ip..\":\"..job.me.port)\n  log:print(\"My position in the list is: \"..job.position)\n  log:print(\"List type is '\"..job.list_type..\"' with \"..#job.nodes..\" nodes\")\n\n  -- wait for all nodes to be started (conservative)\n  events.sleep(5)\n\n  -- send RPC to random node of the list\n  rpc.call(job.nodes[1], {\"call_me\", job.position})\n\n  -- you can also spawn new threads (here with an anonymous function)\n  events.thread(function() log:print(\"Bye bye\") end)\n\n  -- wait for messages from other nodes\n  events.sleep(5)\n\n  -- explicitly exit the program (necessary to kill RPC server)\n  os.exit()\nend\n\n-- create thread to execute the main function\nevents.thread(SPLAYschool)\n\n-- start the application\nevents.loop()\n\n-- now, you can watch the logs of your job and enjoy ;-)\n-- try this job with multiple splayds and different parameters\n"
+  @@hello_world =<<-eos
+  -- SPLAYSchool tutorial
+
+  -- BASE libraries (threads, events, sockets, ...)
+  require"splay.base"
+
+  -- RPC library
+  rpc = require"splay.rpc"
+
+  -- accept incoming RPCs
+  rpc.server(job.me.port)
+
+  function call_me(position)
+    log:print("I received an RPC from node "..position)
+  end
+
+  -- our main function
+  function SPLAYschool()
+    -- print bootstrap information about local node
+    log:print("I'm "..job.me.ip..":"..job.me.port)
+    log:print("My position in the list is: "..job.position)
+    log:print("List type is '"..job.list_type.."' with "..#job.nodes.." nodes")
+
+    -- wait for all nodes to be started (conservative)
+    events.sleep(5)
+
+    -- send RPC to random node of the list
+    rpc.call(job.nodes[1], {"call_me", job.position})
+
+    -- you can also spawn new threads (here with an anonymous function)
+    events.thread(function() log:print("Bye bye") end)
+
+    -- wait for messages from other nodes
+    events.sleep(5)
+
+    -- explicitly exit the program (necessary to kill RPC server)
+    os.exit()
+  end
+
+  -- create thread to execute the main function
+  events.thread(SPLAYschool)
+
+  -- start the application
+  events.loop()
+
+  -- now, you can watch the logs of your job and enjoy ;-)
+  -- try this job with multiple splayds and different parameters
+  eos
   @@xml_topology =<<-eos
   <?xml version="1.0" encoding="ISO-8859-1"?>
   <topology>
@@ -74,147 +121,6 @@ class JobController < ApplicationController
   	</specs>
   </topology>
   eos
-  
-  @@demo1=<<-eos
-  PARAMS={}
-  PARAMS["STREAM_SIZE"]=20 --in Megabytes
-  PARAMS["NB_STREAMS"]=3
-  log=require"splay.log"
-  dns=require"splay.async_dns"
-  dns.l_o.level=5
-  socket = require"socket.core"
-  ts = require"splay.topo_socket" --MUST BE DONE BEFORE SPLAY.BASE
-  ts.l_o.level=5
-  tb = require"splay.token_bucket"
-  tb.l_o.level = 5
-  local ts_settings={}
-  ts_settings.CHOPPING=true
-  ts_settings.MAX_BLOCK_SIZE=tonumber(PARAMS["TS_BLOCK_SIZE"]) or 8192
-  assert(ts.init(ts_settings,job.nodes,job.topology,job.position))
-  socket=ts.wrap(socket)
-  st = require"splay.tree"
-  st.l_o.level =5
-  require"splay.base"
-  events = require"splay.events"
-  log=require"splay.log"
-  net=require"splay.net"
-  tzero=misc.time()
-  function assert_is_node(t)
-  	if t.ip==nil then log:error("Missing IP in peer table")
-  	elseif t.port == nil then log:error("Missing port in peer table")
-  	end
-  end
-  function print_node(n)
-  	assert_is_node(n)
-  	return n.ip..":"..n.port
-  end
-  function same_peer(a,b)
-  	return a.ip == b.ip and a.port == b.port
-  end
-  local function pos(node)
-  	for k,v in pairs(job.nodes) do
-  		if same_peer(node,v) then
-  			return k
-  		end
-  	end
-  end
-  function tcp_receive(s)
-    local r = s:receive(2048)
-    while r do
-      r = s:receive(2048)
-    end
-  end
-  net.server(job.me.port, tcp_receive)
-  log:print("TCP server started on ", job.me.ip, job.me.port)
-  function log_bw(lifetime)
-  	events.sleep(lifetime)
-  	local ts,tr = socket.stats()
-  	local end_time=misc.time()
-  	run_duration = end_time - start_time 
-  	log:print("Run: ",run_duration,"lifetime:",lifetime)
-  	local total_sent_kilobytes= misc.bitcalc(ts).kilobytes
-  	local total_recv_kilobytes= misc.bitcalc(tr).kilobytes
-  	local upload_Kb_s=total_sent_kilobytes/run_duration
-  	local download_Kb_s=total_recv_kilobytes/run_duration
-  	log:print("Bandwidth total-sent:",ts, total_sent_kilobytes.."Kb"," total-recv:",tr,total_recv_kilobytes.." Kb",misc.bitcalc(ts).megabytes.." MB")
-  	log:print("Bandwidth upload Kb/s: "..upload_Kb_s.." download Kb/s: "..download_Kb_s)	
-  	events.sleep(2)
-  	events.exit()
-  	os.exit()
-  end
-  prev_ts,prev_tr=nil,nil
-  bw_telemetry_period=1
-  function bw_telemetry_sent()
-  	local ts,tr = socket.stats()
-  	if prev_ts==nil then 
-  		prev_ts=ts 
-  	else
-  		local delta=ts-prev_ts
-  		local kilobits= misc.bitcalc(delta).kilobits
-  		local kilobytes= misc.bitcalc(delta).kilobytes
-  		local megabits=misc.bitcalc(delta).megabits
-  		log:print("node-pos:",job.position,misc.time()-tzero,"telemetry-bw-sent",ts,"Kbps: "..kilobits,"KBps: "..kilobytes,"Mbps: "..megabits)
-  		prev_ts=ts
-  	end
-  end
-  function tcp_upload(s)
-  	local t0=misc.time()
-  	s:send(msg)
-  	local t = misc.time()-t0
-  	local bits=misc.bitcalc(#msg)
-  	log:print(misc.time()-tzero,"Transfer time:", t,"throughput (upload):", (bits.kilobytes)/t," KB/s", (bits.kilobits)/t," Kb/s" )		
-  end
-  function uploader(wait_before_start,dest,msg)
-  	events.sleep(wait_before_start)
-  	log:print("Starting new upload to ", print_node(dest))
-  	local t0=misc.time()	
-  	net.client(dest,{send=tcp_upload})
-  end
-  --BEGIN DCM PROTOCOL --
-  net=require"splay.net"
-  function handle_dcm(msg, ip, port) --the ip and port the data was sent from.
-  	--log:print(job.position,"RECEIVE DCM EVENT:",msg)
-  	local msg_tokens=misc.split(msg, " ")
-  	ts.handle_tree_change_event(msg_tokens)	
-  end
-  dcm_udp_port=job.me.port+1 --by convention, +1 is the udp_port for topology
-  u = net.udp_helper(dcm_udp_port, handle_dcm)
-  last_proposed=nil
-  last_ev_broadcasted_idx=0
-  function dcm()
-  	--log:debug("dcm",ts.last_event_idx, last_ev_broadcasted_idx)
-  	if ts.last_event_idx>last_ev_broadcasted_idx then
-  		for i=last_ev_broadcasted_idx+1, ts.last_event_idx do
-  			local e=ts.tree_events[i]
-  			if e==nil then break end			
-  			last_ev_broadcasted_idx = i 		
-  			--log:print(job.position, i, "SEND DCM EVENT:", e)
-  			for k,dest in pairs(job.nodes) do --should use UDP multicast,with many nodes this could be slow
-  				if not  (dest.ip == job.me.ip and dest.port ==job.me.port) then
-  					u.s:sendto(e, dest.ip, dest.port+1)
-  				end
-  			end
-  		end
-  	end	
-  end
-  --END DCM PROTOCOL --
-  events.run(function()
-  	events.periodic(0.50, dcm)
-    events.thread(function() log_bw(60) end)
-  	start_time=misc.time()
-  	local nb_streams=tonumber(PARAMS["NB_STREAMS"]) or 1
-  	if job.position<=nb_streams then
-  		local size=1024*1024*(tonumber(PARAMS["STREAM_SIZE"]) or 70) -- 0 megabytes
-  		log:print("Message size MB:",misc.bitcalc(size).megabytes, "KB:", misc.bitcalc(size).kilobytes, "Kb:",misc.bitcalc(size).kilobits )
-  		msg=misc.gen_string(size)	
-  		events.periodic(bw_telemetry_sent,bw_telemetry_period)			
-  		uploader(job.position*5, job.nodes[job.position+5],msg)
-  	end
-  end)
-  
-  eos
-  
-  @@topology_drawing="demo1.jpg"
   
 	layout 'default'
 	before_filter :login_required
@@ -288,7 +194,7 @@ class JobController < ApplicationController
 		    options[:max_time] =  300
       end
 			@job = Job.new(options)
-      @job.code = @@demo1
+      @job.code = @@hello_world
       @job.topology = @@xml_topology
 		end
   end

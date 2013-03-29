@@ -2,33 +2,13 @@
 <script src="http://maps.google.com/maps?file=api&amp;v=2&amp;key=<%= SplayController::google_key %>" type="text/javascript"></script>
 
 <script src="/javascripts/DateTimePicker.js" type="text/javascript"></script>
-<script src="/javascripts/edit_area_full.js" type="text/javascript"></script>
-<!--script src="http://cdn.jquerytools.org/1.2.6/full/jquery.tools.min.js"></script-->
-<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-
-<script language="Javascript" type="text/javascript">
-	// initialisation
-	// other configuration options here: http://www.cdolivet.com/editarea/editarea/docs/configuration.html
-	editAreaLoader.init({
-		id: "job"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: false
-		,word_wrap: true
-		,language: "en"
-		,syntax: "ruby"	//Lua not available yet,see https://sourceforge.net/tracker/?func=detail&aid=3452532&group_id=164008&atid=830000
-		,is_editable: false
-	});
-</script>
-
+<script src="http://cdn.jquerytools.org/1.2.7/full/jquery.tools.min.js"></script>
 
 <script type="text/javascript">
 function toggleDiv(divId) {
    $("#"+divId).fadeToggle();
 }
 </script>
-
-
 
 <script type="text/javascript">
         function validate_integer( input ) {
@@ -269,7 +249,7 @@ s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitu
 <table class="smart_table" cellspacing="0">
 <thead>
 <tr>
-  <th class="nobg" style="width: 300px"></th>
+  <th class="nobg" style="width: 450px"></th>
   <th class="top" style="width: 300px">Values</th>
 </tr>
 </thead>
@@ -288,11 +268,10 @@ s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitu
 <tr>
 	<th>Number of splayds</th>
   <td>
-    <%= text_field 'job', :nb_splayds, :size => 4, :value=>10, :readonly=>"readonly" %>
+    <%= text_field 'job', :nb_splayds, :size => 4, :value=>10 %>
 		<% if current_user.demo == 1 %>
 		<font color="red"><b>Demo: max 100</b></font>
 		<% end %>
-		SIGCOMM DEMO-MODE, 10 SPLAYDS PER JOB		
   </td>
 </tr>
 	<th>Job Code</th>
@@ -301,31 +280,28 @@ s_m('<%= splayd['status'][0] %>', <%= splayd['latitude'] %>, <%= splayd['longitu
 		<font color="red"><b>Demo: only this code is authorized:</b></font><br />
     <pre><%= @job.code %></pre>
     <% else %>
-		<%= text_area 'job', :code, :cols => 80, :rows => 15, :readonly=>"readonly" %></p>
+		<%= text_area 'job', :code, :cols => 80, :rows => 15 %></p>
 		<% end %>
 	</td>
 </tr>
-
 <tr>
 	<th>Topology</th>
-	<td><%= text_area 'job', :topology, :cols => 80, :rows => 15, :readonly=>"readonly" %></td>
-	<td><img src="/images/demo1.jpg" style="width:100px;"/></td>
-	
+	<td><%= text_area 'job', :topology, :cols => 80, :rows => 15  %></td>
 </tr>
 <tr><th>
-	<a href="javascript:toggleDiv('churn');" style="background-color: #ccc; padding: 5px 10px;">Show/Hide Churn</a>
+	<a href="javascript:toggleDiv('churn');" style="background-color: #ccc; padding: 5px 10px;font-size: 7pt;">Show/Hide Churn</a>
 	</th>
 </tr>
 <tr><th>
-	<a href="javascript:toggleDiv('geo');" style="background-color: #ccc; padding: 5px 10px;">Show/Hide Geolocalization</a>
+	<a href="javascript:toggleDiv('geo');" style="background-color: #ccc; padding: 5px 10px;font-size: 7pt;">Show/Hide Geolocalization</a>
 	</th>
 </tr>
 <tr><th>
-	<a href="javascript:toggleDiv('scheduling');" style="background-color: #ccc; padding: 5px 10px;">Show/Hide Job scheduling options</a>
+	<a href="javascript:toggleDiv('scheduling');" style="background-color: #ccc; padding: 5px 10px;font-size: 7pt;">Show/Hide Scheduling</a>
 	</th>
 </tr>
 <tr><th>
-	<a href="javascript:toggleDiv('advanced');" style="background-color: #ccc; padding: 5px 10px;">Show/Hide Advanced Options</a>
+	<a href="javascript:toggleDiv('advanced');" style="background-color: #ccc; padding: 5px 10px;font-size: 7pt;">Show/Hide Advanced</a>
 	</th>
 </tr>
 </tbody>
