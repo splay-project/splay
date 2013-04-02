@@ -57,4 +57,5 @@ Then, time to debug:
 	from /Users/veleno/.rvm/rubies/ruby-2.0.0-p0/lib/ruby/site_ruby/2.0.0/rubygems/core_ext/kernel_require.rb:58:in `require'
 	from script/server:4:in `<main>'
 
-
+Hints for #ruby, IRC:
+*_methods returns an array of symbols, not an array of strings, str[nr] returns an "char" and no number,  same for ?char, case when allows now when val : func  anymore there is ; better.  Strings and other like Regex, Match Data, and Symbol have now encodings and Iconv was removed, String is not an Enumerable anymore, and for 2.0 lines and each_line react different,
