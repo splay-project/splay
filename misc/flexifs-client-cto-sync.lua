@@ -1181,6 +1181,8 @@ local flexifs = {
 		--log1:logprint(".MEGA_DEBUG", "FUSE context taken", "uid="..tostring(uid)..", gid="..tostring(gid)..", pid="..tostring(pid)..", puid="..tostring(puid)..", pgid="..tostring(pgid))
 		--log1:logprint(".MEGA_DEBUG", "mode="..mode)
 		--increments the number of open sessions
+		--TODO: when a file is already open, if we retrieve the inode from flexiFS and not from memory, we
+		-- are going to get open_sessions = 0, not the real one, with open_sessions = 1...)
 		iblock.open_sessions = iblock.open_sessions + 1
 		--logs
 		--log1:logprint(".MEGA_DEBUG .TABLE", "iblock changed", tbl2str("iblock", 0, iblock))
