@@ -59,12 +59,25 @@ print("Bench nested arrays with growing-size string")
 for k,v in pairs(data_sizes) do
 	
 	local gen= misc.gen_string(v)
-	for i=1,(v/100) do --to avoid stackoverlow
-		gen={gen}
-	end
 	
-	start=misc.time()
-	enc_data=test_encode(gen)
-	print((v/1000).."K", misc.to_dec_string(misc.time()-start))
+	t=misc.time()
+	local c={}
+	local size=#gen
+	for i=1,2 do
+		c[i]=gen
+	end
+	table.concat(c)
+	print(v,misc.time()-t)
+	
+	t=misc.time()
+	enc_data=test_encode(c)
+	print(v,"encoded in:",misc.time()-t)
+	--for i=1,(v/100) do --to avoid stackoverlow
+	--	gen={gen}
+	--end
+	--
+	--start=misc.time()
+	--enc_data=test_encode(gen)
+	--print((v/1000).."K", misc.to_dec_string(misc.time()-start))
 end
 
