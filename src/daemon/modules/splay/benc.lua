@@ -140,7 +140,7 @@ local function encode_table(data,out)
 		out[out.n] = 'e'
 	    out.n = out.n + 1
 	elseif t == 'string' then
-		out[out.n] = tostring(#data); 
+		out[out.n] = tostring(#data) 
 		out.n = out.n + 1
 	    out[out.n] = ":" 
 		out.n = out.n + 1
