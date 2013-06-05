@@ -76,7 +76,6 @@ if job.topology then
         local t_f=io.open(job.topology)
         local t_raw=t_f:read("*a")
         t_f:close()
-        local x= os.clock()
         job.topology = json.decode(t_raw)
 end
 
