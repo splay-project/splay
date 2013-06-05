@@ -72,6 +72,14 @@ if not job then
 	os.exit()
 end
 
+if job.topology then
+        local t_f=io.open(job.topology)
+        local t_raw=t_f:read("*a")
+        t_f:close()
+        local x= os.clock()
+        job.topology = json.decode(t_raw)
+end
+
 if job.remove_file then
 	os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
 end
