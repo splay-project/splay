@@ -98,15 +98,31 @@ function send_list_splayds(cli_server_url, session_id)
 			DELETED = 0
 		}
 		--prints the result
+		local hosts={}
+		local h_c=0
 		print_line(NORMAL, "Splayd List =")
 		for _,v in ipairs(json_response.result.splayd_list) do
 			print_line(QUIET, "\tsplayd_id="..v.splayd_id..", ip="..v.ip..", status="..v.status)
 			print_line(QUIET, "\t\tkey="..v.key)
 			stats[v.status] = stats[v.status] + 1
+			if  hosts[v.ip]==nil then 
+				hosts[v.ip]={1}
+				hosts[v.ip].stats={REGISTERED=0,PREAVAILABLE=0,AVAILABLE=0,UNAVAILABLE=0,RESET=0,DELETED=0}
+				hosts[v.ip].stats[v.status]=hosts[v.ip].stats[v.status]+1
+				h_c=h_c+1 
+			else 
+				hosts[v.ip][1]=hosts[v.ip][1]+1
+				hosts[v.ip].stats[v.status]=hosts[v.ip].stats[v.status]+1 
+			end
 		end
-		print_line(NORMAL, "Totals =")
+		print_line(NORMAL, "Totals:")
 		for k,v in pairs(stats) do
 			print_line(NORMAL, k.." = "..v.." ")
+		end
+		print_line(NORMAL, "Total hosts:"..h_c)
+		print_line(NORMAL, "Per host totals:")
+		for k,v in pairs(hosts) do
+			print_line(NORMAL, "HOST:"..k.." TOTAL_SPLAYDS:"..v[1].." (AVAILABLE:"..v.stats.AVAILABLE.." UNAVAILABLE:"..v.stats.UNAVAILABLE.." RESET:"..v.stats.RESET.."  REGISTERED:"..v.stats.REGISTERED..")")
 		end
 		print_line(NORMAL, "")
 	end
