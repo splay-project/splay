@@ -108,9 +108,12 @@ class Logd
 				#"#{job['splayd_id']} #{job['splayd_ip']} ="
 
 		t = Time.now
-		ms = (t.to_f - t.to_i).to_s[1,3]
-		pfix = "#{t.strftime("%H:%M:%S")}#{ms} " +
-				"(#{job['splayd_id']}) "
+		#ms = (t.to_f - t.to_i).to_s[1,3]
+		#pfix = "#{t.strftime("%H:%M:%S")}#{ms} " +
+		#		"(#{job['splayd_id']}) "
+		pfix = "#{t.strftime("%H:%M:%S")}.#{t.usec} " +
+		    "(#{job['splayd_id']}) "
+
 		return pfix
 	end
 
@@ -158,7 +161,7 @@ class Logd
 					begin
 #             file = File.open(fname, File::WRONLY|File::APPEND|File::CREAT, 0666) 
 						file = File.new(fname, File::WRONLY|File::APPEND|File::CREAT, 0777) 
-						file.sync = true
+						file.sync = true # # This affects future operations and causes output to be written without block buffering.
 
 						file.flock File::LOCK_EX # synchro between processes
 						file.puts "#{prefix(job)} START_LOG"
