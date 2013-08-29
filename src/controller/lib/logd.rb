@@ -94,26 +94,8 @@ class Logd
 	end
 
 	def prefix(job)
-		# OLD
-		#pfix = "#{Time.now.strftime("%H:%M:%S")} - " +
-				#"#{job['splayd_id']} - #{job['splayd_ip']}"
-
-		# SHORT unix
-		#pfix = "#{Time.now.to_f} " +
-				#"#{job['splayd_id']} ="
-		
-		#t = Time.now
-		#ms = (t.to_f - t.to_i).to_s[1,3]
-		#pfix = "#{t.strftime("%H:%M:%S")}#{ms} " +
-				#"#{job['splayd_id']} #{job['splayd_ip']} ="
-
 		t = Time.now
-		#ms = (t.to_f - t.to_i).to_s[1,3]
-		#pfix = "#{t.strftime("%H:%M:%S")}#{ms} " +
-		#		"(#{job['splayd_id']}) "
-		pfix = "#{t.strftime("%H:%M:%S")}.#{t.usec} " +
-		    "(#{job['splayd_id']}) "
-
+    pfix = t.strftime("%H:%M:%S") << ".#{t.usec} " << "(#{job['splayd_id']}) "            
 		return pfix
 	end
 
@@ -180,7 +162,7 @@ class Logd
 							if msg then #prevents from errors when msg=nil, this can happen if raw=nil
 								count = count + msg.length
 								file.flock File::LOCK_EX # synchro between processes
-								file.puts "#{prefix(job)} #{msg}"
+								file.puts prefix(job) << " " << msg ##efficient string concat
 								file.flock File::LOCK_UN
 							end
 
