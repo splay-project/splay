@@ -174,3 +174,5 @@ f=f()()
   This file says that the file whose content_id is 'abc' must be shipped to splayd 13, while content_id 'def' is for 123. 
   Finally, splayd 200 must receive two files, whose content_ids are 'ghi' and 'lmn'.
   Only these two splayds should then receive their own files
+
+- Write HOW_TO_BUILD.xml to explain how to build the various Splay packages.
