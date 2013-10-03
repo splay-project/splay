@@ -42,7 +42,7 @@ class SplaydServer
 
 	def main
 		begin
-			server = TCPserver.new(@port)
+			server = TCPServer.new(@port)
 			server.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
 
 			if @@ssl
