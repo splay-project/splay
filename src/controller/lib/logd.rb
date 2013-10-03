@@ -47,7 +47,7 @@ class LogdServer
 
 			$log.debug("Logging into #{@@log_dir}")
 
-			server = TCPserver.new(@port)
+			server = TCPServer.new(@port)
 		rescue => e
 			$log.fatal(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
 			return

@@ -331,7 +331,7 @@ class Jobd
 			else
 				status_msg += "The bytecode isn't Lua 5.1 bytecode.\n"
 				set_job_status(job['id'], 'NO_RESSOURCES', status_msg)
-				next
+				#next
 			end
 		end
 
@@ -679,9 +679,9 @@ class Jobd
 		#when 'ENDED':
 		#when 'NO_RESSOURCES':
 		#when 'REGISTER_TIMEOUT':
-		when 'LOCAL', 'QUEUED':
+		when 'LOCAL', 'QUEUED' then
 			set_job_status(job['id'], 'KILLED')
-		when 'REGISTERING', 'RUNNING':
+		when 'REGISTERING', 'RUNNING' then
 			q_act = ""
 			$db.select_all "SELECT * FROM splayd_jobs WHERE
 					job_id='#{job['id']}'" do |m_s|
