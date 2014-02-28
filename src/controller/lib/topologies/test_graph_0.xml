@@ -1,0 +1,17 @@
+<!-- simple graph: 1-g-2 -->
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<topology>
+	<vertices>
+		<vertex int_idx="0" role="gateway" />
+		<vertex int_idx="1" role="virtnode" int_vn="1" />
+		<vertex int_idx="2" role="virtnode" int_vn="2" />
+	</vertices>
+	<edges>
+		<edge int_src="1" int_dst="g" int_idx="1" int_len="300" specs="client-stub" dbl_kbps="64" />
+		<edge int_src="g" int_dst="2" int_idx="0" int_len="300" specs="client-stub" int_delayms="20" />
+	</edges>
+	<specs >
+		<client-stub dbl_plr="0" dbl_kbps="256" int_delayms="300" int_qlen="10" />
+		<stub-stub dbl_plr="0" dbl_kbps="1000" int_delayms="20" int_qlen="10" />
+	</specs>
+</topology>

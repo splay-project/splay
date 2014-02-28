@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<topology>
+	<vertices>
+		<vertex int_idx="0" role="gateway" />
+		<vertex int_idx="1" role="virtnode" int_vn="1" />
+		<vertex int_idx="2" role="virtnode" int_vn="2" />
+	</vertices>
+	<edges>
+		<edge int_src="2" int_dst="1" int_idx="0" int_len="300" specs="client-stub" int_delayms="500" />
+		<edge int_src="1" int_dst="2" int_idx="1" int_len="300" specs="client-stub" dbl_kbps="768" />
+		<edge int_src="3" int_dst="1" int_idx="2" int_len="30" specs="client-stub" />
+		<edge int_src="2" int_dst="3" int_idx="3" int_len="30" specs="client-stub" />
+		<edge int_src="4" int_dst="5" int_idx="4" int_len="30" specs="client-stub" />
+		<edge int_src="5" int_dst="4" int_idx="5" int_len="30" specs="client-stub" />
+		<edge int_src="5" int_dst="1" int_idx="0" int_len="20" specs="stub-stub" />
+		<edge int_src="1" int_dst="5" int_idx="1" int_len="20" specs="stub-stub" />
+	</edges>
+	<specs>
+		<client-stub dbl_plr="0" dbl_kbps="64" int_delayms="500" int_qlen="10" />
+		<stub-stub dbl_plr="0" dbl_kbps="1000" int_delayms="40" int_qlen="10" />
+	</specs>
+</topology>

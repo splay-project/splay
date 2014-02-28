@@ -1,0 +1,19 @@
+set ns [new Simulator]
+source tb_compat.tcl
+
+#Nodes
+set node0 [$ns node]
+tb-set-node-os $node0 UBUNTU10-STD
+set node1 [$ns node]
+tb-set-node-os $node1 UBUNTU10-STD
+
+#Lans
+set lan0 [$ns make-lan "$node0 $node1" 100000.0kb 0.0ms]
+tb-set-node-lan-delay $node0 $lan0 300.0ms
+tb-set-node-lan-bandwidth $node0 $lan0 768.0kb
+tb-set-node-lan-delay $node1 $lan0 2.0ms
+tb-set-node-lan-bandwidth $node1 $lan0 256.0kb
+
+
+$ns rtproto Static
+$ns run
