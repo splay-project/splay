@@ -1,4 +1,4 @@
-main
+SplayNet
 ====
 
 This branch includes the required libraries for SplayNet, the topology emulation feature for Splay.
