@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.2 ###
+       Splay ### v1.3 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -34,8 +34,8 @@ splayd.settings.name = "my name"
 splayd.settings.controller.ip = "localhost"
 splayd.settings.controller.port = 11000
 
--- Set wether you want to be able to support native libs
-splayd.settings.protocol = "grid"
+-- Set to "grid" to support native libs
+splayd.settings.protocol = "standard"
 
 -- all sizes are in bytes
 splayd.settings.job.max_number = 16
@@ -70,5 +70,3 @@ CPU limitations are not enforced by splayd, but you can give a low priority to
 the process using the 'nice' command.
 --]]
 
-print("Edit settings.lua and comment out or remove these 2 lines...")
-os.exit()
