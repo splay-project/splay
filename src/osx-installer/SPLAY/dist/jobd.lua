@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.2 ###
+       Splay ### v1.3 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -72,6 +72,13 @@ if not job then
 	os.exit()
 end
 
+if job.topology then
+        local t_f=io.open(job.topology)
+        local t_raw=t_f:read("*a")
+        t_f:close()
+        job.topology = json.decode(t_raw)
+end
+
 if job.remove_file then
 	os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
 end
@@ -92,10 +99,10 @@ end
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
 	job.position = job.network.list.position
-
+	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
-	job.nodes = function()
+	job.get_live_nodes = function()
 		-- if there is a timeline (trace_alt type of job)
 		if job.network.list.timeline then
 			-- look how much time has passed already
@@ -218,8 +225,13 @@ require"splay.coxpcall"
 _sand_check = true
 sandbox = require"splay.sandbox"
 local sd=sandbox.sandboxed_denied --stub for sand'ed functions
-local native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
-print("Allow lib "..native_from_job,job.lib_version)
+local native_from_job = nil
+if job.lib_name ~= nil and job.lib_name ~= "" then
+	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
+	print("Using native lib: ",native_from_job,job.lib_version)
+--else
+--	print("no lib to add")
+end
 
 
 sandbox.protect_env({

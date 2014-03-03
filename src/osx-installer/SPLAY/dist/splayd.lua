@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.2 ###
+       Splay ### v1.3 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -115,7 +115,23 @@ function start_job(job, ref, script)
 
 	local job_file = jobs_dir.."/"..ref.."_"..splayd.settings.key
 	if script then job_file = job_file.."_script" end
+	
+	if job.network.list.topology~=nil then
+                local topo_json=json.encode(job.network.list.topology)
+                local topo_file = jobs_dir.."/"..ref.."_"..splayd.settings.key.."_topology"
+                local f, err = io.open(topo_file, "w")
+                if not f then
+                        print("Can't create topology file, Error: ", err)
+                        os.exit()
+                end
+                f:write(topo_json)
+                f:close()
+                --print("Topology file saved in:", topo_file)
+                job.network.list.topology=nil --gc to remove duplicate from job_file content
+                job.topology=topo_file
+        end
 
+	
 	local content = json.encode(job)
 	if script then content = job.script end
 

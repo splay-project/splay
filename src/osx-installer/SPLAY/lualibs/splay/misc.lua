@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.2 ###
+       Splay ### v1.3 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -541,3 +541,24 @@ local function set()
 	return set
 end
 
+--Return the size of the_bytes in different units.
+--It uses the 'information notation' that 1 kilobyte=1024 bytes
+--See http://physics.nist.gov/cuu/Units/binary.html
+function bitcalc(the_bytes)
+	local bits={}
+	bits.bytes=the_bytes
+	bits.bits=bits.bytes*8
+	
+	bits.kilobytes=bits.bytes/1024
+	bits.kilobits=bits.bytes/128
+	
+	bits.megabytes=bits.kilobytes/1024
+	bits.megabits= bits.kilobytes/128
+	
+	bits.gigabytes=bits.megabytes/1024
+	bits.gigabits=bits.megabytes/128
+	
+	bits.terabytes=bits.gigabytes/1024
+	bits.petabytes=bits.terabytes/1024
+	return bits
+end
