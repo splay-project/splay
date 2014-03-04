@@ -9,4 +9,5 @@ cd osx-installer/
 ./update_content_pkg.sh ${VER}
 cd ..
 
-/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker --doc osx-installer/splay.pmdoc --out splayd_${VER}.pkg
+pkgbuild --identifier org.splay-project.splayd.pkg --root osx-installer/SPLAY/ --install-location /Applications ./splayd_${VER}.pkg
+
