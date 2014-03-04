@@ -10,3 +10,4 @@ cd osx-installer/
 cd ..
 
 pkgbuild --identifier org.splay-project.splayd --version 1.3 --root osx-installer/PKG_PAYLOAD  --install-location /Applications --scripts osx-installer/scripts  splayd_1.3.pkg
+#pkgbuild --identifier org.splay-project.splayd --version 1.3 --root osx-installer/PKG_PAYLOAD  --install-location /Applications splayd_1.3.pkg
