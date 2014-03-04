@@ -13,7 +13,7 @@ source $HOME/.bashrc
 fi
 
 #set the custom folder
-./seticon_ok -i splay.icns /Applications/SPLAY
+#./seticon_ok -i splay.icns /Applications/SPLAY
 #if the machine has the Developer Tools:
 
 # according to http://daringfireball.net/2008/04/the_invisible_bit
