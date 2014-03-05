@@ -4,7 +4,7 @@ if grep -q "SPLAY" $HOME/.bashrc ; then
 	echo "nothing to do"
 else
 	cat >> $HOME/.bashrc << EOF
-export PATH="/Applications/SPLAY/bin:$PATH"
+export PATH="/Applications/SPLAY/bin:\$PATH"
 LUA_PATH="/Applications/SPLAY/lualibs/?.lua;/opt/local/share/lua/5.1/?.lua"
 LUA_CPATH="/Applications/SPLAY/clibs/?.so;/opt/local/lib/lua/5.1/?.so"
 export LUA_PATH LUA_CPATH
