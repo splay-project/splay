@@ -8,7 +8,9 @@ CC= gcc
 # For Fink installed libraries, use the following line
 #INCLUDE= -I/sw/include/ -I/sw/include/openssl
 # For MacPorts installed libraries (default)
-INCLUDE= -I/opt/local/lib/openssl97/include/ -I/opt/local/include/
+#INCLUDE= -I/opt/local/lib/openssl97/include/ -I/opt/local/include/
+# use lua 5.1.4 headers in the external_libs directory
+INCLUDE= -I/opt/local/lib/openssl97/include/ -I../external_libs/lua-5.1.4/src/
 
 # LIBRARIES
 # For static linking, but loading dynamic modules will not work then.
@@ -16,7 +18,9 @@ INCLUDE= -I/opt/local/lib/openssl97/include/ -I/opt/local/include/
 # For Fink installed libraries, use the following line
 #LIBS= -L/sw/lib -llua -lm 
 # For MacPorts installed libraries (default)
-LIBS= -L/opt/local/lib -llua -lm
+#LIBS= -L/opt/local/lib -llua -lm
+# use lua 5.1.4 libs in the external_libs directory
+LIBS= -L../external_libs/lua-5.1.4/src/ -llua -lm
 
 # OPENSSL
 # For Fink installed libraries, use the following line
