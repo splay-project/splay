@@ -83,7 +83,7 @@ def init_db(db)
 			last_contact_time INT,
 			INDEX ip (ip),
 			INDEX `key` (`key`)
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_availabilities (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -209,7 +209,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS locks (
 			id INT NOT NULL,
 			job_reservation INT NOT NULL DEFAULT '0'
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("INSERT INTO locks SET
 			id='1',
