@@ -18,6 +18,6 @@ rm splayd_planetlab/splayd/modules/splay/test-async_dns.lua
 rm splayd_planetlab/splayd/modules/test-json.lua
 
 
-COPY_EXTENDED_ATTRIBUTES_DISABLE=true COPYFILE_DISABLE=true tar czvf "splayd_planetlab_no_sandbox.tar.gz"  --exclude=.svn splayd_planetlab/
+COPY_EXTENDED_ATTRIBUTES_DISABLE=true COPYFILE_DISABLE=true tar czvf -L "splayd_planetlab_no_sandbox.tar.gz"  splayd_planetlab/
 
 echo "Splayd4PL-NoSandbox built in splayd_planetlab_nosandbox.tar.gz"
