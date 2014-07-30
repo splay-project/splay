@@ -53,9 +53,10 @@ function add_usage_options()
 	table.insert(usage_options, "    --relative-time \t\tthe job will be submitted after HH:MM:SS")
 	table.insert(usage_options, "    --strict \t\t\tthe job will be submitted now / at the scheduled time or rejected with NO_RESSOURCES message")
 	table.insert(usage_options, "    --trace_alt\t\t\tthe churn is managed on the splayd side (alternative way)")
-	table.insert(usage_options, "-l  --lib=LIB_FILE\t\tdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
+	table.insert(usage_options, "-t, --topology=\"path/to/t.xml\"\ttopology descriptor for SplayNet")
+        table.insert(usage_options, "-l  --lib=LIB_FILE\t\tdeclares the lib as a dependency of the job, and is followed by the -lv flag for specifying the version")
 	table.insert(usage_options, "-qt --queue-timeout\t\tthe job will timeout after the given time (in seconds)")
-    table.insert(usage_options, "    --tar=lua-files.tar.gz\tsubmit a job that consists of multiple Lua files")
+        table.insert(usage_options, "    --tar=lua-files.tar.gz\tsubmit a job that consists of multiple Lua files")
 	table.insert(usage_options, "    --splayds=[id1,id2,id3]\trun job only on the designated splayds")
 	table.insert(usage_options, "    --splayds-as-job JOB_ID\trun job with the same designated splayds as for job JOB_ID")
 end
@@ -239,6 +240,11 @@ function parse_arguments()
 		elseif arg[i] == "-qt" or arg[i] == "--queue-timeout" then
 			i = i + 1
 			queue_timeout = arg[i]
+		elseif arg[i] == "-t" then
+			i = i + 1
+			topology_filename = arg[i]
+		elseif  string.find(arg[i], "^--topology=") then 
+			topology_filename = string.sub(arg[i], 12)
 		-- if argument is "--tar=LUA1,LUA2"
 		elseif string.find(arg[i], "--tar=",1,true) then
 			-- the rest of this argument consists of Lua tarball
@@ -326,7 +332,7 @@ function submit_job_extra_checks()
 end
 
 --function send_submit_job: sends a "SUBMIT JOB" command to the SPLAY RPC server
-function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job)
+function send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job, topology_filename)
 	--prints the arguments
 	print_line(VERBOSE, "NAME              = "..name)
 	print_line(VERBOSE, "DESCRIPTION       = "..description)
@@ -433,16 +439,25 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 		end
 		code = args_code..code
 	end
-	
+	if topology_filename then
+		print_line(VERBOSE, "TOPOLOGY FILE     = "..topology_filename)
+	end
+	local topology= ""
+	if topology_filename then
+		local topo_file=io.open(topology_filename)
+		if topo_file then
+			topology = topo_file:read("*a")
+			topo_file:close()
+		end
+	end
 	-- in the case of multiple lua files, use Base64 encoding
 	if multiple_code_files == true then
 		code = mime.b64(code)
 	end
-	
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.submit_job",
-		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job}
+		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job, topology}
 	})
 
 	--prints that it is sending the message
@@ -453,6 +468,7 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 
 	--if there is a response
 	if check_response(response) then
+	 	print_line(VERBOSE,"RAW JSON RESPONSE = \n"..response)
 		local json_response = json.decode(response)
 		print_line(NORMAL, "Job Submitted:")
 		print_line(NORMAL, "JOB_ID           = "..json_response.result.job_id)
@@ -483,6 +499,7 @@ designated_splayds_string = ""
 nb_designated_splayds = 0
 splayds_as_job = ""
 trace_alt = "FALSE"
+topology_filename=nil
 command_name = "splay_submit_job"
 other_mandatory_args = "CODE_FILE "
 queue_timeout = nil
@@ -507,4 +524,4 @@ check_session_id()
 submit_job_extra_checks()
 
 --calls send_submit_job
-send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout,multiple_code_files, designated_splayds_string, splayds_as_job)
+send_submit_job(name, description, code_filename, lib_filename, lib_version, nb_splayds, churn_trace_filename, options, job_args, cli_server_url, session_id, scheduled_at, strict, trace_alt, queue_timeout,multiple_code_files, designated_splayds_string, splayds_as_job, topology_filename)
