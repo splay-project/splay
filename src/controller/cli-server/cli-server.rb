@@ -44,7 +44,7 @@ class SplayCtrlApiBroker < WEBrick::HTTPServlet::AbstractServlet
       error = $!.to_s
     end
     response['Content-Type'] = request.content_type
-    response.body = "{\"result\":#{JSON.unparse(result)}}"
+    response.body = "{'result':#{JSON.unparse(result)}}"
   end
 end
 if $0 == __FILE__ then
