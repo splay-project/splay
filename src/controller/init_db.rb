@@ -48,7 +48,8 @@ def init_db(db)
 			hostname VARCHAR(255),
 			session VARCHAR(255),
 			name VARCHAR(255),
-
+			protocol VARCHAR(255),
+			
 			country VARCHAR(2),
 			city VARCHAR(255),
 			latitude DECIMAL(10,6),
@@ -60,6 +61,7 @@ def init_db(db)
 			endianness ENUM('big', 'little') DEFAULT 'little',
 			os VARCHAR(255),
 			full_os VARCHAR(255),
+			architecture VARCHAR(255),
 			start_time INT,
 
 			load_1 DECIMAL(5,2) DEFAULT '999.99',
@@ -83,7 +85,7 @@ def init_db(db)
 			last_contact_time INT,
 			INDEX ip (ip),
 			INDEX `key` (`key`)
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_availabilities (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -209,7 +211,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS locks (
 			id INT NOT NULL,
 			job_reservation INT NOT NULL DEFAULT '0'
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("INSERT INTO locks SET
 			id='1',

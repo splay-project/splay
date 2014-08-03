@@ -102,7 +102,7 @@ class Ctrl_api
 				end
 			end
 			#if the 'if (user)' statement was true, the function would have ended with the return on the line above,
-			#if not, the following lines are processed
+			# if not, the following lines are processed
 			#ok is false
 			ret['ok'] = false
 			#error says that the job doesn't exist
@@ -305,8 +305,11 @@ if SplayControllerConfig::AllowNativeLibs
 	end
 end
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
-	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout)
-	 	#initializes the return variable
+	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job,  topology)
+	 	args = method(__method__).parameters.map { |arg| arg[1] }
+		puts "Method invoked with " + args.map { |arg| "#{arg} = #{eval arg}" }.join(', ')
+
+		#initializes the return variable
 		ret = Hash.new
 		
 		if  !SplayControllerConfig::AllowNativeLibs and lib_filename !=""
@@ -384,11 +387,15 @@ end
 					return ret
 				end
 			end
-
-
-
-			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', lib_name='#{lib_filename}', lib_version='#{lib_version}', user_id=#{user_id}, created_at='#{time_now}'")
 			
+			if topology!=nil then
+		    		topology_field=",topology='#{topology}'"
+		  	end
+			
+			puts"INSERTING JOB #{ref}"
+			
+			$db.do("INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', lib_name='#{lib_filename}', lib_version='#{lib_version}', user_id=#{user_id}, created_at='#{time_now}' #{topology_field}")
+			puts "Job inserted in jobs table"	
 			#designated splayds
 			if designated_splayds_string != "" then
 				#eliminate white spaces
