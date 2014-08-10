@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<topology>
+	<vertices>
+		<vertex int_idx="0" role="virtnode" int_vn="1" />
+		<vertex int_idx="1" role="gateway" />
+		<vertex int_idx="2" role="virtnode" int_vn="2" />
+		<vertex int_idx="3" role="virtnode" int_vn="3" />
+		<vertex int_idx="4" role="gateway" />
+		<vertex int_idx="5" role="virtnode" int_vn="4" />
+	</vertices>
+	<edges>
+		<edge int_src="0" int_dst="1" int_idx="0" int_len="300" specs="client-stub" int_delayms="1" dbl_kbps="2048" />
+		
+		<edge int_src="1" int_dst="2" int_idx="1" int_len="300" specs="stub-stub" int_delayms="200" />
+		<edge int_src="1" int_dst="3" int_idx="2" int_len="300" specs="stub-stub" int_delayms="200" />
+		
+		<edge int_src="2" int_dst="4" int_idx="3" int_len="30" specs="stub-stub" />
+		<edge int_src="3" int_dst="4" int_idx="4" int_len="30" specs="stub-stub" int_delayms="250" />
+		
+		<edge int_src="4" int_dst="5" int_idx="5" int_len="30" specs="client-stub" int_delayms="10" dbl_kbps="1024"/>
+	</edges>
+	<specs>
+		<client-stub dbl_plr="0" dbl_kbps="64" int_delayms="100" int_qlen="10" />
+		<stub-stub dbl_plr="0" dbl_kbps="4048" int_delayms="20" int_qlen="10" />
+	</specs>
+</topology>

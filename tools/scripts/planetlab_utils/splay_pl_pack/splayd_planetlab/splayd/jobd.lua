@@ -1,5 +1,5 @@
 --[[
-       Splay ### v1.2 ###
+       Splay ### v1.3 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -20,6 +20,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
+
 --[[
 NOTE:
 This program is normally called by splayd, but you can too run it standalone
@@ -72,6 +73,13 @@ if not job then
 	os.exit()
 end
 
+if job.topology then
+        local t_f=io.open(job.topology)
+        local t_raw=t_f:read("*a")
+        t_f:close()
+        job.topology = json.decode(t_raw)
+end
+
 if job.remove_file then
 	os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
 end
@@ -92,10 +100,10 @@ end
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
 	job.position = job.network.list.position
-
+	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
-	job.nodes = function()
+	job.get_live_nodes = function()
 		-- if there is a timeline (trace_alt type of job)
 		if job.network.list.timeline then
 			-- look how much time has passed already
@@ -213,83 +221,6 @@ package.loaded['socket.core'] = socket
 -- This module requires debug, not allowed in sandbox
 require"splay.coxpcall"
 
---[[ Sandbox]]--
-
-_sand_check = true
-sandbox = require"splay.sandbox"
-local sd=sandbox.sandboxed_denied --stub for sand'ed functions
-local native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
-print("Allow lib "..native_from_job,job.lib_version)
-
-
-sandbox.protect_env({
-		io = job.disk, -- settings for restricted_io
-		globals = {"_G", "_VERSION", "_SPLAYD_VERSION", "job"},
-		allowed = {
-			"splay.base",
-			"splay.benc",
-			"splay.bits",
-			"splay.coxpcall",
-			"splay.data_bits",
-			"splay.data_bits_core",
-			"splay.events",
-			"splay.json",
-			"splay.llenc",
-			"splay.log",
-			"splay.net",
-			"splay.misc",
-			"splay.misc_core",
-			"splay.out",
-			"splay.queue",
-			"splay.rpc",
-			"splay.rpcq",
-			"splay.socket",
-			"splay.urpc",
-			"crypto",
-			"socket",
-			"socket.ftp",
-			"socket.http",
-			"socket.smtp",
-			"socket.tp",
-			"socket.url",
-			"mime",
-			"mime.core",
-			"ltn12",
-			"json",
-			"socket.core",
-			"splay.socket_events",
-			"splay.luasocket",
-			"splay.async_dns",
-			native_from_job
-		},
-		inits = {}
-	})
-
-collectgarbage()
-collectgarbage()
-
-  -----------------------
--- The Sandbox Zone (tm) --
-  -----------------------
-
-print(">> Into sandbox !!!")
-print("> Memory: "..collectgarbage("count").." KBytes")
-print("> Checking sandbox...")
-
--- Mini sandbox check
-if load~=sd or loadfile~=sd or dofile~=sd or newproxy~=sd or io.popen or os.execute
-		or _sand_check or _G._sand_check then
-	print("   > failed")
-	os.exit()
-else
-	print("   > passed")
-end
-print()
-
--- display env (for testing)
---for i, j in pairs(_G) do
---	print(i, j)
---end
 
 splay_code_function, err = loadstring(job.code, "job code")
 job.code = nil -- to free some memory

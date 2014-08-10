@@ -32,7 +32,7 @@ class SplayCtrlApiBroker < WEBrick::HTTPServlet::AbstractServlet
       if  params !=nil then
         if params.size < 1
           result = @@ctrl_api.send(method)                   
-        else          
+        else
           result = @@ctrl_api.send(method,*params)
         end
       else

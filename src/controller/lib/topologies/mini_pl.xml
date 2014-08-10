@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<topology>
+	<vertices>
+		<vertex int_idx="1" role="virtnode" int_vn="1" />
+		<vertex int_idx="3" role="virtnode" int_vn="3" />
+	</vertices>
+	<edges>
+		<edge int_idx="1" int_src="1" int_dst="3" specs="client-stub" int_delayms="284.78622436523" />
+		<edge int_idx="2" int_src="3" int_dst="1" specs="client-stub" int_delayms="9659.0478420258" />
+	</edges>
+	<specs>
+		<client-stub dbl_plr="0" dbl_kbps="64" int_delayms="500" int_qlen="10" />
+	</specs>
+</topology>

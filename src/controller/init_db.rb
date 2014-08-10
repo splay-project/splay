@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-## Splay Controller ### v1.3 ###
+## Splay Controller ### v1.1 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
 ## 
@@ -24,6 +24,7 @@
 
 # GRANT ALL PRIVILEGES ON splay.* TO splay@localhost IDENTIFIED BY 'splay';
 
+#require 'lib/all'
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 def drop_db(db)
@@ -31,17 +32,14 @@ def drop_db(db)
 	db.do("DROP TABLE IF EXISTS splayd_availabilities")
 	db.do("DROP TABLE IF EXISTS jobs")
 	db.do("DROP TABLE IF EXISTS job_mandatory_splayds")
-	db.do("DROP TABLE IF EXISTS job_designated_splayds")
 	db.do("DROP TABLE IF EXISTS splayd_jobs")
 	db.do("DROP TABLE IF EXISTS splayd_selections")
 	db.do("DROP TABLE IF EXISTS blacklist_hosts")
 	db.do("DROP TABLE IF EXISTS actions")
 	db.do("DROP TABLE IF EXISTS locks")
-	db.do("DROP TABLE IF EXISTS libs")
-	db.do("DROP TABLE IF EXISTS splayd_libs")
 end
 
-def init_db(db)
+def init_db(db) 
 	db.do("CREATE TABLE IF NOT EXISTS splayds (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 
@@ -51,7 +49,7 @@ def init_db(db)
 			session VARCHAR(255),
 			name VARCHAR(255),
 			protocol VARCHAR(255),
-
+			
 			country VARCHAR(2),
 			city VARCHAR(255),
 			latitude DECIMAL(10,6),
@@ -87,7 +85,7 @@ def init_db(db)
 			last_contact_time INT,
 			INDEX ip (ip),
 			INDEX `key` (`key`)
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_availabilities (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -102,9 +100,8 @@ def init_db(db)
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
 			created_at datetime default NULL,
-            scheduled_at datetime default NULL,
-            strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
-			multifile ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+                        scheduled_at datetime default NULL,
+                        strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 			
 			name VARCHAR(255),
 			description VARCHAR(255),
@@ -116,20 +113,18 @@ def init_db(db)
 
 			bits ENUM('32', '64') NOT NULL DEFAULT '32',
 			endianness ENUM('little', 'big') NOT NULL DEFAULT 'little',
-			max_mem INT NOT NULL DEFAULT '2097152',
+			max_mem INT NOT NULL DEFAULT '20971520',
 			disk_max_size INT NOT NULL DEFAULT '67108864',
 			disk_max_files INT NOT NULL DEFAULT '512',
 			disk_max_file_descriptors INT NOT NULL DEFAULT '32',
 			network_max_send BIGINT(14) NOT NULL DEFAULT '134217728',
 			network_max_receive BIGINT(14) NOT NULL DEFAULT '134217728',
-			network_max_sockets INT NOT NULL DEFAULT '32',
-			network_nb_ports INT NOT NULL DEFAULT '1',
+			network_max_sockets INT NOT NULL DEFAULT '1024',
+			network_nb_ports INT NOT NULL DEFAULT '10',
 			network_send_speed INT NOT NULL DEFAULT '51200',
 			network_receive_speed INT NOT NULL DEFAULT '51200',
 			udp_drop_ratio DECIMAL(3, 2) NOT NULL DEFAULT '0',
 			code TEXT NOT NULL,
-			lib_name varchar(255),
-			lib_version VARCHAR(255),
 			script TEXT NOT NULL,
 			nb_splayds INT NOT NULL DEFAULT '1',
 			factor DECIMAL(3, 2) NOT NULL DEFAULT '1.25',
@@ -138,12 +133,11 @@ def init_db(db)
 			min_uptime INT NOT NULL DEFAULT '0',
 			hostmasks VARCHAR(255),
 			max_time INT DEFAULT '10000',
-			queue_timeout INT DEFAULT NULL,
-
+			
 			die_free ENUM('TRUE','FALSE') DEFAULT 'TRUE',
 			keep_files ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 
-			scheduler ENUM('standard','trace','tracealt','grid') DEFAULT 'standard',
+			scheduler ENUM('standard','trace') DEFAULT 'standard',
 			scheduler_description TEXT,
 
 			list_type ENUM('HEAD','RANDOM') DEFAULT 'HEAD',
@@ -152,10 +146,10 @@ def init_db(db)
 			command VARCHAR(255),
 			command_msg TEXT,
 
-			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED','QUEUE_TIMEOUT') DEFAULT 'LOCAL',
+			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED') DEFAULT 'LOCAL',
 			status_time INT NOT NULL,
 			status_msg TEXT,
-
+      topology MEDIUMTEXT,
 			INDEX ref (ref)
 			)")
 
@@ -164,13 +158,6 @@ def init_db(db)
 			job_id INT NOT NULL,
 			splayd_id INT NOT NULL
 			)")
-
-	db.do("CREATE TABLE IF NOT EXISTS job_designated_splayds (
-			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			job_id INT NOT NULL,
-			splayd_id INT NOT NULL
-			)")
-
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_jobs (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -205,7 +192,7 @@ def init_db(db)
 			splayd_id INT NOT NULL,
 			job_id INT NOT NULL,
 			command VARCHAR(255),
-			data TEXT,
+			data MEDIUMTEXT,
 			status ENUM('TEMP', 'WAITING', 'SENDING', 'FAILURE') DEFAULT 'WAITING',
 			position INT,
 			INDEX splayd_id (splayd_id),
@@ -224,7 +211,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS locks (
 			id INT NOT NULL,
 			job_reservation INT NOT NULL DEFAULT '0'
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("INSERT INTO locks SET
 			id='1',
@@ -242,21 +229,8 @@ def init_db(db)
 			remember_token_expires_at datetime default NULL,
 			admin int(11) default '0',
 			demo int(11) default '1'
-			)")
-	db.do("CREATE TABLE IF NOT EXISTS libs (
-	    id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	    lib_name varchar(255) default NULL,
-	    lib_version VARCHAR(255) default NULL,
-	    lib_os varchar(255) default NULL,
-	    lib_arch varchar(255) default NULL,
-	    lib_sha1 varchar(40) default NULL,
-	    lib_blob LONGBLOB default NULL
-	    );") 
-   db.do("CREATE TABLE IF NOT EXISTS splayd_libs (
-      id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      splayd_id INT NOT NULL,
-      lib_id INT NOT NULL
-      );")
+			);") 
+
 end
 
 db = DBUtils::get_new
