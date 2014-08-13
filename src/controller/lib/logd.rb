@@ -38,14 +38,14 @@ class LogdServer
 	def main
 		begin
 			$log.info(">>> Splay Controller Log Daemon (port: #{@port})")
-
-			if not File.exists? @@log_dir
+      
+			if not File.exists? File.expand_path(@@log_dir)
 				if not FileUtils::mkdir @@log_dir
 					$log.warn("Cannot create log dir: #{@@log_dir}")
 				end
 			end
 
-			$log.debug("Logging into #{@@log_dir}")
+			$log.debug("Job logs will be written into #{@@log_dir}")
 
 			server = TCPServer.new(@port)
 		rescue => e
@@ -53,13 +53,14 @@ class LogdServer
 			return
 		end
 
-		$log.debug("Waiting for job's log on port: #{@port}")
+		$log.info("Waiting for job's log on port: #{@port}")
 
 		begin
 			loop do
 				socket = server.accept
 				ip = socket.peeraddr[3]
-
+    		$log.debug("Logd received connection from #{ip}")
+        
 				# We check that this IP is of one of our splayd (initial security
 				# check)
 
@@ -102,7 +103,7 @@ class Logd
 	def run
 		Thread.new do
 			begin
-				$log.debug("Log client accepted.")
+				$log.debug("Logd client accepted.")
 				ip = @so.peeraddr[3]
 				# TODO replace
 				#@so.set_timeout 60
@@ -134,7 +135,7 @@ class Logd
 							splayd_selections.job_id=jobs.id AND
 							splayd_selections.splayd_id=splayds.id"
 				end
-
+        $log.debug("Logd retrieved job ref #{job_ref}")
 				if job
 					# TODO replace
 					#@so.set_timeout(24 * 3600)
