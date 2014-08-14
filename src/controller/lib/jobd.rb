@@ -19,7 +19,9 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
-
+require File.expand_path(File.join(File.dirname(__FILE__), 'topology_parser')) ## parse xml and and build topology map 
+#require File.expand_path(File.join(File.dirname(__FILE__), 'json')) ## to encode the topology map
+require"json" #using gem 'json' 
 class Jobd
 
 	@@threads = {} # to kill
@@ -155,7 +157,9 @@ class Jobd
 			# add "my_timeline" to the JSON out string
 			out += my_timeline[0, my_timeline.length - 1] + ']'
 		end
-
+    if list['topology'] ##present if added in the raw_list function
+          out+=',"topology":'+JSON.unparse(list['topology'])
+        end
 		out += '}'
 
 		#$log.info("list json is #{out}")
@@ -167,6 +171,16 @@ class Jobd
 		list = {}
 		list['ref'] = job['ref']
 		list['nodes'] = []
+		topo_xml = $db.select_one "SELECT topology FROM jobs WHERE ref='#{job['ref']}'"
+  	$log.debug("Parsing topology: '#{topo_xml}' #{topo_xml.class} #{topo_xml.length}")
+    if topo_xml[0].to_s.length>0 then
+  	  @parser= TopologyParser.new() ## todo cache it
+  	  graph = @parser.parse(topo_xml.to_s,false)
+      vn=@parser.virtualnodes()
+      max=vn.keys.size
+      $log.debug("Topology defines #{vn.keys.size} VirtualNodes")
+      list['topology']=graph.splay_topology(vn)
+    end
 		c = 1
 		m_s_s.each do |m_s|
 			# 0 = full list
