@@ -32,13 +32,17 @@ def drop_db(db)
 	db.do("DROP TABLE IF EXISTS splayd_availabilities")
 	db.do("DROP TABLE IF EXISTS jobs")
 	db.do("DROP TABLE IF EXISTS job_mandatory_splayds")
+  db.do("DROP TABLE IF EXISTS job_designated_splayds")
 	db.do("DROP TABLE IF EXISTS splayd_jobs")
 	db.do("DROP TABLE IF EXISTS splayd_selections")
 	db.do("DROP TABLE IF EXISTS blacklist_hosts")
 	db.do("DROP TABLE IF EXISTS actions")
 	db.do("DROP TABLE IF EXISTS locks")
+  db.do("DROP TABLE IF EXISTS libs")
+  db.do("DROP TABLE IF EXISTS splayd_libs")
 end
-
+## latitude DECIMAL(10,6)  DEFAULT '46.9931',
+## longitude DECIMAL(10,6) DEFAULT '6.93',
 def init_db(db) 
 	db.do("CREATE TABLE IF NOT EXISTS splayds (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -52,8 +56,8 @@ def init_db(db)
 			
 			country VARCHAR(2),
 			city VARCHAR(255),
-			latitude DECIMAL(10,6),
-			longitude DECIMAL(10,6),
+			latitude DECIMAL(10,6)  DEFAULT '46.9931',
+			longitude DECIMAL(10,6) DEFAULT '6.93',
 
 			version VARCHAR(255),
 			lua_version VARCHAR(255),
@@ -99,17 +103,17 @@ def init_db(db)
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
-			created_at datetime default NULL,
-                        scheduled_at datetime default NULL,
-                        strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
-			
+			created_at datetime DEFAULT NULL,
+      scheduled_at datetime DEFAULT NULL,
+      strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
+      multifile ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 			name VARCHAR(255),
 			description VARCHAR(255),
 
 			localization VARCHAR(2),
 			distance INT,
-			latitude DECIMAL(10,6),
-			longitude DECIMAL(10,6),
+			latitude DECIMAL(10,6)  DEFAULT '46.9931',
+			longitude DECIMAL(10,6) DEFAULT '6.93',
 
 			bits ENUM('32', '64') NOT NULL DEFAULT '32',
 			endianness ENUM('little', 'big') NOT NULL DEFAULT 'little',
@@ -125,7 +129,9 @@ def init_db(db)
 			network_receive_speed INT NOT NULL DEFAULT '51200',
 			udp_drop_ratio DECIMAL(3, 2) NOT NULL DEFAULT '0',
 			code TEXT NOT NULL,
-			script TEXT NOT NULL,
+      lib_name varchar(255) DEFAULT NULL,
+      lib_version VARCHAR(255) DEFAULT NULL,
+			script TEXT NULL,
 			nb_splayds INT NOT NULL DEFAULT '1',
 			factor DECIMAL(3, 2) NOT NULL DEFAULT '1.25',
 			splayd_version VARCHAR(255),
@@ -133,11 +139,12 @@ def init_db(db)
 			min_uptime INT NOT NULL DEFAULT '0',
 			hostmasks VARCHAR(255),
 			max_time INT DEFAULT '10000',
+      queue_timeout INT DEFAULT NULL,
 			
 			die_free ENUM('TRUE','FALSE') DEFAULT 'TRUE',
 			keep_files ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 
-			scheduler ENUM('standard','trace') DEFAULT 'standard',
+			scheduler ENUM('standard','trace','tracealt','grid') DEFAULT 'standard',
 			scheduler_description TEXT,
 
 			list_type ENUM('HEAD','RANDOM') DEFAULT 'HEAD',
@@ -146,8 +153,8 @@ def init_db(db)
 			command VARCHAR(255),
 			command_msg TEXT,
 
-			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED') DEFAULT 'LOCAL',
-			status_time INT NOT NULL,
+			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED','QUEUE_TIMEOUT') DEFAULT 'LOCAL',
+			status_time INT NOT NULL DEFAULT '0',
 			status_msg TEXT,
       topology MEDIUMTEXT,
 			INDEX ref (ref)
@@ -155,14 +162,21 @@ def init_db(db)
 
 	db.do("CREATE TABLE IF NOT EXISTS job_mandatory_splayds (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-			job_id INT NOT NULL,
+			job_id INT NOT NULL DEFAULT '0',
 			splayd_id INT NOT NULL
 			)")
+
+
+  db.do("CREATE TABLE IF NOT EXISTS job_designated_splayds (
+  			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  			job_id INT NOT NULL DEFAULT '0',
+  			splayd_id INT NOT NULL
+  			)")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_jobs (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
-			job_id INT NOT NULL,
+			job_id INT NOT NULL DEFAULT '0',
 			status ENUM('RESERVED','WAITING','RUNNING') DEFAULT 'RESERVED',
 			INDEX splayd_id (splayd_id)
 			)")
@@ -170,14 +184,14 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS splayd_selections (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
-			job_id INT NOT NULL,
+			job_id INT NOT NULL DEFAULT '0',
 			selected ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 			trace_number INT,
 			trace_status ENUM('RUNNING', 'WAITING') DEFAULT 'WAITING',
 			reset ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 			replied ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 			reply_time DECIMAL(8, 5) NULL,
-			port INT NOT NULL,
+			port INT NOT NULL DEFAULT '0',
 			INDEX splayd_id (splayd_id),
 			INDEX job_id (job_id)
 			)")
@@ -190,7 +204,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS actions (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
-			job_id INT NOT NULL,
+			job_id INT NOT NULL DEFAULT '0',
 			command VARCHAR(255),
 			data MEDIUMTEXT,
 			status ENUM('TEMP', 'WAITING', 'SENDING', 'FAILURE') DEFAULT 'WAITING',
@@ -202,7 +216,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS local_log (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			splayd_id INT NOT NULL,
-			job_id INT NOT NULL,
+			job_id INT NOT NULL DEFAULT '0',
 			data TEXT,
 			INDEX splayd_id (splayd_id),
 			INDEX job_id (job_id)
@@ -229,7 +243,23 @@ def init_db(db)
 			remember_token_expires_at datetime default NULL,
 			admin int(11) default '0',
 			demo int(11) default '1'
-			);") 
+			)")
+      
+  db.do("CREATE TABLE IF NOT EXISTS libs (
+      id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      lib_name varchar(255) default NULL,
+      lib_version VARCHAR(255) default NULL,
+      lib_os varchar(255) default NULL,
+      lib_arch varchar(255) default NULL,
+      lib_sha1 varchar(40) default NULL,
+      lib_blob LONGBLOB default NULL
+      )") 
+  
+   db.do("CREATE TABLE IF NOT EXISTS splayd_libs (
+      id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      splayd_id INT NOT NULL,
+      lib_id INT NOT NULL
+      );")     
 
 end
 
