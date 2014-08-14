@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<topology>
+	<vertices>
+		<vertex int_idx="1" role="virtnode" int_vn="1" />
+		<vertex int_idx="2" role="virtnode" int_vn="2" />
+		<vertex int_idx="3" role="virtnode" int_vn="3" />
+		<vertex int_idx="4" role="virtnode" int_vn="4" />
+		<vertex int_idx="5" role="virtnode" int_vn="5" />
+		<vertex int_idx="6" role="gateway" int_vn="6" />
+	</vertices>
+	<edges>
+		<edge int_idx="1" int_src="1" int_dst="6" specs="client-stub"  />
+		<edge int_idx="2" int_src="6" int_dst="1" specs="client-stub"  />
+		<edge int_idx="3" int_src="2" int_dst="6" specs="client-stub"  />
+		<edge int_idx="4" int_src="6" int_dst="2" specs="client-stub"  />
+		<edge int_idx="5" int_src="3" int_dst="6" specs="client-stub"  />
+		<edge int_idx="6" int_src="6" int_dst="3" specs="client-stub"  />
+		<edge int_idx="7" int_src="4" int_dst="6" specs="client-stub"  />
+		<edge int_idx="8" int_src="6" int_dst="4" specs="client-stub"  />
+		<edge int_idx="9" int_src="5" int_dst="6" specs="client-stub"  />
+		<edge int_idx="10" int_src="6" int_dst="5" specs="client-stub"  />
+	</edges>
+	<specs>
+		<client-stub dbl_plr="0" dbl_kbps="1024" int_delayms="50" int_qlen="10" />
+	</specs>
+</topology>
