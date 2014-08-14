@@ -39,7 +39,7 @@ end
 -- our main function
 function SPLAYschool()
 	-- print bootstrap information about local node
-	local nodes = job.nodes()
+	local nodes = job.get_live_nodes() --OR the old form: job.nodes
 	log:print("I'm "..job.me.ip..":"..job.me.port)
 	log:print("My position in the list is: "..job.position)
 	log:print("List type is '"..job.list_type.."' with "..#nodes.." nodes")
