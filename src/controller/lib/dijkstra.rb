@@ -104,7 +104,19 @@ class Graph
 			end
 		end
 	end
-	
+
+	def shortest_paths_compact(s)
+		@source = s
+		dijkstra s
+		@nodes.each do |dest|
+			if @d[dest] != @INFINITY
+			  puts "#{@source} #{dest} #{@d[dest]}"
+      else
+				puts "\nNO PATH"
+			end
+		end
+	end
+		
 	def link_latency(src,dest)
 	 if (not @g.has_key?(src))	 
     	return -1
