@@ -53,10 +53,8 @@ if SplayControllerConfig::AllowNativeLibs
 end
 
 JobdTrace.init
-JobdTrace.run
 
 JobdTraceAlt.run
-
 Unseend.run
 Statusd.run
 Loadavgd.run
