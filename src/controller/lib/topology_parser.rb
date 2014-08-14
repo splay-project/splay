@@ -118,7 +118,7 @@ class TopologyParser
          end
       end
     end
-    puts "Topology parsing complete."
+    $log.info("Topology parsing complete.")
     #complete the graph with the missing edges if any
     added_edges.each{|key,value|
       #key.each{|a| puts a}
@@ -129,7 +129,7 @@ class TopologyParser
         @gr.add_edge(key[1],key[0],added_edges[[key[0],key[1]]])
       end
     }
-    puts"Topology completion complete."
+    $log.info("Topology completion complete.")
     
     return @gr
     
