@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sys/time.h>
 
 #include <netinet/in.h>
 #include <netdb.h> 
@@ -116,6 +117,10 @@ int main(int argc, char *argv[]) {
 	int total_sent = 0;
 	int max_size = 0;
 	lua_State *L;
+	
+	struct timeval tv;
+	/*string rep of local time in ms.usec since epoch sent to controller*/
+	char myloctime[80]; 
 
 	printf("*** Jobd C starting ***\n");
 
@@ -169,6 +174,18 @@ int main(int argc, char *argv[]) {
 			/* session */
 			tmp = write(sock_fd, argv[6], strlen(argv[6]));
 			tmp = write(sock_fd, "\n", 1);
+			
+				
+			if(gettimeofday(&tv, NULL)<0) {
+				printf("Error occurred in gettimeofday");
+			}		
+			/*seconds since epoch: (unsigned long long)tv.tv_sec
+			microseconds part: (unsigned long long)tv.tv_usec*/
+			int n = sprintf(myloctime,"%llu.%llu",(unsigned long long)tv.tv_sec,(unsigned long long)tv.tv_usec);
+			/*printf("Localtime: %s\n",myloctime);*/
+			printf("*** Jobd C sending local-time %s to controller ***\n",myloctime);
+			tmp = write(sock_fd, myloctime, strlen(myloctime));
+			tmp = write(sock_fd, "\n", 1);
 		}
 	}
 
@@ -213,10 +230,15 @@ int main(int argc, char *argv[]) {
 
 			lua_pushstring(L, argv[1]);
 			lua_setglobal(L, "job_file");
-
-			printf("SPLAYD LUA EXEC\n");
+			if(gettimeofday(&tv, NULL)<0) {
+				printf("Error occurred in gettimeofday");
+			}
+			printf("%llu %llu SPLAYD LUA EXEC\n",(unsigned long long)tv.tv_sec,(unsigned long long)tv.tv_usec);
 			run_file(L, "jobd.lua");
-			printf("SPLAYD LUA END\n");
+			if(gettimeofday(&tv, NULL)<0) {
+				printf("Error occurred in gettimeofday");
+			}
+			printf("%llu %llu SPLAYD LUA END\n",(unsigned long long)tv.tv_sec,(unsigned long long)tv.tv_usec);
 		}
 
 		exit(0);

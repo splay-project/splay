@@ -53,6 +53,7 @@ static const luaL_reg sp_funcs[] =
 	{"kill", sp_kill},
 	{"alive", sp_alive},
 	{"mkdir", sp_mkdir},
+	{"gettimeofday",sp_gettimeofday},
 	{NULL, NULL}
 };
 
@@ -290,4 +291,17 @@ int sp_mkdir(lua_State *L)
 		lua_pushstring(L, "mkdir(dir) requires a string.");
 		return 2;
 	}
+}
+
+int sp_gettimeofday(lua_State *L)
+{
+/*    struct timeval {*/
+/*        time_t      tv_sec;     |+ seconds +|*/
+/*        suseconds_t tv_usec;    |+ microseconds +|*/
+/*    };*/
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	lua_pushnumber(L, t.tv_sec);
+	lua_pushnumber(L, t.tv_usec);
+	return 2;
 }

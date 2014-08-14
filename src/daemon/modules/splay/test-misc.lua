@@ -40,7 +40,18 @@ function test_bitcalc_a()
 	assert(math.abs(ris.petabytes-2.2832846724441e-10)<0.000000001,'Expected 2.2832846724441e-10 but was '..ris.petabytes)
 end
 
+function test_bitcalc_b()
+	local ris=misc.bitcalc(1024*1024*1024*1024) --a value
+	
+	print("bits:",ris.bits )
+	print("bytes:",ris.bytes)
+	print("kb:",ris.kilobits)
+	print("KB:",ris.kilobytes)
+	print("MB:",ris.megabytes)
+	print("Mb:",ris.megabits)
+end
 test_bitcalc_10bytes()
 test_bitcalc_10kb()
 test_bitcalc_10Mb()
 test_bitcalc_a()
+test_bitcalc_b()

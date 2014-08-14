@@ -34,11 +34,13 @@ require"io"
 
 require"splay"
 require"json"
-
+gettimeofday=splay.gettimeofday
 do
 	local p = print
 	print = function(...)
-		p(...)
+		--p(...)
+		local s,u=gettimeofday()--splay.gettimeofday()
+		p(s,u, ...) --local timestamp, used when controller configured with UseSplaydTimestamps
 		io.flush()
 	end
 end
@@ -64,7 +66,10 @@ if not f then
 	os.exit()
 end
 --print(f:read("*a"))
-job = json.decode(f:read("*a"))
+--job = json.decode(f:read("*a"))
+local j_raw=f:read("*a")
+--print("Job json:\n",j_raw)
+job = json.decode(j_raw)
 f:close()
 
 if not job then
@@ -73,14 +78,16 @@ if not job then
 end
 
 if job.topology then
-        local t_f=io.open(job.topology)
-        local t_raw=t_f:read("*a")
-        t_f:close()
-        job.topology = json.decode(t_raw)
+	local t_f=io.open(job.topology)
+	local t_raw=t_f:read("*a")
+	t_f:close()
+	--local x= os.clock()
+	job.topology = json.decode(t_raw)
 end
 
 if job.remove_file then
-	os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
+        print("Job file not deleted:", job_file)
+        --os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
 end
 
 -- back to global
@@ -272,6 +279,10 @@ sandbox.protect_env({
 			"splay.socket_events",
 			"splay.luasocket",
 			"splay.async_dns",
+		    "splay.topo_socket",
+		    "splay.token_bucket",
+			"splay.tree",
+			"splay.topo_gossip",
 			native_from_job
 		},
 		inits = {}
@@ -306,8 +317,7 @@ print()
 splay_code_function, err = loadstring(job.code, "job code")
 job.code = nil -- to free some memory
 collectgarbage("collect")
-collectgarbage("collect")
-if splay_code_function then
+if splay_code_function then	
 	splay_code_function()
 else
 	print("Error loading code:", err)

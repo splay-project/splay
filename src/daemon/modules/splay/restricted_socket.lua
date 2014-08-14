@@ -206,7 +206,7 @@ local function tcp_sock_wrapper(sock)
 				l_o:warn("Receive restricted (total: "..total_received..")")
 				return nil, "restricted", ""
 			end
-
+			
 			local data, msg, partial = sock:receive(pattern, prefix)
 			local len = #(data or partial)
 			if prefix then len = len - #prefix end
@@ -259,23 +259,23 @@ local function tcp_sock_wrapper(sock)
 	end
 
 	if sock.connect then
-		new_sock.connect = function(self, host, port)
+		new_sock.connect = function(self, host, port, lip, lport)
 			--l_o:debug("tcp.connect("..host..", "..tostring(port)..")")
 
 			-- we only authorize our local connection on our port range
-			if local_ip and host == local_ip then
-				if port < start_port or port > end_port then
-					l_o:warn("Local connect restricted (port: "..port..") not in job range.")
-					return nil, "restricted"
-				end
-			else
+			--if local_ip and host == local_ip then
+			--	if port < start_port or port > end_port then
+			--		l_o:warn("Local connect restricted (port: "..port..") not in job range.")
+			--		return nil, "restricted"
+			--	end
+			--else
 				if not check_blacklist(host) then
 					l_o:warn("Connect restricted (blacklist: "..host..")")
 					return nil, "restricted"
 				end
-			end
+			--end
 
-			local s, m = sock:connect(host, port)
+			local s, m = sock:connect(host, port, lip, lport)
 
 			--if s == 1 then l_o:debug("New peer: "..sock:getpeername()) end
 
@@ -430,17 +430,17 @@ local function udp_sock_wrapper(sock)
 			--l_o:debug("udp.sendto()")
 
 			-- we only authorize our local connection on our port range
-			if local_ip and ip == local_ip then
-				if port < start_port or port > end_port then
-					l_o:warn("Local connect restricted (port: "..port..") not in job range.")
-					return nil, "restricted"
-				end
-			else
+			--if local_ip and ip == local_ip then
+			--	if port < start_port or port > end_port then
+			--		l_o:warn("Local connect restricted (port: "..port..") not in job range.")
+			--		return nil, "restricted"
+			--	end
+			--else
 				if not check_blacklist(ip) then
 					l_o:warn("Connect restricted (blacklist: "..ip..")")
 					return nil, "restricted"
 				end
-			end
+			--end
 
 			local len = #data
 
@@ -486,17 +486,17 @@ local function udp_sock_wrapper(sock)
 				return sock:setpeername("*")
 			else
 				-- we only authorize our local connection on our port range
-				if local_ip and ip == local_ip then
-					if port < start_port or port > end_port then
-					l_o:warn("Local connect restricted (port: "..port..") not in job range.")
-						return nil, "restricted"
-					end
-				else
+				--if local_ip and ip == local_ip then
+				--	if port < start_port or port > end_port then
+				--	l_o:warn("Local connect restricted (port: "..port..") not in job range.")
+				--		return nil, "restricted"
+				--	end
+				--else
 					if not check_blacklist(ip) then
 					l_o:warn("Connect restricted (blacklist: "..ip..")")
 						return nil, "restricted"
 					end
-				end
+				--end
 				return sock:setpeername(ip, port)
 			end
 
@@ -507,10 +507,10 @@ local function udp_sock_wrapper(sock)
 		new_sock.setsockname = function(self, address, port)
 			--l_o:debug("udp.setsockname()")
 			
-			if port < start_port or port > end_port then
-				l_o:warn("Local connect restricted (port: "..port..") not in job range.")
-				return nil, "restricted"
-			end
+			--if port < start_port or port > end_port then
+			--	l_o:warn("Local connect restricted (port: "..port..") not in job range.")
+			--	return nil, "restricted"
+			--end
 			if local_ip then address = local_ip end
 
 			return sock:setsockname(address, port)
@@ -593,7 +593,7 @@ function wrap(sock)
 
 	-- Create a *master* that will become a *client* or a *server* socket.
 	new_sock.tcp = function()
-		--l_o:debug("tcp()")
+		l_o:debug("tcp()")
 
 		if total_tcp_sockets >= max_sockets then
 			return nil, "restricted"
@@ -604,7 +604,7 @@ function wrap(sock)
 			return nil, err
 		else
 			total_tcp_sockets = total_tcp_sockets + 1
-			--l_o:debug("New socket, total TCP sockets: "..total_tcp_sockets)
+			l_o:debug("New socket, total TCP sockets: "..total_tcp_sockets)
 
 			return tcp_sock_wrapper(stcp)
 		end

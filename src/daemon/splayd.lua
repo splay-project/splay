@@ -103,7 +103,7 @@ end
 
 -- called after a fork
 function start_job(job, ref, script)
-
+	print("start_job",ref)
 	if not script then
 		job._SPLAYD_VERSION = _SPLAYD_VERSION
 		job.network.local_start_port = splayd.settings.job.network.start_port
@@ -150,7 +150,6 @@ function start_job(job, ref, script)
 	end
 	local typ = "lua"
 	if script then typ = "exec" end
-
 	-- run jobd
 	local ok, err = splay.exec("./jobd", job_file, log_file,
 			splayd.settings.log.ip, splayd.settings.log.port,
@@ -543,13 +542,11 @@ function register(so)
 		return
 	end
 	job.status = "waiting"
-
 	-- We give the blacklist to the job.
 	job.blacklist = splayd.blacklist
-
-	-- Settings fnished
+	
+	-- Settings finished
 	splayd.jobs[ref] = job
-
 	assert(so:send("OK"))
 	assert(so:send(job.me.port))
 	-- restablish timeout
@@ -603,7 +600,8 @@ end
 function n_log(so)
 	-- blocking socket
 	so:settimeout(nil)
-	splayd.settings.log = json.decode(assert(so:receive()))
+	local json_logv=assert(so:receive())
+	splayd.settings.log = json.decode(json_logv)
 	if not splayd.settings.log.ip then
 		splayd.settings.log.ip = splayd.settings.controller.ip
 	end
@@ -1087,8 +1085,7 @@ function controller(so)
 	if splayd.session ~= session then
 		reset()
 		splayd.session = session
-	end
-
+	end	
 	print("Waiting for commands.")
 
 	-- creates a coroutine for the server loop
@@ -1422,7 +1419,7 @@ if splayd.status.os == "Linux" then
 	splayd.status.uptime = string.gmatch(io.open("/proc/uptime"):read(), "%d+.%d+")()
 	local lf = string.gmatch(io.open("/proc/loadavg"):read(), "%d+.%d+")
 	splayd.status.loadavg = lf().." "..lf().." "..lf()
-elseif splayd.status.os == "Darwin" then
+elseif (splayd.status.os == "Darwin" or splayd.status.os =="x86_64")  then
 	--now since Epoch
 	local now=tonumber(os.time())
 	--sysctl -n kern.boottime : { sec = 1291024934, usec = 0 } Mon Nov 29 11:02:14 2010: boot since epoch

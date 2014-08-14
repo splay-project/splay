@@ -79,9 +79,10 @@ local function receive(socket, pattern, part, timeout)
 	if timeout then
 		end_time = time() + timeout
 	end
-
+	local start_download=time()
 	while true do
-		data, err, part = socket:receive(pattern, part)
+		l_o:debug("socket:receive",pattern)
+		data, err, part = socket:receive(pattern, part,start_download)
 
 		if data then
 			return data, err, part
@@ -254,14 +255,13 @@ end
 
 -- Try to receive and yield if needed.
 local function udp_receive(socket, from, size, timeout)
-	--l_o:debug("udp_receive("..tostring(timeout)..")")
+	--l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
 
 	local s = ""
 	local err, port = nil, nil
 
 	local end_time = nil
 	if timeout then end_time = time() + timeout end
-
 	while true do
 		if err == "timeout" or err == "timedout" then
 			if end_time then

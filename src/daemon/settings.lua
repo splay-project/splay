@@ -70,3 +70,5 @@ CPU limitations are not enforced by splayd, but you can give a low priority to
 the process using the 'nice' command.
 --]]
 
+print("Edit settings.lua and comment out or remove these 2 lines...")
+os.exit()

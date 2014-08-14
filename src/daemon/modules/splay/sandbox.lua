@@ -265,7 +265,8 @@ function secure_functions()
 			"tostring",
 			"type",
 			"unpack",
-			"xpcall"}
+			"xpcall",
+			"gettimeofday"}
 end
 
 -- secure functions if you work with the true global env
