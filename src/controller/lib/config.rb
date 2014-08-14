@@ -45,7 +45,7 @@ class SplayControllerConfig
 	# links/job_key.txt => logs/job_id
 	LinkLogDir = "#{Dir.pwd}/links"
 	LogdPort = 11100 # base port (first port if more than one splayd)
-
+  UseSplaydTimestamps = true # use the timestamps on the splayds, adjusted by the controller
 	SplaydPort = 11000 # base port (first port if more than one splayd)
 
 	PublicIP = nil # To set ourself in the blacklist
@@ -71,5 +71,5 @@ class SplayControllerConfig
 	MaxQueueTimeout = 3600
 	JobPollTime = 1
 	# Allow native lib/jobs to be submitted
-	AllowNativeLibs = true
+	AllowNativeLibs = false 
 end
