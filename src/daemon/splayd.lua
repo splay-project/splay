@@ -103,7 +103,6 @@ end
 
 -- called after a fork
 function start_job(job, ref, script)
-	print("start_job",ref)
 	if not script then
 		job._SPLAYD_VERSION = _SPLAYD_VERSION
 		job.network.local_start_port = splayd.settings.job.network.start_port
