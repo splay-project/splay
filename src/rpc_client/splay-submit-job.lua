@@ -444,10 +444,13 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 	end
 	local topology= ""
 	if topology_filename then
-		local topo_file=io.open(topology_filename)
+		local topo_file,err=io.open(topology_filename,'r')
 		if topo_file then
 			topology = topo_file:read("*a")
 			topo_file:close()
+		else
+			error("Error reading topology file "..topology_filename, err)
+			os.exit()
 		end
 	end
 	-- in the case of multiple lua files, use Base64 encoding
