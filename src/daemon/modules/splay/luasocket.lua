@@ -62,11 +62,10 @@ l_o = log.new(3, "[".._NAME.."]")
 
 --[[
 Set use_async_dns=false to use the default LuaSocket's blocking DNS resolution.
-This is discouraged, as it introduces the single element in the Splay Runtime
-that rely on blocking sockets. This option is offered as emergency solution
-in case of errors.
+This is discouraged, as it relies on blocking sockets. 
+This option is offered as emergency solution in case of errors.
 --]]
-local use_async_dns=true
+local use_async_dns=false
 
 function wrap(socket, err)
 
