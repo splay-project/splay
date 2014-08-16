@@ -67,7 +67,7 @@ jobd: jobd.o splay_lib.o
 
 ### Splay module
 splay_core.so: splay.o
-	$(CC) -O -fpic -shared -o splay_core.so splay.o -lm
+	$(CC) -O -fpic -shared -o splay_core.so splay.o 
 	strip splay_core.so
 
 splay.o: splay.c splay.h
