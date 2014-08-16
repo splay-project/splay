@@ -58,7 +58,7 @@ function SPLAYschool()
 	events.sleep(5)
 	rpc.call(nodes[1], {"call_me", job.position})
 	events.thread(function() log:print("Bye bye") end)
-	events.sleep(5)
+	events.sleep(120)
 	os.exit()
 end
 events.run(function()
