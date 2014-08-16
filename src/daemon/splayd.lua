@@ -128,10 +128,11 @@ function start_job(job, ref, script)
     	job.network.list.topology=nil --gc to remove duplicate from job_file content
     	job.topology=topo_file
 	end
-
+	
+	local list_file = nil
 	if job.network.list~=nil then
 		local list_json = json.encode(job.network.list)
-    	local list_file = jobs_dir.."/"..ref.."_"..splayd.settings.key.."_list"
+    	list_file = jobs_dir.."/"..ref.."_"..splayd.settings.key.."_list"
     	local f, err = io.open(list_file, "w")
     	if not f then
     		print("Can't write list file to path: "..list_file..". Error: ", err)
@@ -139,7 +140,8 @@ function start_job(job, ref, script)
     	end
     	f:write(list_json)
     	f:close()
-    	job.list=list_file --replace list ref with pointer to file, decoded in jobd.lua     	
+		job.network.list=list_file 
+    	--job.list=list_file --replace list ref with pointer to file, decoded in jobd.lua     	
 	end
 	
 	local content = json.encode(job)
@@ -164,7 +166,7 @@ function start_job(job, ref, script)
 	local ok, err = splay.exec("./jobd", job_file, log_file,
 			splayd.settings.log.ip, splayd.settings.log.port,
 			ref, splayd.session, splayd.settings.log.max_size, typ,
-			json.encode(job.list))
+			json.encode(job.network))
 
 	-- If we are here, that means an exec() error..
 	print("Error: ", err)

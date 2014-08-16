@@ -103,12 +103,12 @@ if job.max_mem ~= 0 then
 end
 
 -- aliases (job.me is already prepared by splayd)
-if job.list then
-	
-	local l_f=io.open(json.decode(json.list))
-	local l_json=t_f:read("*a")
+if job.network.list then
+	--read the path of the file, deserialize, and replace it with the same field
+	local l_f=io.open(job.network.list)
+	local l_json=l_f:read("*a")
 	l_f:close()
-	job.network = json.decode(l_json)
+	job.network.list = json.decode(l_json)
 	
 	job.position = job.network.list.position
 	
