@@ -109,6 +109,11 @@ class Logd
   end
 	
   def extract_timestamp_msg(raw_msg)
+    if raw_msg == nil then 
+      ts = Time.now
+      msg= "Error receiving message"
+      return ts,msg
+    end
   	  $log.debug("Parsing raw message: #{raw_msg}")
       toks=raw_msg.split(" ")
       ts=Time.at(toks[0].to_i,toks[1].to_i)
