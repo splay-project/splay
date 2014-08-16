@@ -4,16 +4,16 @@ SPLAY_INSTALL_DIR="/usr/lib/splayd"
 killall lua
 
 function usage {
-  echo "Usage: ./splay-cluster-install.sh machine_id splayds_per_machine splay_ctrl_ip"
+  #echo "Usage: ./splay-cluster-install.sh machine_id splayds_per_machine splay_ctrl_ip"
+  echo "Usage: ./install_splay_nodes.sh splayds_per_machine splay_ctrl_ip"
   exit 1
 }
-if [ $# -lt 3 ] ; then
+if [ $# -lt 2 ] ; then
   usage
 fi
 
-BASE=$1
-SPLAYDS_PER_MACHINE=$2
-SPLAY_CTRL_IP=$3
+SPLAYDS_PER_MACHINE=$1
+SPLAY_CTRL_IP=$2
 
 mkdir -p ~/workspace/local_splay_cluster/template/
 cd ~/workspace/local_splay_cluster/template/
@@ -52,24 +52,28 @@ sed -i -e s/"production = true"/"production = false"/ splayd.lua
 echo "splayd.settings.allow_outrange = true" >> settings.lua
 
 cd ..
+
+hostname=`ifconfig|xargs|awk '{print $7}'|sed -e 's/[a-z]*:/''/' | sed -e 's/[.]/_/g'`
 for ((i = 1 ; i <=$SPLAYDS_PER_MACHINE; i++ ))
 do
-  mkdir -p hosts/host_${BASE}_${i}
-  cp -r template/* hosts/host_${BASE}_${i}
-  sed s/NODE_NUMBER_GOES_HERE/${BASE}_${i}/ template/settings.lua > hosts/host_${BASE}_${i}/settings.lua
-  sed -i -e  s/SPLAY_CTRL_IP/${SPLAY_CTRL_IP}/ hosts/host_${BASE}_${i}/settings.lua
+  mkdir -p hosts/${hostname}_$i
+  cp -r template/* hosts/${hostname}_$i
+  sed s/NODE_NUMBER_GOES_HERE/${hostname}_$i/ template/settings.lua > hosts/${hostname}_$i/settings.lua
+  sed -i -e  s/SPLAY_CTRL_IP/${SPLAY_CTRL_IP}/ hosts/${hostname}_$i/settings.lua
 done
+
 
 for((j = 1 ; j <= $SPLAYDS_PER_MACHINE; j++))
 do
   startport=$[12000+1000*($j+1)]
   endport=$[$startport+999] #each splayd has 1000 ports in range
   echo $startport $endport
-  cd hosts/host_${BASE}_${j}/ 
-  #ctrlport=$[10999+$[$BASE % 10]] #first avail is 11000
+  #cd hosts/host_${BASE}_${j}/ 
+  cd hosts/${hostname}_${j}/ 
   ctrlport=$[10999+$[ ( $RANDOM % 10 )  + 1 ]] #first avail is 11000
-  echo "Starting splayd host_${BASE}_${j} ${SPLAY_CTRL_IP} $ctrlport $startport $endport"
-  lua splayd.lua host_${BASE}_${j} ${SPLAY_CTRL_IP} $ctrlport $startport $endport & 
+  #echo "Starting splayd host_${BASE}_${j} ${SPLAY_CTRL_IP} $ctrlport $startport $endport"
+  echo "Starting splayd ${hostname}_$j ${SPLAY_CTRL_IP} $ctrlport $startport $endport"
+  lua splayd.lua ${hostname}_$j ${SPLAY_CTRL_IP} $ctrlport $startport $endport & 
   cd ../../;
   sleep 0.1
 done
