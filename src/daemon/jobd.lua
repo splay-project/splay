@@ -81,7 +81,6 @@ if job.topology then
 	local t_f=io.open(job.topology)
 	local t_raw=t_f:read("*a")
 	t_f:close()
-	--local x= os.clock()
 	job.topology = json.decode(t_raw)
 end
 
@@ -104,9 +103,16 @@ if job.max_mem ~= 0 then
 end
 
 -- aliases (job.me is already prepared by splayd)
-if job.network.list then
+if job.list then
+	
+	local l_f=io.open(json.decode(json.list))
+	local l_json=t_f:read("*a")
+	l_f:close()
+	job.network = json.decode(l_json)
+	
 	job.position = job.network.list.position
-	job.nodes = job.network.list.nodes
+	
+	job.nodes = job.network.list.nodes 
 
 	-- now job.nodes is a function that gives an updated view of the nodes
 	job.get_live_nodes = function()
