@@ -354,7 +354,7 @@ function decode_scanString(s,startPos)
       escaped = false
     end
     endPos = endPos + 1
-    assert(endPos <= stringLen+1, "String decoding failed: unterminated string at position " .. endPos)
+    --assert(endPos <= stringLen+1, "String decoding failed: unterminated string at position " .. endPos)
   until bEnded
   
   -- replace the unicode json encoding
