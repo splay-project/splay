@@ -161,9 +161,9 @@ class Jobd
           out+=',"topology":'+JSON.unparse(list['topology'])
         end
 		out += '}'
-
-		#$log.info("list json is #{out}")
-
+		if not JSON.parse(out) then
+			$log.info("Some error occurred while parsing JSON-encoded job: \n #{out}")
+		end
 		return out
 	end
 
