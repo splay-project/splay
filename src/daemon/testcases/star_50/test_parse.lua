@@ -19,3 +19,13 @@ print(string.format("cjson decoded, elapsed time: %.2f\n", os.clock() - x))
 
 assert(list)
 assert(#list.nodes==50)
+
+local x = os.clock()
+local jlist = json.encode(list)
+print(string.format("json encoded, elapsed time: %.2f\n", os.clock() - x))
+
+local x = os.clock()
+local jlist,err = cjson.encode(list)
+print(string.format("cjson encoded, elapsed time: %.2f\n", os.clock() - x))
+
+
