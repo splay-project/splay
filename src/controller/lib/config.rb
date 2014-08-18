@@ -29,7 +29,7 @@ class SplayControllerConfig
 	SQL_USER = DBConfig::SQL_USER
 	SQL_PASS = DBConfig::SQL_PASS
 
-	SSL = true
+	SSL = true 
 	Production = false # Put true in prod, remove some tests to permit local testing.
 	AutoAddSplayds = true # In production must be false
 
@@ -40,12 +40,12 @@ class SplayControllerConfig
 	NATGatewayIP = nil
 
 	LogdIP = nil # nil => controller's ip
-	LogMaxSize = 32 * 1024 # 32 ko of logs for each nodes.
+	LogMaxSize = 1024 * 1024 * 100 # 100 MB of logs for each nodes.
 	LogDir = "#{Dir.pwd}/logs"
 	# links/job_key.txt => logs/job_id
 	LinkLogDir = "#{Dir.pwd}/links"
 	LogdPort = 11100 # base port (first port if more than one splayd)
-  UseSplaydTimestamps = true # use the timestamps on the splayds, adjusted by the controller
+  	UseSplaydTimestamps = true # use the timestamps on the splayds, adjusted by the controller
 	SplaydPort = 11000 # base port (first port if more than one splayd)
 
 	PublicIP = nil # To set ourself in the blacklist
