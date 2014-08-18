@@ -93,7 +93,7 @@ class Jobd
 		out = '{"ref":"' + list['ref'] + '"'
 
 		if not list['position']
-			out += ',"position":_POSITION_'
+			out += ',"position":"_POSITION_"'
 		else
 			out += ',"position":' + list['position'].to_s
 		end
