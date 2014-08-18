@@ -162,7 +162,7 @@ end
 function decode(s, startPos)
   startPos = startPos and startPos or 1
   startPos = decode_scanWhitespace(s,startPos)
-  assert(startPos<=string.len(s), 'Unterminated JSON encoded object found at position in [' .. s .. ']')
+  --assert(startPos<=string.len(s), 'Unterminated JSON encoded object found at position in [' .. s .. ']')
   local curChar = string.sub(s,startPos,startPos)
 --print(startPos, "curchar: ", curChar, string.sub(s, startPos, startPos + 40))
   -- Object
@@ -208,7 +208,7 @@ end
 function decode_scanArray(s,startPos)
   local array = {}	-- The return value
   local stringLen = string.len(s)
-  assert(string.sub(s,startPos,startPos)=='[','decode_scanArray called but array does not start at position ' .. startPos .. ' in string:\n'..s )
+  --assert(string.sub(s,startPos,startPos)=='[','decode_scanArray called but array does not start at position ' .. startPos .. ' in string:\n'..s )
   startPos = startPos + 1
   -- Infinite loop for array elements
 		
@@ -361,7 +361,7 @@ function decode_scanString(s,startPos)
   local stringValue = 'return ' .. replace_unicode(string.sub(s, startPos, endPos-1))
 
   local stringEval = loadstring(stringValue)
-  assert(stringEval, 'Failed to load string [ ' .. stringValue .. '] in JSON4Lua.decode_scanString at position ' .. startPos .. ' : ' .. endPos)
+  --assert(stringEval, 'Failed to load string [ ' .. stringValue .. '] in JSON4Lua.decode_scanString at position ' .. startPos .. ' : ' .. endPos)
   return stringEval(), endPos  
 end
 
