@@ -15,5 +15,5 @@ set keyfile [lindex $argv 3]
 
 spawn ssh-copy-id -i $keyfile $user@$host
 
-#expect  "yes/no"    { send "yes\n"; } 
+expect  "yes/no"    { send "yes\n"; } 
 expect  "$user@$host's password: " { send "$password\n"; exp_continue }
