@@ -131,7 +131,10 @@ int sp_exec(lua_State *L)
 			/* Ensure that there is enough space for integer plus the ending string char \0*/
 			char* tmp_string = malloc( (MAX_INTEGER_DIGITS + 1)  * sizeof(char));
 			sprintf(tmp_string, "%d", tmp_integer);
-			a[i - 1] = tmp_string;		
+			a[i - 1] = tmp_string;					
+		}
+		else {
+			printf("Invalid parameter at position %s\n",i);				
 		}
 	}
 	
