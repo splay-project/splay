@@ -57,56 +57,60 @@ t2_enc=json.encode(t2)
 print(t2_enc)
 assert(t2_enc=="{\"a\":\"b\",\"c\":[\"d\"],\"n\":{\"e\":\"f\"}}")
 
+emtpy_t_enc=json.encode("")
+print("EMPTY_T_ENC:",emtpy_t_enc)
+assert(emtpy_t_enc=="\"\"")
+
 --PERFORMANCE TEST
 
-data_sizes={1024,1024*10,1024*100,1024*1000}
+data_sizes={1024,1024*10,1024*100,2*1024*100,4*1024*100,6*1024*100}
 
---print("Bench encode numbers")
---for k,v in pairs(data_sizes) do
---	local gen=tonumber(misc.gen_string(v))
---	start=misc.time()
---	enc_data=test_encode(gen)
---	print(v, misc.time()-start)
---end
---
---print("Bench encode strings")
---for k,v in pairs(data_sizes) do
---	local gen=misc.gen_string(v)
---	start=misc.time()
---	enc_data=test_encode(gen)
---	print(v, misc.time()-start)
---end
---
---print("Bench array with numbes")
---for k,v in pairs(data_sizes) do
---	local gen={tonumber(misc.gen_string(v))}
---	start=misc.time()
---	enc_data=test_encode(gen)
---	print(v, misc.time()-start)
---end
---
---
---print("Bench array with strings")
---for k,v in pairs(data_sizes) do
---	local gen={misc.gen_string(v)}
---	start=misc.time()
---	enc_data=test_encode(gen)
---	print(v, misc.time()-start)
---end
---
---print("Bench nested arrays with fixed-size string")
---for k,v in pairs(data_sizes) do
---	
---	local gen="a"
---	for i=1,(v/100) do --to avoid stackoverlow
---		gen={gen}
---	end
---	
---	start=misc.time()
---	enc_data=test_encode(gen)
---	print((v/100), misc.time()-start)
---end
---
+print("Bench encode numbers")
+for k,v in pairs(data_sizes) do
+	local gen=tonumber(misc.gen_string(v))
+	start=misc.time()
+	enc_data=test_encode(gen)
+	print(v, misc.time()-start)
+end
+
+print("Bench encode strings")
+for k,v in pairs(data_sizes) do
+	local gen=misc.gen_string(v)
+	start=misc.time()
+	enc_data=test_encode(gen)
+	print(v, misc.time()-start)
+end
+
+print("Bench array with numbes")
+for k,v in pairs(data_sizes) do
+	local gen={tonumber(misc.gen_string(v))}
+	start=misc.time()
+	enc_data=test_encode(gen)
+	print(v, misc.time()-start)
+end
+
+
+print("Bench array with strings")
+for k,v in pairs(data_sizes) do
+	local gen={misc.gen_string(v)}
+	start=misc.time()
+	enc_data=test_encode(gen)
+	print(v, misc.time()-start)
+end
+
+print("Bench nested arrays with fixed-size string")
+for k,v in pairs(data_sizes) do
+	
+	local gen="a"
+	for i=1,(v/100) do --to avoid stackoverlow
+		gen={gen}
+	end
+	
+	start=misc.time()
+	enc_data=test_encode(gen)
+	print((v/100), misc.time()-start)
+end
+
 print("Bench nested arrays with growing-size string")
 for k,v in pairs(data_sizes) do
 	print("Datasize: ",(v/1000).."K")
