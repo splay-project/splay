@@ -3,5 +3,9 @@ test-dns.lua
 test-splay-async-dns.lua
 test-benc.lua
 test-json.lua
+test-cjson.lua
+test-topo_socket.lua
+test-token_bucket.lua
+testcases/
 lbinenc.lua
 .DS_Store
