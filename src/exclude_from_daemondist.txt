@@ -6,6 +6,6 @@ test-json.lua
 test-cjson.lua
 test-topo_socket.lua
 test-token_bucket.lua
-testcases/
+testcases/*
 lbinenc.lua
 .DS_Store
