@@ -1,3 +1,8 @@
+if #arg<1 then
+	print("Usage: lua gen_star_topology.lua nb_nodes")
+	os.exit()
+end
+
 howmany=arg[1]
 --print("Nodes:", howmany)
 
