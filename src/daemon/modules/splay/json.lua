@@ -21,7 +21,7 @@ You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local json = require"json"
+local json = require"cjson"
 local string = require"string"
 
 local pcall = pcall

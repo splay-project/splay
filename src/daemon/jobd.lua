@@ -33,7 +33,7 @@ require"string"
 require"io"
 
 require"splay"
-require"json"
+json=require"cjson"
 gettimeofday=splay.gettimeofday
 do
 	local p = print
@@ -239,7 +239,7 @@ _sand_check = true
 sandbox = require"splay.sandbox"
 local sd=sandbox.sandboxed_denied --stub for sand'ed functions
 local native_from_job = nil
-if job.lib_name ~= nil and job.lib_name ~= "" then
+if job.lib_name and type(job.lib_name)=="string" and job.lib_name ~= "" then
 	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
 	print("Using native lib: ",native_from_job,job.lib_version)
 --else
@@ -281,6 +281,7 @@ sandbox.protect_env({
 			"mime.core",
 			"ltn12",
 			"json",
+			"cjson",
 			"socket.core",
 			"splay.socket_events",
 			"splay.luasocket",
@@ -321,6 +322,7 @@ print()
 --end
 
 splay_code_function, err = loadstring(job.code, "job code")
+print("Job code loaded")
 job.code = nil -- to free some memory
 collectgarbage("collect")
 if splay_code_function then	

@@ -36,7 +36,7 @@ require"os"
 require"string"
 require"io"
 
-require"json"
+json=require"cjson"
 require"splay"
 crypto = require"crypto"
 evp = crypto.evp
@@ -163,13 +163,14 @@ function start_job(job, ref, script)
 	local typ = "lua"
 	if script then typ = "exec" end
 	-- run jobd
-	local ok, err = splay.exec("./jobd", job_file, log_file,
+	local network_json=json.encode(job.network)
+	local ok, err, errcode = splay.exec("./jobd", job_file, log_file,
 			splayd.settings.log.ip, splayd.settings.log.port,
 			ref, splayd.session, splayd.settings.log.max_size, typ,
-			json.encode(job.network))
+			network_json)
 
 	-- If we are here, that means an exec() error..
-	print("Error: ", err)
+	print("Error: ", err, errcode)
 	os.exit()
 end
 
@@ -369,8 +370,11 @@ end
 function blacklist(so)
 	-- blocking socket
 	so:settimeout(nil)
-	local blacklist = json.decode(assert(so:receive()))
-
+	--print('reading socket to decode blacklist..')
+	local blacklist_json=assert(so:receive())
+	--print('blacklist json to decode:',blacklist_json)
+	local blacklist = json.decode(blacklist_json)
+	--print("blacklist decoded:", blacklist)
 
 	for _, b in pairs(blacklist) do
 		splayd.blacklist[#splayd.blacklist + 1] = b
@@ -385,10 +389,12 @@ function register(so)
 	-- blocking socket
 	so:settimeout(nil)
 	local s = splayd.settings.job
-
-	local job = json.decode(assert(so:receive()))
+	local job_json=assert(so:receive())
+	--print("job_json received:", job_json)
+	local job = json.decode(job_json)
+	--print("job_json decoded")
 	local ref = job.ref
-
+	
 	if splayd.jobs[ref] then
 		assert(so:send("EXISTING_REF"))
 		return
@@ -548,11 +554,11 @@ function register(so)
 
 	job.disk.directory = s.disk.directory.."/"..ref
 	splay.mkdir(job.disk.directory)
-
 	if not prepare_lib_directory(job) then
 		assert(so:send("DEPENDENCIES NOT OK"))
 		return
 	end
+	--print("lib dir prepared")
 	job.status = "waiting"
 	-- We give the blacklist to the job.
 	job.blacklist = splayd.blacklist
@@ -569,6 +575,8 @@ function prepare_lib_directory(job)
 	if job.disk then
 		job.disk.lib_directory = job.disk.directory.."/".."lib"
 		splay.mkdir(job.disk.lib_directory)
+		--print('Lib dir created:',job.disk.lib_directory)
+		--print("job.lib_code:",job.lib_code)
 		if job.lib_code and job.lib_code ~= "" then
 			local lib_file = io.open(libs_cache_dir.."/".. job.lib_sha1, "w+")
 			local lib_code = base64.decode(job.lib_code)
@@ -585,7 +593,8 @@ function prepare_lib_directory(job)
 				return false
 			end
 		end
-		if job.lib_name and job.lib_name ~= "" then
+		--print("job.lib_name:",job.lib_name)
+		if job.lib_name and type(job.lib_name)=='string' and job.lib_name ~= "" then
 			os.execute("ln "..libs_cache_dir.."/"..job.lib_sha1.. " " .. job.disk.lib_directory.."/"..job.lib_name)
 		end
 	else
@@ -614,7 +623,8 @@ function n_log(so)
 	so:settimeout(nil)
 	local json_logv=assert(so:receive())
 	splayd.settings.log = json.decode(json_logv)
-	if not splayd.settings.log.ip then
+	print("LOG IP:PORT:",splayd.settings.log.ip, splayd.settings.log.port)
+	if not splayd.settings.log.ip or type(splayd.settings.log.ip)~="string" then
 		splayd.settings.log.ip = splayd.settings.controller.ip
 	end
 	assert(so:send("OK"))
@@ -625,7 +635,8 @@ end
 function list(so)
 	-- blocking socket
 	so:settimeout(nil)
-	local list = json.decode(assert(so:receive()))
+	local list_json=assert(so:receive())
+	local list = json.decode(list_json)
 	local ref = list.ref
 
 	if not splayd.jobs[ref] then
