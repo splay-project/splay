@@ -18,6 +18,9 @@ cp ../splayd_${VER}.tar.gz .
 tar xzvf splayd_${VER}.tar.gz
 cd splayd_${VER}
 make splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so lbase64/base64.so
+cd lua-cjson/ 
+make
+cd ..
 cd ..
 
 PKG="liblua5.1-splayd_${ARCH}"
@@ -34,6 +37,7 @@ cp splayd_${VER}/misc_core.so ${PKG}/usr/lib/lua/5.1/splay/
 cp splayd_${VER}/data_bits_core.so ${PKG}/usr/lib/lua/5.1/splay/
 cp splayd_${VER}/luacrypto/crypto.so ${PKG}/usr/lib/lua/5.1/
 cp splayd_${VER}/lbase64/base64.so ${PKG}/usr/lib/lua/5.1/
+cp splayd_${VER}/lua-cjson/cjson.so ${PKG}/usr/lib/lua/5.1/
 cp splayd_${VER}/modules/*lua ${PKG}/usr/share/lua/5.1
 cp splayd_${VER}/modules/splay/*lua ${PKG}/usr/share/lua/5.1/splay/
 cp splayd_${VER}/splayd ${PKG}/usr/lib/splayd/
