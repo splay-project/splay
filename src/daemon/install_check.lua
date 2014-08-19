@@ -18,8 +18,7 @@ require"splay.net"
 require"splay.rpc"
 require"splay.urpc"
 
--- JSON4Lua
-require"json"
+require"cjson"
 
 if json and not json.leo then
 	print("!!! bad json version, you need the modified one (in modules/json.lua")
