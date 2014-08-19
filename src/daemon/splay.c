@@ -128,7 +128,8 @@ int sp_exec(lua_State *L)
 		}
 		else if (lua_type(L, i) == LUA_TNUMBER) {
 			int tmp_integer = lua_tointeger(L, i);
-			char* tmp_string = malloc(  MAX_INTEGER_DIGITS  * sizeof(char));
+			/* Ensure that there is enough space for integer plus the ending string char \0*/
+			char* tmp_string = malloc( (MAX_INTEGER_DIGITS + 1)  * sizeof(char));
 			sprintf(tmp_string, "%d", tmp_integer);
 			a[i - 1] = tmp_string;		
 		}
