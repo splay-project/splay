@@ -2,7 +2,7 @@ local cjson=require"cjson"
 local json=require"json"
 os=require"os"
 --read raw json (list+topology)
-input_file="b7cf318b9e87020a4900417a4a43b0b0a55e644b"
+input_file="raw.json"
 f,err=io.open(input_file,"r")
 local l_json=f:read("*a")
 f:close()

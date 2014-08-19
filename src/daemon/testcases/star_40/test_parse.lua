@@ -1,4 +1,4 @@
-require"json"
+json=require"cjson"
 
 --read job of nodes
 input_file="2506080138d1d5f991ede269fcdac9f7_host_splayd-99_5"
