@@ -623,7 +623,8 @@ function n_log(so)
 	so:settimeout(nil)
 	local json_logv=assert(so:receive())
 	splayd.settings.log = json.decode(json_logv)
-	print("LOG IP:PORT:",splayd.settings.log.ip, splayd.settings.log.port)
+	--print("LOG IP:PORT:",splayd.settings.log.ip, splayd.settings.log.port)
+	--TODO check that the IP is valid, if not refuse it
 	if not splayd.settings.log.ip or type(splayd.settings.log.ip)~="string" then
 		splayd.settings.log.ip = splayd.settings.controller.ip
 	end
