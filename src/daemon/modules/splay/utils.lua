@@ -132,6 +132,7 @@ function generate_job(position, number, first_port, list_size, random)
 			jobnodes_array = nodes
 		end
 	end
-	job.nodes = function() return jobnodes_array end
+	job.nodes = jobnodes_array --in local mode, no churn allowed
+	job.get_live_nodes = function() return jobnodes_array end -- same function as in recent splay versions
 	return job
 end
