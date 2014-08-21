@@ -110,7 +110,7 @@ if job.network.list then
 	l_f:close()
 	job.network.list = json.decode(l_json)
 	
-	job.position = job.network.list.position
+	job.position = tonumber(job.network.list.position)
 	
 	job.nodes = job.network.list.nodes 
 
