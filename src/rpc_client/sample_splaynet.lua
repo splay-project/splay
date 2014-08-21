@@ -55,6 +55,10 @@ function SPLAYschool()
 	log:print("I'm "..job.me.ip..":"..job.me.port)
 	log:print("My position in the list is: "..job.position)
 	log:print("List type is '"..job.list_type.."' with "..#nodes.." nodes")
+	assert(ts.global_topology)
+	for k,v in pairs(ts.global_topology) do
+		print('Delay to',k,v[1])
+	end
 	events.sleep(30)
 	rpc.call(nodes[math.random(#nodes)], {"call_me", job.position})
 	events.sleep(120)
