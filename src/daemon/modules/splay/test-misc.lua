@@ -50,8 +50,19 @@ function test_bitcalc_b()
 	print("MB:",ris.megabytes)
 	print("Mb:",ris.megabits)
 end
+
+function test_to_dec_string()
+	local bignum =  math.pow(2,52) - 1
+	local bignum_tos = string.format("%.0f",bignum)
+	assert(bignum_tos=="4503599627370495", 'Expected 4503599627370495 but was'..bignum_tos )
+	
+	local bignum_to_dec_string = misc.to_dec_string(bignum)
+	assert(bignum_to_dec_string=="4503599627370495", "Expected 4503599627370495 but was "..bignum_to_dec_string)
+end
+
 test_bitcalc_10bytes()
 test_bitcalc_10kb()
 test_bitcalc_10Mb()
 test_bitcalc_a()
 test_bitcalc_b()
+test_to_dec_string()

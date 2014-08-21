@@ -342,7 +342,7 @@ end
 
 -- convert big or small number in scientific notation into a decimal string
 function to_dec_string(s)
-	s = tostring(s)
+	local s = tostring(string.format("%.0f",s))
 	local start, stop = string.find(s, "e", 1, true)
 	-- not scientific
 	if not start then return s end
