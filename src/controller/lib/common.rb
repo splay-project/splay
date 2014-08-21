@@ -26,11 +26,11 @@ require 'logger' # Logger::Error
 $log = Logger.new(STDERR)
 #$log.level = Logger::DEBUG
 $log.level = Logger::ERROR
-$log.datetime_format = "%H:%M:%S "
+$log.datetime_format = "%Y-%m-%d %H:%M:%S "
 
 $bench = Logger.new(STDERR)
 $bench.level = Logger::DEBUG
-$bench.datetime_format = "%H:%M:%S "
+$bench.datetime_format = "%Y-%m-%d %H:%M:%S "
 
 require 'socket' # SocketError and SystemCallError (Errno::*)
 require 'timeout' # Timeout::Error

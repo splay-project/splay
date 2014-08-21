@@ -97,14 +97,14 @@ class Logd
 
   def prefix_ctrl(job)
       ts = Time.now
-      pfix = ts.strftime("%H:%M:%S") << ".#{ts.usec} " << "(#{job['splayd_id']}) "            
+      pfix = ts.strftime("%Y-%m-%d %H:%M:%S") << ".#{ts.usec} " << "(#{job['splayd_id']}) "            
   		return pfix
   end
   
   def prefix(job,ts=nil)
   		#t = Time.now
   		if ts==nil then ts=Time.now end
-      pfix = ts.strftime("%H:%M:%S") << ".#{ts.usec} " << "(#{job['splayd_id']}) "            
+      pfix = ts.strftime("%Y-%m-%d %H:%M:%S") << ".#{ts.usec} " << "(#{job['splayd_id']}) "            
   		return pfix
   end
 	

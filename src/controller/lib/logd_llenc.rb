@@ -162,7 +162,7 @@ class Logd
 
 							t = Time.now
 							ms = (t.to_f - t.to_i).to_s[1,3]
-							pfix = "#{t.strftime("%H:%M:%S")}#{ms} " +
+							pfix = "#{t.strftime("%Y-%m-%d %H:%M:%S")}#{ms} " +
 									"(#{job['splayd_id']}) "
 
 							count = count + msg.length
@@ -172,7 +172,7 @@ class Logd
 						end
 						t = Time.now
 						ms = (t.to_f - t.to_i).to_s[1,3]
-						pfix = "#{t.strftime("%H:%M:%S")}#{ms} " +
+						pfix = "#{t.strftime("%Y-%m-%d %H:%M:%S")}#{ms} " +
 								"(#{job['splayd_id']}) "
 
 						file.flock File::LOCK_EX # synchro between processes
