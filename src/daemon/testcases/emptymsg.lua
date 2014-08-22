@@ -2,7 +2,7 @@ require"splay.base"
 rpc = require"splay.rpc"
 rpc.server(job.me.port)
 events.thread(function()
-	local msg="some test here\n".."\t\n"
+	local msg="before\n\nafter"
 	log:print(msg)
 	events.exit()
 end)
