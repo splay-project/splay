@@ -49,14 +49,6 @@ rpc.server(job.me.port)
 function call_me(position)
 	log:print("I received an RPC from node "..position)
 end
---return true if n1 is the same node as n2 
-function same_node(n1,n2)
-	if n1.ip==n2.ip and n1.port == n2.port then
-		return true
-	else
-		return false
-	end
-end
 -- our main function
 function run()
 	local nodes = job.get_live_nodes() --OR the old form: job.nodes
@@ -65,7 +57,7 @@ function run()
 	log:print("Live nodes:",#nodes)
 	assert(ts.global_topology)
 	for k,v in pairs(nodes) do
-		if not same_node(job.me,v) then
+		if not (job.me.ip==v.ip and job.me.port==v.port) then
 			log:print("Delay to node:",k,v.ip,v.port, ts.global_topology[v.ip..":"..v.port][1])
 		end
 	end	
