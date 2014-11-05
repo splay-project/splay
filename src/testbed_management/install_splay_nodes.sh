@@ -53,27 +53,30 @@ echo "splayd.settings.allow_outrange = true" >> settings.lua
 
 cd ..
 
-hostname=`ifconfig|xargs|awk '{print $7}'|sed -e 's/[a-z]*:/''/' | sed -e 's/[.]/_/g'`
+LOCALADDRESS=$(hostname -I|sed s/[.]/_/g| sed -e's/[[:space:]]*$//' )
+echo "LOCALADDRESS : ${LOCALADDRESS}"
+LOCALHOSTNAME=splayd_"$LOCALADDRESS"
+echo "LOCALHOSTNAME : ${LOCALHOSTNAME}"
 for ((i = 1 ; i <=$SPLAYDS_PER_MACHINE; i++ ))
 do
-  mkdir -p hosts/${hostname}_$i
-  cp -r template/* hosts/${hostname}_$i
-  sed s/NODE_NUMBER_GOES_HERE/${hostname}_$i/ template/settings.lua > hosts/${hostname}_$i/settings.lua
-  sed -i -e  s/SPLAY_CTRL_IP/${SPLAY_CTRL_IP}/ hosts/${hostname}_$i/settings.lua
+  mkdir -p hosts/"$LOCALHOSTNAME"_$i
+  cp -r template/* hosts/"$LOCALHOSTNAME"_$i
+  sed s/NODE_NUMBER_GOES_HERE/"$LOCALHOSTNAME"_$i/ template/settings.lua > hosts/"$LOCALHOSTNAME"_$i/settings.lua
+  sed -i -e  s/SPLAY_CTRL_IP/${SPLAY_CTRL_IP}/ hosts/"$LOCALHOSTNAME"_$i/settings.lua
 done
 
 
-for((j = 1 ; j <= $SPLAYDS_PER_MACHINE; j++))
+for ((j = 1 ; j <= $SPLAYDS_PER_MACHINE; j++))
 do
   startport=$[12000+1000*($j+1)]
   endport=$[$startport+999] #each splayd has 1000 ports in range
   echo $startport $endport
-  #cd hosts/host_${BASE}_${j}/ 
-  cd hosts/${hostname}_${j}/ 
+  cd hosts/"$LOCALHOSTNAME"_${j}/
   ctrlport=$[10999+$[ ( $RANDOM % 10 )  + 1 ]] #first avail is 11000
   #echo "Starting splayd host_${BASE}_${j} ${SPLAY_CTRL_IP} $ctrlport $startport $endport"
-  echo "Starting splayd ${hostname}_$j ${SPLAY_CTRL_IP} $ctrlport $startport $endport"
-  lua splayd.lua ${hostname}_$j ${SPLAY_CTRL_IP} $ctrlport $startport $endport & 
+  echo "Starting splayd ${LOCALHOSTNAME}_$j ${SPLAY_CTRL_IP} $ctrlport $startport $endport"
+  lua splayd.lua "$LOCALHOSTNAME"_$j ${SPLAY_CTRL_IP} $ctrlport $startport $endport &
   cd ../../;
   sleep 0.1
 done
+
