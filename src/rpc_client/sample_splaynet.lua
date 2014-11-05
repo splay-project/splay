@@ -49,16 +49,26 @@ rpc.server(job.me.port)
 function call_me(position)
 	log:print("I received an RPC from node "..position)
 end
+--return true if n1 is the same node as n2 
+function same_node(n1,n2)
+	if n1.ip==n2.ip and n1.port == n2.port then
+		return true
+	else
+		return false
+	end
+end
 -- our main function
-function SPLAYschool()
+function run()
 	local nodes = job.get_live_nodes() --OR the old form: job.nodes
 	log:print("I'm "..job.me.ip..":"..job.me.port)
-	log:print("My position in the list is: "..job.position)
-	log:print("List type is '"..job.list_type.."' with "..#nodes.." nodes")
+	log:print("My position in the list is: "..job.position,type(job.position))
+	log:print("Live nodes:",#nodes)
 	assert(ts.global_topology)
-	for k,v in pairs(ts.global_topology) do
-		print('Delay to',k,v[1])
-	end
+	for k,v in pairs(nodes) do
+		if not same_node(job.me,v) then
+			log:print("Delay to node:",k,v.ip,v.port, ts.global_topology[v.ip..":"..v.port][1])
+		end
+	end	
 	events.sleep(30)
 	rpc.call(nodes[math.random(#nodes)], {"call_me", job.position})
 	events.sleep(120)
@@ -66,6 +76,6 @@ function SPLAYschool()
 end
 events.run(function()
 	events.periodic(0.25, dcm) --REQUIRED TO USE SPLAYNET
-	events.thread(SPLAYschool)
+	events.thread(run)
 end)
 
