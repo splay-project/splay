@@ -41,7 +41,7 @@
 #define unset_bit(o, v) ((o)[(v) / 8] &= (255 ^ (1 << ((v) % 8))))
 #define get_bit(o, v) (((o)[(v) / 8] & (1 << ((v) % 8))) ? 1 : 0)
 
-static const luaL_reg misc_funcs[] =
+static const luaL_Reg misc_funcs[] =
 {
 	{"dnot", not},
 	{"dor", or},

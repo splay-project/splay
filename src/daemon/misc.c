@@ -34,7 +34,7 @@
 
 #include "misc.h"
 
-static const luaL_reg misc_funcs[] =
+static const luaL_Reg misc_funcs[] =
 {
     {"time", misc_time},
     {NULL, NULL}

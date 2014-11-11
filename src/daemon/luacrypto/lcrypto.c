@@ -395,7 +395,7 @@ static int rand_cleanup(lua_State *L)
 /*
 ** Create a metatable and leave it on top of the stack.
 */
-LUACRYPTO_API int luacrypto_createmeta (lua_State *L, const char *name, const luaL_reg *methods) {
+LUACRYPTO_API int luacrypto_createmeta (lua_State *L, const char *name, const luaL_Reg *methods) {
   if (!luaL_newmetatable (L, name))
     return 0;
   
@@ -419,12 +419,12 @@ LUACRYPTO_API int luacrypto_createmeta (lua_State *L, const char *name, const lu
 */
 static void create_metatables (lua_State *L)
 {
-  struct luaL_reg evp_functions[] = {
+  struct luaL_Reg evp_functions[] = {
     { "digest", evp_fdigest },
     { "new", evp_fnew },
     {NULL, NULL},
   };
-  struct luaL_reg evp_methods[] = {
+  struct luaL_Reg evp_methods[] = {
     { "__tostring", evp_tostring },
     { "__gc", evp_gc },
     { "clone", evp_clone },
@@ -434,12 +434,12 @@ static void create_metatables (lua_State *L)
     { "update",	evp_update },
     {NULL, NULL},
   };
-  struct luaL_reg hmac_functions[] = {
+  struct luaL_Reg hmac_functions[] = {
     { "digest", hmac_fdigest },
     { "new", hmac_fnew },
     { NULL, NULL }
   };
-  struct luaL_reg hmac_methods[] = {
+  struct luaL_Reg hmac_methods[] = {
     { "__tostring", hmac_tostring },
     { "__gc", hmac_gc },
     { "clone", hmac_clone },
@@ -449,7 +449,7 @@ static void create_metatables (lua_State *L)
     { "update", hmac_update },
     { NULL, NULL }
   };
-  struct luaL_reg rand_functions[] = {
+  struct luaL_Reg rand_functions[] = {
     { "bytes", rand_bytes },
     { "pseudo_bytes", rand_pseudo_bytes },
     { "add", rand_add },
@@ -499,7 +499,7 @@ LUACRYPTO_API void luacrypto_set_info (lua_State *L) {
 LUACRYPTO_API int luaopen_crypto(lua_State *L)
 {
   
-  struct luaL_reg core[] = {
+  struct luaL_Reg core[] = {
     {NULL, NULL},
   };
 

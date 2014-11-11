@@ -42,7 +42,7 @@
 
 #include "splay.h"
 
-static const luaL_reg sp_funcs[] =
+static const luaL_Reg sp_funcs[] =
 {
 	{"sleep", sp_sleep},
 	{"msleep", sp_msleep}, /* JV added */

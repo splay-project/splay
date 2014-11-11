@@ -44,7 +44,7 @@
 int mem = 0;
 int max_mem = 0;
 
-static const luaL_reg splayd[] =
+static const luaL_Reg splayd[] =
 {
     {"set_max_mem", sp_set_max_mem},
     {NULL, NULL}
@@ -128,10 +128,16 @@ lua_State *new_lua()
 	lua_State *L = lua_newstate(my_alloc, NULL);
 /*    lua_atpanic(L, my_panic);*/
 
+	/*lua_cpcall(L, luaopen_base, NULL);*/
+	lua_pushcfunction(L, luaopen_base);
+        /*lua_pushlightuserdata(L,(u));*/
+        lua_pcall(L,1,0,0);
 
-	/* PiL2 p. 292 */
-	lua_cpcall(L, luaopen_base, NULL);
-	lua_cpcall(L, luaopen_package, NULL);
+	/*lua_cpcall(L, luaopen_package, NULL);*/
+	lua_pushcfunction(L, luaopen_package);
+        /*lua_pushlightuserdata(L,(u));*/
+        lua_pcall(L,1,0,0);
+	
 	registerlib(L, "io", luaopen_io);
 	registerlib(L, "os", luaopen_os);
 	registerlib(L, "table", luaopen_table);
