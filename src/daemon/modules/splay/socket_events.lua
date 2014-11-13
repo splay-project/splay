@@ -444,7 +444,7 @@ local function wrap_udp(socket)
 				ip = ip.ip
 			end
 			-- host resolution
-			if not string.match(ip, "^%d+\.%d+\.%d+\.%d+$") then -- not ip
+			if not string.match(ip, "^%d+\\.%d+\\.%d+\\.%d+$") then -- not ip
 				ip = socket_core.dns.toip(ip)
 			end
 			return socket:sendto(data, ip, port)
