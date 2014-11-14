@@ -31,7 +31,7 @@ static int crypto_error(lua_State *L)
 
 static EVP_MD_CTX *evp_pget(lua_State *L, int i)
 {
-  if (luaL_checkudata(L, i, LUACRYPTO_EVPNAME) == NULL) luaL_typerror(L, i, LUACRYPTO_EVPNAME);
+  if (luaL_checkudata(L, i, LUACRYPTO_EVPNAME) == NULL) luaL_argerror(L, i, LUACRYPTO_EVPNAME);
   return lua_touserdata(L, i);
 }
 
@@ -85,7 +85,7 @@ static int evp_update(lua_State *L)
   EVP_MD_CTX *c = evp_pget(L, 1);
   const char *s = luaL_checkstring(L, 2);
   
-  EVP_DigestUpdate(c, s, lua_strlen(L, 2));
+  EVP_DigestUpdate(c, s, lua_rawlen(L, 2));
   
   lua_settop(L, 1);
   return 1;
@@ -103,7 +103,7 @@ static int evp_digest(lua_State *L)
   if (lua_isstring(L, 2))
   {  
     const char *s = luaL_checkstring(L, 2);
-    EVP_DigestUpdate(c, s, lua_strlen(L, 2));
+    EVP_DigestUpdate(c, s, lua_rawlen(L, 2));
   }
   
   d = EVP_MD_CTX_create();
@@ -159,7 +159,7 @@ static int evp_fdigest(lua_State *L)
   
   c = EVP_MD_CTX_create();
   EVP_DigestInit_ex(c, type, NULL);
-  EVP_DigestUpdate(c, s, lua_strlen(L, 2));
+  EVP_DigestUpdate(c, s, lua_rawlen(L, 2));
   EVP_DigestFinal_ex(c, digest, &written);
   
   if (lua_toboolean(L, 3))
@@ -178,7 +178,7 @@ static int evp_fdigest(lua_State *L)
 
 static HMAC_CTX *hmac_pget(lua_State *L, int i)
 {
- if (luaL_checkudata(L, i, LUACRYPTO_HMACNAME) == NULL) luaL_typerror(L, i, LUACRYPTO_HMACNAME);
+ if (luaL_checkudata(L, i, LUACRYPTO_HMACNAME) == NULL) luaL_argerror(L, i, LUACRYPTO_HMACNAME);
  return lua_touserdata(L, i);
 }
 
@@ -203,7 +203,7 @@ static int hmac_fnew(lua_State *L)
   }
 
   HMAC_CTX_init(c);
-  HMAC_Init_ex(c, k, lua_strlen(L, 2), type, NULL);
+  HMAC_Init_ex(c, k, lua_rawlen(L, 2), type, NULL);
 
   return 1;
 }
@@ -228,7 +228,7 @@ static int hmac_update(lua_State *L)
   HMAC_CTX *c = hmac_pget(L, 1);
   const char *s = luaL_checkstring(L, 2);
 
-  HMAC_Update(c, (unsigned char *)s, lua_strlen(L, 2));
+  HMAC_Update(c, (unsigned char *)s, lua_rawlen(L, 2));
 
   lua_settop(L, 1);
   return 1;
@@ -245,7 +245,7 @@ static int hmac_digest(lua_State *L)
   if (lua_isstring(L, 2))
   {
     const char *s = luaL_checkstring(L, 2);
-    HMAC_Update(c, (unsigned char *)s, lua_strlen(L, 2));
+    HMAC_Update(c, (unsigned char *)s, lua_rawlen(L, 2));
   }
 
   HMAC_Final(c, digest, &written);
@@ -298,8 +298,8 @@ static int hmac_fdigest(lua_State *L)
   }
 
   HMAC_CTX_init(&c);
-  HMAC_Init_ex(&c, k, lua_strlen(L, 3), type, NULL);
-  HMAC_Update(&c, (unsigned char *)s, lua_strlen(L, 2));
+  HMAC_Init_ex(&c, k, lua_rawlen(L, 3), type, NULL);
+  HMAC_Update(&c, (unsigned char *)s, lua_rawlen(L, 2));
   HMAC_Final(&c, digest, &written);
 
   if (lua_toboolean(L, 4))
