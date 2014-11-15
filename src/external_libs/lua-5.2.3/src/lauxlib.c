@@ -956,12 +956,3 @@ LUALIB_API void luaL_checkversion_ (lua_State *L, lua_Number ver) {
                   " must recompile Lua with proper settings");
   lua_pop(L, 1);
 }
-
-/* this was removed in Lua 5.2 */
-LUALIB_API int luaL_typeerror (lua_State *L, int narg, const char *tname) {
-  const char *msg;
-  luaL_pushtype(L, narg);
-  msg = lua_pushfstring(L, "%s expected, got %s",
-                                    tname, lua_tostring(L, -1));
-  return luaL_argerror(L, narg, msg);
-}
