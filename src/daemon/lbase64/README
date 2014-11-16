@@ -1,4 +1,4 @@
-This is a base64 library for Lua 5.1. For information on base64 see
+This is a base64 library for Lua 5.2. For information on base64 see
 	http://en.wikipedia.org/wiki/Base64
 
 To try the library, just edit Makefile to reflect your installation of Lua and
