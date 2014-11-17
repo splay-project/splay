@@ -1,5 +1,5 @@
 local socket = require"socket"
-
+assert(socket._VERSION ==	"LuaSocket 3.0-rc1")
 assert(socket.dns) --	table: 0x7fc8b1c0fc60
 assert(socket._SETSIZE==	1024)
 assert(socket.protect) --	function: 0x105c0bff0
@@ -19,7 +19,6 @@ assert(socket.udp) --	function: 0x105c0d630
 assert(socket.sourcet) --	table: 0x7fc8b1c0dd20
 assert(socket.connect6) --	function: 0x7fc8b1c0fab0
 assert(socket.connect) --	function: 0x105c0c990
-assert(socket._VERSION ==	"LuaSocket 3.0-rc1")
 assert(socket.tcp) --	function: 0x105c0cd40
 assert(socket.__unload) --	function: 0x105c08510
 assert(socket.select) --	function: 0x105c0c580
