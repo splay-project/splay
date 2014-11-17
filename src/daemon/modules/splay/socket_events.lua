@@ -57,21 +57,21 @@ local time = misc.time
 local type = type
 local unpack = unpack
 
-module("splay.socket_events")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Sockets with events (to work with Events)"
-_VERSION     = 1.0
-
+--module("splay.socket_events")
+_M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Sockets with events (to work with Events)"
+_M._VERSION     = 1.0
+_M._NAME = "splay.socket_events"
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[".._M._NAME.."]")
 
 -- Try to receive and yield if needed.
 --
 -- If you set a timeout, the function will timeout if all the requested data are
 -- not received in that time. The partial result will be returned anyway.
 local function receive(socket, pattern, part, timeout)
-	--l_o:debug("receive("..tostring(pattern)..")", timeout)
+	--_M.l_o:debug("receive("..tostring(pattern)..")", timeout)
 
 	local data, err, end_time
 	pattern = pattern or "*l"
@@ -81,7 +81,7 @@ local function receive(socket, pattern, part, timeout)
 	end
 	local start_download=time()
 	while true do
-		l_o:debug("socket:receive",pattern)
+		_M.l_o:debug("socket:receive",pattern)
 		data, err, part = socket:receive(pattern, part,start_download)
 
 		if data then
@@ -99,7 +99,7 @@ local function receive(socket, pattern, part, timeout)
 					if end_time > ct then
 						coroutine.yield("event:receive", socket, end_time - ct)
 					else
-						l_o:notice("receive() timeout ("..timeout..")")
+						_M.l_o:notice("receive() timeout ("..timeout..")")
 						return data, err, part
 					end
 				else
@@ -112,7 +112,7 @@ end
 
 -- Try to send data and yield if needed.
 local function send(socket, data, i, j, timeout)
-	--l_o:debug("send("..string.sub(data, 1, 20).."...("..string.len(data).."))", timeout)
+	--_M.l_o:debug("send("..string.sub(data, 1, 20).."...("..string.len(data).."))", timeout)
 
 	local n, err, sent, last, end_time
 	i = i or 1
@@ -139,7 +139,7 @@ local function send(socket, data, i, j, timeout)
 					if end_time > ct then
 						coroutine.yield("event:send", socket, end_time - ct)
 					else
-						l_o:notice("send() timeout ("..timeout..")")
+						_M.l_o:notice("send() timeout ("..timeout..")")
 						return n, err, last
 					end
 				else
@@ -152,7 +152,7 @@ end
 
 -- Non blocking accept()
 local function accept(socket, timeout)
-	--l_o:debug("accept("..tostring(timeout)..")")
+	--_M.l_o:debug("accept("..tostring(timeout)..")")
 
 	-- We need to call accept() once before giving the socket to select() if we
 	-- want to be sure to non-block
@@ -173,7 +173,7 @@ local function accept(socket, timeout)
 				if end_time > ct then
 					coroutine.yield("event:receive", socket, end_time - ct)
 				else
-					l_o:notice("accept() timeout ("..timeout..")")
+					_M.l_o:notice("accept() timeout ("..timeout..")")
 					return nil, "timeout"
 				end
 			else
@@ -192,7 +192,7 @@ end
 
 -- Non blocking connect()
 local function connect(socket, ip, port, timeout)
-	--l_o:debug("connect("..ip..", "..port..", "..tostring(timeout)..")")
+	--_M.l_o:debug("connect("..ip..", "..port..", "..tostring(timeout)..")")
 
 	local _, err = nil, nil
 
@@ -210,7 +210,7 @@ local function connect(socket, ip, port, timeout)
 				if end_time > ct then
 					coroutine.yield("event:send", socket, end_time - ct)
 				else
-					l_o:notice("connect() timeout ("..timeout..")")
+					_M.l_o:notice("connect() timeout ("..timeout..")")
 					return nil, "timeout"
 				end
 			else
@@ -255,7 +255,7 @@ end
 
 -- Try to receive and yield if needed.
 local function udp_receive(socket, from, size, timeout)
-	--l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
+	--_M.l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
 
 	local s = ""
 	local err, port = nil, nil
@@ -269,7 +269,7 @@ local function udp_receive(socket, from, size, timeout)
 				if end_time > ct then
 					coroutine.yield("event:receive", socket, end_time - ct)
 				else
-					l_o:notice("receive() timeout ("..timeout..")")
+					_M.l_o:notice("receive() timeout ("..timeout..")")
 					return nil, "timeout"
 				end
 			else
@@ -292,7 +292,7 @@ end
 
 -- not local because accept() needs it, but should be local...
 function wrap_tcp(socket)
-	l_o:debug("wrap_tcp("..tostring(socket)..")")
+	_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -355,7 +355,7 @@ function wrap_tcp(socket)
 		wrapped_socket.settimeout = function(self, to)
 			-- This is not the socket timeout, it's a high level timeout for
 			-- non-blocking functions.
-			--l_o:debug("settimeout("..tostring(to)..")")
+			--_M.l_o:debug("settimeout("..tostring(to)..")")
 			timeout = to
 			-- MUST return true or something (if used in try())
 			return true
@@ -379,7 +379,7 @@ function wrap_tcp(socket)
 end
 
 local function wrap_udp(socket)
-	l_o:debug("wrap_udp("..tostring(socket)..")")
+	_M.l_o:debug("wrap_udp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -427,7 +427,7 @@ local function wrap_udp(socket)
 		wrapped_socket.settimeout = function(self, to)
 			-- This is not the socket timeout, it's a high level timeout for
 			-- non-blocking functions.
-			--l_o:debug("settimeout("..tostring(to)..")")
+			--_M.l_o:debug("settimeout("..tostring(to)..")")
 			timeout = to
 			-- MUST return true or something (if used in try())
 			return true
@@ -477,15 +477,15 @@ local function wrap_udp(socket)
 end
 
 -- wrapping of the "base" socket (still not udp or tcp)
-function wrap(socket, err)
-	l_o:debug("wrap("..tostring(socket)..")")
+function _M.wrap(socket, err)
+	_M.l_o:debug("wrap("..tostring(socket)..")")
 	if string.find(tostring(socket), "#SE") then
-		l_o:warn("trying to wrap an already SE socket "..tostring(socket))
+		_M.l_o:warn("trying to wrap an already SE socket "..tostring(socket))
 		return socket
 	end
 
 	if not socket.tcp then
-		l_o:error("Non socket object: "..tostring(socket))
+		_M.l_o:error("Non socket object: "..tostring(socket))
 		return nil, "non_socket_object"
 	end
 
@@ -544,3 +544,4 @@ function wrap(socket, err)
 	return wrapped_socket
 end
 
+return _M

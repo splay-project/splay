@@ -38,19 +38,19 @@ When you need a socket, in any file, require this one.
 
 -- If socket exists, it can be a socket.core + restricted.
 if not socket then
-	socket = require"socket.core"
+	socket = require"socket"
 end
 
 -- kept global to be able to change the debug level easily (without having to
 -- require splay.socket_events before splay.base), only useful locally
-socket_events = require"splay.socket_events"
+local socket_events = require"splay.socket_events"
 
 local lsh = require"splay.luasocket"
 
 -- We can't wrap in the other order because there is in luasocket 2 aliases
 -- (connect() and bind() that have the same name than the low level socket
 -- functions)
-socket = lsh.wrap(socket_events.wrap(socket))
+local socket = lsh.wrap(socket_events.wrap(socket))
 
 -- very important, for other package that need a full luasocket like
 -- socket.http, ...

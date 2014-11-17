@@ -51,23 +51,23 @@ local error = error
 local pairs = pairs
 local print = print
 local assert= assert
-module("splay.luasocket")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "LuaSocket helper module"
-_VERSION     = 1.0
-
+--module("splay.luasocket")
+_M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "LuaSocket helper module"
+_M._VERSION     = 1.1
+_M._NAME = "splay.luasocket"
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[".._M._NAME.."]")
 
 --[[
 Set use_async_dns=false to use the default LuaSocket's blocking DNS resolution.
 This is discouraged, as it relies on blocking sockets. 
 This option is offered as emergency solution in case of errors.
 --]]
-local use_async_dns=false
+_M.use_async_dns=false
 
-function wrap(socket, err)
+function _M.wrap(socket, err)
 
 	if socket.connect then
 		-- Already luasocket additionnal function...
@@ -277,3 +277,5 @@ function wrap(socket, err)
 
 	return socket
 end
+
+return _M
