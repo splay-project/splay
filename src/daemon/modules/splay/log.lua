@@ -58,24 +58,25 @@ local tostring = tostring
 local type = type
 local ori_print = print
 
-module("splay.log")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Splay Log"
-_VERSION     = 1.0
+--module("splay.log")
+_M = {}
+_M._NAME = "splay.log"
+_M._COPYRIGHT   = "Copyright 2006 - 2014"
+_M._DESCRIPTION = "Splay Log"
+_M._VERSION     = 1.0
 
 -- default level
-global_level = 3
+_M.global_level = 3
 
 -- default out (outs support only one parameter !)
-function global_out(msg)
+function _M.global_out(msg)
 	local msg = msg or ""
 	ori_print(tostring(msg))
 	io.flush()
 end
 
 -- not do any level filtering here
-function global_write(level, ...)
+function _M.global_write(level, ...)
 	local m = ""
 	local arg= {...}
 	-- do not use ipairs, first arg nil => end the loop !
@@ -101,16 +102,15 @@ function global_write(level, ...)
 	return m
 end
 
-function global_filter(self, level, ...)
-	local my_level = self.level or global_level
-	local my_out = self.out or global_out
-	local my_write = self.write or global_write
+function _M.global_filter(self, level, ...)
+	local my_level = level or _M.global_level
+	local my_out = _M.out or _M.global_out
+	local my_write = _M.write or _M.global_write
 	
 	if not (my_level and my_out and my_write) then
 		print("missing function(s)")
 		return false, "missing function(s)"
 	end
-
 	if level >= my_level then
 		local msg = my_write(level, ...)
 		if self.prefix then msg = self.prefix.." "..msg end
@@ -121,11 +121,11 @@ function global_filter(self, level, ...)
 	end
 end
 
-function new(level, prefix)
+function _M.new(level, prefix)
 	return {
 		level = level,
 		prefix = prefix,
-		filter = global_filter,
+		filter = _M.global_filter,
 		debug = function(self, ...) return self:filter(1, ...) end,
 		notice = function(self, ...) return self:filter(2, ...) end,
 		warning = function(self, ...) return self:filter(3, ...) end,
@@ -151,22 +151,24 @@ local function check(self, l, ...)
 		ori_print("invalid call, use 'log:', not 'log.'")
 		return false
 	else
-		return self:global_filter(l, ...)
+		return _M.global_filter(l, ...)
 	end
 end
 
-debug = function(self, ...) return check(self, 1, ...) end
-notice = function(self, ...) return check(self, 2, ...) end
-warning = function(self, ...) return check(self, 3, ...) end
-error = function(self, ...) return check(self, 4, ...) end
-print = function(self, ...) return check(self, 5, ...) end
+_M.debug = function(self, ...) return _M.check(self, 1, ...) end
+_M.notice = function(self, ...) return _M.check(self, 2, ...) end
+_M.warning = function(self, ...) return _M.check(self, 3, ...) end
+_M.error = function(self, ...) return _M.check(self, 4, ...) end
+_M.print = function(self, ...) return _M.check(self, 5, ...) end
 
 -- aliases
-info = notice
-warn = warning
-d = debug
-n = notice
-i = info
-w = warning
-e = error
-p = print
+_M.info = _M.notice
+_M.warn = _M.warning
+_M.d = _M.debug
+_M.n = _M.notice
+_M.i = _M.info
+_M.w = _M.warning
+_M.e = _M.error
+_M.p = _M.print
+
+return _M
