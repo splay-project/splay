@@ -77,7 +77,7 @@ end
 -- not do any level filtering here
 function global_write(level, ...)
 	local m = ""
-
+	local arg= {...}
 	-- do not use ipairs, first arg nil => end the loop !
 	local first = true
 	for i = 1, #arg do
