@@ -43,14 +43,14 @@ local unpack = unpack
 
 math.randomseed(os.time())
 
-module("splay.misc")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Some useful functions."
-_VERSION     = 1.0
+--module("splay.misc")
+local _M= {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Some useful functions."
+_M._VERSION     = 1.0
 
 --[[ Fully duplicate an array ]]--
-function dup(a)
+function _M.dup(a)
 	if type(a) ~= "table" then
 		return a
 	else
@@ -63,7 +63,7 @@ function dup(a)
 end
 
 --[[ String generation ]]--
-function gen_string(times, s)
+function _M.gen_string(times, s)
 
 	-- compatibility when 2 first parameters are swapped
 	if type(times) == "string" then
@@ -84,7 +84,7 @@ function gen_string(times, s)
 	end
 end
 
-function split(s, sep)
+function _M.split(s, sep)
        local res = {}
        sep = sep or ' '
        for v in s:gmatch('[^' .. sep .. ']+') do
@@ -95,14 +95,14 @@ end
 
 
 --[[ Size of a table with any kind of indexing ]]--
-function size(t)
+function _M.size(t)
 	local c = 0
 	for _, _ in pairs(t) do c = c + 1 end
 	return c
 end
 
 --[[ Size of a numeric table, counting intermediates nil ]]--
-function isize(t)
+function _M.isize(t)
 	local c = 0
 	for i, _ in pairs(t) do
 		if type(i) == "number" then
@@ -114,7 +114,7 @@ end
 
 --[[ Returns the key set from a table (all keys that map to a non-nil value)]]
 
-function table_keyset(t)
+function _M.table_keyset(t)
 	local s = {}
 	for k,v in pairs(t) do
 		s[#s+1] = k
@@ -124,7 +124,7 @@ end
 
 --[[ Concatenate 2 tables (dupplicate elements) ]]--
 -- DEPRECATED
-function table_concat(t1, t2)
+function _M.table_concat(t1, t2)
 	if not t1 and not t2 then return {} end
 	if not t1 then return t2 end
 	if not t2 then return t1 end
@@ -167,7 +167,7 @@ If they are both array, concatenate elements from the first, then from the
 second. If one or more is mixed or hash, do a key based merge with priority
 to the first if there are collisions.
 ]]
-function merge(...)
+function _M.merge(...)
 	local arg = {...}
 	if #arg <= 2 then
 		return _merge(arg[1], arg[2])
@@ -179,7 +179,7 @@ function merge(...)
 	end
 end
 
-function equals(e1, e2)
+function _M.equals(e1, e2)
   if type(e1) ~= "table" then
     return e1 == e2
 	elseif type(e2) == "table" then
@@ -199,9 +199,9 @@ function equals(e1, e2)
 	end
 end
 
-equal = equals -- for compatibility reasons, keep old version with typo.
+--equal = equals -- for compatibility reasons, keep old version with typo.
 
-function empty(t)
+function _M.empty(t)
 	if next(t) then
 		return false
 	else
@@ -213,7 +213,7 @@ end
 If n == nil, then return one element.
 If n, return an array.
 ]]
-function random_pick(a, n) -- array, number of elements to pick
+function _M.random_pick(a, n) -- array, number of elements to pick
 	local ori_n = n
 	n = n or 1
 
@@ -246,11 +246,11 @@ function random_pick(a, n) -- array, number of elements to pick
 end
 
 -- DEPRECATED, compatibility
-function random_pick_one(a)
+function _M.random_pick_one(a)
 	return random_pick(a)
 end
 
-function shuffle(a)
+function _M.shuffle(a)
 	if #a == 1 then
 		return a
 	else
@@ -259,7 +259,7 @@ function shuffle(a)
 end
 
 --[[ Convert a big endian (network byte order) string into an int ]]--
-function to_int(s)
+function _M.to_int(s)
 	local v = 0
 	for i = 1, #s do
 		v = v * 256 + string.byte(string.sub(s, i, i))
@@ -268,7 +268,7 @@ function to_int(s)
 end
 
 --[[ Convert an integer into a string of BYTES (in network byte order) ]]--
-function to_string(int, size)
+function _M.to_string(int, size)
 	if not size then size = 4 end
 	local s = ""
 	for i = (size - 1), 0, -1 do
@@ -279,7 +279,7 @@ function to_string(int, size)
 end
 
 --[[ Convert and hash in hexadecimal ascii into a byte coded hash (2 * smaller) ]]--
-function hash_ascii_to_byte(s)
+function _M.hash_ascii_to_byte(s)
 	local hash = ""
 	for i = 1, #s, 2 do
 		hash = hash..string.char(tonumber("0x"..string.sub(s, i, i + 1)))
@@ -287,7 +287,7 @@ function hash_ascii_to_byte(s)
 	return hash
 end
 
-function dec_to_base(input, b)
+function _M.dec_to_base(input, b)
 	if input == 0 then return "0" end
 	local k, out, d = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", ""
 	while input > 0 do
@@ -297,7 +297,7 @@ function dec_to_base(input, b)
 	return out
 end
 
-function base_to_dec(input, b)
+function _M.base_to_dec(input, b)
 	if b == 10 then return input end
 	input = tostring(input):upper()
 	d ={[0] = "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -319,10 +319,10 @@ function base_to_dec(input, b)
 	return r
 end
 
-function convert_base(input, b1, b2)
+function _M.convert_base(input, b1, b2)
 	b1 = b1 or 10
 	b2 = b2 or 16
-	return dec_to_base(base_to_dec(input, b1), b2)
+	return _M.dec_to_base(base_to_dec(input, b1), b2)
 end
 
 ctime = time -- time from core C lib
@@ -336,12 +336,12 @@ end
 -- i: index to check
 -- a: start
 -- b: end
-function between_c(i, a, b)
+function _M.between_c(i, a, b)
     if b >= a then return i > a and i < b else return i > a or i < b end
 end
 
 -- convert big or small number in scientific notation into a decimal string
-function to_dec_string(s)
+function _M.to_dec_string(s)
 	local s = tostring(string.format("%.0f",s))
 	local start, stop = string.find(s, "e", 1, true)
 	-- not scientific
@@ -377,7 +377,7 @@ function to_dec_string(s)
 end
 
 --[[ Transform an Lua object into a string. ]]--
-function stringify(arg)
+function _M.stringify(arg)
 	if type(arg) == "table" then
 		local str = "{"
 		for name, value in pairs(arg) do
@@ -405,7 +405,7 @@ function stringify(arg)
 	end
 end
 
-function assert_object(object)
+function _M.assert_object(object)
 	local wrapped = {}
 	local mt = {
 		__index = function(table, key)
@@ -421,7 +421,7 @@ function assert_object(object)
 	return wrapped
 end
 
-function assert_function(func)
+function _M.assert_function(func)
 	return function(...)
 		return assert(func(...))
 	end
@@ -432,7 +432,7 @@ end
 	{"name_of_procedure", "arg1", "arg2", ..., "argn"}
 	return and array if OK or nil, err if not OK
 ]]
-function call(procedure)
+function _M.call(procedure)
 	
 	local f, err = loadstring("return "..procedure[1], "call")
 	if not f then
@@ -457,7 +457,7 @@ function call(procedure)
 	end
 end
 
-function run(code)
+function _M.run(code)
 	local f, err = loadstring(code, "run")
 	if not f then
 		return nil, err
@@ -465,11 +465,11 @@ function run(code)
 	return f()
 end
 
-function throw(name, value)
+function _M.throw(name, value)
 	error({exception = {name, value}}, 0)
 end
 
-function try(f, ecatch)
+function _M.try(f, ecatch)
 	local r = {pcall(f)}
 	if not r[1] then
 		if not r[2] or not r[2].exception then
@@ -491,9 +491,9 @@ end
 
 -------------------------------------------------------------------------------
 -- Simple set implementation based on LuaSocket's tinyirc.lua example
--- (actual code is comming from Copas)
+-- (actual code is coming from Copas)
 -------------------------------------------------------------------------------
-local function set()
+function _M.set()
 	local reverse = {}
 	local set = {}
 	local q = {}
@@ -544,7 +544,7 @@ end
 --Return the size of the_bytes in different units.
 --It uses the 'information notation' that 1 kilobyte=1024 bytes
 --See http://physics.nist.gov/cuu/Units/binary.html
-function bitcalc(the_bytes)
+function _M.bitcalc(the_bytes)
 	local bits={}
 	bits.bytes=the_bytes
 	bits.bits=bits.bytes*8
@@ -562,3 +562,5 @@ function bitcalc(the_bytes)
 	bits.petabytes=bits.terabytes/1024
 	return bits
 end
+
+return _M
