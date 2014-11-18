@@ -58,7 +58,7 @@ local type = type
 local unpack = unpack
 
 --module("splay.socket_events")
-_M = {}
+local _M = {}
 _M._COPYRIGHT   = "Copyright 2006 - 2011"
 _M._DESCRIPTION = "Sockets with events (to work with Events)"
 _M._VERSION     = 1.0
@@ -291,8 +291,8 @@ local function udp_receive(socket, from, size, timeout)
 end
 
 -- not local because accept() needs it, but should be local...
-function wrap_tcp(socket)
-	_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
+function _M.wrap_tcp(socket)
+	--_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -379,7 +379,7 @@ function wrap_tcp(socket)
 end
 
 local function wrap_udp(socket)
-	_M.l_o:debug("wrap_udp("..tostring(socket)..")")
+	--_M.l_o:debug("wrap_udp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -478,7 +478,7 @@ end
 
 -- wrapping of the "base" socket (still not udp or tcp)
 function _M.wrap(socket, err)
-	_M.l_o:debug("wrap("..tostring(socket)..")")
+	--_M.l_o:debug("wrap("..tostring(socket)..")")
 	if string.find(tostring(socket), "#SE") then
 		_M.l_o:warn("trying to wrap an already SE socket "..tostring(socket))
 		return socket
