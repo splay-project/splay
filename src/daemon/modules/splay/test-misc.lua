@@ -60,9 +60,16 @@ function test_to_dec_string()
 	assert(bignum_to_dec_string=="4503599627370495", "Expected 4503599627370495 but was "..bignum_to_dec_string)
 end
 
+function test_time()
+	assert(misc.time)
+	local t= misc.time()
+	assert(t)
+	assert(misc.ctime)		
+end
 test_bitcalc_10bytes()
 test_bitcalc_10kb()
 test_bitcalc_10Mb()
 test_bitcalc_a()
 test_bitcalc_b()
 test_to_dec_string()
+test_time()
