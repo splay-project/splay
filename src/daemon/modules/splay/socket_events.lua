@@ -528,7 +528,7 @@ function _M.wrap(socket, err)
 		if not s then
 			return nil, err
 		else
-			return wrap_tcp(s)
+			return _M.wrap_tcp(s)
 		end
 	end
 
@@ -537,7 +537,7 @@ function _M.wrap(socket, err)
 		if not s then
 			return nil, err
 		else
-			return wrap_udp(s)
+			return _M.wrap_udp(s)
 		end
 	end
 
