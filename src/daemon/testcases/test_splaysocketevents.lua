@@ -1,6 +1,9 @@
 local se =require"splay.socket_events"
 assert(se.wrap)
+assert(se.l_o)
+assert(se.l_o:print("test logger of splay.socket_events module"))
 assert(se._NAME=="splay.socket_events")
+assert(se.l_o.prefix =="["..se._NAME.."]")
 
 local socket=require"socket"
 assert(socket)
