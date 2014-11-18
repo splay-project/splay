@@ -59,7 +59,7 @@ local type = type
 local ori_print = print
 
 --module("splay.log")
-_M = {}
+local _M = {}
 _M._NAME = "splay.log"
 _M._COPYRIGHT   = "Copyright 2006 - 2014"
 _M._DESCRIPTION = "Splay Log"
