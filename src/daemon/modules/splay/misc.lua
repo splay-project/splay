@@ -21,8 +21,7 @@ You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-require"splay.misc_core" -- register splay.misc
-
+local misc_core = require"splay.misc_core" -- register splay.misc
 local table = require"table"
 local math = require"math"
 local string = require"string"
@@ -325,10 +324,12 @@ function _M.convert_base(input, b1, b2)
 	return _M.dec_to_base(base_to_dec(input, b1), b2)
 end
 
-ctime = time -- time from core C lib
+function _M.ctime()  -- time from core C lib
+	return misc_core.time()
+end
 --[[ Unix time with precision of 1/10'000s ]]--
-function time()
-	local s, m = ctime()
+function _M.time()
+	local s, m = misc_core.time()
 	return s + m / 1000000
 end
 
