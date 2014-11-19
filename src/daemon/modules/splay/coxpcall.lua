@@ -21,41 +21,46 @@ local oldpcall, oldxpcall = pcall, xpcall
 local coroutine = require"coroutine"
 local debug = require"debug"
 
-module("splay.coxpcall")
+--module("splay.coxpcall")
+local _M={}
 
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Implements xpcall with coroutines"
-_VERSION     = 1.0
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Implements xpcall with coroutines"
+_M._VERSION     = 1.0
+_M._NAME = "splay.coxpcall"
+--[[ DEBUG ]]--
 
-function handleReturnValue(err, co, status, ...)
+function _M.handleReturnValue(err, co, status, ...)
     if not status then
         return false, err(debug.traceback(co, (...)), ...)
     end
     if coroutine.status(co) == 'suspended' then
-        return performResume(err, co, coroutine.yield(...))
+        return _M.performResume(err, co, coroutine.yield(...))
     else
         return true, ...
     end
 end
 
-function performResume(err, co, ...)
-    return handleReturnValue(err, co, coroutine.resume(co, ...))
+function _M.performResume(err, co, ...)
+    return _M.handleReturnValue(err, co, coroutine.resume(co, ...))
 end    
 
 local function id(trace, ...)
   return ...
 end
 
-function xpcall(f, err, ...)
+function _M.xpcall(f, err, ...)
     local res, co = oldpcall(coroutine.create, f)
     if not res then
         local params = {...}
         local newf = function() return f(unpack(params)) end
         co = coroutine.create(newf)
     end
-    return performResume(err, co, ...)
+    return _M.performResume(err, co, ...)
 end
 
 function pcall(f, ...)
-    return xpcall(f, id, ...)
+    return _M.xpcall(f, id, ...)
 end
+
+return _M
