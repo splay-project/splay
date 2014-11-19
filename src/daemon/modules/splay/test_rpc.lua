@@ -6,10 +6,10 @@ function pong()
 	return "pong"
 end
 events.run(function()
-	log:print("run")
+	l_o:print("run")
     rpc.server(30001)
 	local pong_rep = rpc.call({ip="127.0.0.1",port=30001}, {"pong"})	
-	log:print("pong reply:", pong_rep)
+	l_o:print("pong reply:", pong_rep)
 	events.exit()
 	os.exit()
 end)
