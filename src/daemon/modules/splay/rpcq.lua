@@ -57,16 +57,16 @@ local tonumber = tonumber
 local type = type
 local unpack = unpack
 
-module("splay.rpcq")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Remote Procedure Call Queue"
-_VERSION     = 1.0
+--module("splay.rpcq")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Remote Procedure Call Queue"
+_M._VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[splay.rpcq]")
 
-settings = {
+_M.settings = {
 	max = nil, -- max connections (not an hard limit)
 	default_timeout = 60,
 	clean_timeout = 60,
@@ -75,7 +75,7 @@ settings = {
 	nodelay = nil -- tcp nodelay option
 }
 
-mode = "rpcq"
+_M.mode = "rpcq"
 
 local reconnect_t, clean_t
 
@@ -102,11 +102,11 @@ local function num_c()
 	return t_p
 end
 
-function stats()
+function _M.stats()
 	return number, misc.size(peers), num_c(), count_connect, count_clean, count_lru
 end
 
-function infos()
+function _M.infos()
 	return "Number of RPCs: "..number.."\n"..
 			"Connected peers: "..num_c().." server: "..
 			(server_connect - server_close).." (different: "..misc.size(peers)..")\n"..
@@ -116,7 +116,7 @@ function infos()
 end
 
 -- Kill the LRU connection (if a non active one !)
-local function clean_lru()
+function _M.clean_lru()
 	--l_o:debug("clean_lru")
 	local best_last, best_id = math.huge
 	for id, p in pairs(peers) do
@@ -130,23 +130,23 @@ local function clean_lru()
 		end
 	end
 	if best_id then
-		l_o:notice("clean_lru", id)
+		_M.l_o:notice("clean_lru", id)
 		count_lru = count_lru + 1
 		peers[best_id].s:close()
 	end
 end
 
-local function clean()
+function _M.clean()
 	--l_o:debug("clean")
 	while events.sleep(5) do
 		for id, p in pairs(peers) do
 			if p.status == "connected" and
 					#messages[id] == 0 and
 					#messages_sent[id] == 0 and
-					settings.clean_timeout and
-					p.last < misc.time() - settings.clean_timeout then
+					_M.settings.clean_timeout and
+					p.last < misc.time() - _M.settings.clean_timeout then
 				-- => receive fail, => send fail
-				l_o:notice("clean", id)
+				_M.l_o:notice("clean", id)
 				count_clean = count_clean + 1
 				p.s:close()
 			end
@@ -155,7 +155,7 @@ local function clean()
 end
 
 -- Cleaning after failure, or to stop connection with a peer
-local function peer_fail(id)
+function _M.peer_fail(id)
 	--l_o:debug("peer_fail", id)
 
 	-- make the other thread fail
@@ -186,13 +186,13 @@ local function peer_receive(id)
 		if not msg_s then break end
 		local ok, msg = pcall(function() return enc.decode(msg_s) end)
 		if not ok then
-			l_o:warn("peer_receive corrupted message:", msg_s)
+			_M.l_o:warn("peer_receive corrupted message:", msg_s)
 			break
 		end
 		p.last = misc.time()
 		table.remove(messages_sent[id], 1)
 		events.fire("rpcq:reply_"..msg.n, msg.reply)
-		if #messages_sent[id] < settings.window_size then
+		if #messages_sent[id] < _M.settings.window_size then
 			-- ready to send a new message
 			events.fire("rpcq:send_"..id)
 		end
@@ -204,7 +204,7 @@ local function peer_send(id)
 	local p = peers[id]
 	local s = p.s
 	while true do
-		if #messages[id] == 0 or #messages_sent[id] >= settings.window_size then
+		if #messages[id] == 0 or #messages_sent[id] >= _M.settings.window_size then
 			--l_o:debug("peer_send wait", #messages[id], #messages_sent[id])
 			events.wait("rpcq:send_"..id)
 		end
@@ -213,7 +213,7 @@ local function peer_send(id)
 		if p.half then break end
 
 		--l_o:debug("peer_send try", #messages[id], #messages_sent[id])
-		if #messages[id] > 0 and #messages_sent[id] < settings.window_size then
+		if #messages[id] > 0 and #messages_sent[id] < _M.settings.window_size then
 			local msg = table.remove(messages[id], 1)
 
 			-- maybe this message is already timed-out !
@@ -244,22 +244,22 @@ local function connect(id, s)
 			local r, err = s:connect(ip, port)
 			if r then
 
-				if settings.max and num_c() >= settings.max then clean_lru() end
+				if _M.settings.max and num_c() >= _M.settings.max then clean_lru() end
 
 				peers[id].status = "connected"
 				peers[id].s = s
 				peers[id].last = misc.time()
 				count_connect = count_connect + 1
 
-				if settings.nodelay then s:setoption("tcp-nodelay", true) end
+				if _M.settings.nodelay then s:setoption("tcp-nodelay", true) end
 				events.thread(function()
 					peer_send(id)
-					l_o:notice("Send thread die", id)
+					_M.l_o:notice("Send thread die", id)
 					peer_fail(id)
 				end)
 				events.thread(function()
 					peer_receive(id)
-					l_o:notice("Receive thread die", id)
+					_M.l_o:notice("Receive thread die", id)
 					peer_fail(id)
 					events.fire("rpcq:finish_"..id)
 				end)
@@ -268,12 +268,12 @@ local function connect(id, s)
 				-- time.
 				events.wait("rpcq:finish_"..id)
 			else
-				l_o:warn("connect("..ip..":"..port.."): "..err)
+				_M.l_o:warn("connect("..ip..":"..port.."): "..err)
 				peers[id].status = "disconnected"
 			end
 			s:close()
 		else
-			l_o:error("tcp(): "..err)
+			_M.l_o:error("tcp(): "..err)
 			peers[id].status = "disconnected"
 		end
 	end
@@ -301,7 +301,7 @@ end
 -- host is immediatly reconnected and this reconnection not used.
 local function reconnect()
 	--l_o:debug("reconnect", id)
-	while events.sleep(settings.reconnect_interval) do
+	while events.sleep(_M.settings.reconnect_interval) do
 		for id, m in pairs(messages) do
 			if peers[id].status == "disconnected" and
 					#messages[id] > 0 then
@@ -328,7 +328,7 @@ end
 local function rpc_handler(s)
 	server_connect = server_connect + 1
 	--l_o:debug("rpc_handler")
-	if settings.nodelay then s:setoption("tcp-nodelay", true) end
+	if _M.settings.nodelay then s:setoption("tcp-nodelay", true) end
 	s = llenc.wrap(s)
 
 	while true do
@@ -337,7 +337,7 @@ local function rpc_handler(s)
 		
 		local ok, msg = pcall(function() return enc.decode(msg_s) end)
 		if not ok then
-			l_o:warn("rpc_handler corrupted message:", msg_s)
+			_M.l_o:warn("rpc_handler corrupted message:", msg_s)
 			break
 		end
         
@@ -346,7 +346,7 @@ local function rpc_handler(s)
 			if c then
 				msg.reply = c
 			else
-				l_o:warn("rpc_handler misc.call(): "..err)
+				_M.l_o:warn("rpc_handler misc.call(): "..err)
 			end
 		elseif msg.type == "ping" then
 			msg.reply = true
@@ -362,11 +362,11 @@ local function rpc_handler(s)
 	--l_o:debug("rpc_handler end")
 end
 
-function server(port, max, backlog)
+function _M.server(port, max, backlog)
 	return net.server(port, rpc_handler, max, nil, backlog)
 end
 
-function stop_server(port)
+function _M.stop_server(port)
 	-- We must kill clients because rpcq is based on permanent connections,
 	-- killing only the server has little effect.
 	return net.stop_server(port, true)
@@ -375,13 +375,13 @@ end
 -- return: true|false, array of responses
 -- timeout is the max delay for the whole RPC
 local function do_call(ip, port, typ, call, timeout)
-
+	assert(reconnect, clean)
 	if not reconnect_t then reconnect_t = events.thread(reconnect) end
-	if not clean_t then clean_t = events.thread(clean) end
+	if not clean_t then clean_t = events.thread(_M.clean) end
 
 	local id = ip..":"..port
 
-	timeout = timeout or settings.default_timeout
+	timeout = timeout or _M.settings.default_timeout
 
 	number = number + 1
 
@@ -422,12 +422,12 @@ end
 --------------------[[ HIGH LEVEL FUNCTIONS ]]--------------------
 
 -- return: true|false, array of responses
-function acall(ip, port, call, timeout)
+function _M.acall(ip, port, call, timeout)
 
 	-- support for a node array with ip and port
 	if type(ip) == "table" then
 		if not ip.ip or not ip.port then
-			l_o:warn("parameter array without ip or port")
+			_M.l_o:warn("parameter array without ip or port")
 			return false, "parameter array without ip or port"
 		else
 			timeout = call
@@ -438,7 +438,7 @@ function acall(ip, port, call, timeout)
 	end
 	
 	if timeout ~=nil and tonumber(timeout)==nil then
-		l_o:warn("invalid timeout value: ",timeout)
+		_M.l_o:warn("invalid timeout value: ",timeout)
 		return false, "invalid timeout value: "..timeout
 	end
 	
@@ -452,7 +452,7 @@ end
 --function a_call(...) return acall(...) end
 
 function ecall(ip, port, func, timeout)
-	local ok, r = acall(ip, port, func, timeout)
+	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)
 	else
@@ -463,8 +463,8 @@ end
 -- To be used when we are sure that all the rpc reply return something other
 -- than nil, then nil will indicate and error. The best way to do is to use
 -- acall() and then unpack the second return values or use it as an array.
-function call(ip, port, func, timeout)
-	local ok, r = acall(ip, port, func, timeout)
+function _M.call(ip, port, func, timeout)
+	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)
 	else
@@ -473,7 +473,7 @@ function call(ip, port, func, timeout)
 end
 
 -- RPC ping
-function ping(ip, port, timeout)
+function _M.ping(ip, port, timeout)
 	-- support for a node array with ip and port
 	if type(ip) == "table" and ip.ip and ip.port then
 		timeout = port
@@ -496,7 +496,7 @@ You can then call functions on that object with the classical notation:
 o = rpc.proxy(node)
 o:remote_function(arg1, arg2)
 ]]
-function proxy(ip, port)
+function _M.proxy(ip, port)
 	local p = {}
 	if type(ip) == "table" then
 		p.port = ip.port
@@ -506,7 +506,7 @@ function proxy(ip, port)
 		p.ip = ip
 	end
 	
-	p.timeout = settings.default_timeout
+	p.timeout = _M.settings.default_timeout
 	p.ping = function(self)
 		return ping(self, self.timeout)
 	end
@@ -521,3 +521,5 @@ function proxy(ip, port)
 		end})
 	return p
 end
+
+return _M
