@@ -155,11 +155,11 @@ local function check(self, l, ...)
 	end
 end
 
-_M.debug = function(self, ...) return _M.check(self, 1, ...) end
-_M.notice = function(self, ...) return _M.check(self, 2, ...) end
+_M.debug   = function(self, ...) return _M.check(self, 1, ...) end
+_M.notice  = function(self, ...) return _M.check(self, 2, ...) end
 _M.warning = function(self, ...) return _M.check(self, 3, ...) end
-_M.error = function(self, ...) return _M.check(self, 4, ...) end
-_M.print = function(self, ...) return _M.check(self, 5, ...) end
+_M.error   = function(self, ...) return _M.check(self, 4, ...) end
+_M.print   = function(self, ...) return _M.check(self, 5, ...) end
 
 -- aliases
 _M.info = _M.notice
