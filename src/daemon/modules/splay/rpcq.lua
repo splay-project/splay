@@ -116,7 +116,7 @@ function _M.infos()
 end
 
 -- Kill the LRU connection (if a non active one !)
-function _M.clean_lru()
+local function clean_lru()
 	--l_o:debug("clean_lru")
 	local best_last, best_id = math.huge
 	for id, p in pairs(peers) do
@@ -136,7 +136,7 @@ function _M.clean_lru()
 	end
 end
 
-function _M.clean()
+local function clean()
 	--l_o:debug("clean")
 	while events.sleep(5) do
 		for id, p in pairs(peers) do
@@ -155,7 +155,7 @@ function _M.clean()
 end
 
 -- Cleaning after failure, or to stop connection with a peer
-function _M.peer_fail(id)
+local function peer_fail(id)
 	--l_o:debug("peer_fail", id)
 
 	-- make the other thread fail
