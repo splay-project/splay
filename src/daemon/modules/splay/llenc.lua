@@ -34,6 +34,7 @@ LLenc must be used with TCP (not useful with UDP, we receive whole datagrams).
 
 local string = require"string"
 local math = require"math"
+local log = require"splay.log"
 
 local tostring = tostring
 local setmetatable = setmetatable
@@ -43,13 +44,15 @@ local type = type
 local tonumber = tonumber
 local print = print
 
-module("splay.llenc")
-
+--module("splay.llenc")
+local _M = {}
 _COPYRIGHT = "Copyright 2006 - 2011"
 _DESCRIPTION = "LLenc send and receive functions (socket wrapper or standalone)"
 _VERSION     = 1.3
+--[[ DEBUG ]]--
+_M.l_o = log.new(3, "[splay.llenc]")
 
-function encode(data)
+function _M.encode(data)
 	if type(data) ~= "string" then
 		data = tostring(data)
 	end
@@ -82,7 +85,7 @@ local function send_array(s, t)
 	return s:send(data)
 end
 
-function send(s, data)
+function _M.send(s, data)
 	if not data then return nil, "no data" end
 	if type(data) == "table" then
 		return send_array(s, data)
@@ -92,7 +95,7 @@ function send(s, data)
 	return nil, "not sendable type"
 end
 
-function receive(s, max_length)
+function _M.receive(s, max_length)
 	local max_length = max_length or math.huge
 	
 	local length, status = s:receive("*l")
@@ -109,7 +112,7 @@ function receive(s, max_length)
 end
 
 -- return array of results or nil, error, already_received_results
-function receive_array(s, number, max_length)
+function _M.receive_array(s, number, max_length)
 	number = number or 1
 	local r = {}
 	local c = 0
@@ -126,7 +129,7 @@ end
 -- Socket wrapper
 -- Use only with ':' methods or xxx.super:method() if you want to use the
 -- original one.
-function wrap(socket, err)
+function _M.wrap(socket, err)
 	if string.find(tostring(socket), "#LLENC") then
 		return socket
 	end
@@ -170,3 +173,5 @@ function wrap(socket, err)
 
 	return wrap_obj
 end
+
+return _M

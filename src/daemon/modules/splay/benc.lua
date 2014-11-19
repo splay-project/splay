@@ -25,7 +25,7 @@ local string = require"string"
 
 local llenc = require"splay.llenc"
 local misc = require"splay.misc"
-
+local log =  require"splay.log"
 local pairs = pairs
 local pcall = pcall
 local setmetatable = setmetatable
@@ -33,11 +33,12 @@ local tonumber = tonumber
 local tostring = tostring
 local type = type
 
-module("splay.benc")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Enhanced bencoding for Lua"
-_VERSION     = 1.0
+--module("splay.benc")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Enhanced bencoding for Lua"
+_M._VERSION     = 1.0
+_M.l_o = log.new(3, "[splay.benc]")
 
 local pos = 1
 local data = nil
@@ -52,7 +53,7 @@ local function back()
 	pos = pos - 1
 end
 
-function decode(d)
+function _M.decode(d)
 
 	if d then
 		data = d
@@ -66,8 +67,8 @@ function decode(d)
 		item = pop()
 		while item ~= 'e' do
 			back()
-			local key = decode()
-			hash[key] = decode()
+			local key = _M.decode()
+			hash[key] = _M.decode()
 			item = pop()
 		end
 		return hash
@@ -82,7 +83,7 @@ function decode(d)
 		local list = {}
 		while item ~= 'e' do
 			back()
-			list[#list + 1] = decode()
+			list[#list + 1] = _M.decode()
 			item = pop()
 		end
 		return list
@@ -167,29 +168,29 @@ local function encode_table(data,out)
 		end
 	end
 end
-function encode(data)
+function _M.encode(data)
 	local out = { n=1 }
 	encode_table(data, out)
 	return table.concat(out)
 end
 
-function send(socket, data)
-	return socket:send(encode(data))
+function _M.send(socket, data)
+	return socket:send(_M.encode(data))
 end
 
-function receive(socket)
+function _M.receive(socket)
 	local data, status = socket:receive()
 	if not data then
 		return nil, status
 	end
-	local ok, data = pcall(function() return decode(data) end)
+	local ok, data = pcall(function() return _M.decode(data) end)
 	if ok then return data else return nil, "corrupted" end
 end
 
 -- Socket wrapper
 -- Use only with ':' methods or xxx.super:method() if you want to use the
 -- original one.
-function wrap(socket, err)
+function _M.wrap(socket, err)
 	if string.find(tostring(socket), "#BENC") then
 		return socket
 	end
@@ -222,12 +223,14 @@ function wrap(socket, err)
 	setmetatable(wrap_obj, mt)
 
 	wrap_obj.send = function(self, data)
-		return send(self.super, data)
+		return _M.send(self.super, data)
 	end
 
 	wrap_obj.receive = function(self, max_length)
-		return receive(self.super, max_length)
+		return _M.receive(self.super, max_length)
 	end
 
 	return wrap_obj
 end
+
+return _M
