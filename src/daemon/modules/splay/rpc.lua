@@ -39,31 +39,31 @@ local tonumber = tonumber
 local type = type
 local unpack = unpack
 
-module("splay.rpc")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Remote Procedure Call over TCP"
-_VERSION     = 1.0
+--module("splay.rpc")
+local _M={}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Remote Procedure Call over TCP"
+_M._VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[splay.rpc]")
 
-settings = {
+_M.settings = {
 	max = nil, -- max outgoing RPCs
 	default_timeout = 60,
 	nodelay = nil -- tcp nodelay option
 }
 
-mode = "rpc"
+_M.mode = "rpc"
 
 local number = 0
 local call_s = nil
 
-function stats()
+function _M.stats()
 	return number
 end
 
-function infos()
+function _M.infos()
 	return"Number of RPCs: "..number
 end
 
@@ -108,11 +108,11 @@ local function rpc_handler(s)
 	end
 end
 
-function server(port, max, backlog)
+function _M.server(port, max, backlog)
 	return net.server(port, rpc_handler, max, nil, backlog)
 end
 
-function stop_server(port)
+function _M.stop_server(port)
 	return net.stop_server(port, true)
 end
 
@@ -120,11 +120,11 @@ end
 -- timeout is the max delay for the whole RPC
 local function do_call(ip, port, typ, call, timeout)
 
-	if settings.max and not call_s then
-		call_s = events.semaphore(settings.max)
+	if _M.settings.max and not call_s then
+		call_s = events.semaphore(_M.settings.max)
 	end
 
-	timeout = timeout or settings.default_timeout
+	timeout = timeout or _M.settings.default_timeout
 	local timeleft = timeout
 
 	local func_name
@@ -234,7 +234,7 @@ end
 --------------------[[ HIGH LEVEL FUNCTIONS ]]--------------------
 
 -- return: true|false, array of responses
-function acall(ip, port, call, timeout)
+function _M.acall(ip, port, call, timeout)
 
 	-- support for a node array with ip and port
 	if type(ip) == "table" then
@@ -261,10 +261,10 @@ function acall(ip, port, call, timeout)
 	return do_call(ip, port, "call", call, timeout)
 end
 -- DEPRECATED
-function a_call(...) return acall(...) end
+--function _M.a_call(...) return acall(...) end
 
-function ecall(ip, port, func, timeout)
-	local ok, r = acall(ip, port, func, timeout)
+function _M.ecall(ip, port, func, timeout)
+	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)
 	else
@@ -275,8 +275,8 @@ end
 -- To be used when we are sure that all the rpc reply return something other
 -- than nil, then nil will indicate and error. The best way to do is to use
 -- acall() and then unpack the second return values or use it as an array.
-function call(ip, port, func, timeout)
-	local ok, r = acall(ip, port, func, timeout)
+function _M.call(ip, port, func, timeout)
+	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)
 	else
@@ -285,7 +285,7 @@ function call(ip, port, func, timeout)
 end
 
 -- RPC ping
-function ping(ip, port, timeout)
+function _M.ping(ip, port, timeout)
 	-- support for a node array with ip and port
 	if type(ip) == "table" and ip.ip and ip.port then
 		timeout = port
@@ -293,7 +293,7 @@ function ping(ip, port, timeout)
 		ip = ip.ip
 	end
 	local t = misc.time()
-	local ok, r = do_call(ip, port, "ping", nil, timeout)
+	local ok, r = _M.do_call(ip, port, "ping", nil, timeout)
 	if ok then
 		return misc.time() - t
 	else
@@ -308,7 +308,7 @@ You can then call functions on that object with the classical notation:
 o = rpc.proxy(node)
 o:remote_function(arg1, arg2)
 ]]
-function proxy(ip, port)
+function _M.proxy(ip, port)
 	local p = {}
 	if type(ip) == "table" then
 		p.port = ip.port
@@ -334,3 +334,5 @@ function proxy(ip, port)
 		end})
 	return p
 end
+
+return _M
