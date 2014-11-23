@@ -70,7 +70,7 @@ end
 local function reply(s, data)
 	local ok, err = s:send(enc.encode(data))
 	if not ok then
-		l_o:warn("reply send(): "..err)
+		_M.l_o:warn("reply send(): "..err)
 	end
 	return ok, err
 end
@@ -89,7 +89,7 @@ local function rpc_handler(s)
 				if c then
 					reply(s, c)
 				else
-					l_o:warn("rpc_handler misc.call(): "..err)
+					_M.l_o:warn("rpc_handler misc.call(): "..err)
 					-- TODO good error report
 					reply(s, {nil})
 				end
@@ -101,10 +101,10 @@ local function rpc_handler(s)
 				reply(s, true)
 			end
 		else
-			l_o:warn("rpc_handler corrupted message:", data_s)
+			_M.l_o:warn("rpc_handler corrupted message:", data_s)
 		end
 	else
-		l_o:warn("rpc_handler receive(): "..err)
+		_M.l_o:warn("rpc_handler receive(): "..err)
 	end
 end
 
@@ -173,7 +173,7 @@ local function do_call(ip, port, typ, call, timeout)
 				if timeleft <= 0 then
 					s:close()
 					if call_s then call_s:unlock() end
-					l_o:warn(err_prefix.." before send timeout")
+					_M.l_o:warn(err_prefix.." before send timeout")
 					return false, "timeout"
 				end
 				s:settimeout(timeleft)
@@ -183,7 +183,7 @@ local function do_call(ip, port, typ, call, timeout)
 			if not r then
 				s:close()
 				if call_s then call_s:unlock() end
-				l_o:warn(err_prefix.." send(): "..err)
+				_M.l_o:warn(err_prefix.." send(): "..err)
 				return false, err
 			end
 
@@ -208,25 +208,25 @@ local function do_call(ip, port, typ, call, timeout)
 					if ok then
 						return true, r
 					else
-						l_o:warn("corrupted message")
+						_M.l_o:warn("corrupted message")
 						return false, "corrupted message"
 					end
 				elseif data.type == "ping" then
 					return true, {true}
 				end
 			else
-				l_o:warn(err_prefix.." receive(): "..err)
+				_M.l_o:warn(err_prefix.." receive(): "..err)
 				return false, err
 			end
 		else
 			s:close()
 			if call_s then call_s:unlock() end
-			l_o:warn(err_prefix.." connect("..ip..":"..port.."): "..err)
+			_M.l_o:warn(err_prefix.." connect("..ip..":"..port.."): "..err)
 			return false, err
 		end
 	else
 		if call_s then call_s:unlock() end
-		l_o:error(err_prefix.." tcp(): "..err)
+		_M.l_o:error(err_prefix.." tcp(): "..err)
 		return false, err
 	end
 end
