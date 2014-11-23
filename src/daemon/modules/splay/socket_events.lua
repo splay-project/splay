@@ -64,14 +64,14 @@ _M._DESCRIPTION = "Sockets with events (to work with Events)"
 _M._VERSION     = 1.0
 _M._NAME = "splay.socket_events"
 --[[ DEBUG ]]--
-_M.l_o = log.new(3, "[".._M._NAME.."]")
+_M.l_o = log.new(5, "[".._M._NAME.."]")
 
 -- Try to receive and yield if needed.
 --
 -- If you set a timeout, the function will timeout if all the requested data are
 -- not received in that time. The partial result will be returned anyway.
 local function receive(socket, pattern, part, timeout)
-	--_M.l_o:debug("receive("..tostring(pattern)..")", timeout)
+	_M.l_o:debug("receive("..tostring(pattern)..")", timeout)
 
 	local data, err, end_time
 	pattern = pattern or "*l"
@@ -112,7 +112,7 @@ end
 
 -- Try to send data and yield if needed.
 local function send(socket, data, i, j, timeout)
-	--_M.l_o:debug("send("..string.sub(data, 1, 20).."...("..string.len(data).."))", timeout)
+	_M.l_o:debug("send("..string.sub(data, 1, 20).."...("..string.len(data).."))", timeout)
 
 	local n, err, sent, last, end_time
 	i = i or 1
@@ -152,13 +152,13 @@ end
 
 -- Non blocking accept()
 local function accept(socket, timeout)
-	--_M.l_o:debug("accept("..tostring(timeout)..")")
+	_M.l_o:debug("accept("..tostring(timeout)..")")
 
 	-- We need to call accept() once before giving the socket to select() if we
 	-- want to be sure to non-block
 	local client, err = socket:accept()
 	if client then
-		return wrap_tcp(client)
+		return _M.wrap_tcp(client)
 	end
 
 	local end_time = nil
@@ -182,7 +182,7 @@ local function accept(socket, timeout)
 		end
 		client, err = socket:accept()
 		if client then
-			return wrap_tcp(client)
+			return _M.wrap_tcp(client)
 		end
 		if err ~= "timeout" and err ~= "timedout" and err ~= "Operation already in progress" then
 			return nil, err
@@ -192,7 +192,7 @@ end
 
 -- Non blocking connect()
 local function connect(socket, ip, port, timeout)
-	--_M.l_o:debug("connect("..ip..", "..port..", "..tostring(timeout)..")")
+	_M.l_o:debug("connect("..ip..", "..port..", "..tostring(timeout)..")")
 
 	local _, err = nil, nil
 
@@ -255,7 +255,7 @@ end
 
 -- Try to receive and yield if needed.
 local function udp_receive(socket, from, size, timeout)
-	--_M.l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
+	_M.l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
 
 	local s = ""
 	local err, port = nil, nil
@@ -292,7 +292,7 @@ end
 
 -- not local because accept() needs it, but should be local...
 function _M.wrap_tcp(socket)
-	--_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
+	_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -379,7 +379,7 @@ function _M.wrap_tcp(socket)
 end
 
 local function wrap_udp(socket)
-	--_M.l_o:debug("wrap_udp("..tostring(socket)..")")
+	_M.l_o:debug("wrap_udp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -478,7 +478,7 @@ end
 
 -- wrapping of the "base" socket (still not udp or tcp)
 function _M.wrap(socket, err)
-	--_M.l_o:debug("wrap("..tostring(socket)..")")
+	_M.l_o:debug("wrap("..tostring(socket)..")")
 	if string.find(tostring(socket), "#SE") then
 		_M.l_o:warn("trying to wrap an already SE socket "..tostring(socket))
 		return socket
