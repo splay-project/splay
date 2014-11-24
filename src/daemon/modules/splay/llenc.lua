@@ -160,15 +160,15 @@ function _M.wrap(socket, err)
 	setmetatable(wrap_obj, mt)
 
 	wrap_obj.send = function(self, data)
-		return send(self.super, data)
+		return _M.send(self.super, data)
 	end
 
 	wrap_obj.receive_array = function(self, number, max_length)
-		return receive_array(self.super, number, max_length)
+		return _M.receive_array(self.super, number, max_length)
 	end
 
 	wrap_obj.receive = function(self, max_length)
-		return receive(self.super, max_length)
+		return _M.receive(self.super, max_length)
 	end
 
 	return wrap_obj

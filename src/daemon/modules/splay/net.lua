@@ -115,14 +115,14 @@ function _M.client(ip, port, handler, timeout)
 		port = ip.port
 		ip = ip.ip
 	end
-	timeout = timeout or settings.connect_timeout
+	timeout = timeout or _M.settings.connect_timeout
 
 	local s, msg = socket.tcp()
 	if s then
 		s:settimeout(timeout)
 		local ok, msg = s:connect(ip, port)
 		if ok then
-			s:settimeout(settings.timeout)
+			s:settimeout(_M.settings.timeout)
 			async(s, handler, nil, true)
 		else
 			l_o:warning("Cannot connect peer "..ip..":"..port..": "..msg)
@@ -169,7 +169,9 @@ function _M.server(port, handler, max, filter, backlog)
 		if max then s_s = events.semaphore(max) end
 		while true do
 			if s_s then s_s:lock() end
+			_M.l_o:debug("Server socket now accepting incoming connections")
 			local sc, err = s:accept()
+			_M.l_o:debug("Server socket accepted incoming connection", sc, err)			
 			if sc then
 				local ok = true
 
@@ -185,6 +187,7 @@ function _M.server(port, handler, max, filter, backlog)
 					_s_s[port].clients[sc] = true
 					if type(handler) == "function" then
 						events.thread(function()
+							_M.l_o:debug("will pcall the rpc_handler on socket_client:",sc, type(pcall))
 							local ok, msg = pcall(function() handler(sc) end)
 							if not ok then _M.l_o:warning("handler: "..msg) end
 							if _s_s[port] then
