@@ -76,11 +76,12 @@ local function reply(s, data)
 end
 
 local function rpc_handler(s)
-
-	if settings.nodelay then s:setoption("tcp-nodelay", true) end
+	_M.l_o:debug("rpc.rpc_handler on socket ",s)
+	if _M.settings.nodelay then s:setoption("tcp-nodelay", true) end
 	s = llenc.wrap(s)
-
+	_M.l_o:debug("rpc_handler llenc'ed socket:",s)
 	local data_s, err = s:receive()
+	_M.l_o:debug("rpc_handler received data ",data_s)	
 	if data_s then
 		local ok, data = pcall(function() return enc.decode(data_s) end)
 		if ok then
@@ -158,14 +159,14 @@ local function do_call(ip, port, typ, call, timeout)
 	number = number + 1
 
 	local s, err = socket.tcp()
-	
+	_M.l_o:debug("TCP client socket created:",s,err)
 	if s then
 		if timeleft then s:settimeout(timeleft) end
 		s = llenc.wrap(s)
 		local r, err = s:connect(ip, port)
-		
+		_M.l_o:debug("Connect to ", ip, port," risult:",r)
 		if r then
-			if settings.nodelay then s:setoption("tcp-nodelay", true) end
+			if _M.settings.nodelay then s:setoption("tcp-nodelay", true) end
 
 			-- update time left
 			if timeleft then
