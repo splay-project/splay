@@ -55,7 +55,7 @@ function _M.dup(a)
 	else
 		local out = {}
 		for i, j in pairs(a) do
-			out[i] = dup(j)
+			out[i] = _M.dup(j)
 		end
 		return out
 	end
@@ -77,9 +77,9 @@ function _M.gen_string(times, s)
 
 	local t = math.floor(times / 2)
 	if times % 2 == 0 then
-		return gen_string(s..s, t)
+		return _M.gen_string(s..s, t)
 	else
-		return gen_string(s..s, t)..s
+		return _M.gen_string(s..s, t)..s
 	end
 end
 
@@ -127,8 +127,8 @@ function _M.table_concat(t1, t2)
 	if not t1 and not t2 then return {} end
 	if not t1 then return t2 end
 	if not t2 then return t1 end
-	local t = dup(t1)
-	for _, e in pairs(dup(t2)) do t[#t + 1] = e end
+	local t = _M.dup(t1)
+	for _, e in pairs(_M.dup(t2)) do t[#t + 1] = e end
 	return t
 end
 
@@ -246,14 +246,14 @@ end
 
 -- DEPRECATED, compatibility
 function _M.random_pick_one(a)
-	return random_pick(a)
+	return _M.random_pick(a)
 end
 
 function _M.shuffle(a)
 	if #a == 1 then
 		return a
 	else
-		return random_pick(a, #a)
+		return _M.random_pick(a, #a)
 	end
 end
 
@@ -321,7 +321,7 @@ end
 function _M.convert_base(input, b1, b2)
 	b1 = b1 or 10
 	b2 = b2 or 16
-	return _M.dec_to_base(base_to_dec(input, b1), b2)
+	return _M.dec_to_base(_M.base_to_dec(input, b1), b2)
 end
 
 function _M.ctime()  -- time from core C lib
@@ -382,8 +382,8 @@ function _M.stringify(arg)
 	if type(arg) == "table" then
 		local str = "{"
 		for name, value in pairs(arg) do
-			str = str.."["..stringify(name).."] = "
-			str = str..stringify(value)..","
+			str = str.."[".._M.stringify(name).."] = "
+			str = str.._M.stringify(value)..","
 		end
 		return str.."}"
 	elseif type(arg) == "string" then
@@ -443,14 +443,14 @@ function _M.call(procedure)
 
 	if type(f) == "function" then
 		local args = {}
-		if isize(procedure) > 1 then
-			for i = 2, isize(procedure) do
+		if _M.isize(procedure) > 1 then
+			for i = 2, _M.isize(procedure) do
 				args[i - 1] = procedure[i]
 			end
 		end
 		return {f(unpack(args))}
 	else
-		if isize(procedure) > 1 then
+		if _M.isize(procedure) > 1 then
 			return nil, "invalid function name: "..procedure[1]
 		else
 			return {f}
