@@ -59,7 +59,7 @@ function _M.xpcall(f, err, ...)
     return _M.performResume(err, co, ...)
 end
 
-function pcall(f, ...)
+function _M.pcall(f, ...)
     return _M.xpcall(f, id, ...)
 end
 
