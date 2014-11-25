@@ -147,7 +147,7 @@ local function check_blacklist(target)
 		local rev_target = nil
 		--TODO the following string.match is not compliant with LuaJIT 2.0.0, fails at run time with 
 		--an error like: play/restricted_socket.lua:148: invalid escape sequence near '"^%d+' 
-		if string.match(target, "^%d+\.%d+\.%d+\.%d+$") then -- ip
+		if string.match(target, "^%d+\\.%d+\\.%d+\\.%d+$") then -- ip
 			rev_target = socket.dns.tohostname(target)
 		else
 			rev_target = socket.dns.toip(target)
@@ -534,7 +534,7 @@ local function udp_sock_wrapper(sock)
 	return new_sock
 end
 
-function wrap(sock)
+function _M.wrap(sock)
 	if string.find(tostring(socket), "#RS") then
 		_M.l_o:warn("trying to wrap an already RS socket "..tostring(socket))
 		return socket
