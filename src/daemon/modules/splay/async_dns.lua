@@ -40,15 +40,15 @@ local ipairs, next, pairs, print, setmetatable, tostring, assert, error, unpack,
 local misc = require"splay.misc"
 local log = require"splay.log"
 
-module('splay.async_dns')
+--module('splay.async_dns')
+local dns = {} --return this table, usually _M
 
-_DESCRIPTION = "A pure-Lua DNS protocol implementation"
-
-l_o = log.new(3, "[".._NAME.."]")
+dns._DESCRIPTION = "A pure-Lua DNS protocol implementation"
+dns.VERSION = 1.0
+dns._NAME = "splay.async_dns"
+dns.l_o = log.new(3, "["..dns._NAME.."]")
 
 local default_timeout = 15
-
-local dns = _M;
 
 -- set/get extracted from from ztact.lua: tree manipulation
 -- this code implements a tree/multi-keyed table implementation
