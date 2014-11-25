@@ -153,7 +153,6 @@ end
 -- Non blocking accept()
 local function accept(socket, timeout)
 	_M.l_o:debug("accept("..tostring(timeout)..")")
-
 	-- We need to call accept() once before giving the socket to select() if we
 	-- want to be sure to non-block
 	local client, err = socket:accept()
@@ -291,7 +290,7 @@ local function udp_receive(socket, from, size, timeout)
 end
 
 -- not local because accept() needs it, but should be local...
-function _M.wrap_tcp(socket)
+local function wrap_tcp(socket)
 	_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
 
 	socket:settimeout(0)
@@ -528,7 +527,7 @@ function _M.wrap(socket, err)
 		if not s then
 			return nil, err
 		else
-			return _M.wrap_tcp(s)
+			return wrap_tcp(s)
 		end
 	end
 
@@ -537,7 +536,7 @@ function _M.wrap(socket, err)
 		if not s then
 			return nil, err
 		else
-			return _M.wrap_udp(s)
+			return wrap_udp(s)
 		end
 	end
 
