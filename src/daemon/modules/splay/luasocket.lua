@@ -68,9 +68,9 @@ This option is offered as emergency solution in case of errors.
 _M.use_async_dns=false
 
 function _M.wrap(socket, err)
-
+	_M.l_o:debug("Wrap ", socket, socket.connect)
 	if socket.connect then
-		-- Already luasocket additionnal function...
+		-- Already luasocket additional function...
 		return socket
 	end
 
@@ -78,7 +78,7 @@ function _M.wrap(socket, err)
 	if not socket then return nil, err end
 
 	-----------------------------------------------------------------------------
-	-- Exported auxiliar functions
+	-- Exported auxiliary functions
 	-----------------------------------------------------------------------------
 
 	socket.connect = function(ip, port, lip, lport)
@@ -274,7 +274,6 @@ function _M.wrap(socket, err)
 	socket.sourcet["default"] = socket.sourcet["until-closed"]
 
 	socket.source = socket.choose(socket.sourcet)
-
 	return socket
 end
 
