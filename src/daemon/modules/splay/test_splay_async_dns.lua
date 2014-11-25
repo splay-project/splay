@@ -38,8 +38,7 @@ events.run(function()
 	--print("orion.unine.ch ->"..ip)
 	
 	local name,_ = socket.dns.tohostname("130.125.1.11")
-	--the '.' at the end of the domain is intended by the DNS RFC
-	assert(name=="orion.unine.ch.","Expected orion.unine.ch. but was "..name)	
+	assert(name=="orion.unine.ch","Expected orion.unine.ch but was "..name)	
 	--print("130.125.1.11 ->"..name)
-
+	print("TEST_OK")
 end)
