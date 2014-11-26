@@ -7,3 +7,4 @@ assert(the_nodes)
 for i=1,#job.nodes do
 	assert(job.nodes[i]==the_nodes[i])
 end
+print("TEST_OK")
