@@ -68,15 +68,18 @@ This option is offered as emergency solution in case of errors.
 _M.use_async_dns=false
 
 function _M.wrap(socket, err)
-	_M.l_o:debug("Wrap ", socket, socket.connect)
-	if socket.connect then
-		-- Already luasocket additional function...
-		return socket
-	end
+	_M.l_o:debug("Wrap ", socket)
+	
+	-- LuaSocket 3.0 ships its own connect, this check needs to be removed otherwise 
+	-- the socket is not wrapped by the event-based non-blocking layer
+	
+	--if socket.connect then 
+	--	-- Already luasocket additional function...
+	--	return socket
+	--end
 
 	-- error forwarding
 	if not socket then return nil, err end
-
 	-----------------------------------------------------------------------------
 	-- Exported auxiliary functions
 	-----------------------------------------------------------------------------
