@@ -103,3 +103,12 @@ lbase64/base64.so: lbase64/lbase64.o
 	strip lbase64/base64.so
 lbase64/lbase64.o: lbase64/lbase64.c
 	$(CC) -fpic $(CFLAGS) -c -o lbase64/lbase64.o lbase64/lbase64.c
+
+
+### sendf module
+sendf.so: sendf.o
+	$(CC) -O -fpic -shared -o sendf.so sendf.o -lm
+	strip sendf.so
+
+sendf.o: sendf.c sendf.h
+	$(CC) -fpic $(CFLAGS) -c -o sendf.o sendf.c
