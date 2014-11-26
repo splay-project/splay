@@ -143,7 +143,7 @@ function _M.wrap(socket, err)
 
 	socket.try = socket.newtry()
 	-- async-dns
-	if use_async_dns then
+	if _M.use_async_dns then
 		local dns=async_dns.resolver()		
 		local function send_receive(o,field)
 			local q,in_cache=dns:encode_q(o, field:gsub("[^%s]+", string.upper))	 
