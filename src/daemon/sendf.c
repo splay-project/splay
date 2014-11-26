@@ -15,7 +15,7 @@
  * Splay.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// gcc -Wall -shared -fPIC -o sendf.so -I/usr/include/lua5.1 -llua5.1 sendf.c
+/* gcc -Wall -shared -fPIC -o sendf.so -I/usr/include/lua5.1 -llua5.1 sendf.c */
 
 #define _GNU_SOURCE
 
