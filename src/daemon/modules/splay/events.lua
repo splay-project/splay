@@ -295,7 +295,7 @@ local function die(co, typ, event)
 	if typ == "end" then
 		unlock_die(co, false)
 		end_count = end_count + 1
-		_M.l_o:notice(name.." DIE (end)")
+	  --_M.l_o:notice(name.." DIE (end)")
 
 	elseif typ == "error" then
 		unlock_die(co, true)
@@ -334,7 +334,7 @@ local function run_n_insert(co, ret, tm)
 
 	if ret then s_arg = ret.arg end
 
-	_M.l_o:debug(tostring(co).." RUN with "..tostring(s_arg), "tm:", tm)
+	--_M.l_o:debug(tostring(co).." RUN with "..tostring(s_arg), "tm:", tm)
 	--arg is the arguments given to the coroutine 
 	if tm then
 		ok, event, arg, arg2 = coroutine.resume(co, false, "timeout")
@@ -374,11 +374,11 @@ local function run_n_insert(co, ret, tm)
 		
 		if timeout then timeouts[co] = timeout + time() end
 
-		if timeout then
-			_M.l_o:debug(tostring(co).." SUSPEND wait "..tostring(timeout).."s for: "..tostring(event))
-		else
-			_M.l_o:debug(tostring(co).." SUSPEND wait for: "..tostring(event))
-		end
+		--if timeout then
+		--	_M.l_o:debug(tostring(co).." SUSPEND wait "..tostring(timeout).."s for: "..tostring(event))
+		--else
+		--	_M.l_o:debug(tostring(co).." SUSPEND wait for: "..tostring(event))
+		--end
 		
 	else
 		if event == "event:kill" then
@@ -475,7 +475,7 @@ local function single_thread(th)
 	end
 	local name = tostring(co)
 	threads_ref[name] = co
-	_M.l_o:notice(name.." NEW")
+	--_M.l_o:notice(name.." NEW")
 	new_threads[#new_threads + 1] = co
 	--_M.l_o:debug("#new_threads:",#new_threads,"threads_ref["..name.."]:",co, "STATUS:", coroutine.status(co))
 	return name
@@ -614,15 +614,15 @@ function _M.fire(event, ...)
 		events[event] = {arg = {...}}
 		return true
 	else
-		_M.l_o:notice(tostring(coroutine.running()).." ALREADY FIRED: "..tostring(event))
+--		_M.l_o:notice(tostring(coroutine.running()).." ALREADY FIRED: "..tostring(event))
 		return false
 	end
 end
 
 function _M.wait(event, timeout)
-	_M.l_o:debug(tostring(coroutine.running()).." WAIT: "..tostring(event).." TM: "..tostring(timeout))
+	--_M.l_o:debug(tostring(coroutine.running()).." WAIT: "..tostring(event).." TM: "..tostring(timeout))
 	local ok, r = coroutine.yield(event, timeout)
-	_M.l_o:debug(tostring(coroutine.running()).." YIELD: ",ok,r)
+	--_M.l_o:debug(tostring(coroutine.running()).." YIELD: ",ok,r)
 	if timeout then
 		if ok then
 			return ok, unpack(r)
@@ -763,7 +763,7 @@ function _M.run(th)
 				-- Be careful to not call sleep() with a negative value
 				if htt_time > ct then
 					-- We will sleep a little (until the next timeout)
-					_M.l_o:debug("Sleeping: "..tostring(htt_time - ct))
+					--_M.l_o:debug("Sleeping: "..tostring(htt_time - ct))
 					socket.sleep(htt_time - ct)
 				end
 			end
@@ -780,7 +780,7 @@ function _M.run(th)
 		end
 
 		--[[ RUN ]]--
-		_M.l_o:debug("Current status:", status)
+		--_M.l_o:debug("Current status:", status)
 		-- If not "timeout", that means that we have received a network event, that
 		-- means too that there was nothing else to execute so we can safely skip
 		-- this part.
@@ -811,7 +811,7 @@ function _M.run(th)
 					end
 
 				else -- no "event" for these threads, but timeout ?
-					_M.l_o:debug("Iterating over threads in queue:",event)
+					--_M.l_o:debug("Iterating over threads in queue:",event)
 					for i, thread in ipairs(queue[event]) do
 						if timeouts[thread] and timeouts[thread] <= time() then
 							-- if an other timeouted thread is at the end
