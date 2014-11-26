@@ -2,11 +2,11 @@ CC= gcc
 
 # Since Lua 5.1, lua and lualib are merged.
 #INCLUDE= -I/usr/include/lua5.1 -I/usr/local/openssl/include
-INCLUDE= -I/usr/include/lua5.1
+INCLUDE= -I../external_libs/lua-5.2.3/src/
 
 # For static linking, but loading dynamic modules will not work then.
 #LIBS= -L/usr/lib -llua5.1 -lm -ldl
-LIBS= -L/usr/lib -llua5.1 -lm
+LIBS= -L/usr/lib -llua5.2 -lm
 OPENSSL_LIBS= -L/usr/local/openssl/lib -lcrypto -lssl
 
 #CFLAGS = -Wall -g -pedantic -DDEBUG $(INCLUDE)
