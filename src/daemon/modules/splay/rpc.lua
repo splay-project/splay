@@ -294,7 +294,7 @@ function _M.ping(ip, port, timeout)
 		ip = ip.ip
 	end
 	local t = misc.time()
-	local ok, r = _M.do_call(ip, port, "ping", nil, timeout)
+	local ok, r = do_call(ip, port, "ping", nil, timeout)
 	if ok then
 		return misc.time() - t
 	else
