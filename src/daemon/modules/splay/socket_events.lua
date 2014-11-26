@@ -157,7 +157,7 @@ local function accept(socket, timeout)
 	-- want to be sure to non-block
 	local client, err = socket:accept()
 	if client then
-		return _M.wrap_tcp(client)
+		return wrap_tcp(client)
 	end
 
 	local end_time = nil
@@ -181,7 +181,7 @@ local function accept(socket, timeout)
 		end
 		client, err = socket:accept()
 		if client then
-			return _M.wrap_tcp(client)
+			return wrap_tcp(client)
 		end
 		if err ~= "timeout" and err ~= "timedout" and err ~= "Operation already in progress" then
 			return nil, err
@@ -290,7 +290,7 @@ local function udp_receive(socket, from, size, timeout)
 end
 
 -- not local because accept() needs it, but should be local...
-local function wrap_tcp(socket)
+function wrap_tcp(socket)
 	_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
 
 	socket:settimeout(0)
@@ -493,7 +493,7 @@ function _M.wrap(socket, err)
 
 	-- Our socket wrapper.
 	local wrapped_socket = {}
-
+	_M.l_o:debug("wrapped socket: ",tostring(wrapped_socket))	
 	local mt = {
 		__index = function(table, key)
 			if type(socket[key]) ~= "function" then
