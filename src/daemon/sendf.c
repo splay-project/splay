@@ -20,11 +20,11 @@
 #define _GNU_SOURCE
 
 #include <fcntl.h>
-// always include these!
+/* always include these! */
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/sendfile.h>
-//#include <sys/socket.h>
+/*#include <sys/socket.h> //on macosx sendfile is defined here */
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
