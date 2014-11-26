@@ -375,7 +375,7 @@ end
 -- return: true|false, array of responses
 -- timeout is the max delay for the whole RPC
 local function do_call(ip, port, typ, call, timeout)
-	_M.l_o:debug("do_call")
+	--_M.l_o:debug("do_call")
 	assert(reconnect, clean)
 	if not reconnect_t then reconnect_t = events.thread(reconnect) end
 	if not clean_t then clean_t = events.thread(clean) end
@@ -465,7 +465,7 @@ end
 -- than nil, then nil will indicate and error. The best way to do is to use
 -- acall() and then unpack the second return values or use it as an array.
 function _M.call(ip, port, func, timeout)
-	_M.l_o:debug("call",ip,port,func,timeout)
+	--_M.l_o:debug("call",ip,port,func,timeout)
 	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)

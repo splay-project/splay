@@ -71,7 +71,7 @@ _M.l_o = log.new(5, "[".._M._NAME.."]")
 -- If you set a timeout, the function will timeout if all the requested data are
 -- not received in that time. The partial result will be returned anyway.
 local function receive(socket, pattern, part, timeout)
-	_M.l_o:debug("receive("..tostring(pattern)..")", timeout)
+	--_M.l_o:debug("receive("..tostring(pattern)..")", timeout)
 
 	local data, err, end_time
 	pattern = pattern or "*l"
@@ -81,7 +81,7 @@ local function receive(socket, pattern, part, timeout)
 	end
 	local start_download=time()
 	while true do
-		_M.l_o:debug("socket:receive",pattern)
+		--_M.l_o:debug("socket:receive",pattern)
 		data, err, part = socket:receive(pattern, part,start_download)
 
 		if data then
@@ -112,7 +112,7 @@ end
 
 -- Try to send data and yield if needed.
 local function send(socket, data, i, j, timeout)
-	_M.l_o:debug("send("..string.sub(data, 1, 20).."...("..string.len(data).."))", timeout)
+	--_M.l_o:debug("send("..string.sub(data, 1, 20).."...("..string.len(data).."))", timeout)
 
 	local n, err, sent, last, end_time
 	i = i or 1
@@ -152,7 +152,7 @@ end
 
 -- Non blocking accept()
 local function accept(socket, timeout)
-	_M.l_o:debug("accept("..tostring(timeout)..")")
+	--_M.l_o:debug("accept("..tostring(timeout)..")")
 	-- We need to call accept() once before giving the socket to select() if we
 	-- want to be sure to non-block
 	local client, err = socket:accept()
@@ -191,7 +191,7 @@ end
 
 -- Non blocking connect()
 local function connect(socket, ip, port, timeout)
-	_M.l_o:debug("connect("..ip..", "..port..", "..tostring(timeout)..")")
+	--_M.l_o:debug("connect("..ip..", "..port..", "..tostring(timeout)..")")
 
 	local _, err = nil, nil
 
@@ -254,7 +254,7 @@ end
 
 -- Try to receive and yield if needed.
 local function udp_receive(socket, from, size, timeout)
-	_M.l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
+	--_M.l_o:debug("udp_receive("..tostring(timeout)..")","size=",size)
 
 	local s = ""
 	local err, port = nil, nil
@@ -291,7 +291,7 @@ end
 
 -- not local because accept() needs it, but should be local...
 function wrap_tcp(socket)
-	_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
+	--_M.l_o:debug("wrap_tcp("..tostring(socket)..")")
 
 	socket:settimeout(0)
 
@@ -477,7 +477,7 @@ end
 
 -- wrapping of the "base" socket (still not udp or tcp)
 function _M.wrap(socket, err)
-	_M.l_o:debug("wrap("..tostring(socket)..")")
+	--_M.l_o:debug("wrap("..tostring(socket)..")")
 	if string.find(tostring(socket), "#SE") then
 		_M.l_o:warn("trying to wrap an already SE socket "..tostring(socket))
 		return socket
@@ -493,7 +493,6 @@ function _M.wrap(socket, err)
 
 	-- Our socket wrapper.
 	local wrapped_socket = {}
-	_M.l_o:debug("wrapped socket: ",tostring(wrapped_socket))	
 	local mt = {
 		__index = function(table, key)
 			if type(socket[key]) ~= "function" then

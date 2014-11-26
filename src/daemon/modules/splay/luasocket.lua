@@ -68,7 +68,7 @@ This option is offered as emergency solution in case of errors.
 _M.use_async_dns=false
 
 function _M.wrap(socket, err)
-	_M.l_o:debug("Wrap ", socket)
+	--_M.l_o:debug("Wrap ", socket)
 	
 	-- LuaSocket 3.0 ships its own connect, this check needs to be removed otherwise 
 	-- the socket is not wrapped by the event-based non-blocking layer

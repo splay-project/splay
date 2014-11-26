@@ -166,14 +166,13 @@ function _M.server(port, handler, max, filter, backlog)
 	end
 	_s_s[port] = {s = s, clients = {}}
 	return events.thread(function()
-		_M.l_o:debug("Server thread to wait for incoming connection before while-true")
 		local s_s
 		if max then s_s = events.semaphore(max) end
 		while true do
 			if s_s then s_s:lock() end
-			_M.l_o:debug("Server socket on accept()",tostring(s))
+			--_M.l_o:debug("Server socket on accept()",tostring(s))
 			local sc, err = s:accept()
-			_M.l_o:debug("Server socket accepted incoming connection", sc:getpeername(), err)			
+			--_M.l_o:debug("Server socket accepted incoming connection", sc:getpeername(), err)			
 			if sc then
 				local ok = true
 				
@@ -187,9 +186,8 @@ function _M.server(port, handler, max, filter, backlog)
 				if ok then
 					_s_s[port].clients[sc] = true
 					if type(handler) == "function" then
-						_M.l_o:debug("Preparing thread for rpc_handler..")
+						--_M.l_o:debug("Preparing thread for rpc_handler..")
 						events.thread(function()
-							_M.l_o:debug("will pcall the rpc_handler on socket_client:",sc, type(pcall))
 							local ok, msg = pcall(function() handler(sc) end)
 							if not ok then _M.l_o:warning("handler: "..msg) end
 							if _s_s[port] then
