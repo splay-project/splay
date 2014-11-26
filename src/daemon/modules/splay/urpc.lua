@@ -107,16 +107,16 @@ local type = type
 local unpack = unpack
 local tonumber = tonumber
 
-module("splay.urpc")
-
+--module("splay.urpc")
+local _M = {}
 _COPYRIGHT   = "Copyright 2006 - 2011"
 _DESCRIPTION = "UDP RPC"
 _VERSION     = 1.0
-
+_M._NAME = "splay.urpc"
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[".._M._NAME.."]")
 
-settings = {
+_M.settings = {
 	max = nil, -- max outgoing RPCs
 	default_timeout = 40,
 	retry_number = 2,
@@ -125,7 +125,7 @@ settings = {
 	try_free = true -- send an aditional message to free the cache
 }
 
-mode = "urpc"
+_M.mode = "urpc"
 
 local number = 0
 local call_s = nil
@@ -138,7 +138,7 @@ local server_run = false
 local server_port = nil --assigned when unconnected->connected
 local base_key = nil
 local c = 0
-function get_key(seed)
+function _M.get_key(seed)
 	if not base_key then
 		base_key = crypto.evp.new("sha1"):digest(math.random()..tostring(seed))
 	end
@@ -146,12 +146,12 @@ function get_key(seed)
 	return base_key..c
 end
 
-function stats()
+function _M.stats()
 	return number
 end
 
-function infos()
-	return"Number of RPCs: "..number
+function _M.infos()
+	return "Number of RPCs: "..number
 end
 
 local function clean_replied()
@@ -160,7 +160,7 @@ local function clean_replied()
 		-- If we clean the entry too soon, we will maybe still receive a msg for
 		-- that function call. If the entry is cleaned, we need to call the
 		-- function again, that in most cases is not wanted.
-		if settings.cleaning_after and d.time + settings.cleaning_after < now then
+		if _M.settings.cleaning_after and d.time + _M.settings.cleaning_after < now then
 			--l_o:debug("CLEANING", key)
 			replied[key] = nil
 		end
@@ -197,7 +197,7 @@ local function reply(s, data, ip, port)
 			data.error = "reply length ("..length..")"
 			-- we were optimistic, we need to reencode now...
 			reply_s = enc.encode(data)
-			l_o:warning("reply(): too much data")
+			_M.l_o:warning("reply(): too much data")
 		end
 	else
 		reply_s = enc.encode(data)
@@ -205,7 +205,7 @@ local function reply(s, data, ip, port)
 
 	local ok, err = s:sendto(reply_s, ip, port)
 	if not ok then
-		l_o:warn("sendto(): "..err)
+		_M.l_o:warn("sendto(): "..err)
 	end
 end
 
@@ -214,7 +214,7 @@ local function process_one_msg(s, data, ip, port)
 	if ok then
 		if data.reply then -- we have received a reply
 			messages[data.key] = nil
-			if settings.try_free then
+			if _M.settings.try_free then
 				s:sendto(enc.encode({free = true, key = data.key}), ip, port)
 			end
 			return events.fire("urpc:"..data.key, data)
@@ -224,7 +224,7 @@ local function process_one_msg(s, data, ip, port)
 			return reply(s, data, ip, port)
 		end
 	else
-		l_o:warn("corrupted message")
+		_M.l_o:warn("corrupted message")
 	end
 end
 
@@ -232,22 +232,22 @@ end
 local function sender(s)
 	while true do
 
-		--l_o:debug("sender() loop")
+		--_M.l_o:debug("sender() loop")
 		local q = {}
 		local now, next_wakeup = misc.time()
 
 		for key, data in pairs(messages) do
 			if data.next_try <= now then
 			
-				--l_o:debug("try", data.nb_try, data.key)
+				--_M.l_o:debug("try", data.nb_try, data.key)
 
 				-- add to the send queue
 				q[#q + 1] = misc.dup(data)
 
 				data.nb_try = data.nb_try + 1
-				data.next_try = now + (data.timeout / (settings.retry_number + 1))
+				data.next_try = now + (data.timeout / (_M.settings.retry_number + 1))
 
-				if data.nb_try >= settings.retry_number then
+				if data.nb_try >= _M.settings.retry_number then
 					messages[key] = nil
 				else
 					if not next_wakeup or data.next_try < next_wakeup then
@@ -274,10 +274,10 @@ local function sender(s)
 		end
 
 		if next_wakeup then
-			--l_o:debug("wait", next_wakeup - now)
+			--_M.l_o:debug("wait", next_wakeup - now)
 			events.wait("urpc:sender", next_wakeup - now)
 		else
-			--l_o:debug("wait")
+			--_M.l_o:debug("wait")
 			events.wait("urpc:sender")
 		end
 	end
@@ -292,9 +292,9 @@ local function receiver(s)
 			end)
 		else
 			if ip == "timeout" then
-				l_o:warn("receivefrom(): "..ip)
+				_M.l_o:warn("receivefrom(): "..ip)
 			else
-				l_o:notice("receivefrom(): server closed")
+				_M.l_o:notice("receivefrom(): server closed")
 				break
 			end
 		end
@@ -302,7 +302,7 @@ local function receiver(s)
 end
 
 -- To enable an additional RPC server on a specific port
-function server(port)
+function _M.server(port)
 	local ip="*" --bind on all IPs on this machine
 	if type(port) == 'table' and port.port then
 		if port.ip then ip=port.ip end
@@ -320,16 +320,16 @@ function server(port)
 	
 	local s, err = socket.udp()
 	if not s then
-		l_o:warn("udp():"..err)
+		_M.l_o:warn("udp():"..err)
 		return nil, err
 	end
 
-	l_o:notice("URPC server bound on port "..port)
+	_M.l_o:notice("URPC server bound on port "..port)
 	
 	local r, err = s:setsockname(ip, port)
 	
 	if not r then
-		l_o:warn("setsockname("..port.."): "..err)
+		_M.l_o:warn("setsockname("..port.."): "..err)
 		return nil, err
 	end
 
@@ -337,12 +337,12 @@ function server(port)
 	events.thread(function() receiver(s) end)
 	
 	--if the default server was stopped due to port conflict, restart it
-	if default_to_restart then default_server() end
+	if default_to_restart then _M.default_server() end
 	
 	return true
 end
 
-function stop_server(port)
+function _M.stop_server(port)
 	if sockets[port] then
 		sockets[port]:close()
 		sockets[port] = nil
@@ -350,16 +350,16 @@ function stop_server(port)
 end
 
 --[[ To enable our local RPC UDP server ]]--
-function default_server()
+function _M.default_server()
 
 	local s, err = socket.udp()
 	if not s then
-		l_o:warn("udp():"..err)
+		_M.l_o:warn("udp():"..err)
 		return nil, err
 	end
 	events.thread(function() sender(s) end)
 	events.thread(function() receiver(s) end)
-	events.periodic(settings.cleaning_interval, clean_replied)
+	events.periodic(_M.settings.cleaning_interval, clean_replied)
 	server_run = true
 end
 
@@ -368,22 +368,22 @@ local function do_call(ip, port, typ, call, timeout)
 
 	-- If no server runs, we need a default server (binded on a port choosen by
 	-- the system to be able to receive replies for our rpcs)
-	if not server_run then default_server() end
+	if not server_run then _M.default_server() end
 
-	if settings.max and not call_s then
-		call_s = events.semaphore(settings.max)
+	if _M.settings.max and not call_s then
+		call_s = events.semaphore(_M.settings.max)
 	end
 
-	timeout = timeout or settings.default_timeout
+	timeout = timeout or _M.settings.default_timeout
 	
-	if (timeout and settings.cleaning_after and
-			timeout > settings.cleaning_after * 0.9) or
-			(not timeout and settings.cleaning_after) then
-		l_o:warn("do_call adjusted timeout", timeout)
-		timeout = settings.cleaning_after * 0.9
+	if (timeout and _M.settings.cleaning_after and
+			timeout > _M.settings.cleaning_after * 0.9) or
+			(not timeout and _M.settings.cleaning_after) then
+		_M.l_o:warn("do_call adjusted timeout", timeout)
+		timeout = _M.settings.cleaning_after * 0.9
 	end
 
-	local datac = {key = get_key()}
+	local datac = {key = _M.get_key()}
 	if typ == "ping" then
 		datac.type = "ping"
 	else
@@ -394,7 +394,7 @@ local function do_call(ip, port, typ, call, timeout)
 	local edatac = enc.encode(datac)
 	local l = #edatac
 	if l > 8192 then
-		l_o:warn("RPC UDP too big to be sent: "..l)
+		_M.l_o:warn("RPC UDP too big to be sent: "..l)
 		return nil, "call length ("..l..")"
 	end
 
@@ -459,12 +459,12 @@ end
 --------------------[[ HIGH LEVEL FUNCTIONS ]]--------------------
 
 -- return: true|false, array of responses
-function acall(ip, port, call, timeout)
+function _M.acall(ip, port, call, timeout)
 
 	-- support for a node array with ip and port
 	if type(ip) == "table" then
 		if not ip.ip or not ip.port then
-			l_o:warn("parameter array without ip or port")
+			_M.l_o:warn("parameter array without ip or port")
 			return false, "parameter array without ip or port"
 		else
 			timeout = call
@@ -475,7 +475,7 @@ function acall(ip, port, call, timeout)
 	end
 	
 	if timeout ~=nil and tonumber(timeout)==nil then
-		l_o:warn("invalid timeout value: ",timeout)
+		_M.l_o:warn("invalid timeout value: ",timeout)
 		return false, "invalid timeout value: "..timeout
 	end
 	
@@ -486,10 +486,10 @@ function acall(ip, port, call, timeout)
 	return do_call(ip, port, "call", call, timeout)
 end
 -- DEPRECATED
-function a_call(...) return acall(...) end
+--function a_call(...) return acall(...) end
 
-function ecall(ip, port, func, timeout)
-	local ok, r = acall(ip, port, func, timeout)
+function _M.ecall(ip, port, func, timeout)
+	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)
 	else
@@ -500,8 +500,8 @@ end
 -- To be used when we are sure that all the rpc reply return something other
 -- than nil, then nil will indicate and error. The best way to do is to use
 -- acall() and then unpack the second return values or use it as an array.
-function call(ip, port, func, timeout)
-	local ok, r = acall(ip, port, func, timeout)
+function _M.call(ip, port, func, timeout)
+	local ok, r = _M.acall(ip, port, func, timeout)
 	if ok then
 		return unpack(r)
 	else
@@ -510,7 +510,7 @@ function call(ip, port, func, timeout)
 end
 
 -- RPC ping
-function ping(ip, port, timeout)
+function _M.ping(ip, port, timeout)
 	-- support for a node array with ip and port
 	if type(ip) == "table" and ip.ip and ip.port then
 		timeout = port
@@ -533,7 +533,7 @@ You can then call functions on that object with the classical notation:
 o = rpc.proxy(node)
 o:remote_function(arg1, arg2)
 ]]
-function proxy(ip, port)
+function _M.proxy(ip, port)
 	local p = {}
 	if type(ip) == "table" then
 		p.port = ip.port
@@ -543,9 +543,9 @@ function proxy(ip, port)
 		p.ip = ip
 	end
 	
-	p.timeout = settings.default_timeout
+	p.timeout = _M.settings.default_timeout
 	p.ping = function(self)
-		return ping(self, self.timeout)
+		return _M.ping(self, self.timeout)
 	end
 
 	setmetatable(p,
@@ -553,8 +553,10 @@ function proxy(ip, port)
 			-- if __index is called, timeout == nil
 			if func == "timeout" then return nil end
 			return function(self, ...)
-				return ecall(self, {func, unpack(arg)}, self.timeout)
+				return _M.ecall(self, {func, unpack(arg)}, self.timeout)
 			end
 		end})
 	return p
 end
+
+return _M
