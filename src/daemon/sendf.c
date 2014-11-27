@@ -318,24 +318,17 @@ int sendf_copy_file_to_socket(lua_State *L) {
 
 }
 
-//int luaopen_sendf(lua_State *L){
-//    lua_register(L, "copy_socket_to_socket", copy_socket_to_socket);
-//    lua_register(L, "copy_socket_to_file", copy_socket_to_file);
-//    lua_register(L, "copy_file_to_socket", copy_file_to_socket);
-//	return 0;
-//}
-
 static const luaL_Reg sendf_funcs[] =
 {
     {"copy_socket_to_socket", sendf_copy_socket_to_socket},
-	{"copy_socket_to_file",   sendf_copy_socket_to_file},
-	{"copy_file_to_socket",   sendf_copy_file_to_socket},
+    {"copy_socket_to_file",   sendf_copy_socket_to_file},
+    {"copy_file_to_socket",   sendf_copy_file_to_socket},
     {NULL, NULL}
 };
 /*
 * Open the sendf library
 */
-LUA_API int luaopen_sendf(lua_State *L)
+LUA_API int luaopen_splay_sendf(lua_State *L)
 {
     luaL_openlib(L, SENDF_LIBNAME, sendf_funcs, 0);
     return 1;
