@@ -28,5 +28,6 @@ events.run(function()
 	end
 	print("copy_file_to_socket finished")
 	tmpfile:close()
+	events.exit()
 end)
 
