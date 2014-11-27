@@ -45,18 +45,14 @@ int sendf_copy_socket_to_socket(lua_State *L) {
     exit(1);
   }
   fcntl(pipefd[1], F_SETPIPE_SZ, 1024 * 1024);
-  int in_fd, out_fd;
-  int_fd = lua_tointeger(L, -3);
-  out_fd = lua_tointeger(L, -2);
-  
-  size_t len;
-  len =  lua_tointeger(L, -1);
+  int in_fd = lua_tointeger(L, -3);
+  int out_fd = lua_tointeger(L, -2);
+  size_t len = lua_tointeger(L, -1);
 
   /* pop the first three arguments, leaving an empty stack*/
   lua_pop(L, 3);
   ssize_t bytes, bytes_sent, bytes_in_pipe;
-  size_t total_bytes_sent;
-  total_bytes_sent = 0;
+  size_t total_bytes_sent = 0;
 
   while (total_bytes_sent < len) {
 	  if ((bytes_sent = splice(in_fd, NULL, pipefd[1], NULL,
@@ -70,18 +66,14 @@ int sendf_copy_socket_to_socket(lua_State *L) {
       lua_pushinteger(L, -1);
       return 1;
     }
-    // Splice the data from the pipe into out_fd
+    /* Splice the data from the pipe into out_fd */
     bytes_in_pipe = bytes_sent;
     while (bytes_in_pipe > 0) {
       if ((bytes = splice(pipefd[0], NULL, out_fd, NULL, bytes_in_pipe,
                           SPLICE_F_MOVE)) <= 0) {
         if (errno == EINTR || errno == EAGAIN) {
-          // lua_rawgeti(L, LUA_REGISTRYINDEX, callback_ref);
-          // lua_pcall(L, 0, 0, 0);
-          lua_yield(L, 0);
-          // Interrupted system call/try again
-          // Just skip to the top of the loop and try again
-          continue;
+			lua_yield(L, 0);
+			continue;
         }
         printf("Error in splice");
         perror("splice");
@@ -90,10 +82,8 @@ int sendf_copy_socket_to_socket(lua_State *L) {
         return 1;
       }
       bytes_in_pipe -= bytes;
-      // printf("Bytes sent: %d\n", bytes);
     }
     total_bytes_sent += bytes_sent;
-    // printf("<end while>");
   }
 
   close(pipefd[0]);
@@ -110,21 +100,18 @@ int sendf_copy_socket_to_file(lua_State *L) {
   }
   fcntl(pipefd[1], F_SETPIPE_SZ, 1024 * 1024);
 
-  int in_fd, out_fd;
-  in_fd = lua_tointeger(L, -3);
+  int in_fd = lua_tointeger(L, -3);
   FILE *fout = *((FILE **)lua_touserdata(L, -2));
-  out_fd = fileno(fout);
+  int out_fd = fileno(fout);
   size_t len = lua_tointeger(L, -1);
 
-  // pop the first three arguments
   lua_pop(L, 3);
   ssize_t bytes, bytes_sent, bytes_in_pipe;
   size_t total_bytes_sent = 0;
 
-  // Splice the data from in_fd into the pipe
+  /* Splice the data from in_fd into the pipe */
   while (total_bytes_sent < len) {
-    // printf("<start while>");
-    if ((bytes_sent = splice(in_fd, NULL, pipefd[1], NULL,
+	  if ((bytes_sent = splice(in_fd, NULL, pipefd[1], NULL,
                              len - total_bytes_sent, SPLICE_F_MOVE)) <= 0) {
       if (errno == EINTR || errno == EAGAIN) {
         lua_yield(L, 0);        
@@ -136,7 +123,7 @@ int sendf_copy_socket_to_file(lua_State *L) {
       return 1;
     }
 
-    // Splice the data from the pipe into out_fd
+    /* Splice the data from the pipe into out_fd */
     bytes_in_pipe = bytes_sent;
     while (bytes_in_pipe > 0) {
       if ((bytes = splice(pipefd[0], NULL, out_fd, NULL, bytes_in_pipe,
@@ -152,10 +139,10 @@ int sendf_copy_socket_to_file(lua_State *L) {
         return 1;
       }
       bytes_in_pipe -= bytes;
-      // printf("Bytes sent: %d\n", bytes);
+      /* printf("Bytes sent: %d\n", bytes); */
     }
     total_bytes_sent += bytes_sent;
-    // printf("<end while>");
+    /* printf("<end while>"); */
   }
 
   close(pipefd[0]);
@@ -173,19 +160,18 @@ int sendf_copy_file_to_socket(lua_State *L) {
   fcntl(pipefd[1], F_SETPIPE_SZ, 1024 * 1024);
  
   FILE *fin = *((FILE **)lua_touserdata(L, -3));
-  int in_fd,out_fd;
-  in_fd = fileno(fin);
-  out_fd = lua_tointeger(L, -2);
+  int in_fd = fileno(fin);
+  int out_fd = lua_tointeger(L, -2);
   size_t len = lua_tointeger(L, -1);
   
-  // pop the first three arguments
+  /* pop the first three arguments from the lua stack*/
   lua_pop(L, 3);
 
   ssize_t bytes, bytes_sent, bytes_in_pipe;
   size_t total_bytes_sent = 0;
   
   /* 
-  *Splice the data from in_fd into the pipe
+  * Splice the data from in_fd into the pipe
   */
   while (total_bytes_sent < len) {
     if ((bytes_sent = splice(in_fd, NULL, pipefd[1], NULL,
