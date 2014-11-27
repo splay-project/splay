@@ -6,7 +6,7 @@ INCLUDE= -I../external_libs/lua-5.2.3/src/
 
 # For static linking, but loading dynamic modules will not work then.
 #LIBS= -L/usr/lib -llua5.1 -lm -ldl
-LIBS= -L/usr/lib -llua5.2 -lm
+LIBS= -L../external_libs/lua-5.2.3/src/ -llua -lm -ldl 
 OPENSSL_LIBS= -L/usr/local/openssl/lib -lcrypto -lssl
 
 #CFLAGS = -Wall -g -pedantic -DDEBUG $(INCLUDE)
