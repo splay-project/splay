@@ -25,23 +25,23 @@ require"splay_core" -- => register "splay"
 
 local io = require"io"
 local math = require"math"
-local socket = require"socket.core" -- LuaSocket
+local socket = require"socket" -- LuaSocket
 
 local tostring = tostring
 local print = print
 local flush = io.flush
 local os = os
 
-module("splay")
-
+--module("splay")
+local _M = {}
 _COPYRIGHT   = "Copyright 2006 - 2011"
 _DESCRIPTION = "Splay functions."
 _VERSION     = 1.0
-
+_M._NAME = "splay"
 --[[
 Check a port range, do a list with all ports already bound.
 --]]
-function check_ports(port_min, port_max)
+function _M.check_ports(port_min, port_max)
 
 	local refused_ports = {}
 
@@ -64,7 +64,7 @@ end
 local tcp_binded_ports = {}
 local udp_binded_ports = {}
 
-function release_ports(min, max)
+function _M.release_ports(min, max)
 	if max < min then return end
 	for port = min, max do
 		if tcp_binded_ports[port] then
@@ -81,7 +81,7 @@ end
 --[[
 Try to reserve (bind) a range of TCP and UDP ports.
 --]]
-function reserve_ports(min, max)
+function _M.reserve_ports(min, max)
 	if max < min then return false, "no valid range" end
 	local stop, s, ok, err, last_port = false, nil, nil, nil, min
 
@@ -126,14 +126,14 @@ function reserve_ports(min, max)
 	end
 
 	if stop then
-		release_ports(min, last_port - 1)
+		_M.release_ports(min, last_port - 1)
 		return false, err, last_port
 	else
 		return true
 	end
 end
 
-function dir_exists(dir)
+function _M.dir_exists(dir)
 	local f, err = io.open(dir)
 	if not f then return false, err end
 	-- We need to checkif it's a directory trying to read it like a file...
@@ -147,7 +147,7 @@ function dir_exists(dir)
 	end
 end
 
-function dir_writable(dir)
+function _M.dir_writable(dir)
 	local name = dir.."/write_test_"..tostring(math.random(1000000, 1000000000))
 	local f, err = io.open(name, "w")
 	if f then
@@ -164,3 +164,5 @@ function dir_writable(dir)
 		return false, err
 	end
 end
+
+return _M
