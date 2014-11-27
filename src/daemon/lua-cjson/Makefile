@@ -13,7 +13,7 @@
 ##### Build defaults #####
 LUA_VERSION =       5.1
 TARGET =            cjson.so
-PREFIX =            /usr/include/lua5.1 #../../external_libs/lua-5.1.4/src 
+PREFIX =            /usr/include/lua5.2 #../../external_libs/lua-5.1.4/src 
 #CFLAGS =            -g -Wall -pedantic -fno-inline
 CFLAGS =            -O3 -Wall -pedantic -DNDEBUG
 CJSON_CFLAGS =      -fpic
