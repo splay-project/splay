@@ -45,14 +45,18 @@ int sendf_copy_socket_to_socket(lua_State *L) {
     exit(1);
   }
   fcntl(pipefd[1], F_SETPIPE_SZ, 1024 * 1024);
-  int in_fd = lua_tointeger(L, -3);
-  int out_fd = lua_tointeger(L, -2);
-  size_t len = lua_tointeger(L, -1);
+  int in_fd, out_fd;
+  int_fd = lua_tointeger(L, -3);
+  out_fd = lua_tointeger(L, -2);
+  
+  size_t len;
+  len =  lua_tointeger(L, -1);
 
   /* pop the first three arguments, leaving an empty stack*/
   lua_pop(L, 3);
   ssize_t bytes, bytes_sent, bytes_in_pipe;
-  size_t total_bytes_sent = 0;
+  size_t total_bytes_sent;
+  total_bytes_sent = 0;
 
   while (total_bytes_sent < len) {
 	  if ((bytes_sent = splice(in_fd, NULL, pipefd[1], NULL,
@@ -106,9 +110,10 @@ int sendf_copy_socket_to_file(lua_State *L) {
   }
   fcntl(pipefd[1], F_SETPIPE_SZ, 1024 * 1024);
 
-  int in_fd = lua_tointeger(L, -3);
+  int in_fd, out_fd;
+  in_fd = lua_tointeger(L, -3);
   FILE *fout = *((FILE **)lua_touserdata(L, -2));
-  int out_fd = fileno(fout);
+  out_fd = fileno(fout);
   size_t len = lua_tointeger(L, -1);
 
   // pop the first three arguments
@@ -168,8 +173,9 @@ int sendf_copy_file_to_socket(lua_State *L) {
   fcntl(pipefd[1], F_SETPIPE_SZ, 1024 * 1024);
  
   FILE *fin = *((FILE **)lua_touserdata(L, -3));
-  int in_fd = fileno(fin);
-  int out_fd = lua_tointeger(L, -2);
+  int in_fd,out_fd;
+  in_fd = fileno(fin);
+  out_fd = lua_tointeger(L, -2);
   size_t len = lua_tointeger(L, -1);
   
   // pop the first three arguments
