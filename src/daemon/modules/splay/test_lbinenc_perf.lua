@@ -1,6 +1,6 @@
---Benchmark benc's encode/decode
-misc=require"splay.misc"
-benc=require"splay.benc"
+--Benchmark lbinenc's encode/decode
+local misc=require"splay.misc"
+local benc=require"splay.lbinenc"
 
 
 function test_encode(data)

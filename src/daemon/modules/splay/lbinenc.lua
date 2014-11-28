@@ -10,31 +10,31 @@ local tonumber = tonumber
 local tostring = tostring
 local type = type
 
-module("splay.lbinenc")
+--module("splay.lbinenc")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Binary encoding for Splay with https://github.com/agladysh/luabins"
+_M._VERSION     = 1.0
 
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Binary encoding for Splay with https://github.com/agladysh/luabins"
-_VERSION     = 1.0
-
-function decode(d)
+function _M.decode(d)
 	local res, data = lbinenc.load(d)
 	return data
 end
 
-function encode(data)
+function _M.encode(data)
 	return lbinenc.save(data)
 end
 
-function send(socket, data)
+function _M.send(socket, data)
 	return socket:send(encode(data))
 end
 
-function receive(socket)
+function _M.receive(socket)
 	local data, status = socket:receive()
 	if not data then
 		return nil, status
 	end
-	local ok, data = pcall(function() return decode(data) end)
+	local ok, data = pcall(function() return _M.decode(data) end)
 	if ok then return data else return nil, "corrupted" end
 end
 
@@ -74,12 +74,14 @@ function wrap(socket, err)
 	setmetatable(wrap_obj, mt)
 
 	wrap_obj.send = function(self, data)
-		return send(self.super, data)
+		return _M.send(self.super, data)
 	end
 
 	wrap_obj.receive = function(self, max_length)
-		return receive(self.super, max_length)
+		return _M.receive(self.super, max_length)
 	end
 
 	return wrap_obj
 end
+
+return _M
