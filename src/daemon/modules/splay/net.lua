@@ -69,7 +69,7 @@ local function async(sc, handler, s_s, connect)
 		if handler.initialize then
 			local ok, msg = pcall(function() handler.initialize(sc, connect) end)
 			if not ok or msg == false then init = false end
-			if not ok then l_o:warning("async initialize: "..msg) end
+			if not ok then _M.l_o:warning("async initialize: "..msg) end
 		end
 
 		if init then
@@ -77,7 +77,7 @@ local function async(sc, handler, s_s, connect)
 			if handler.receive then
 				t_r = events.thread(function()
 					local ok, msg = pcall(function() handler.receive(sc, connect) end)
-					if not ok then l_o:warning("async receive: "..msg) end
+					if not ok then _M.l_o:warning("async receive: "..msg) end
 					events.fire("net:wait_"..sc_string)
 				end)
 			end
@@ -95,11 +95,11 @@ local function async(sc, handler, s_s, connect)
 				events.kill({t_r, t_s})
 			end
 			
-			l_o:notice("async end: "..sc_string)
+			_M.l_o:notice("async end: "..sc_string)
 
 			if handler.finalize then
 				local ok, msg = pcall(function() handler.finalize(sc, connect) end)
-				if not ok then l_o:warning("async finalize: "..msg) end
+				if not ok then _M.l_o:warning("async finalize: "..msg) end
 			end
 		end
 
@@ -170,7 +170,7 @@ function _M.server(port, handler, max, filter, backlog)
 		if max then s_s = events.semaphore(max) end
 		while true do
 			if s_s then s_s:lock() end
-			--_M.l_o:debug("Server socket on accept()",tostring(s))
+			_M.l_o:debug("Server socket on accept()",tostring(s))
 			local sc, err = s:accept()
 			--_M.l_o:debug("Server socket accepted incoming connection", sc:getpeername(), err)			
 			if sc then
