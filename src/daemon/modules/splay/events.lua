@@ -509,7 +509,7 @@ function _M.periodic(time, handler, force)
 	return _M.thread(function()
 		local h, t
 		while _M.sleep(time) do
-			_M.l_o:notice("Periodic run "..tostring(handler).." ("..time..")")
+			--_M.l_o:notice("Periodic run "..tostring(handler).." ("..time..")")
 			if not h or force or _M.dead(h) then
 				-- reset the backup
 				if h and t and _M.dead(h) then t = nil end
