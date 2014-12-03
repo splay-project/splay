@@ -14,7 +14,7 @@ CFLAGS= -Wall -O2 -pedantic $(INCLUDE)
 
 .PHONY: all, clean
 
-all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so cert lbase64/base64.so
+all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so cert lbase64/base64.so splice.so
 
 clean:
 	rm -f *~
@@ -112,3 +112,11 @@ sendf.so: sendf.o
 
 sendf.o: sendf.c sendf.h
 	$(CC) -fpic $(CFLAGS) -c -o sendf.o sendf.c
+	
+splice.so: splice.o
+	$(CC) -O -fpic -shared -o splice.so splice.o -lm
+	strip sendf.so
+
+splice.o: splice.c splice.h
+	$(CC) -fpic $(CFLAGS) -c -o splice.o splice.c
+	
