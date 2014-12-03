@@ -170,7 +170,7 @@ function _M.server(port, handler, max, filter, backlog)
 		if max then s_s = events.semaphore(max) end
 		while true do
 			if s_s then s_s:lock() end
-			_M.l_o:debug("Server socket on accept()",tostring(s))
+			--_M.l_o:debug("Server socket on accept()",tostring(s))
 			local sc, err = s:accept()
 			--_M.l_o:debug("Server socket accepted incoming connection", sc:getpeername(), err)			
 			if sc then
