@@ -35,7 +35,7 @@ CFLAGS= -Wall -O2 -pedantic $(INCLUDE)
 
 .PHONY: all, clean
 
-all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so lbase64/base64.so cert sendf.so
+all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so lbase64/base64.so cert
 
 clean:
 	rm -f *~
