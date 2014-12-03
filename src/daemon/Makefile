@@ -10,7 +10,7 @@ LIBS= -L../external_libs/lua-5.2.3/src/ -llua5.2 -lm -ldl
 OPENSSL_LIBS= -L/usr/local/openssl/lib -lcrypto -lssl
 
 #CFLAGS = -Wall -g -pedantic -DDEBUG $(INCLUDE)
-CFLAGS= -Wall -O2 -pedantic $(INCLUDE)
+CFLAGS= -Wall -std=c99 -O2 -pedantic $(INCLUDE)
 
 .PHONY: all, clean
 
