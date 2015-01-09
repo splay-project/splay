@@ -139,7 +139,7 @@ local function _merge(t1, t2)
 
 	local out = {}
 
-	if #t1 == size(t1) and #t2 == size(t2) then
+	if #t1 == _M.size(t1) and #t2 == _M.size(t2) then
 		-- pure arrays, we consider we will concatenate things
 		for _, v in ipairs(t1) do
 			out[#out + 1] = v
