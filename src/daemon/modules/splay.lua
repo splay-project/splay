@@ -34,9 +34,9 @@ local os = os
 
 --module("splay")
 local _M = {}
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Splay functions."
-_VERSION     = 1.0
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Splay functions."
+_M._VERSION     = 1.0
 _M._NAME = "splay"
 --[[
 Check a port range, do a list with all ports already bound.

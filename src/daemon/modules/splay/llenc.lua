@@ -46,9 +46,9 @@ local print = print
 
 --module("splay.llenc")
 local _M = {}
-_COPYRIGHT = "Copyright 2006 - 2011"
-_DESCRIPTION = "LLenc send and receive functions (socket wrapper or standalone)"
-_VERSION     = 1.3
+_M._COPYRIGHT = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "LLenc send and receive functions (socket wrapper or standalone)"
+_M._VERSION     = 1.3
 --[[ DEBUG ]]--
 _M.l_o = log.new(3, "[splay.llenc]")
 

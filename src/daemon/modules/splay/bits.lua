@@ -25,20 +25,22 @@ local string = require"string"
 local pairs = pairs
 local type = type
 
-module("splay.bits")
+--module("splay.bits")
 
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Bits manipulation"
-_VERSION     = 1.0
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Bits manipulation"
+_M._VERSION     = 1.0
+_M.l_o = log.new(3, "[splay.bits")
 
-function init(bits, size)
+function _M.init(bits, size)
 	for i = 1, size do
 		bits[i] = false
 	end
 end
 
 --[[ Transform an ASCII string into a bits table ]]--
-function ascii_to_bits(s, max_length)
+function _M.ascii_to_bits(s, max_length)
 
 	if not s then return nil end
 	if not max_length then max_length = string.len(s) * 8 end
@@ -65,7 +67,7 @@ function ascii_to_bits(s, max_length)
 end
 
 --[[ Transform a bit table into an ASCII string ]]--
-function bits_to_ascii(bits)
+function _M.bits_to_ascii(bits)
 	if not bits then return nil end
 	local s = ""
 	for i = 1, #bits, 8 do
@@ -82,9 +84,9 @@ function bits_to_ascii(bits)
 end
 
 --[[ Pretty print bits table ]]--
-function show_bits(bits)
+function _M.show_bits(bits)
 	if type(bits) == "string" then
-		bits = ascii_to_bits(bits)
+		bits = _M.ascii_to_bits(bits)
 	end
 	local out = ""
 	for i = 1, #bits do
@@ -100,17 +102,17 @@ function show_bits(bits)
 	return out
 end
 
-function is_set(bits, bit)
+function _M.is_set(bits, bit)
 	if type(bits) == "string" then
-		bits = ascii_to_bits(bits)
+		bits = _M.ascii_to_bits(bits)
 	end
 	return bits[bit]
 end
 
 -- Number of '1' in the bitmask
-function count(bits)
+function _M.count(bits)
 	if type(bits) == "string" then
-		bits = ascii_to_bits(bits)
+		bits = _M.ascii_to_bits(bits)
 	end
   local c = 0
   for _, j in pairs(bits) do
@@ -120,9 +122,9 @@ function count(bits)
 end
 
 -- Size of the bit mask
-function size(bits)
+function _M.size(bits)
 	if type(bits) == "string" then
-		bits = ascii_to_bits(bits)
+		bits = _M.ascii_to_bits(bits)
 	end
 	local c = 0
 	for _, _ in pairs(bits) do c = c + 1 end
@@ -130,7 +132,9 @@ function size(bits)
 end
 
 -- deprecated
-function set(d, bit)
+function _M.set(d, bit)
 	d[bit] = true
 end
+
+return _M
 
