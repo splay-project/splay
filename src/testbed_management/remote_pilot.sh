@@ -1,12 +1,9 @@
-#!/bin/bash
-BASE_IP="172.16.0."
+#!/opt/local/bin/bash
 cmd=$1
-machines=( $(seq 40 59) ) 
-
+readarray machines < cluster_hosts.txt  #requires Bash >= 4.0
 for m in ${machines[@]} 
 do
-	echo -n "$BASE_IP$m "
-	ssh splayd@$BASE_IP$m bash <<< "$cmd" 
-	echo "" 
+	echo "# Executing command on host $m #"
+	ssh $m bash <<< "$cmd " 
+	echo ""
 done
-
