@@ -37,10 +37,10 @@ require"string"
 require"io"
 
 json=require"cjson"
-require"splay"
+splay=require"splay"
 crypto = require"crypto"
 evp = crypto.evp
-
+socket=require"socket"
 llenc = require"splay.llenc"
 
 require"base64"
