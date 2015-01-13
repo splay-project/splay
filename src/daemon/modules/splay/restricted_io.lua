@@ -75,14 +75,14 @@ local unpack = unpack
 local pairs = pairs
 local print = print
 
-module("splay.restricted_io")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Restricted IO"
-_VERSION     = 1.0
+--module("splay.restricted_io")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Restricted IO"
+_M._VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[splay.restricted_io]")
 
 -- Dangerous functions
 popen = io.popen
@@ -105,7 +105,7 @@ local prefix = "pfs_"
 --[[ Init ]]--
 
 local init_done = false
-function init(settings)
+function _M.init(settings)
 	if not init_done then
 		init_done = true
 		if not settings then return false, "no settings" end
@@ -188,25 +188,25 @@ local function get_total_size()
 	return total_size
 end
 
-function infos()
+function _M.infos()
 	print("Total files: "..total_files.." (max: "..max_files..")")
 	print("Total size: "..total_size.." (max: "..max_size..")")
 	--print("Total size (add): "..get_total_size())
 	print("Total file descriptors: "..total_file_descriptors.." (max: "..max_file_descriptors..")")
 end
 
-function limits()
+function _M.limits()
 	return max_files, max_size, max_file_descriptors
 end
 
-function stats()
+function _M.stats()
 	return total_files, total_size, total_file_descriptors
 end
 
 ----------------------------------------------------------------
 ----------------------------------------------------------------
 
-function open(name, flags)
+function _M.open(name, flags)
 
 	if total_file_descriptors >= max_file_descriptors then
 		l_o:warn("Open restricted (max file descriptors)")
@@ -296,11 +296,11 @@ function open(name, flags)
 	return pfs_file
 end
 
-function tmpfile()
+function _M.tmpfile()
 	return open(math.random(2^31 - 1), "w+")
 end
 
-function close(file)
+function _M.close(file)
 	if not file then
 		if default_output_file then
 			return default_output_file:close()
@@ -312,7 +312,7 @@ function close(file)
 	end
 end
 
-function flush()
+function _M.flush()
 	if default_output_file then
 		return default_output_file:flush()
 	else
@@ -320,17 +320,17 @@ function flush()
 	end
 end
 
-function input(file)
+function _M.input(file)
 	if file then
 		default_input_file = file
 	end
 	return default_input_file
 end
 
-function lines(filename)
+function _M.lines(filename)
 	local file = default_input_file
 	if filename then
-		file = open(filename)
+		file = _M.open(filename)
 	end
 	local f = file:lines()
 	return function()
@@ -349,14 +349,14 @@ function lines(filename)
 	end
 end
 
-function output(file)
+function _M.output(file)
 	if file then
 		default_output_file = file
 	end
 	return default_output_file
 end
 
-function read(...)
+function _M.read(...)
 	if default_input_file then
 		return default_input_file:read(...)
 	else
@@ -364,7 +364,7 @@ function read(...)
 	end
 end
 
-function write(...)
+function _M.write(...)
 	if default_output_file then
 		return default_output_file:write(...)
 	else
@@ -379,7 +379,7 @@ type = io.type
 ----------------------------------------------------------
 
 -- Link from os.remove(name)
-function remove(name)
+function _M.remove(name)
 	if not fs[name] then
 		return nil, "File not found: "..name
 	else
@@ -397,7 +397,7 @@ function remove(name)
 end
 
 -- Link from os.rename(oldname, newname)
-function rename(old_name, new_name)
+function _M.rename(old_name, new_name)
 		local d = evp.new("md5")
 		local o_n = d:digest(old_name)
 		d = evp.new("md5")
@@ -406,12 +406,12 @@ function rename(old_name, new_name)
 end
 
 -- Link from os.tmpname()
-function tmpname()
+function _M.tmpname()
 	local d = evp.new("md5")
 	return d:digest(math.random(2^31 - 1))
 end
 
-function exists(name)
+function _M.exists(name)
 	if fs[name] then
 		return true
 	else
@@ -420,12 +420,12 @@ function exists(name)
 end
 
 -- Remove everything
-function clean()
+function _M.clean()
 	for name, _ in pairs(fs) do
 		remove(name)
 	end
 end
 
-function list()
+function _M.list()
 	return fs
 end

@@ -35,20 +35,21 @@ local ori_print = print
 local tostring = tostring
 local type = type
 
-module("splay.out")
+--module("splay.out")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Outs for log system"
+_M._VERSION     = 1.0
+_M.l_o = log.new(3, "[splay.out]")
 
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Outs for log system"
-_VERSION     = 1.0
-
-function print()
+function _M.print()
 	return function(msg)
 		ori_print(tostring(msg))
 		io.flush()
 	end
 end
 
-function file(file)
+function _M.file(file)
 	if file then
 		local f, err = io.open(file, "a+")
 		if f then
@@ -65,7 +66,7 @@ function file(file)
 	end
 end
 
-function network(ip, port)
+function _M.network(ip, port)
 	if type(ip) == "table" and ip.ip and ip.port then
 		port = ip.port
 		ip = ip.ip
@@ -84,3 +85,5 @@ function network(ip, port)
 		return nil, "no ip and port"
 	end
 end
+
+return _M

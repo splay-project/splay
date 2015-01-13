@@ -67,19 +67,19 @@ local tonumber = tonumber
 
 local misc = require"splay.misc"
 
-module("splay.sandbox")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Sandbox"
-_VERSION     = 1.0
+--module("splay.sandbox")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Sandbox"
+_M._VERSION     = 1.0
 
 --[[ DEBUG ]]--
-l_o = log.new(3, "[".._NAME.."]")
+_M.l_o = log.new(3, "[splay.sandbox]")
 
 --[[ CODE ]]--
 
 -- generate the new require with old env upvalues
-function generate_require(allowed, inits)
+function _M.generate_require(allowed, inits)
 	local allowed = allowed or {}
 	local inits = inits or {}
 
@@ -124,7 +124,7 @@ function generate_require(allowed, inits)
 		-- Needed only for things alreadly loaded to recreate this in the new
 		-- env because they have been deleted before. Anyway, it will never
 		-- hurt.
-		create_module_global(modname)
+		_M.create_module_global(modname)
 		return base.package.loaded[modname]
 	end
 
@@ -209,7 +209,7 @@ function generate_require(allowed, inits)
 					pack.loaded[modname] = r
 				end
 				-- copy from the old env to the new one
-				return finalize(modname)
+				return _M.finalize(modname)
 			end
 		end
 		return base.package.loaded[modname]
@@ -219,7 +219,7 @@ end
 --[[ Generate a loadstring function that refuse bytecode.
 Apparently, there is no security problem with it.
 ]]
-function loadstring_no_bytecode()
+function _M.loadstring_no_bytecode()
 	local ls = loadstring
 
 	return function(s)
@@ -232,7 +232,7 @@ function loadstring_no_bytecode()
 end
 	
 -- return secure functions in any situations
-function secure_functions()
+function _M.secure_functions()
 	--[[
 	still denied:
 
@@ -270,7 +270,7 @@ function secure_functions()
 end
 
 -- secure functions if you work with the true global env
-function secure_functions_global()
+function _M.secure_functions_global()
 	--[[
 	still denied:
 
@@ -288,7 +288,7 @@ function secure_functions_global()
 end
 
 -- Return os with only secure functions
-function secure_os()
+function _M.secure_os()
 	local new = {}
 	local allowel_os = {"exit", "date", "difftime", "time", "clock"}
 	for _, f in pairs(allowel_os) do
@@ -298,7 +298,7 @@ function secure_os()
 end
 
 -- Return debug with only secure functions
-function secure_debug()
+function _M.secure_debug()
 	local new = {}
 	local allowed_debug = {"traceback"}
 	for _, f in pairs(allowed_debug) do
@@ -307,13 +307,13 @@ function secure_debug()
 	return new
 end
 
-function sandboxed_denied()
+function _M.sandboxed_denied()
 	log:print("This function is sandboxed -- usage not allowed. Aborting in 10secs.")
 	events.exit()
 	os.exit()
 end
 -- Replace a sandboxed function with a stub function.
-function load_sandboxed_func(name)
+function _M.load_sandboxed_func(name)
 	if type(base[name]) == "function" then
 		return sandboxed_denied
 	else
@@ -322,7 +322,7 @@ function load_sandboxed_func(name)
 end
 
 -- Only keep in the environment what is in the keep list.
-function clean_env(keep_list)
+function _M.clean_env(keep_list)
 	local remove_list = {}
 	for name, val in pairs(base) do
 		local found = false
@@ -346,7 +346,7 @@ end
 --
 -- socket will already be a SE: RS: socket, so when it will be copied, it will
 -- then be init() without problems.
-function protect_env(settings)
+function _M.protect_env(settings)
 
 	if not settings then
 		return nil, "missing settings"
@@ -383,7 +383,7 @@ function protect_env(settings)
 	--base.loadstring = loadstring_no_bytecode()
 
 	-- Remove everything except authorized globals (and secure functions)
-	local sf = secure_functions_global()
+	local sf = _M.secure_functions_global()
 	sf[#sf + 1] = "require"
-	clean_env(misc.table_concat(globals, sf))
+	_M.clean_env(misc.table_concat(globals, sf))
 end

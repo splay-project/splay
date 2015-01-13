@@ -71,9 +71,9 @@ local tostring = tostring
 
 --module("splay.restricted_socket")
 local _M = {}
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Restrictions for LuaSocket"
-_VERSION     = 1.0
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Restrictions for LuaSocket"
+_M._VERSION     = 1.0
 _M._NAME = "splay.restricted_socket"
 --[[ DEBUG ]]--
 _M.l_o = log.new(3, "[".._M._NAME.."]")

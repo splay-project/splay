@@ -24,7 +24,7 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 require"splay.data_bits_core" -- register splay.data_bits
 
 module("splay.data_bits")
-
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Bits manipulation on data"
-_VERSION     = 1.0
+local _M ={}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Bits manipulation on data"
+_M._VERSION     = 1.0
