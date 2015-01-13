@@ -118,7 +118,7 @@ function _M.receive_array(s, number, max_length)
 	local c = 0
 	while c < number do
 		c = c + 1
-		local d, err = receive(s, max_length)
+		local d, err = _M.receive(s, max_length)
 		-- even 1 error, we return only the error and not an array
 		if not d then return nil, err, r end
 		r[#r + 1] = d
