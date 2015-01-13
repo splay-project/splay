@@ -34,6 +34,11 @@ local os = os
 
 --module("splay")
 local _M = {}
+--expose the native functions of the splay.so module
+for k,v in pairs(splay) do
+	_M[k] = v
+end
+
 _M._COPYRIGHT   = "Copyright 2006 - 2011"
 _M._DESCRIPTION = "Splay functions."
 _M._VERSION     = 1.0
