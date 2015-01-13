@@ -29,17 +29,17 @@ local tostring = tostring
 local type = type
 local setmetatable = setmetatable
 
-module("splay.json")
+local _M = {}
+_M._DESCRIPTION = "Json send and receive functions (socket wrapper) for Json4Lua"
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._VERSION     = 1.0
+_M.l_o = log.new(3, "[splay.json]")
 
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Json send and receive functions (socket wrapper) for Json4Lua"
-_VERSION     = 1.0
-
-function send(socket, data)
+function _M.send(socket, data)
 	return socket:send(json.encode(data).."\n")
 end
 
-function receive(socket)
+function _M.receive(socket)
 	local data, status = socket:receive("*l")
 	if not data then
 		return nil, status
@@ -51,7 +51,7 @@ end
 -- Socket wrapper
 -- Use only with ':' methods or xxx.super:method() if you want to use the
 -- original one.
-function wrap(socket, err)
+function _M.wrap(socket, err)
 	if string.find(tostring(socket), "#JSON") then
 		return socket
 	end
@@ -82,12 +82,14 @@ function wrap(socket, err)
 	setmetatable(wrap_obj, mt)
 
 	wrap_obj.send = function(self, data)
-		return send(self.super, data)
+		return _M.send(self.super, data)
 	end
 
 	wrap_obj.receive = function(self, max_length)
-		return receive(self.super, max_length)
+		return _M.receive(self.super, max_length)
 	end
 
 	return wrap_obj
 end
+
+return _M

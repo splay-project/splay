@@ -109,9 +109,9 @@ local tonumber = tonumber
 
 --module("splay.urpc")
 local _M = {}
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "UDP RPC"
-_VERSION     = 1.0
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "UDP RPC"
+_M._VERSION     = 1.0
 _M._NAME = "splay.urpc"
 --[[ DEBUG ]]--
 _M.l_o = log.new(3, "[".._M._NAME.."]")

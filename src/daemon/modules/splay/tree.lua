@@ -29,16 +29,15 @@ local table=table
 local log=require"splay.log"
 local assert=assert
 local tonumber=tonumber
-module("splay.tree")
+--module("splay.tree")
 --THIS IS NOT RELATED TO http://en.wikipedia.org/wiki/Splay_tree 
+local _M = {}
+_M.l_o = log.new(1, "[splay.tree]")
+_M._COPYRIGHT   = "Copyright 2006 - 2013"
+_M._DESCRIPTION = "N-Ary Tree object and flow operations used by SplayNet."
+_M._VERSION     = 1.0
 
-l_o = log.new(1, "[".._NAME.."]")
-
-_COPYRIGHT   = "Copyright 2006 - 2013"
-_DESCRIPTION = "N-Ary Tree object and flow operations."
-_VERSION     = 1.0
-
-function new()
+function _M.new()
 	local tree = {}
 	tree.nodes= {}
 	local root = nil
@@ -310,3 +309,5 @@ function new()
 	end
 	return tree
 end
+
+return _M

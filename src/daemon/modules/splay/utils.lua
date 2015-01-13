@@ -37,21 +37,23 @@ local gcinfo = gcinfo
 
 local arg = arg
 
-module("splay.utils")
+--module("splay.utils")
+local _M = {}
+_M._COPYRIGHT   = "Copyright 2006 - 2011"
+_M._DESCRIPTION = "Some useful functions (only for local dev)"
+_M._VERSION     = 1.0
+_M.l_o = log.new(3, "[splay.utils]")
 
-_COPYRIGHT   = "Copyright 2006 - 2011"
-_DESCRIPTION = "Some useful functions (only for local dev)"
-_VERSION     = 1.0
 
 -- shortcuts
-function pk(...) return package(...) end
-function pr(...) return print_r(...) end
+function _M.pk(...) return _M.package(...) end
+function _M.pr(...) return _M.print_r(...) end
 
 --[[
 Insert command line arguments in the form 'a=b' into the arg table, but
 using 'a' as the index for value 'b'.
 ]]
-function args()
+function _M.args()
 	if arg then
 		for i = 1, #arg do
 			local s = misc.split(arg[i], "=")
@@ -62,7 +64,7 @@ function args()
 	end
 end
 
-function size(a)
+function _M.size(a)
 	local c = 1
 	for _, _ in pairs(a) do
 		c = c + 1
@@ -70,13 +72,13 @@ function size(a)
 	return c
 end
 
-function package()
+function _M.package()
 	for i, j in pairs(base.package.loaded) do
 		print(i, j)
 	end
 end
 
-function print_r(a, l, p)
+function _M.print_r(a, l, p)
 	local l = l or 2 -- level
 	local p = p or "" -- indentation (used recursivly)
 	if type(a) == "table" then
@@ -93,7 +95,7 @@ function print_r(a, l, p)
 	end
 end
 	
-function mem(ret)
+function _M.mem(ret)
 	collectgarbage()
 	collectgarbage()
 	local s = gcinfo() .. " ko"
@@ -104,7 +106,7 @@ function mem(ret)
 	end
 end
 
-function generate_job(position, number, first_port, list_size, random)
+function _M.generate_job(position, number, first_port, list_size, random)
 	position = tonumber(position)
 	number = tonumber(number or 50)
 	first_port = tonumber(first_port or 20000)
@@ -136,3 +138,5 @@ function generate_job(position, number, first_port, list_size, random)
 	job.get_live_nodes = function() return jobnodes_array end -- same function as in recent splay versions
 	return job
 end
+
+return _M
