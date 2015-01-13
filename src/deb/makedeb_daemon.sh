@@ -22,24 +22,24 @@ cd lua-cjson/
 make
 cd ..
 cd ..
-
-PKG="liblua5.1-splayd_${ARCH}"
+LUA_VER="5.2"
+PKG="liblua${LUA_VER}-splayd_${ARCH}"
 #remove old
 rm ${PKG}.deb
 #prepare the destination dir
 rm -rf ${PKG}
-mkdir -p ${PKG}/usr/share/lua/5.1/splay
-mkdir -p ${PKG}/usr/lib/lua/5.1/splay
+mkdir -p ${PKG}/usr/share/lua/${LUA_VER}/splay
+mkdir -p ${PKG}/usr/lib/lua/${LUA_VER}/splay
 mkdir -p ${PKG}/usr/lib/splayd
 #copy the files in appropriate locations
-cp splayd_${VER}/splay_core.so ${PKG}/usr/lib/lua/5.1
-cp splayd_${VER}/misc_core.so ${PKG}/usr/lib/lua/5.1/splay/
-cp splayd_${VER}/data_bits_core.so ${PKG}/usr/lib/lua/5.1/splay/
-cp splayd_${VER}/luacrypto/crypto.so ${PKG}/usr/lib/lua/5.1/
-cp splayd_${VER}/lbase64/base64.so ${PKG}/usr/lib/lua/5.1/
-cp splayd_${VER}/lua-cjson/cjson.so ${PKG}/usr/lib/lua/5.1/
-cp splayd_${VER}/modules/*lua ${PKG}/usr/share/lua/5.1
-cp splayd_${VER}/modules/splay/*lua ${PKG}/usr/share/lua/5.1/splay/
+cp splayd_${VER}/splay_core.so ${PKG}/usr/lib/lua/${LUA_VER}
+cp splayd_${VER}/misc_core.so ${PKG}/usr/lib/lua/${LUA_VER}/splay/
+cp splayd_${VER}/data_bits_core.so ${PKG}/usr/lib/lua/${LUA_VER}/splay/
+cp splayd_${VER}/luacrypto/crypto.so ${PKG}/usr/lib/lua/${LUA_VER}/
+cp splayd_${VER}/lbase64/base64.so ${PKG}/usr/lib/lua/${LUA_VER}/
+cp splayd_${VER}/lua-cjson/cjson.so ${PKG}/usr/lib/lua/${LUA_VER}/
+cp splayd_${VER}/modules/*lua ${PKG}/usr/share/lua/${LUA_VER}
+cp splayd_${VER}/modules/splay/*lua ${PKG}/usr/share/lua/${LUA_VER}/splay/
 cp splayd_${VER}/splayd ${PKG}/usr/lib/splayd/
 cp splayd_${VER}/splayd.lua ${PKG}/usr/lib/splayd/
 cp splayd_${VER}/settings.lua ${PKG}/usr/lib/splayd/
@@ -55,7 +55,7 @@ Section: interpreters
 Priority: optional
 Architecture: ${ARCH}
 Essential: no
-Depends: lua5.1, liblua5.1-0, liblua5.1-socket2, libssl0.9.8, liblua5.1-sec1 
+Depends: lua5.2, liblua5.2-0, lua-socket, libssl0.9.8, lua-sec 
 Installed-Size: 1
 Maintainer: Valerio Schiavoni [valerio dot schiavoni at gmail dot com]
 Provides: package
