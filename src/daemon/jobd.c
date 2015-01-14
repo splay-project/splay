@@ -48,7 +48,7 @@
 
 
 /*
- * For futur use, we could maybe control memory of loaded shared libraries
+ * For future use, we could maybe control memory of loaded shared libraries
  * throught these interceptors
  *
  * The  Unix98 standard requires malloc(), calloc(), and realloc() to set errno
