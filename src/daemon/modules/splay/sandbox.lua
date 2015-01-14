@@ -280,7 +280,7 @@ function _M.secure_functions_global()
 	newproxy
 	require
 	--]]
-	return misc.table_concat(secure_functions(), {
+	return misc.table_concat(_M.secure_functions(), {
 			"loadstring",
 			"getfenv",
 			"module",
@@ -338,7 +338,7 @@ function _M.clean_env(keep_list)
 	end
 	for _, name in pairs(remove_list) do
 		l_o:notice("removing: "..name.." (type: "..type(base[name])..")")
-		base[name] = load_sandboxed_func(name)
+		base[name] = _M.load_sandboxed_func(name)
 	end
 end
 
@@ -368,16 +368,16 @@ function _M.protect_env(settings)
 	base.io = rio
 	base.package.loaded.io = base.io
 
-	base.os = secure_os()
+	base.os = _M.secure_os()
 	-- link to restricted_io
 	base.os.remove = base.io.remove
 	base.os.rename = base.io.rename
 	base.os.tmpname = base.io.tmpname
 	
-	base.debug = secure_debug()
+	base.debug = _M.secure_debug()
 	
 	-- New (secure) require()
-	base.require = generate_require(allowed, settings.inits)
+	base.require = _M.generate_require(allowed, settings.inits)
 
 	-- New loadstring not accepting bytecode
 	--base.loadstring = loadstring_no_bytecode()
@@ -387,3 +387,5 @@ function _M.protect_env(settings)
 	sf[#sf + 1] = "require"
 	_M.clean_env(misc.table_concat(globals, sf))
 end
+
+return _M
