@@ -33,7 +33,7 @@ require"string"
 require"io"
 
 require"splay"
-require"json"
+json=require"cjson"
 gettimeofday=splay.gettimeofday
 do
 	local p = print
@@ -308,11 +308,6 @@ else
 	print("   > passed")
 end
 print()
-
--- display env (for testing)
---for i, j in pairs(_G) do
---	print(i, j)
---end
 
 splay_code_function, err = loadstring(job.code, "job code")
 job.code = nil -- to free some memory
