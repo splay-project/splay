@@ -34,12 +34,14 @@ require"string"
 require"io"
 
 require"splay"
-require"json"
-
+json=require"cjson"
+gettimeofday=splay.gettimeofday
 do
 	local p = print
 	print = function(...)
-		p(...)
+		--p(...)
+		local s,u=gettimeofday()--splay.gettimeofday()
+		p(s,u, ...) --local timestamp, used when controller configured with UseSplaydTimestamps
 		io.flush()
 	end
 end
@@ -99,7 +101,13 @@ end
 
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
-	job.position = job.network.list.position
+	--read the path of the file, deserialize, and replace it with the same field
+	local l_f=io.open(job.network.list)
+	local l_json=l_f:read("*a")
+	l_f:close()
+	job.network.list = json.decode(l_json)
+	
+	job.position = tonumber(job.network.list.position)
 	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
