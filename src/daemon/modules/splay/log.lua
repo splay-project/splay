@@ -102,7 +102,7 @@ function global_write(level, ...)
 end
 
 function global_filter(self, level, ...)
-	local my_level = self.level or global_level
+	local my_level = global_level or self.level
 	local my_out = self.out or global_out
 	local my_write = self.write or global_write
 	
