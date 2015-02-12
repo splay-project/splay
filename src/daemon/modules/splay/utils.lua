@@ -27,6 +27,7 @@ local io = require"io"
 
 local misc = require"splay.misc"
 local base = _G
+local log = require"splay.log"
 local pairs = pairs
 local print = print
 local type = type
