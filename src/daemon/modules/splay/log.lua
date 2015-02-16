@@ -103,7 +103,7 @@ function _M.global_write(level, ...)
 end
 
 function _M.global_filter(self, level, ...)
-	local my_level = level or _M.global_level
+	local my_level = self.level or _M.global_level
 	local my_out = _M.out or _M.global_out
 	local my_write = _M.write or _M.global_write
 	

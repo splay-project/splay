@@ -12,8 +12,8 @@ The scripts are operated from the Splay controller's machine.
 3) Edit copy-id.sh and adjust: the variables USERNAME/PASSWORD, and the path to the public key generated in 2);
 4) Execute: ./copy-id.sh;
 5) Execute: ./copy-on-cluster.sh install_splay_nodes.sh;
-6) Finally, to launch 10 splayds on each machine: ./remote_pilote.sh "./install_splay_nodes.sh 10 IP_SPLAY_CONTROLLER"; 
+6) Finally, to launch 10 splayds on each machine: ./remote_pilot.sh "./install_splay_nodes.sh 10 IP_SPLAY_CONTROLLER &"; 
 
 - Misc
-The script remote_pilote.sh can execute any command on all the machines of the cluster, including 'rm -rf'. 
+The script remote_pilot.sh can execute any command on all the machines of the cluster, including 'rm -rf'. 
  
