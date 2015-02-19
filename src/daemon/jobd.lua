@@ -72,16 +72,22 @@ local j_raw=f:read("*a")
 job = json.decode(j_raw)
 f:close()
 
-
-local fh = io.open(job.network.list)
-local jnl_string = fh:read("*a")
-fh:close()
-job.network.list = json.decode(jnl_string)
-
 if not job then
 	print("Invalid job file format.")
 	os.exit()
 end
+
+if job.network.list and type(job.network.list) == "string" then
+    local fh = io.open(job.network.list)
+    if not fh then
+        print("Error reading network list data")
+        os.exit()
+    end
+    local jnl_string = fh:read("*a")
+    fh:close()
+    job.network.list = json.decode(jnl_string)
+end
+
 
 if job.topology then
 	local t_f=io.open(job.topology)
@@ -109,8 +115,8 @@ if job.max_mem ~= 0 then
 	end
 end
 
-print("position is")
-print(job.network.list.position)
+--print("position is")
+--print(job.network.list.position)
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
 	job.position = job.network.list.position
