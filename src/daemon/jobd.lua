@@ -311,25 +311,15 @@ print("> Memory: "..collectgarbage("count").." KBytes")
 print("> Checking sandbox...")
 
 -- Mini sandbox check
-print(sd)
-if load then print(load.."    > failed load")
-elseif loadfile then print("    > failed loadfile")
-elseif dofile then print("    > failed dofile")
-elseif newproxy then print("    > failed newproxy")
-elseif io.popen then print("    > failed io.popen")
-elseif os.execute then print("    > failed os.execute")
-elseif _sand_check then print("    > failed _sand_check")
-elseif _G._sand_check then print("    > failed _G._sand_check")
-else print("    > passed")
-end
---[[if load~=sd or loadfile~=sd or dofile~=sd or newproxy~=sd or io.popen or os.execute
+-- removed check for newproxy~=sd, as newproxy isn't sandboxed
+if load~=sd or loadfile~=sd or dofile~=sd or io.popen or os.execute
 		or _sand_check or _G._sand_check then
 	print("   > failed")
 	os.exit()
 else
 	print("   > passed")
 end
-print()]]--
+print()
 
 splay_code_function, err = loadstring(job.code, "job code")
 job.code = nil -- to free some memory

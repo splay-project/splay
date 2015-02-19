@@ -324,7 +324,7 @@ end
 -- Replace a sandboxed function with a stub function.
 function _M.load_sandboxed_func(name)
 	if type(base[name]) == "function" then
-		return sandboxed_denied
+		return _M.sandboxed_denied
 	else
 		return nil
 	end
