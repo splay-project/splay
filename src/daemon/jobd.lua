@@ -72,6 +72,12 @@ local j_raw=f:read("*a")
 job = json.decode(j_raw)
 f:close()
 
+
+local fh = io.open(job.network.list)
+local jnl_string = fh:read("*a")
+fh:close()
+job.network.list = json.decode(jnl_string)
+
 if not job then
 	print("Invalid job file format.")
 	os.exit()
@@ -81,6 +87,7 @@ if job.topology then
 	local t_f=io.open(job.topology)
 	local t_raw=t_f:read("*a")
 	t_f:close()
+	--local x= os.clock()
 	job.topology = json.decode(t_raw)
 end
 
@@ -102,17 +109,12 @@ if job.max_mem ~= 0 then
 	end
 end
 
+print("position is")
+print(job.network.list.position)
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
-	--read the path of the file, deserialize, and replace it with the same field
-	local l_f=io.open(job.network.list)
-	local l_json=l_f:read("*a")
-	l_f:close()
-	job.network.list = json.decode(l_json)
-	
-	job.position = tonumber(job.network.list.position)
-	
-	job.nodes = job.network.list.nodes 
+	job.position = job.network.list.position
+	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
 	job.get_live_nodes = function()
@@ -237,15 +239,12 @@ require"splay.coxpcall"
 
 _sand_check = true
 sandbox = require"splay.sandbox"
-local sd=sandbox.sandboxed_denied --stub for sand'ed functions
+local sd = sandbox.sandboxed_denied --stub for sand'ed functions
 local native_from_job = nil
-if job.lib_name and type(job.lib_name)=="string" and job.lib_name ~= "" then
+if job.lib_name ~= nil and job.lib_name ~= "" then
 	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
 	print("Using native lib: ",native_from_job,job.lib_version)
---else
---	print("no lib to add")
 end
-
 
 sandbox.protect_env({
 		io = job.disk, -- settings for restricted_io
@@ -281,7 +280,6 @@ sandbox.protect_env({
 			"mime.core",
 			"ltn12",
 			"json",
-			"cjson",
 			"socket.core",
 			"splay.socket_events",
 			"splay.luasocket",
@@ -307,22 +305,27 @@ print("> Memory: "..collectgarbage("count").." KBytes")
 print("> Checking sandbox...")
 
 -- Mini sandbox check
-if load~=sd or loadfile~=sd or dofile~=sd or newproxy~=sd or io.popen or os.execute
+print(sd)
+if load then print(load.."    > failed load")
+elseif loadfile then print("    > failed loadfile")
+elseif dofile then print("    > failed dofile")
+elseif newproxy then print("    > failed newproxy")
+elseif io.popen then print("    > failed io.popen")
+elseif os.execute then print("    > failed os.execute")
+elseif _sand_check then print("    > failed _sand_check")
+elseif _G._sand_check then print("    > failed _G._sand_check")
+else print("    > passed")
+end
+--[[if load~=sd or loadfile~=sd or dofile~=sd or newproxy~=sd or io.popen or os.execute
 		or _sand_check or _G._sand_check then
 	print("   > failed")
 	os.exit()
 else
 	print("   > passed")
 end
-print()
-
--- display env (for testing)
---for i, j in pairs(_G) do
---	print(i, j)
---end
+print()]]--
 
 splay_code_function, err = loadstring(job.code, "job code")
-print("Job code loaded")
 job.code = nil -- to free some memory
 collectgarbage("collect")
 if splay_code_function then	

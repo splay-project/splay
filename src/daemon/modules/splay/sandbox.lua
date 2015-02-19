@@ -48,14 +48,14 @@ to build a new one. setfenv() will not work on core functions.
 
 ]]
 
-local string = require"string"
-local table = require"table"
-local math = require"math"
-local coroutine = require"coroutine"
-local os = require"os" -- Will be restricted later.
+local string = string
+local table = table
+local math = math
+local coroutine = coroutine
+local os = os -- Will be restricted later.
 local rio = require"splay.restricted_io"
 local log = require"splay.log"
-local debug = require"debug" -- -- Will be restricted later.
+local debug = debug -- -- Will be restricted later.
 local base = _G
 local pairs = pairs
 local print = print
@@ -80,6 +80,7 @@ _M.l_o = log.new(3, "[splay.sandbox]")
 
 -- generate the new require with old env upvalues
 function _M.generate_require(allowed, inits)
+
 	local allowed = allowed or {}
 	local inits = inits or {}
 
@@ -91,6 +92,7 @@ function _M.generate_require(allowed, inits)
 	local pack = base.package
 
 	local function create_module_global(modname)
+
 		local sa = misc.split(modname, ".")
 		local path = base
 		for i = 1, #sa do
@@ -110,6 +112,7 @@ function _M.generate_require(allowed, inits)
 	end
 
 	local function init(modname)
+
 		if inits[modname] and
 				type(base.package.loaded[modname]) == "table" and
 				base.package.loaded[modname].init then
@@ -119,12 +122,13 @@ function _M.generate_require(allowed, inits)
 	end
 
 	local function finalize(modname)
+
 		base.package.loaded[modname] = pack.loaded[modname]
 		init(modname)
 		-- Needed only for things alreadly loaded to recreate this in the new
 		-- env because they have been deleted before. Anyway, it will never
 		-- hurt.
-		_M.create_module_global(modname)
+		create_module_global(modname)
 		return base.package.loaded[modname]
 	end
 
@@ -209,7 +213,7 @@ function _M.generate_require(allowed, inits)
 					pack.loaded[modname] = r
 				end
 				-- copy from the old env to the new one
-				return _M.finalize(modname)
+				return finalize(modname)
 			end
 		end
 		return base.package.loaded[modname]
@@ -220,6 +224,7 @@ end
 Apparently, there is no security problem with it.
 ]]
 function _M.loadstring_no_bytecode()
+
 	local ls = loadstring
 
 	return function(s)
@@ -233,6 +238,7 @@ end
 	
 -- return secure functions in any situations
 function _M.secure_functions()
+
 	--[[
 	still denied:
 
@@ -271,6 +277,7 @@ end
 
 -- secure functions if you work with the true global env
 function _M.secure_functions_global()
+
 	--[[
 	still denied:
 
@@ -289,6 +296,7 @@ end
 
 -- Return os with only secure functions
 function _M.secure_os()
+
 	local new = {}
 	local allowel_os = {"exit", "date", "difftime", "time", "clock"}
 	for _, f in pairs(allowel_os) do
@@ -299,6 +307,7 @@ end
 
 -- Return debug with only secure functions
 function _M.secure_debug()
+
 	local new = {}
 	local allowed_debug = {"traceback"}
 	for _, f in pairs(allowed_debug) do
@@ -347,7 +356,6 @@ end
 -- socket will already be a SE: RS: socket, so when it will be copied, it will
 -- then be init() without problems.
 function _M.protect_env(settings)
-
 	if not settings then
 		return nil, "missing settings"
 	end

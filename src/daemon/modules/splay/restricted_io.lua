@@ -372,7 +372,7 @@ function _M.write(...)
 	end
 end
 
-type = io.type
+_M.type = io.type
 
 -----------------------------------------------------------
 ------------- additionnal functions
