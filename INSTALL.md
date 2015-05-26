@@ -1,8 +1,11 @@
 Pre-requisites
 ===
 These instructions assume these two directories exist to install lua and native modules:
-```~/local/lualibs/lib``` 
-```~/local/lualibs/clib``` 
+
+```
+~/local/lualibs/lib 
+~/local/lualibs/clib
+```
 
 Instructions for x86/amd64
 ===
