@@ -24,8 +24,7 @@ Instructions for Mac OSX
 git clone https://github.com/splay-project/splay.git
 cd splay/src/external_libs/lua-5.1.4/
 make macosx 
-cd ../../daemon 
-cd splay/src/daemon
+cd ../../daemon
 make -f Makefile.macosx 
 ./install.sh
 ```
