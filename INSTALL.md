@@ -13,7 +13,7 @@ Instructions for x86/amd64
 Instructions given for Ubuntu/Debian distributions.
 Install the dependencies to compile and install Splay from source:
 
-```
+```bash
 sudo apt-get install build-essential libreadline-dev
 ```
 
