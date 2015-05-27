@@ -1,6 +1,6 @@
 Pre-requisites
 ===
-These instructions assume these two directories exist to install lua and native modules for the current user:
+These instructions assume these two directories exist to install lua and native modules for the user that will instlal the libraries:
 
 ```
 ~/local/lualibs/lib 
@@ -9,8 +9,8 @@ These instructions assume these two directories exist to install lua and native 
 
 Add the following to your ~/.bashrc:
 ```
-SPLAY_PATH="/home/{$USER}/local/lualibs/lualib/?.lua"
-SPLAY_CPATH="/home/{$USER}/local/lualibs/clib/?.so"
+SPLAY_PATH="$HOME/local/lualibs/lualib/?.lua"
+SPLAY_CPATH="$HOME/local/lualibs/clib/?.so"
 ST_PATH=`lua -e "print( package.path)"`
 ST_CPATH=`lua -e "print( package.cpath)"`
 if [[ "$ST_PATH" != *"$SPLAY_PATH"* ]]; then
