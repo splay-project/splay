@@ -8,16 +8,14 @@ user$ mkdir -p local/lualibs/clib
 ```
 
 Append the following at the bottom of your $HOME/.bashrc:
-```
+```bash
 SPLAY_PATH="$HOME/local/lualibs/lib/?.lua"
 SPLAY_CPATH="$HOME/local/lualibs/clib/?.so"
-ST_PATH=`lua -e "print( package.path)"`
-ST_CPATH=`lua -e "print( package.cpath)"`
-if [[ "$ST_PATH" != *"$SPLAY_PATH"* ]]; then
-  LUA_PATH="$SPLAY_PATH;$ST_PATH"
-  LUA_CPATH="$SPLAY_CPATH;$ST_CPATH"
-  export LUA_PATH LUA_CPATH
-fi
+DEFAULT_LUA_PATH=`lua -e "print( package.path)"`
+DEFAULT_LUA_CPATH=`lua -e "print( package.cpath)"`
+LUA_PATH="$SPLAY_PATH;$DEFAULT_LUA_PATH"
+LUA_CPATH="$SPLAY_CPATH;$DEFAULT_LUA_CPATH"
+export LUA_PATH LUA_CPATH
 ```
 
 Instructions for x86/amd64
@@ -39,7 +37,7 @@ user$ source ~/.bashrc
 
 Then, proceed with the following steps:
 
-```
+```bash
 git clone https://github.com/splay-project/splay.git
 cd splay/src/external_libs/lua-5.1.4/
 make linux
@@ -51,8 +49,12 @@ make -f Makefile
 ./install.sh
 ```
 
+You are now ready to Splay!
+
+
 Instructions for Mac OSX
 ===
+TO_BE_UPDATED 
 ```
 git clone https://github.com/splay-project/splay.git
 cd splay/src/external_libs/lua-5.1.4/
