@@ -56,6 +56,7 @@ cp luacrypto/crypto.so $L_CPATH/crypto.so
 cp misc_core.so $L_CPATH/splay/
 cp data_bits_core.so $L_CPATH/splay/
 cp lbase64/base64.so $L_CPATH/base64.so
+cp lua-cjson/cjson.so $L_CPATH/cjson.so
 
 echo
 echo
