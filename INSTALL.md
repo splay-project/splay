@@ -1,5 +1,12 @@
-Instructions for Ubuntu 14.04 LTS
-===
+##Instructions for Ubuntu 14.04 LTS
+
+###The quick way
+
+```
+curl -sfL https://raw.githubusercontent.com/splay-project/splay/master/ubuntu_inst.sh | sh
+```
+
+###Step-by-step
 Install the dependencies to compile and install Splay from source:
 
 ```bash
@@ -33,8 +40,8 @@ source ~/.bashrc
 
 You are now ready to Splay!
 
-Instructions for Mac OSX
-===
+##Instructions for Mac OSX
+
 TO_BE_UPDATED 
 ```
 git clone https://github.com/splay-project/splay.git
