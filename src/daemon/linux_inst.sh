@@ -16,5 +16,5 @@ cd splay/src/external_libs/lua-5.1.4/
 make linux
 cd ../../daemon/
 make
-source ~/.bashrc
+. ~/.bashrc #in bash, '.' corresponds to 'source'
 ./install.sh
