@@ -108,13 +108,13 @@ lbase64/lbase64.o: lbase64/lbase64.c
 
 ##lua-cjson
 lua-cjson/cjson.so: lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
-        $(CC) -O -fpic -shared -o lua-cjson/cjson.so lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
-        strip lua-cjson/cjson.so
+	$(CC) -O -fpic -shared -o lua-cjson/cjson.so lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
+	strip lua-cjson/cjson.so
 lua-cjson/strbuf.o:
-        $(CC) -fpic $(CFLAGS) -c -o lua-cjson/strbuf.o lua-cjson/strbuf.c
+	$(CC) -fpic $(CFLAGS) -c -o lua-cjson/strbuf.o lua-cjson/strbuf.c
 lua-cjson/fpconv.o:
-        $(CC) -fpic $(CFLAGS) -c -o lua-cjson/fpconv.o lua-cjson/fpconv.c
+	$(CC) -fpic $(CFLAGS) -c -o lua-cjson/fpconv.o lua-cjson/fpconv.c
 lua-cjson/lua_cjson.o: lua-cjson/lua_cjson.c
-        $(CC) -fpic $(CFLAGS) -c -o lua-cjson/lua_cjson.o lua-cjson/lua_cjson.c
+	$(CC) -fpic $(CFLAGS) -c -o lua-cjson/lua_cjson.o lua-cjson/lua_cjson.c
 
 
