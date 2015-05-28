@@ -15,30 +15,30 @@ if [[ $L_CPATH == "" ]]; then
 fi
 
 echo "This script will install Splay Lua modules and Lua C modules."
-echo
-echo "These are only Lua modules of the Splay package, for the installation"
-echo "of the other modules (that can already be installed in your system), see"
-echo "INSTALL."
-echo
-echo "You need to have already compiled splayd. If not see INSTALL."
-echo
-echo "Are you ready ? (y/n)"
-read ready
-if [[ $ready != "y" ]]; then
-	exit
-fi
+#echo
+#echo "These are only Lua modules of the Splay package, for the installation"
+#echo "of the other modules (that can already be installed in your system), see"
+#echo "INSTALL."
+#echo
+#echo "You need to have already compiled splayd. If not see INSTALL."
+#echo
+#echo "Are you ready ? (y/n)"
+#read ready
+#if [[ $ready != "y" ]]; then
+#	exit
+#fi
 
 echo "Lua libraries will go in $L_PATH."
 echo "Lua C libraries will go in $L_CPATH."
-echo "Is this correct ? (y/n)"
-read correct
-if [[ $correct != "y" ]]; then
-	echo "Aborting installation, edit this file to fix good values."
-	exit
-fi
-echo
-
-echo "Installing Splay Lua libraries."
+#echo "Is this correct ? (y/n)"
+#read correct
+#if [[ $correct != "y" ]]; then
+#	echo "Aborting installation, edit this file to fix good values."
+#	exit
+#fi
+#echo
+#
+#echo "Installing Splay Lua libraries."
 
 mkdir -p $L_PATH
 mkdir -p $L_CPATH
@@ -58,7 +58,7 @@ cp data_bits_core.so $L_CPATH/splay/
 cp lbase64/base64.so $L_CPATH/base64.so
 cp lua-cjson/cjson.so $L_CPATH/cjson.so
 
-echo
-echo
+#echo
+#echo
 
 lua install_check.lua
