@@ -18,7 +18,7 @@ LUA_PATH="$SPLAY_PATH;$DEFAULT_LUA_PATH"
 LUA_CPATH="$SPLAY_CPATH;$DEFAULT_LUA_CPATH"
 export LUA_PATH LUA_CPATH
 ```
-This will append the installation paths of the Splay libraries to the default path. It uses the Lua interpreter to get the current system's path.
+These instructions append the installation paths of the Splay libraries to the default path. It uses the Lua interpreter to get the current system's path.
 
 Then, proceed with the following steps:
 ```bash
