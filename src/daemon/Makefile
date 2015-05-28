@@ -14,7 +14,7 @@ CFLAGS= -Wall -O2 -pedantic $(INCLUDE)
 
 .PHONY: all, clean
 
-all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so cert lbase64/base64.so
+all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so cert lbase64/base64.so lua-cjson/cjson.so
 
 clean:
 	rm -f *~
@@ -30,6 +30,8 @@ clean:
 	rm luacrypto/*.so
 	rm lbase64/*.o
 	rm lbase64/*.so
+	rm lua-cjson/*.o 
+	rm lua-cjson/*.so  
 
 cert:
 	#openssl genrsa -out key.pem 1024
@@ -103,3 +105,16 @@ lbase64/base64.so: lbase64/lbase64.o
 	strip lbase64/base64.so
 lbase64/lbase64.o: lbase64/lbase64.c
 	$(CC) -fpic $(CFLAGS) -c -o lbase64/lbase64.o lbase64/lbase64.c
+
+##lua-cjson
+lua-cjson/cjson.so: lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
+        $(CC) -O -fpic -shared -o lua-cjson/cjson.so lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
+        strip lua-cjson/cjson.so
+lua-cjson/strbuf.o:
+        $(CC) -fpic $(CFLAGS) -c -o lua-cjson/strbuf.o lua-cjson/strbuf.c
+lua-cjson/fpconv.o:
+        $(CC) -fpic $(CFLAGS) -c -o lua-cjson/fpconv.o lua-cjson/fpconv.c
+lua-cjson/lua_cjson.o: lua-cjson/lua_cjson.c
+        $(CC) -fpic $(CFLAGS) -c -o lua-cjson/lua_cjson.o lua-cjson/lua_cjson.c
+
+

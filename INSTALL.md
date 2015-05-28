@@ -18,12 +18,10 @@ LUA_CPATH="$SPLAY_CPATH;$DEFAULT_LUA_CPATH"
 export LUA_PATH LUA_CPATH
 ```
 
-This will append the installation paths of the Splay libraries to the default ones. Since it uses the Lua interpreter to get the current system's path, it can be executed only once Lua is installed (see below).
+This will append the installation paths of the Splay libraries to the default path. It uses the Lua interpreter to get the current system's path, therefore it can be executed only once Lua is installed (see below).
 
-Instructions for x86/amd64
+Instructions for Ubuntu 14.04 LTS
 ===
-
-Instructions for Ubuntu 14.04 LTS.
 Install the dependencies to compile and install Splay from source:
 
 ```bash
@@ -43,9 +41,7 @@ Then, proceed with the following steps:
 git clone https://github.com/splay-project/splay.git
 cd splay/src/external_libs/lua-5.1.4/
 make linux
-cd ../../daemon/lua-cjson
-make 
-cd ../ 
+cd ../../daemon/
 make
 source ~/.bashrc
 ./install.sh
