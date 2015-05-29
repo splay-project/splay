@@ -8,8 +8,8 @@ The scripts assume that:
 - All the machines of the Splay cluster are configured with the same OS  
 - The same username/password for the same user exists across the machines
 - The scripts are operated from the Splay controller's machine
-- The controller is assumed to be running
-- The Splay libraries and binaries are installed in the default location used by the .deb package (adjust the variable SPLAY\_INSTALL\_DIR in install\_splay\_nodes.sh script) 
+- The controller is running
+- The Splay libraries and binaries are installed in the default location used by the .deb package: if not, adjust the variable SPLAY\_INSTALL\_DIR in install\_splay\_nodes.sh script; 
 
 ###How to use
 - Edit cluster_hosts.txt: one IP per line, with the IPs of the machines that will run the splay deamons
