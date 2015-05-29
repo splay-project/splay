@@ -1,13 +1,15 @@
 #Splay TestBed Cluster Management Scripts
 Author: valerio.schiavoni@gmail.com
 
+This is a set of scripts to easily manage a splay testbed deployed on a cluster.
+
 ###Assumptions
 The scripts assume that:
-1. all the machines of the Splay cluster are configured with the same OS  
-2. the same username/password for the same user exists across the machines
+1. All the machines of the Splay cluster are configured with the same OS  
+2. The same username/password for the same user exists across the machines
 3. The scripts are operated from the Splay controller's machine
 4. The controller is assumed to be running
-5. The Splay libraries and binaries are installed in the default location used by the .deb package (adjust the variable SPLAY_INSTALL_DIR="/usr/lib/splayd" in install_splay_nodes.sh script) 
+5. The Splay libraries and binaries are installed in the default location used by the .deb package (adjust the variable SPLAY\_INSTALL\_DIR in install\_splay\_nodes.sh script) 
 
 ###How to use
 1. Edit cluster_hosts.txt: one IP per line, with the IPs of the machines that will run the splay deamons
