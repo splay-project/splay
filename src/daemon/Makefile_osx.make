@@ -1,30 +1,20 @@
-# Makefile for SPLAY using Mac OS X and fink-installed libraries
+# Makefile for SPLAY using Mac OS X
 
 CC= gcc
 
 ######## EDIT #######
 
 # HEADERS
-# For Fink installed libraries, use the following line
-#INCLUDE= -I/sw/include/ -I/sw/include/openssl
 # For MacPorts installed libraries (default)
-#INCLUDE= -I/opt/local/lib/openssl97/include/ -I/opt/local/include/
-# use lua 5.1.4 headers in the external_libs directory
-INCLUDE= -I/opt/local/lib/openssl97/include/ -I../external_libs/lua-5.2.3/src/
+INCLUDE= -I/opt/local/lib/openssl97/include/ -I/opt/local/include/
 
 # LIBRARIES
 # For static linking, but loading dynamic modules will not work then.
 #LIBS= -L/usr/lib -llua.5.1 -lm -ldl
-# For Fink installed libraries, use the following line
-#LIBS= -L/sw/lib -llua -lm 
 # For MacPorts installed libraries (default)
-#LIBS= -L/opt/local/lib -llua -lm
-# use lua 5.1.4 libs in the external_libs directory
-LIBS= -L../external_libs/lua-5.2.3/src/ -llua
+LIBS= -L/opt/local/lib -llua -lm
 
 # OPENSSL
-# For Fink installed libraries, use the following line
-#OPENSSL_LIBS= -L/sw/lib -lcrypto -lssl
 # For MacPorts installed libraries (default)
 OPENSSL_LIBS= -L/opt/local/lib/openssl97/lib/ -lcrypto -lssl
 
@@ -35,7 +25,7 @@ CFLAGS= -Wall -O2 -pedantic $(INCLUDE)
 
 .PHONY: all, clean
 
-all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so lbase64/base64.so cert
+all: splayd jobd splay_core.so misc_core.so data_bits_core.so luacrypto/crypto.so lbase64/base64.so lua-cjson/cjson.so cert
 
 clean:
 	rm -f *~
@@ -49,6 +39,8 @@ clean:
 	rm -fr logs
 	rm luacrypto/*.o
 	rm luacrypto/*.so
+	rm lua-cjson/*.o
+	rm lua-cjson/*.so
 
 cert:
 	#openssl genrsa -out key.pem 1024
@@ -124,4 +116,13 @@ sendf.so: sendf.o
 sendf.o: sendf.c sendf.h
 	$(CC) -fno-common $(CFLAGS) -c -o sendf.o sendf.c
 
-#
+##lua-cjson
+lua-cjson/cjson.so: lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
+	$(CC) -O -fpic -fno-common -dynamiclib -undefined dynamic_lookup -o lua-cjson/cjson.so lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
+	#strip lua-cjson/cjson.so
+lua-cjson/strbuf.o:
+	$(CC) -fpic $(CFLAGS) -c -o lua-cjson/strbuf.o lua-cjson/strbuf.c
+lua-cjson/fpconv.o:
+	$(CC) -fpic $(CFLAGS) -c -o lua-cjson/fpconv.o lua-cjson/fpconv.c
+lua-cjson/lua_cjson.o: lua-cjson/lua_cjson.c
+	$(CC) -fpic $(CFLAGS) -c -o lua-cjson/lua_cjson.o lua-cjson/lua_cjson.c
