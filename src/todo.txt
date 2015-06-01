@@ -134,9 +134,4 @@ Feature requests/new features:
 
 - pagination: in SplayWeb, the list of splayds/jobs should allow pagination, to show N results for each page.
 
-- ajax-ification of the SplayWeb interface. 
-  In particular, the list of jobs visible to each user currently require a refresh of complete page to get the updated
-  status of the jobs. Instead, it would be nice click on refresh for a single job to get its latest status. 
-  When the splayweb interface is ported to the APIs, this will be trivial.
-
 - Write HOW_TO_BUILD.xml to explain how to build the various Splay packages.
