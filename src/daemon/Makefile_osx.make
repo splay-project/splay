@@ -109,13 +109,6 @@ lbase64/base64.so: lbase64/lbase64.o
 lbase64/lbase64.o: lbase64/lbase64.c
 	$(CC) -fno-common $(CFLAGS) -c -o lbase64/lbase64.o lbase64/lbase64.c
 
-## sendf
-sendf.so: sendf.o
-	$(CC) -O -fno-common -dynamiclib -undefined dynamic_lookup -lm -o sendf.so sendf.o
-
-sendf.o: sendf.c sendf.h
-	$(CC) -fno-common $(CFLAGS) -c -o sendf.o sendf.c
-
 ##lua-cjson
 lua-cjson/cjson.so: lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
 	$(CC) -O -fpic -fno-common -dynamiclib -undefined dynamic_lookup -o lua-cjson/cjson.so lua-cjson/lua_cjson.o lua-cjson/strbuf.o lua-cjson/fpconv.o
