@@ -92,29 +92,6 @@ I, [10:43:11 #679]  INFO -- : 9
 66.249.71.139 - - [29/Sep/2011:20:38:48 CEST] "GET /json-rpc HTTP/1.1" 500 326
 - -> /json-rpc
 
-- Bug due to the new splay timestamping:
-E, [22:56:04 #24528] ERROR -- : RangeError: bignum too big to convert into `long'
-./lib/logd.rb:114:in `at'
-./lib/logd.rb:114:in `extract_timestamp_msg'
-./lib/logd.rb:210:in `run'
-./lib/logd.rb:197:in `loop'
-./lib/logd.rb:197:in `run'
-./lib/logd.rb:124:in `initialize'
-./lib/logd.rb:124:in `new'
-./lib/logd.rb:124:in `run'
-./lib/logd.rb:73:in `main'
-./lib/logd.rb:60:in `loop'
-./lib/logd.rb:60:in `main'
-./lib/logd.rb:35:in `run'
-./lib/logd.rb:34:in `initialize'
-./lib/logd.rb:34:in `new'
-./lib/logd.rb:34:in `run'
-controller_fork.rb:54
-controller_fork.rb:52:in `fork'
-controller_fork.rb:52
-controller_fork.rb:51:in `each'
-controller_fork.rb:51
-
 
 	
 **********	
