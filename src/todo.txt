@@ -65,39 +65,9 @@ I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Auth O
 I, [10:43:11 #679]  INFO -- : 9
 
 
-- Possible bug in Splay Controller API server (1.1):
-[2011-09-29 20:38:48] ERROR `/robots.txt' not found.
-66.249.71.139 - - [29/Sep/2011:20:38:48 CEST] "GET /robots.txt HTTP/1.1" 404 293
-- -> /robots.txt
-[2011-09-29 20:38:48] ERROR RuntimeError: A JSON Object must begin with '{'
-       /var/lib/gems/1.8/gems/ruby-json-1.1.2/./json/objects.rb:172:in
-`from_json'
-       /var/lib/gems/1.8/gems/Orbjson-0.0.4/lib/orbjson.rb:160:in `process'
-       /var/lib/gems/1.8/gems/Orbjson-0.0.4/lib/orbjson.rb:193:in
-`process_request'
-       /var/lib/gems/1.8/gems/Orbjson-0.0.4/lib/orbjson.rb:199:in `do_GET'
-       /usr/lib/ruby/1.8/webrick/httpservlet/abstract.rb:35:in `__send__'
-       /usr/lib/ruby/1.8/webrick/httpservlet/abstract.rb:35:in `service'
-       /usr/lib/ruby/1.8/webrick/httpserver.rb:104:in `service'
-       /usr/lib/ruby/1.8/webrick/httpserver.rb:65:in `run'
-       /usr/lib/ruby/1.8/webrick/server.rb:173:in `start_thread'
-       /usr/lib/ruby/1.8/webrick/server.rb:162:in `start'
-       /usr/lib/ruby/1.8/webrick/server.rb:162:in `start_thread'
-       /usr/lib/ruby/1.8/webrick/server.rb:95:in `start'
-       /usr/lib/ruby/1.8/webrick/server.rb:92:in `each'
-       /usr/lib/ruby/1.8/webrick/server.rb:92:in `start'
-       /usr/lib/ruby/1.8/webrick/server.rb:23:in `start'
-       /usr/lib/ruby/1.8/webrick/server.rb:82:in `start'
-       cli-server.rb:80
-66.249.71.139 - - [29/Sep/2011:20:38:48 CEST] "GET /json-rpc HTTP/1.1" 500 326
-- -> /json-rpc
-
-
-	
 **********	
 Feature requests/new features:
 **********
-
 
 - Write a developer guide to make programs more splay friendly: better explain which Lua features can be used, 
   how to circumvent the sandbox limitations for getenv, how to use the command-line tools to deploy jobs, how to configure sandbox restrictions
