@@ -12,10 +12,6 @@ Feature requests/new features:
 
 - Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
 
-- the CLI client/server should allow to specify the restrictions on the splayds selected for a job. 
-  As it is done on the SplayWeb, where we can specify for example which version of the Splayd we want for the job, 
-  the same should be made possible via the CLI options. 
-
 - integrate the text editor of http://repl.it/ in the SplayWeb page for job submission
 
 - sockets should be provide finer grainer statistics. 
