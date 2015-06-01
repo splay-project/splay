@@ -1,70 +1,3 @@
-**********
-Bugs:
-**********
-
-- Bug seen with splayweb 1.0:
-
-[2011-02-21 21:45:25] ERROR NoMethodError: private method `gsub!' called for #<Class:0xb67ea2a0>
-        /usr/lib/ruby/1.8/webrick/htmlutils.rb:16:in `escape'
-        /usr/lib/ruby/1.8/webrick/httpresponse.rb:232:in `set_error'
-        /var/lib/gems/1.8/gems/rails-2.1.0/lib/webrick_server.rb:103:in `handle_file'
-        /var/lib/gems/1.8/gems/rails-2.1.0/lib/webrick_server.rb:75:in `service'
-        /usr/lib/ruby/1.8/webrick/httpserver.rb:104:in `service'
-        /usr/lib/ruby/1.8/webrick/httpserver.rb:65:in `run'
-        /usr/lib/ruby/1.8/webrick/server.rb:173:in `start_thread'
-        /usr/lib/ruby/1.8/webrick/server.rb:162:in `start'
-        /usr/lib/ruby/1.8/webrick/server.rb:162:in `start_thread'
-        /usr/lib/ruby/1.8/webrick/server.rb:95:in `start'
-        /usr/lib/ruby/1.8/webrick/server.rb:92:in `each'
-        /usr/lib/ruby/1.8/webrick/server.rb:92:in `start'
-        /usr/lib/ruby/1.8/webrick/server.rb:23:in `start'
-        /usr/lib/ruby/1.8/webrick/server.rb:82:in `start'
-        /var/lib/gems/1.8/gems/rails-2.1.0/lib/webrick_server.rb:62:in `dispatch'
-        /var/lib/gems/1.8/gems/rails-2.1.0/lib/commands/servers/webrick.rb:66
-        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `gem_original_require'
-        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `require'
-        /var/lib/gems/1.8/gems/activesupport-2.1.0/lib/active_support/dependencies.rb:509:in `require'
-        /var/lib/gems/1.8/gems/activesupport-2.1.0/lib/active_support/dependencies.rb:354:in `new_constants_in'
-        /var/lib/gems/1.8/gems/activesupport-2.1.0/lib/active_support/dependencies.rb:509:in `require'
-        /var/lib/gems/1.8/gems/rails-2.1.0/lib/commands/server.rb:39
-        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `gem_original_require'
-        /usr/lib/ruby/1.8/rubygems/custom_require.rb:31:in `require'
-        script/server:3
-
-Apparently this is a known-bug in WEBrick (and not the splayweb itself): http://www.ruby-forum.com/topic/206225
-The new webserver Mongrel solves the bug. To use Mongrel in SplayWeb:
-
-sudo gem install mongrel
-sudo ruby script/server mongrel -p 80
-
-- Bug seen with controller v0_854 on splay2.unineuchatel.log:
-
-E, [10:43:06 #682] ERROR -- : OpenSSL::SSL::SSLError: 
-/usr/lib/ruby/1.8/openssl/ssl.rb:122:in `accept'
-/usr/lib/ruby/1.8/openssl/ssl.rb:122:in `accept'
-./lib/splayd.rb:75:in `main'
-./lib/splayd.rb:74:in `loop'
-./lib/splayd.rb:74:in `main'
-./lib/splayd.rb:37:in `run'
-./lib/splayd.rb:36:in `initialize'
-./lib/splayd.rb:36:in `new'
-./lib/splayd.rb:36:in `run'
-controller_fork.rb:64
-controller_fork.rb:61:in `fork'
-controller_fork.rb:61
-controller_fork.rb:60:in `each'
-controller_fork.rb:60
-I, [10:43:07 #686]  INFO -- : 686 (server3.planetlab.iit-tech.net, 192.42.83.250): Log port: 11108
-I, [10:43:07 #686]  INFO -- : 686 (server3.planetlab.iit-tech.net, 192.42.83.250): Auth OK
-I, [10:43:07 #682]  INFO -- : 997 (planetlab3.di.unito.it, 130.192.157.138): Log port: 11109
-I, [10:43:07 #682]  INFO -- : 997 (planetlab3.di.unito.it, 130.192.157.138): Auth OK
-I, [10:43:07 #680]  INFO -- : 643 (planetlab2.utdallas.edu, 129.110.125.52): Log port: 11105
-I, [10:43:07 #680]  INFO -- : 643 (planetlab2.utdallas.edu, 129.110.125.52): Auth OK
-I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Log port: 11106
-I, [10:43:09 #682]  INFO -- : 29 (plab2-c703.uibk.ac.at, 138.232.66.174): Auth OK
-I, [10:43:11 #679]  INFO -- : 9
-
-
 **********	
 Feature requests/new features:
 **********
@@ -78,11 +11,6 @@ Feature requests/new features:
   (useful for demos and when one needs to visually process a log)
 
 - Notification system. The controller could  notify the submitter once the job has finished. For now, email notification is enough. 
-
-- Shutdown hooks: it would be nice to have shutdown hooks at the splaylib level. Every protocol can perform actions one the splayd is 
-  shutting down/crashing (perhaps because of a churn trace). 
-  This could be useful to retrieve measures also from nodes that fail before the logs can even be taken. 
-  It requires some modifications to the splay sandbox and core module.
 
 - the CLI client/server should allow to specify the restrictions on the splayds selected for a job. 
   As it is done on the SplayWeb, where we can specify for example which version of the Splayd we want for the job, 
