@@ -24,8 +24,8 @@
 #require 'lib/common'
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/common'))
 # We force only one log daemon and one splayd daemon
-SplayControllerConfig::NumLogd = 1
-SplayControllerConfig::NumSplayd = 1
+SplayControllerConfig::NumLogd ||= 1
+SplayControllerConfig::NumSplayd ||= 1
 
 #require 'lib/all'
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
