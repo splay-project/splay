@@ -76,10 +76,10 @@ if not job then
 end
 
 if job.topology then
-        local t_f=io.open(job.topology)
-        local t_raw=t_f:read("*a")
-        t_f:close()
-        job.topology = json.decode(t_raw)
+	local t_f=io.open(job.topology)
+	local t_raw=t_f:read("*a")
+	t_f:close()
+	job.topology = json.decode(t_raw)
 end
 
 if job.remove_file then
