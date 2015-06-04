@@ -76,7 +76,6 @@ if not job then
 	print("Invalid job file format.")
 	os.exit()
 end
-
 if job.network.list and type(job.network.list) == "string" then
     local fh = io.open(job.network.list)
     if not fh then
@@ -115,8 +114,6 @@ if job.max_mem ~= 0 then
 	end
 end
 
---print("position is")
---print(job.network.list.position)
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
 	job.position = job.network.list.position
@@ -245,7 +242,7 @@ require"splay.coxpcall"
 
 _sand_check = true
 sandbox = require"splay.sandbox"
-local sd = sandbox.sandboxed_denied --stub for sand'ed functions
+local sd=sandbox.sandboxed_denied --stub for sand'ed functions
 local native_from_job = nil
 if job.lib_name ~= nil and job.lib_name ~= "" then
 	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
