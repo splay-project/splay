@@ -1,24 +1,24 @@
-require "test/unit"
+require "minitest/autorun"
 require File.expand_path(File.join(File.dirname(__FILE__), 'topology_parser'))
 require 'json' #gems install json
 
-class TestTopologyParser < Test::Unit::TestCase
+class TestTopologyParser < Minitest::Test
 
   def setup
     @parser= TopologyParser.new()
-    assert_not_nil(@parser)
+    refute_nil(@parser)
   end
 
   def test_graph_0
     graph = @parser.parse('topologies/test_graph_0.xml')
-    assert_not_nil(graph,"Graph is nil")
+    refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
-    assert_not_nil(defs,"Default is nil, could not read <specs/> section? ")
+    refute_nil(defs,"Default is nil, could not read <specs/> section? ")
     vn=@parser.virtualnodes()
-    assert_not_nil(vn)
+    refute_nil(vn)
     assert_equal(vn.keys.size,2)
     mn=@parser.middlenodes()
-    assert_not_nil(mn)
+    refute_nil(mn)
     assert_equal(mn.keys.size,1)
     
     assert_equal(20,graph.link_latency("g","2"))
@@ -33,7 +33,7 @@ class TestTopologyParser < Test::Unit::TestCase
     
     
     path_1_2 = graph.path("1","2")
-    assert_not_nil(path_1_2)
+    refute_nil(path_1_2)
     #puts path_1_2.to_s
     assert_equal(3,path_1_2.size)
     assert_equal("1",path_1_2[0])
@@ -49,33 +49,33 @@ class TestTopologyParser < Test::Unit::TestCase
 
   def test_graph_1
     graph = @parser.parse('topologies/test_graph_1.xml')
-    assert_not_nil(graph,"Graph is nil")
+    refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
-    assert_not_nil(defs,"Default is nil, could not read <specs/> section? ")
+    refute_nil(defs,"Default is nil, could not read <specs/> section? ")
     #graph.shortest_paths("1")
     vn=@parser.virtualnodes()
-    assert_not_nil(vn)
+    refute_nil(vn)
     assert_equal(vn.keys.size,2)
     mn=@parser.middlenodes()
-    assert_not_nil(mn)
+    refute_nil(mn)
     assert_equal(mn.keys.size,1)
   end
   
   def test_graph_2
     graph = @parser.parse('topologies/test_graph_2.xml')
-    assert_not_nil(graph,"Graph is nil")
+    refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
-    assert_not_nil(defs,"Default is nil, could not read <specs/> section? ")
+    refute_nil(defs,"Default is nil, could not read <specs/> section? ")
     #graph.shortest_paths("1")
     vn=@parser.virtualnodes()
-    assert_not_nil(vn)
+    refute_nil(vn)
     assert_equal(4,vn.keys.size)
     mn=@parser.middlenodes()
-    assert_not_nil(mn)
+    refute_nil(mn)
     assert_equal(2,mn.keys.size)
     graph.dijkstra "0"
     path_0_5 = graph.path("0","5")
-    assert_not_nil(path_0_5)
+    refute_nil(path_0_5)
     #path_0_5.each{|hop| puts hop}
     
     assert_equal(5,path_0_5.length)
@@ -120,19 +120,19 @@ class TestTopologyParser < Test::Unit::TestCase
     END_XML
     
     graph = @parser.parse(input,false) #false to specify input is not on a file
-    assert_not_nil(graph,"Graph is nil")
+    refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
-    assert_not_nil(defs,"Default is nil, could not read <specs/> section? ")
+    refute_nil(defs,"Default is nil, could not read <specs/> section? ")
     #graph.shortest_paths("1")
     vn=@parser.virtualnodes()
-    assert_not_nil(vn)
+    refute_nil(vn)
     assert_equal(4,vn.keys.size)
     mn=@parser.middlenodes()
-    assert_not_nil(mn)
+    refute_nil(mn)
     assert_equal(2,mn.keys.size)
     graph.dijkstra "0"
     path_0_5 = graph.path("0","5")
-    assert_not_nil(path_0_5)
+    refute_nil(path_0_5)
     #path_0_5.each{|hop| puts hop}
     
     assert_equal(5,path_0_5.length)
@@ -161,7 +161,7 @@ class TestTopologyParser < Test::Unit::TestCase
     assert_equal(2,vn.keys.size)
     
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
     #should have 1 entry per VN
     assert_equal(2,splay_topo.keys.size)
     #print JSON.unparse splay_topo
@@ -173,7 +173,7 @@ class TestTopologyParser < Test::Unit::TestCase
     input.delete!"\n","\t","\\"
     #puts "Cleaned input:\n"+ input
     graph = Nokogiri::XML(input)
-    assert_not_nil(graph.root)
+    refute_nil(graph.root)
   end
   def test_graph_6
     graph = @parser.parse('topologies/mini_pl.xml')
@@ -192,7 +192,7 @@ class TestTopologyParser < Test::Unit::TestCase
     assert_equal(9659,graph.path_latency(path_3_1))
      
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
     #should have 1 entry per VN
     assert_equal(2,splay_topo.keys.size)
     ##print "Going to encode splay_top to json.."
@@ -209,7 +209,7 @@ class TestTopologyParser < Test::Unit::TestCase
     #puts "path latency: #{graph.path_latency(path)}"
 
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
 
     #print "Going to encode splay_top to json.."
     #print JSON.unparse splay_topo
@@ -220,20 +220,20 @@ class TestTopologyParser < Test::Unit::TestCase
     graph = @parser.parse('topologies/stacktoodeep.xml')
     vn=@parser.virtualnodes()
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
 
   end
   def test_graph_9
     graph = @parser.parse('topologies/pl_14nodes.xml')
     vn=@parser.virtualnodes()
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
   end
   def test_graph_10
     graph = @parser.parse('topologies/13nodes_lan_100ms.xml')
     vn=@parser.virtualnodes()
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
     (1..13).each { |i| 
       graph.dijkstra i.to_s
       (1..13).each {|j|
@@ -248,11 +248,11 @@ class TestTopologyParser < Test::Unit::TestCase
   end
   
   def test_graph_11
-    graph = @parser.parse('../../rpc_client/modelnet_bandwidth_4nodes.xml')
+    graph = @parser.parse('topologies/modelnet_bandwidth_4nodes.xml')
     vn=@parser.virtualnodes()
     assert_equal(4,vn.keys.size)
     splay_topo=graph.splay_topology(vn)
-    assert_not_nil(splay_topo)
+    refute_nil(splay_topo)
     graph.dijkstra "1"
     path=graph.path("1","5")
     assert_equal(100,graph.path_latency(path))
@@ -261,17 +261,17 @@ class TestTopologyParser < Test::Unit::TestCase
     
     path_1_4=graph.path("1","4")
     path_hops=graph.path_hops_kbps(path_1_4)
-    assert_not_nil(path_hops)
+    refute_nil(path_hops)
     #path_hops.each{|i| puts "#{i}"}
   end
   
   
   def test_graph_12
-     graph = @parser.parse('../../experiments/iperf_multistream/topology.xml')
+     graph = @parser.parse('topologies/iperf_multistream_topology.xml')
      vn=@parser.virtualnodes()
      assert_equal(10,vn.keys.size)
      splay_topo=graph.splay_topology(vn)
-     assert_not_nil(splay_topo)
+     refute_nil(splay_topo)
      graph.dijkstra "1"
      path=graph.path("1","6")
      assert_equal(0,graph.path_latency(path))
@@ -283,13 +283,13 @@ class TestTopologyParser < Test::Unit::TestCase
      graph = @parser.parse('topologies/butterfly_100.xml')
      vn=@parser.virtualnodes()
      splay_topo=graph.splay_topology(vn)
-     assert_not_nil(splay_topo)
+     refute_nil(splay_topo)
    end
    def test_graph_14
      graph = @parser.parse('topologies/butterfly_200.xml')
      vn=@parser.virtualnodes()
      splay_topo=graph.splay_topology(vn)
-     assert_not_nil(splay_topo)
+     refute_nil(splay_topo)
    end
    
    #def test_graph_bgp_1
@@ -304,14 +304,14 @@ class TestTopologyParser < Test::Unit::TestCase
    #  # # graph.shortest_paths(node_x)
    #  #}
    #  splay_topo=graph.splay_topology(vn)
-   #  assert_not_nil(splay_topo)
+   #  refute_nil(splay_topo)
    #end
    
    def test_graph15
       graph = @parser.parse('topologies/unfair.xml')
       vn=@parser.virtualnodes()
       splay_topo=graph.splay_topology(vn)
-      assert_not_nil(splay_topo)
+      refute_nil(splay_topo)
       graph.dijkstra "1"
       path=graph.path("1","4")
       assert_equal(25,graph.path_latency(path))
