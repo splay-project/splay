@@ -44,6 +44,7 @@ INSTALLATION
 
 5 Initialize DB:
 	./init_db.rb
+	./init_users.rb
 
 6 Run the application:
 	./controller_fork.rb
@@ -52,29 +53,5 @@ INSTALLATION
 	NumSplayd and NumLogd in config.rb). Each instance is able to control up to
 	100 client splayd. When running your client splayd, you need to dispatch them
 	to connect on a port of the range [SplaydPort - (SplaydPort + NumSplayd - 1)].
-
-
-MySQL Ruby DBI Bug
-------------------
-
-MySQL DBI has a bug on certain systems, if you get this error:
-
-/usr/lib/ruby/1.8/DBD/Mysql/Mysql.rb:649:in `column_info': undefined method `[]' for nil:NilClass (NoMethodError)
-        from /usr/lib/ruby/1.8/DBD/Mysql/Mysql.rb:648:in `each'
-        from /usr/lib/ruby/1.8/DBD/Mysql/Mysql.rb:648:in `column_info'
-        from /usr/lib/ruby/1.8/DBD/Mysql/Mysql.rb:573:in `execute'
-        from /usr/lib/ruby/1.8/thread.rb:135:in `synchronize'
-
-
-apply this patch on the file (Mysql.rb):
-
-593c593
-<                       type_symbol = Database::TYPE_MAP[type][1] || :as_str
----
->                       type_symbol = Database::TYPE_MAP.key?(type) ? Database::TYPE_MAP[type][1] : :as_str
-649c649
-<                       mysql_type_name = Database::TYPE_MAP[col.type][0]
----
->                       mysql_type_name = Database::TYPE_MAP.key?(col.type) ? Database::TYPE_MAP[col.type][0] : 'UNKNOWN'
 
 
