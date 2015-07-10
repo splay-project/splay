@@ -68,11 +68,14 @@ This option is offered as emergency solution in case of errors.
 local use_async_dns=false
 
 function wrap(socket, err)
-
-	if socket.connect then
-		-- Already luasocket additionnal function...
-		return socket
-	end
+	
+	-- LuaSocket 3.0 ships its own connect, this check needs to be removed otherwise 
+	-- the socket is not wrapped by the event-based non-blocking layer
+	
+	--if socket.connect then 
+	--	-- Already luasocket additional function...
+	--	return socket
+	--end
 
 	-- error forwarding
 	if not socket then return nil, err end
