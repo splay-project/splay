@@ -1182,6 +1182,10 @@ function display_config()
 	local ss = splayd.status
 	-- Partially hide "true" keys
 	local key
+	if (m.key == nil) then
+		print("The configuration KEY is missing, aborting. Edit settings.lua.")
+		os.exit()
+	end
 	if string.len(m.key) > 20 then
 		key = string.sub(m.key, 1, 20).."..."
 	else
@@ -1202,20 +1206,20 @@ function display_config()
 	end
 	print()
 	print(">> Job settings (max "..s.max_number.."):")
-	print("    Max memory: "..(s.max_mem / 1024 / 1024).." Mo")
-	print("    Max disk: "..(s.disk.max_size / 1024 / 1024).." Mo")
+	print("    Max memory: "..(s.max_mem / 1024 / 1024).." MB")
+	print("    Max disk: "..(s.disk.max_size / 1024 / 1024).." MB")
 	print("    Max ports: "..s.network.max_ports.." port(s)")
-	print("    Bandwith: send "..(m.network.send_speed / s.max_number / 1024).." ko/s"..
-			" receive "..(m.network.receive_speed / s.max_number / 1024).." ko/s")
+	print("    Bandwidth: send "..(m.network.send_speed / s.max_number / 1024).." KB/s"..
+			" receive "..(m.network.receive_speed / s.max_number / 1024).." KB/s")
 	print("    FS directory: "..s.disk.directory)
 	print()
 	print(">> Total:")
-	print("    Max memory: "..(s.max_number * s.max_mem / 1024 / 1024).." Mo")
-	print("    Max disk: "..(s.max_number * s.disk.max_size / 1024 / 1024).." Mo")
+	print("    Max memory: "..(s.max_number * s.max_mem / 1024 / 1024).." MB")
+	print("    Max disk: "..(s.max_number * s.disk.max_size / 1024 / 1024).." MB")
 	print("    Max ports: "..(s.max_number * s.network.max_ports).." in range: "..
 			s.network.start_port.."-"..s.network.end_port)
-	print("    Bandwith: send "..(m.network.send_speed / 1024).." ko/s"..
-			" receive "..(m.network.receive_speed / 1024).." ko/s")
+	print("    Bandwidth: send "..(m.network.send_speed / 1024).." KB/s"..
+			" receive "..(m.network.receive_speed / 1024).." KB/s")
 	print()
 	if not production then
 		print(">> WARNING: You are not in production mode.")
@@ -1241,7 +1245,7 @@ end
 --[[ Starting Splayd Network Code ]]--
 
 function run()
-	-- Can be set to false, for example if the Controller refuse us
+	-- Can be set to false, for example if the Controller refuses us
 	running = true
 
 	print(">> Trying to connect to the Controller: "..
