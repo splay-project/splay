@@ -6,10 +6,9 @@ FROM	ubuntu:14.04.2
 RUN		apt-get update
 RUN		apt-get install -y git build-essential libreadline-dev libncurses5-dev lua5.1 liblua5.1-0 liblua5.1-0-dev lua-socket lua-socket-dev libssl-dev lua-sec lua-sec-dev 
 # copy the source code for the daemon
-COPY	splay/src /splay/src
-# install app dependencies
-# empty for now
-# set the dependencies
+COPY	external_libs /splay/src/external_libs
+COPY	daemon /splay/src/daemon
+# set env variables (there is probably a better way to do this in docker)
 RUN echo "SPLAY_PATH=\"$HOME/local/lualibs/lib/?.lua\"" 		>> ~/.bashrc
 RUN echo "SPLAY_CPATH=\"$HOME/local/lualibs/clib/?.so\""		>> ~/.bashrc
 RUN echo "DEFAULT_LUA_PATH=`lua -e \"print( package.path)\"`" 	>> ~/.bashrc
@@ -22,8 +21,7 @@ RUN		cat $HOME/.bashrc
 # compile splay
 RUN cd /splay/src/external_libs/lua-5.1.4/ && make linux
 RUN cd /splay/src/daemon/ && make
-RUN . ~/.bashrc
-RUN /splay/src/install.sh
+RUN . ~/.bashrc && env &&  /splay/src/daemon/install.sh
 # expose the port used by the splayd (but since this is a range ...)
 EXPOSE 22000
 CMD		["echo success", "/splay"]
