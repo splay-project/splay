@@ -35,11 +35,13 @@ require"io"
 
 require"splay"
 require"json"
-
+gettimeofday=splay.gettimeofday
 do
 	local p = print
 	print = function(...)
-		p(...)
+		--p(...)
+		local s,u=gettimeofday()--splay.gettimeofday()
+		p(s,u, ...) --local timestamp, used when controller configured with UseSplaydTimestamps
 		io.flush()
 	end
 end
