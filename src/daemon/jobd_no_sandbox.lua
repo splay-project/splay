@@ -75,6 +75,17 @@ if not job then
 	os.exit()
 end
 
+if job.network.list and type(job.network.list) == "string" then
+    local fh = io.open(job.network.list)
+    if not fh then
+        print("Error reading network list data")
+        os.exit()
+    end
+    local jnl_string = fh:read("*a")
+    fh:close()
+    job.network.list = json.decode(jnl_string)
+end
+
 if job.topology then
         local t_f=io.open(job.topology)
         local t_raw=t_f:read("*a")
