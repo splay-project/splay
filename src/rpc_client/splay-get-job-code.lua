@@ -109,7 +109,7 @@ function send_get_job_code(job_id, cli_server_url, session_id)
 		print_line(NORMAL, "Code from JOB "..job_id.." successfully retrieved")
 		if not output_filename then
 			--the default output file is code_jobid.txt (e.g. for Job ID = 3, file = code_3.txt)
-			output_filename = "code_"..job_id..".txt"
+			output_filename = "code_"..job_id..".lua"
 		end
 		local f1 = io.open(output_filename,"w")
 		f1:write(json_response.result.code)
