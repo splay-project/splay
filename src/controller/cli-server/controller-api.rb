@@ -26,7 +26,8 @@
 # http://orbjson.rubyforge.org/tutorial/getting_started_with_orbjson_short_version.pdf
 # http://orbjson.rubyforge.org/tutorial/tutorial_code.tgz
 
-require '../lib/common.rb'
+require File.expand_path(File.join(File.dirname(__FILE__), '../lib/common'))
+#require '../lib/common.rb'
 #library required for hashing
 require 'digest/sha1'
 #Main class
@@ -306,97 +307,93 @@ if SplayControllerConfig::AllowNativeLibs
 end
 	#function submit_job: triggered when a "SUBMIT JOB" message is received, submits a job to the controller
 	def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job,  topology)
-	 	#initializes the return variable
-		ret = Hash.new
+	 	ret = Hash.new
 		
 		if  !SplayControllerConfig::AllowNativeLibs and lib_filename !=""
 		 	ret['ok'] = false
   			ret['error'] = "Submitting jobs for native libs forbidden"
   			return ret
 	  	end
-		#checks the validity of the session ID and stores the returning value in the variable user
+		#checks the validity of the session ID
 		user = check_session_id(session_id)
-		#check_session_id returns false if the session ID is not valid; if user is not false (the session ID is valid)
-		if (user) then
+	  #when the sesion is valid
+		if user then
       ref = OpenSSL::Digest::MD5.hexdigest(rand(1000000).to_s)
-			#user_id is taken from the field 'id' from variable user
-			user_id = user['id']
-
+      user_id = user['id']
 			time_now = Time.new().strftime("%Y-%m-%d %T")
-
+       
 			if options.class == Array then
 				options = Hash.new
 			end
+			options[:ref]="#{ref}"
+      options[:user_id]=user_id
+      options[:created_at]="#{time_now}"
+       
 			if nb_splayds then
 				if (nb_splayds>0) then
-					options['nb_splayds'] = nb_splayds
+					options[:nb_splayds] = nb_splayds
 				end
 			end
-
-			if description == "" then
-				description_field = ""
-			else
-				description_field = "description='#{description}',"
-			end
-
-			if name == "" then
-				name_field = ""
-			else
-				name_field = "name='#{name}',"
-			end
-
+      
+      options[:description] = description or ""
+    
+      options[:name] = name or ""
+		
 			# scheduled job
 			if scheduled_at && (scheduled_at > 0) then
 				time_scheduled = Time.at(scheduled_at).strftime("%Y-%m-%d %T")
-				options['scheduled_at'] = time_scheduled
+				options[:scheduled_at] = time_scheduled
 			end
       
 			# strict job
 			if strict == "TRUE" then
-				options['strict'] = strict
+				options[:strict] = strict
 			end
       
 			if churn_trace == "" then
-				churn_field = ""
+				churn_field = ""  
+        #options[:churn]      
 			else
-				options['nb_splayds'] = churn_trace.lines.count
+				options[:nb_splayds] = churn_trace.lines.count
 				if trace_alt == "TRUE" then
-					options['scheduler'] = 'tracealt'
+					options[:scheduler] = 'tracealt'
 				else
-					options['scheduler'] = 'trace'
+					options[:scheduler] = 'trace'
 				end
-				churn_field = "die_free='FALSE', scheduler_description='#{addslashes(churn_trace)}',"
+        options[:die_free]='FALSE'
+        options[:scheduler_description] = "#{addslashes(churn_trace)}"
+
 			end
-      lib_filename_field=""
+
 			if lib_filename != "" then
-				options['scheduler'] = 'grid'
-        lib_filename_field="lib_name='#{lib_filename}', lib_version='#{lib_version}',"
+				options[:scheduler] = 'grid'
+        options[:lib_name]="#{lib_filename}"
+        options[:lib_version]="#{lib_version}"
 			end
 
 			if queue_timeout then
-				options['queue_timeout'] = queue_timeout
-			end
+				options[:queue_timeout] = queue_timeout
+ 			end
 
 			#multifile job
       if multiple_code_files == true then
-				options['multifile'] = multiple_code_files
+				options[:multifile] = multiple_code_files
 				code, ret = LuaMerger.new.merge_lua_files(code, ret)
 				if code == "" then
 					return ret
 				end
 			end
-			
-			if topology!=nil then
-		    		topology_field=",topology='#{topology}'"
-		  end
-			
-			sql_insert_new_job = "INSERT INTO jobs SET ref='#{ref}' #{to_sql(options)}, #{description_field} #{name_field} #{churn_field} code='#{addslashes(code)}', #{lib_filename_field} user_id=#{user_id}, created_at='#{time_now}' #{topology_field}"
-			$db.do(sql_insert_new_job)
-      			#puts "Job inserted in jobs table"	
+      options[:code]="#{addslashes(code)}"
+      
+      options[:topology]="#{topology}"
+     
+      job_inserted = $db[:jobs].insert(options)
+      raise "Job not inserted" unless job_inserted
+      
 			#designated splayds
 			if designated_splayds_string != "" then
 				#eliminate white spaces
-				job_id = $db.select_one("SELECT id FROM jobs WHERE ref='#{ref}'")
+				job_id = $db.fetch("SELECT id FROM jobs WHERE ref='#{ref}'")
 				designated_splayds_string.delete(' ')
 				#prepare query
 				q_jds = ""
@@ -409,26 +406,26 @@ end
 
 			#use the same splayds as another job
 			if splayds_as_job != "" then
-				job_id = $db.select_one("SELECT id FROM jobs WHERE ref='#{ref}'")
+				job_id = $db.fetch("SELECT id FROM jobs WHERE ref='#{ref}'")
 				other_job_id = splayds_as_job
 
 				# check if the other job 
 				# 1. was killed before execution (and splayds booking)
 				# 2. is currently queued 
 				# 3. it was rejected because of the lack of resources 
-				other_job_splayds = $db.select_one("SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'")
-				other_job_status = $db.select_one("SELECT status FROM jobs WHERE id='#{other_job_id}' AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')")
+				other_job_splayds = $db.fetch("SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'")
+				other_job_status = $db.fetch("SELECT status FROM jobs WHERE id='#{other_job_id}' AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')")
 
 				if (other_job_status != nil && other_job_splayds == nil) then
 					$db.do "INSERT INTO job_designated_splayds (job_id,other_job_status) VALUES ('#{job_id}','#{other_job_status}')"
 				else
 					# find the number of splayds used by the other job
-					other_job_nb_splayds = $db.select_one("SELECT nb_splayds FROM jobs WHERE id='#{other_job_id}'")
+					other_job_nb_splayds = $db.fetch("SELECT nb_splayds FROM jobs WHERE id='#{other_job_id}'")
 					$db.do "UPDATE jobs SET nb_splayds='#{other_job_nb_splayds}' WHERE id='#{job_id}'"
 
 					# find the splayds used by the other job
 					q_jds = ""
-					$db.select_all "SELECT * FROM splayd_selections
+					$db.fetch "SELECT * FROM splayd_selections
 							WHERE job_id='#{other_job_id}' AND selected='TRUE'" do |jds|
 						q_jds = q_jds + "('#{job_id}','#{jds['splayd_id']}'),"
 					end
@@ -438,25 +435,27 @@ end
 			end
 
 			timeout = 30
+      job = $db[:jobs].where('ref=?',ref)
 			while timeout > 0
 				sleep(1)
 				timeout = timeout - 1
-				job = $db.select_one("SELECT * FROM jobs WHERE ref='#{ref}'")
-				if job['status'] == "RUNNING" then
+       
+				job_status = job.get(:status)
+        if job_status == "RUNNING" then
 					ret['ok'] = true
-					ret['job_id'] = job['id']
+					ret['job_id'] = job.get(:id) 
 					ret['ref'] = ref
 					return ret
 				end
-				if job['status'] == "NO_RESSOURCES" then
+				if job_status == "NO_RESSOURCES" then
 					ret['ok'] = false
-					ret['error'] = "JOB " + job['id'].to_s + ": " + job['status_msg']
+					ret['error'] = "JOB " + job.get(:id).to_s + ": " + job['status_msg']
 					return ret
 				end
 				#queued job behavior
-				if job['status'] == "QUEUED" then
+				if job_status == "QUEUED" then
 					ret['ok'] = true
-					ret['job_id'] = job['id']
+					ret['job_id'] = job.get(:id)
 					ret['ref'] = ref
 					return ret
 				end
@@ -464,7 +463,7 @@ end
 			#if timeout reached 0, ok is false
 			ret['ok'] = false
 			#error says that a timeout occured and suggests to check if the controller is running
-			ret['error'] = "JOB " + job['id'].to_s + ": timeout; please check if controller is running"
+			ret['error'] = "JOB " + job.get(:id).to_s + ": timeout; please check if controller is running"
 			#returns ret
 			return ret
 		end
@@ -534,7 +533,7 @@ end
 			user_id = user['id']
 			job_list = Array.new
 			if (user['admin'] == 1) then
-				$db.select_all("SELECT * FROM jobs") do |ms|
+				$db[:jobs].each do |ms|
 					job = Hash.new
 					job['id'] = ms['id']
 					job['status'] = ms['status']
@@ -542,7 +541,7 @@ end
 					job_list.push(job)
 				end
 			else
-				$db.select_all("SELECT * FROM jobs WHERE user_id=#{user_id}") do |ms|
+				$db[:jobs].where('user_id=?',user_id) do |ms| 
 					job = Hash.new
 					job['id'] = ms['id']
 					job['status'] = ms['status']
@@ -585,11 +584,13 @@ end
 	#function start_session: triggered when a "START SESSION" message is received, triggers the granting of a token or session
 	#ID valid for 24h, and returns this token along with the expiry date
 	def start_session(username, hashed_password)
-		#initializes the return variable
+  	#initializes the return variable
 		ret = Hash.new
-		user = $db.select_one "SELECT * FROM users WHERE login='#{username}'"
-		if (user) then
-			hashed_password_from_db = user['crypted_password']
+    user = $db[:users].where(' login = ? ',username)
+		#user =#"SELECT * FROM users WHERE login='#{username}'"
+		if user!=nil then
+			hashed_password_from_db = user.get(:crypted_password)
+      
 			if (hashed_password == hashed_password_from_db) then
 				time_tomorrow = Time.new + 3600*24
 				remember_token_expires_at = time_tomorrow.strftime("%Y-%m-%d %T")
@@ -700,19 +701,20 @@ end
 	#function check_session_id: generic function that checks the validity of a session ID, and returns the corresponding
 	#user ID if the session ID is valid
 	def check_session_id(session_id)
-		user = $db.select_one("SELECT * FROM users WHERE remember_token='#{session_id}'")
+		user = $db[:users].where('remember_token=?',session_id)
 		if user then
-			expires_at = user['remember_token_expires_at']
+			expires_at = user.get(:remember_token_expires_at)
 			expires_at_time_format = Time.local(expires_at.year, expires_at.month, expires_at.day, expires_at.hour, expires_at.min, expires_at.sec)
 			time_now = Time.new()
 			if (time_now < expires_at_time_format) then
 				ret = Hash.new
-				ret['id'] = user['id']
-				ret['admin'] = user['admin']
+				ret['id'] = user.get(:id)
+				ret['admin'] = user.get(:admin)
 				return ret
 			else
-				user_id = user['id']
-				$db.do("UPDATE users SET remember_token=NULL, remember_token_expires_at=NULL WHERE id=#{user_id}")
+				user_id = user.get(:id)
+        $db[:users].where('id=?',user_id).insert(:remember_token=>nil,:remember_token_expires_at=>nil)
+				#$db.do("UPDATE users SET remember_token=NULL, remember_token_expires_at=NULL WHERE id=#{user_id}")
 				return false
 			end
 		else
