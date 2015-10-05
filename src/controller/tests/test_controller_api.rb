@@ -1,5 +1,6 @@
+#Unit tests for the controller-api class
 require "minitest/autorun"
-require File.expand_path(File.join(File.dirname(__FILE__), 'controller-api'))
+require File.expand_path(File.join(File.dirname(__FILE__), '../cli-server/controller-api'))
 
 class TestControllerApi < Minitest::Test
   

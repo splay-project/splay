@@ -26,7 +26,7 @@ class SplaydProtocol
 		@so_ori = so
 		@so = LLenc.new(so)
 		@so.set_timeout(@@socket_timeout)
-	end
+ 	end
 
 	def run
 		return Thread.new do
@@ -69,14 +69,13 @@ class SplaydProtocol
   end
 	# Initialize splayd connection, authenticate, session, ...
 	def auth
-
-		if @so.read != "KEY" then raise ProtocolError, "KEY" end
+   	if @so.read != "KEY" then raise ProtocolError, "KEY" end
 		key = addslashes(@so.read)
 		session = addslashes(@so.read)
-
+    p "#{key} #{session}"
 		ok = true
 		@splayd = Splayd.new(key)
-    
+    p "New splayd created: #{@splayd}"
 		if not @row[:id] or @row[:status] == "DELETED"
 			refused "That splayd doesn't exist or was deleted: #{key}"
 		end
@@ -116,8 +115,8 @@ class SplaydProtocol
 				same = true
 			end
 
-      		# Implemented only in JobdGrid as of now
-      		auth_update_lib()
+      # Implemented only in JobdGrid as of now
+      auth_update_lib()
 
 			@so.write "OK"
 			@so.write @splayd[:session]

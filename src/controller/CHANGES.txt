@@ -1,3 +1,7 @@
+controller 1.5:
+	- move to Ruby 2.x 
+	- drop dbi interface, move to Ruby's Sequel
+	- Support for splay deamons running Lua 5.2
 controller 1.4:
 	- support for max_queue time: a job is kept in QUEUED state for a max_queue time, after which it is discarded. Value can be overloaded from clients (client-commands >=1.5)
 	- Restrict lib submission to users with admin rights.

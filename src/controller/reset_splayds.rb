@@ -1,28 +1,7 @@
 #!/usr/bin/env ruby
 
-## Splay Controller ### v1.3 ###
-## Copyright 2006-2011
-## http://www.splay-project.org
-## 
-## 
-## 
-## This file is part of Splay.
-## 
-## Splayd is free software: you can redistribute it and/or modify 
-## it under the terms of the GNU General Public License as published 
-## by the Free Software Foundation, either version 3 of the License, 
-## or (at your option) any later version.
-## 
-## Splayd is distributed in the hope that it will be useful,but 
-## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-## See the GNU General Public License for more details.
-## 
-## You should have received a copy of the GNU General Public License
-## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
-
-
-# GRANT ALL PRIVILEGES ON splay.* TO splay@localhost IDENTIFIED BY 'splay';
+#Drop the splayds table from the splay database: useful to reinitialize 
+#a cluster without shutting down the controller.
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
@@ -86,7 +65,9 @@ def init_db(db)
 			)")
 end
 
-db = DBUtils::get_new
-drop_db(db)
-init_db(db)
-db.disconnect
+if __FILE__ == $0
+  db = DBUtils::get_new_mysql_sequel
+  drop_db(db)
+  init_db(db)
+  db.disconnect
+end

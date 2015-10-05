@@ -54,9 +54,8 @@ class SplaydServer
 			loop do
 				so = server.accept
 				tmpSocket = LLenc.new(so)
-				splaydProtocol = tmpSocket.read()
-				$log.debug(splaydProtocol)
-				if splaydProtocol == "standard" then
+       	splaydProtocol = tmpSocket.read()
+        if splaydProtocol == "standard" then
 				  SplaydProtocol.new(so).run
 				elsif splaydProtocol == "grid" then
 				  SplaydGridProtocol.new(so).run

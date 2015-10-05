@@ -1,9 +1,3 @@
-## Splay Controller ### v1.3 ###
-## Copyright 2006-2011
-## http://www.splay-project.org
-## 
-## 
-## 
 ## This file is part of Splay.
 ## 
 ## Splayd is free software: you can redistribute it and/or modify 
@@ -20,50 +14,26 @@
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
 
-require 'dbi' # DBI::Error
-require 'mysql'
+require 'sequel' 
+require 'mysql2'
 
 class DBUtils
-
-	def self.get_new
-		$log.info("New DB connection")
-		# We do not catch exceptions here because if there is a problem the application
-		# must end.
-		# TODO exception
-		db = DBI.connect("dbi:#{SplayControllerConfig::SQL_TYPE}:#{SplayControllerConfig::SQL_DB}:#{SplayControllerConfig::SQL_HOST}", SplayControllerConfig::SQL_USER, SplayControllerConfig::SQL_PASS)
-		db['AutoCommit'] = true
-
-		# Permit debug but slow down things
-		if not SplayControllerConfig::Production
-			db = LogObject.new(db, "DB")
-		end
-		Thread.new do
-			loop do
-				if not db.ping()
-					break
-				end
-				sleep 3600
-			end
-		end
+    
+	def self.get_new_mysql_sequel
+		if $log then
+      $log.info("New DB connection (Sequel+MySQL)")
+    end
+		db = Sequel.connect("mysql://#{SplayControllerConfig::SQL_USER}:#{SplayControllerConfig::SQL_PASS}@#{SplayControllerConfig::SQL_HOST}:#{SplayControllerConfig::SQL_PORT}/#{SplayControllerConfig::SQL_DB}")
+		#db.autocommit(false) -- not supported by Sequel adapter for mysql ?
+    class << db 
+      alias :do :run
+    end		
 		return db
 	end
-
-	def self.get_new_mysql
-		$log.info("New DB connection (MySQL)")
-		# We do not catch exceptions here because if there is a problem the application
-		# must end.
-		# TODO exception
-		db = Mysql.new(SplayControllerConfig::SQL_HOST, SplayControllerConfig::SQL_USER, SplayControllerConfig::SQL_PASS, SplayControllerConfig::SQL_DB)
-		db.autocommit(false)
-
-		Thread.new do
-			loop do
-				if not db.ping()
-					break
-				end
-				sleep 3600
-			end
-		end
-		return db
-	end
+  
+  def self.get_new_sqlite
+		$log.info("New DB connection (Sequel + InMemory SQLite)")    
+    db = Sequel.sqlite
+    return db
+  end
 end

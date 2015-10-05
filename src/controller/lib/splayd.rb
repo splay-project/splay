@@ -9,7 +9,9 @@ class Splayd
 	@@transaction_mutex = Mutex.new
 	@@unseen_timeout = 3600
 	@@auto_add = SplayControllerConfig::AutoAddSplayds
-
+  
+  @row = nil #a pointer to the row in the database for this splayd
+  
 	def initialize(id)
     @row = $db[:splayds].first(:id=>id)
 	  if not @row
@@ -19,7 +21,9 @@ class Splayd
 			$db[:splayds].insert(:key=>id)
 			@row = $db[:splayds].where(:key=>id)
 		end
-		if @row then @id = @row.get(:id) end
+		if @row then
+       @id = @row.get(:id)
+     end
     $log.debug("Splayd #{id} initialized")
  	end
 
@@ -53,7 +57,7 @@ class Splayd
 		# replied, we will never receive the reply so we set the action to the
 		# FAILURE status.
 		#$db.do "UPDATE actions SET status='FAILURE' WHERE status='SENDING'"
-    $db[:actions].where{status=='SENDING'}.update(:status=>'FAILURE')
+    $db[:actions].where(:status=>'SENDING').update(:status=>'FAILURE')
 		# Uncomplete actions, jobd should put the again.
 		$db[:actions].where(:status=>'TEMP').delete #$db.do "DELETE FROM actions WHERE status='TEMP'"
 	end

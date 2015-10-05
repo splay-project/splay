@@ -1,5 +1,5 @@
 require "minitest/autorun"
-require File.expand_path(File.join(File.dirname(__FILE__), 'topology_parser'))
+require File.expand_path(File.join(File.dirname(__FILE__), '../lib/topology_parser'))
 require 'json' #gems install json
 
 class TestTopologyParser < Minitest::Test
@@ -10,7 +10,7 @@ class TestTopologyParser < Minitest::Test
   end
 
   def test_graph_0
-    graph = @parser.parse('topologies/test_graph_0.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/test_graph_0.xml')))   
     refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
     refute_nil(defs,"Default is nil, could not read <specs/> section? ")
@@ -48,7 +48,7 @@ class TestTopologyParser < Minitest::Test
   end
 
   def test_graph_1
-    graph = @parser.parse('topologies/test_graph_1.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/test_graph_1.xml')))
     refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
     refute_nil(defs,"Default is nil, could not read <specs/> section? ")
@@ -62,7 +62,7 @@ class TestTopologyParser < Minitest::Test
   end
   
   def test_graph_2
-    graph = @parser.parse('topologies/test_graph_2.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/test_graph_2.xml')))
     refute_nil(graph,"Graph is nil")
     defs = @parser.defaults()
     refute_nil(defs,"Default is nil, could not read <specs/> section? ")
@@ -156,7 +156,8 @@ class TestTopologyParser < Minitest::Test
   end
   
   def test_graph_4
-    graph = @parser.parse('topologies/test_graph_1.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/test_graph_1.xml')))
+    
     vn=@parser.virtualnodes()
     assert_equal(2,vn.keys.size)
     
@@ -176,7 +177,8 @@ class TestTopologyParser < Minitest::Test
     refute_nil(graph.root)
   end
   def test_graph_6
-    graph = @parser.parse('topologies/mini_pl.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/mini_pl.xml')))
+    
     vn=@parser.virtualnodes()
     assert_equal(2,vn.keys.size)
     graph.dijkstra "1"
@@ -200,7 +202,7 @@ class TestTopologyParser < Minitest::Test
     #assert_equal('{"1":{"3":[284,64]},"3":{"1":[9659,64]}}', JSON.unparse(splay_topo))
   end
   def test_graph_7
-    graph = @parser.parse('topologies/planetlab.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/planetlab.xml')))    
     vn=@parser.virtualnodes()
     assert_equal(62,vn.keys.size)
     graph.dijkstra "18"
@@ -217,20 +219,20 @@ class TestTopologyParser < Minitest::Test
   end
 
   def test_graph_8
-    graph = @parser.parse('topologies/stacktoodeep.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/stacktoodeep.xml')))    
     vn=@parser.virtualnodes()
     splay_topo=graph.splay_topology(vn)
     refute_nil(splay_topo)
 
   end
   def test_graph_9
-    graph = @parser.parse('topologies/pl_14nodes.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/pl_14nodes.xml')))    
     vn=@parser.virtualnodes()
     splay_topo=graph.splay_topology(vn)
     refute_nil(splay_topo)
   end
   def test_graph_10
-    graph = @parser.parse('topologies/13nodes_lan_100ms.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/13nodes_lan_100ms.xml')))    
     vn=@parser.virtualnodes()
     splay_topo=graph.splay_topology(vn)
     refute_nil(splay_topo)
@@ -248,7 +250,7 @@ class TestTopologyParser < Minitest::Test
   end
   
   def test_graph_11
-    graph = @parser.parse('topologies/modelnet_bandwidth_4nodes.xml')
+    graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/modelnet_bandwidth_4nodes.xml')))    
     vn=@parser.virtualnodes()
     assert_equal(4,vn.keys.size)
     splay_topo=graph.splay_topology(vn)
@@ -267,7 +269,7 @@ class TestTopologyParser < Minitest::Test
   
   
   def test_graph_12
-     graph = @parser.parse('topologies/iperf_multistream_topology.xml')
+     graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/iperf_multistream_topology.xml')))      
      vn=@parser.virtualnodes()
      assert_equal(10,vn.keys.size)
      splay_topo=graph.splay_topology(vn)
@@ -280,13 +282,13 @@ class TestTopologyParser < Minitest::Test
   
    #testcases 13,14 introduced after a StackTooDeep error due to wrong links
    def test_graph_13
-     graph = @parser.parse('topologies/butterfly_100.xml')
+     graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/butterfly_100.xml')))     
      vn=@parser.virtualnodes()
      splay_topo=graph.splay_topology(vn)
      refute_nil(splay_topo)
    end
    def test_graph_14
-     graph = @parser.parse('topologies/butterfly_200.xml')
+     graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/butterfly_200.xml')))     
      vn=@parser.virtualnodes()
      splay_topo=graph.splay_topology(vn)
      refute_nil(splay_topo)
@@ -308,7 +310,7 @@ class TestTopologyParser < Minitest::Test
    #end
    
    def test_graph15
-      graph = @parser.parse('topologies/unfair.xml')
+      graph = @parser.parse( File.expand_path(File.join(File.dirname(__FILE__), 'topologies/unfair.xml')))     
       vn=@parser.virtualnodes()
       splay_topo=graph.splay_topology(vn)
       refute_nil(splay_topo)

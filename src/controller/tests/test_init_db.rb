@@ -1,5 +1,5 @@
 require "minitest/autorun"
-require File.expand_path(File.join(File.dirname(__FILE__), 'init_db'))
+require File.expand_path(File.join(File.dirname(__FILE__), '../init_db'))
 
 class TestInitDb < Minitest::Test
   
@@ -42,7 +42,6 @@ class TestInitDb < Minitest::Test
       assert(@db[:splayds_libs])
       assert(@db[:splayds_selections])
       assert(@db[:splayds])
-      assert(@db[:users])
   end
   
 end

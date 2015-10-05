@@ -24,7 +24,7 @@ dir = File.dirname(__FILE__)
 
 require File.expand_path(File.join(dir, 'common'))
 
-require File.expand_path(File.join(dir, 'splayd'))
+require File.expand_path(File.join(dir, 'splayd_server'))
 require File.expand_path(File.join(dir, 'logd'))
 require File.expand_path(File.join(dir, 'jobd'))
 require File.expand_path(File.join(dir, 'jobd_standard'))
@@ -36,6 +36,6 @@ require File.expand_path(File.join(dir, 'statusd'))
 require File.expand_path(File.join(dir, 'blacklistd'))
 require File.expand_path(File.join(dir, 'loadavgd'))
 
-$db = DBUtils.get_new
-$dbt = DBUtils.get_new
+$db = DBUtils.get_new_mysql_sequel
+$dbt = DBUtils.get_new_mysql_sequel
 

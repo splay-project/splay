@@ -20,6 +20,7 @@ See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
+
 --[[
 NOTE:
 This program is normally called by splayd, but you can too run it standalone
@@ -66,27 +67,13 @@ if not f then
 	os.exit()
 end
 --print(f:read("*a"))
---job = json.decode(f:read("*a"))
-local j_raw=f:read("*a")
---print("Job json:\n",j_raw)
-job = json.decode(j_raw)
+job = json.decode(f:read("*a"))
 f:close()
 
 if not job then
 	print("Invalid job file format.")
 	os.exit()
 end
-if job.network.list and type(job.network.list) == "string" then
-    local fh = io.open(job.network.list)
-    if not fh then
-        print("Error reading network list data")
-        os.exit()
-    end
-    local jnl_string = fh:read("*a")
-    fh:close()
-    job.network.list = json.decode(jnl_string)
-end
-
 
 if job.topology then
 	local t_f=io.open(job.topology)
@@ -96,8 +83,7 @@ if job.topology then
 end
 
 if job.remove_file then
-        print("Job file not deleted:", job_file)
-        --os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
+	os.execute("rm -fr "..job_file.." > /dev/null 2>&1")
 end
 
 -- back to global
@@ -115,7 +101,13 @@ end
 
 -- aliases (job.me is already prepared by splayd)
 if job.network.list then
-	job.position = job.network.list.position
+	--read the path of the file, deserialize, and replace it with the same field
+	local l_f=io.open(job.network.list)
+	local l_json=l_f:read("*a")
+	l_f:close()
+	job.network.list = json.decode(l_json)
+	
+	job.position = tonumber(job.network.list.position)
 	job.nodes = job.network.list.nodes
 
 	-- now job.nodes is a function that gives an updated view of the nodes
@@ -237,90 +229,12 @@ package.loaded['socket.core'] = socket
 -- This module requires debug, not allowed in sandbox
 require"splay.coxpcall"
 
---[[ Sandbox]]--
-
-_sand_check = true
-sandbox = require"splay.sandbox"
-local sd=sandbox.sandboxed_denied --stub for sand'ed functions
-local native_from_job = nil
-if job.lib_name ~= nil and job.lib_name ~= "" then
-	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
-	print("Using native lib: ",native_from_job,job.lib_version)
-end
-
-sandbox.protect_env({
-		io = job.disk, -- settings for restricted_io
-		globals = {"_G", "_VERSION", "_SPLAYD_VERSION", "job"},
-		allowed = {
-			"splay.base",
-			"splay.benc",
-			"splay.bits",
-			"splay.coxpcall",
-			"splay.data_bits",
-			"splay.data_bits_core",
-			"splay.events",
-			"splay.json",
-			"splay.llenc",
-			"splay.log",
-			"splay.net",
-			"splay.misc",
-			"splay.misc_core",
-			"splay.out",
-			"splay.queue",
-			"splay.rpc",
-			"splay.rpcq",
-			"splay.socket",
-			"splay.urpc",
-			"crypto",
-			"socket",
-			"socket.ftp",
-			"socket.http",
-			"socket.smtp",
-			"socket.tp",
-			"socket.url",
-			"mime",
-			"mime.core",
-			"ltn12",
-			"json",
-			"socket.core",
-			"splay.socket_events",
-			"splay.luasocket",
-			"splay.async_dns",
-		    "splay.topo_socket",
-		    "splay.token_bucket",
-			"splay.tree",
-			"splay.topo_gossip",
-			native_from_job
-		},
-		inits = {}
-	})
-
-collectgarbage()
-collectgarbage()
-
-  -----------------------
--- The Sandbox Zone (tm) --
-  -----------------------
-
-print(">> Into sandbox !!!")
-print("> Memory: "..collectgarbage("count").." KBytes")
-print("> Checking sandbox...")
-
--- Mini sandbox check
--- removed check for newproxy~=sd, as newproxy isn't sandboxed
-if load~=sd or loadfile~=sd or dofile~=sd or io.popen or os.execute
-		or _sand_check or _G._sand_check then
-	print("   > failed")
-	os.exit()
-else
-	print("   > passed")
-end
-print()
 
 splay_code_function, err = loadstring(job.code, "job code")
 job.code = nil -- to free some memory
 collectgarbage("collect")
-if splay_code_function then	
+collectgarbage("collect")
+if splay_code_function then
 	splay_code_function()
 else
 	print("Error loading code:", err)

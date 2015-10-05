@@ -57,7 +57,7 @@ if SplayControllerConfig::Localize
   require File.expand_path(File.join(dir, 'localization'))
 end
 
-$db = DBUtils.get_new
+$db = DBUtils.get_new_mysql_sequel
 # $new_db = DBUtils.get_new_mysql
 
 BasicSocket.do_not_reverse_lookup = true

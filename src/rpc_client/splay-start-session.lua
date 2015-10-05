@@ -107,10 +107,11 @@ function send_start_session(username, password, cli_server_url)
 		method = "ctrl_api.start_session",
 		params = {username, hashed_password}
 	})
+	--print("JSON_ENCODED:",body)
 
 	--prints that it is sending the message
 	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
-
+	
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
 

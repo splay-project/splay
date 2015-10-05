@@ -1,5 +1,5 @@
 require "minitest/autorun"
-require File.expand_path(File.join(File.dirname(__FILE__), 'init_users'))
+require File.expand_path(File.join(File.dirname(__FILE__), '../init_users'))
 
 class TestInitUsers < Minitest::Test
   
@@ -27,9 +27,9 @@ class TestInitUsers < Minitest::Test
   
   def check_tables(db)
       assert(@db[:users])    
-      admin = @db[:users].first #the first and should be the only user
+      
+      admin = @db[:users][:id=>1] #the first and should be the only user
       assert(admin)
-      assert_equal(admin.get(:id),1)
   end
   
 end
