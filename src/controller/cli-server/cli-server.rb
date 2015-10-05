@@ -16,7 +16,7 @@
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
-# Light JSON-RPC over HTTP Service for SPLAY controller in Ruby
+# Lightweight JSON-RPC over HTTP Service for SPLAY controller in Ruby
 # Created by Valerio Schiavoni
 
 require 'webrick'
@@ -27,7 +27,7 @@ class SplayCtrlApiBroker < WEBrick::HTTPServlet::AbstractServlet
   def do_POST(request, response)
     json_request=JSON.parse(request.body)
     method=json_request['method'].split( '.' )[1] 
-    params=json_request[ 'params']
+    params=json_request['params']
     begin
       if  params !=nil then
         if params.size < 1
