@@ -46,7 +46,6 @@ Usage: ./churn_gen.rb
 	[-w/--warning]: warning are not considered as errors and the list of
 		action self-repairs and disambiguate when possible (at your own risk)
 
-
 Output:
 -------
 
