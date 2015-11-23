@@ -35,6 +35,8 @@
  *       time (30%) managing tables when parsing JSON since it is
  *       difficult to know object/array sizes ahead of time.
  */
+//Required for autotools
+#include <config.h>
 
 #include <assert.h>
 #include <string.h>
