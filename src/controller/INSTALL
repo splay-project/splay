@@ -31,6 +31,12 @@ INSTALLATION
 	or
 		GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'%' IDENTIFIED BY 'splay' WITH GRANT OPTION;
 	if the host onto which the controller will run has no fixed hostname (or if you intend to move the controller to a different host in the future).
+	
+	Remember to 'FLUSH PRIVILEGES' if you do the modifications while the database is running.
+	
+	Finally, to permit remote access from any host for the user 'root' identified by the password 'splayd':	
+	mysql> GRANT ALL PRIVILEGES ON *.* TO root@'%' IDENTIFIED BY 'splayd' WITH GRANT OPTION;
+	mysql> FLUSH PRIVILEGES;
 
 4 Edit/Create 'lib/db_config.rb', set your mysql access, like that:
 
@@ -53,5 +59,4 @@ INSTALLATION
 	NumSplayd and NumLogd in config.rb). Each instance is able to control up to
 	100 client splayd. When running your client splayd, you need to dispatch them
 	to connect on a port of the range [SplaydPort - (SplaydPort + NumSplayd - 1)].
-
 
