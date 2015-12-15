@@ -14,5 +14,10 @@ cd /root/splay/src/rpc_client
 ./splay-submit-job.lua -n 20 sample.lua
 ```
 
+Need more nodes ? No problem ! Use docker-compose to scale the testbed as much as you want:
+```bash
+docker-compose scale splayd=20
+```
+
 See a complete screencast:
 [![asciicast](https://asciinema.org/a/31856.png)](https://asciinema.org/a/31856)
