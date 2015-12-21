@@ -1,0 +1,62 @@
+REQUIREMENTS
+------------
+
+Typical packages for Linux Ubuntu/Debian:
+
+	ruby
+	libopenssl-ruby
+	libdbd-mysql-ruby
+	libmysql-ruby
+	libdbi-ruby1.8
+
+A MySQL 5.0+ server.
+
+
+INSTALLATION
+------------
+
+1 Install all dependencies (see REQUIREMENTS)
+
+2 Edit 'lib/config.rb'
+
+3 Create an user for Splay and grant it sufficient privileges in the MySQL database:
+
+	$ mysql -u root -p
+	(enter root passwd)
+	create database splay;
+	GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'localhost' IDENTIFIED BY 'splay' WITH GRANT OPTION;
+	
+	Warning: if the database is on a different host (host2) than the one on which the controller will run change the preceding line to:
+		GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'host2' IDENTIFIED BY 'splay' WITH GRANT OPTION;
+	or
+		GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'%' IDENTIFIED BY 'splay' WITH GRANT OPTION;
+	if the host onto which the controller will run has no fixed hostname (or if you intend to move the controller to a different host in the future).
+	
+	Remember to 'FLUSH PRIVILEGES' if you do the modifications while the database is running.
+	
+	Finally, to permit remote access from any host for the user 'root' identified by the password 'splayd':	
+	mysql> GRANT ALL PRIVILEGES ON *.* TO root@'%' IDENTIFIED BY 'splayd' WITH GRANT OPTION;
+	mysql> FLUSH PRIVILEGES;
+
+4 Edit/Create 'lib/db_config.rb', set your mysql access, like that:
+
+	class DBConfig
+		SQL_TYPE = "Mysql"
+		SQL_DB = "splay"
+		SQL_HOST = "localhost"
+		SQL_USER = "splay"
+		SQL_PASS = "splay"
+	end
+
+5 Initialize DB:
+	./init_db.rb
+	./init_users.rb
+
+6 Run the application:
+	./controller_fork.rb
+
+	To achieve major scalability, multiple instances of splayd and logd (see
+	NumSplayd and NumLogd in config.rb). Each instance is able to control up to
+	100 client splayd. When running your client splayd, you need to dispatch them
+	to connect on a port of the range [SplaydPort - (SplaydPort + NumSplayd - 1)].
+
