@@ -26,7 +26,7 @@ end
 
 -- LuaSocket other libraries
 require"socket.ftp"
-require"socket.http"
+--require"socket.http"
 require"socket.smtp"
 require"socket.tp"
 require"socket.url"

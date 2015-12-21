@@ -10,8 +10,11 @@ end
 require 'optparse'
 require 'set'
 
-require 'types'
-require 'churn_lang'
+# include files from the same folder
+# require_relative 'types' ### this only works with ruby 2
+# require_relative 'churn_lang' ### this only works with ruby 2
+require File.expand_path(File.join(File.dirname(__FILE__), 'types')) ### this works with ruby 2 and 1.9
+require File.expand_path(File.join(File.dirname(__FILE__), 'churn_lang')) ### this works with ruby 2 and 1.9
 
 def fail_with s, err
   STDERR.puts("ERROR: #{s}")
@@ -24,6 +27,7 @@ end
 def warn_with s
   STDERR.puts("WARNING: #{s}")
   if $options[:warning] == false
+    STDERR.puts("Warnings are fatal. Exiting. Use option -w to override this setting.")
     exit 2
   end
 end
@@ -97,13 +101,13 @@ end.parse!
 
 # check that input and output are properly set
 if !options[:inputscript]
-  fail_with("Error: input script not specified",false)
+  fail_with("Error: input script not specified. Use option -h for help.",false)
 end
 if !File.exists?(options[:inputscript])
-  fail_with("Error: input script #{options[:inputscript]} doesn't exist",false)
+  fail_with("Error: input script #{options[:inputscript]} doesn't exist. Use option -h for help.",false)
 end
 if !options[:output]
-  fail_with("Error: output file not specified",false)
+  fail_with("Error: output file not specified. Use option -h for help.",false)
 end
 if !options[:non_overlapping_churn]
   options[:non_overlapping_churn] = false
