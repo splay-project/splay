@@ -32,9 +32,13 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+/*
+ * TODO find a way to update the version of lua and to modify automatically
+ * the path where liblua stors its headers files. You have to do that with
+ * all the c files where lua is called*/
+#include <lua5.1/lua.h>
+#include <lua5.1/lualib.h>
+#include <lua5.1/lauxlib.h>
 
 #include "splayd.h"
 #include "splay.h"
