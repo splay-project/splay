@@ -13,6 +13,10 @@ AC_TYPE_SIZE_T
 AC_SEARCH_LIBS(lua_close, [lua5.1 lua5.2],
   [],
   [AC_MSG_ERROR([liblua is not installed])])
+
+AC_SEARCH_LIBS(SSL_accept, [ssl],
+  [],
+  [AC_MSG_ERROR([libssl is not installed])])
 AC_CHECK_HEADER("/usr/include/lua5.1/lua.h",
   [CPPFLAGS="$CPPFLAGS -I/usr/include/lua5.1"],
   [AC_MSG_ERROR([Headers of Lua are not installed])])
