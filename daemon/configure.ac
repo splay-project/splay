@@ -1,9 +1,10 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-AC_INIT([splayLib], [1.0], [raziel.carvajal@unine.ch])
+AC_INIT([SplayDaemon], [1.0], [raziel.carvajal@unine.ch])
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 CPPFLAGS=-I../../include
+CFLAGS= -Wall -std=c99 -O2 -pedantic
 AC_PROG_CC
 
 # Checks for header files.
@@ -28,10 +29,6 @@ AC_SEARCH_LIBS(SSL_accept, [ssl],
 AC_SEARCH_LIBS(DSA_new, [crypto],
   [],
   [AC_MSG_ERROR([libcrypto is not installed])])
-
-#AC_CHECK_HEADER("/usr/include/lua5.1/lua.h",
-#  [CPPFLAGS="$CPPFLAGS -I/usr/include/lua5.1"],
-#  [AC_MSG_ERROR([Headers of Lua are not installed])])
 
 AC_FUNC_REALLOC
 AC_OUTPUT(Makefile src/c/Makefile)
