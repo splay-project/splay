@@ -3,8 +3,8 @@
 AC_INIT([SplayDaemon], [1.0], [raziel.carvajal@unine.ch])
 AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
-CPPFLAGS=-I../../include
-CFLAGS= -Wall -std=c99 -O2 -pedantic
+#CPPFLAGS='-I../../include'
+#CFLAGS='-Wall -std=c99 -O2 -pedantic'
 AC_PROG_CC
 
 # Checks for header files.
@@ -13,12 +13,14 @@ AC_PROG_CC
 #  ii. create variables to specify liblua and libssl directories when those libs are 
 #      somewhere else in the system
 # iii. decide which systems will be supported
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netinet/in.h stdlib.h string.h sys/socket.h unistd.h lua5.1/lua.h lua5.1/lualub.h lua5.1/luaxlib.h])
+AC_CHECK_HEADERS(
+  [arpa/inet.h fcntl.h 'netinet/in.h' stdlib.h string.h sys/socket.h unistd.h 'lua5.1/lua.h' 'lua5.1/lualub.h' 'lua5.1/luaxlib.h']
+)
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
 # Checks for library functions.
-AC_SEARCH_LIBS(lua_close, [lua5.1 lua5.2],
+AC_SEARCH_LIBS(lua_close, ['lua5.1' 'lua5.2'],
   [],
   [AC_MSG_ERROR([liblua is not installed])])
 
