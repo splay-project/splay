@@ -28,9 +28,9 @@
 #include <string.h>
 #include <limits.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#include <lua5.1/lua.h>
+#include <lua5.1/lualib.h>
+#include <lua5.1/lauxlib.h>
 
 #include "misc.h"
 

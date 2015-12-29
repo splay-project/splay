@@ -1,38 +1,16 @@
-bin_PROGRAMS = splayd
-splayd_CFLAGS = $(LIB_LUA)
-splayd_SOURCES = splayd.c splay_lib.c
-
-#bin_PROGRAMS = jobd
-#jobd_SOURCES = jobd.c splay_lib.c
-#
-#bin_PROGRAMS = splayO
-#splayO_CFLAGS = -fpic $(CFLAGS) 
-#splayO_SOURCES = splay.c
-#
-#bin_PROGRAMS = splayCore
-#splayCore_CFLAGS = -O -fpic -shared
-#splayCore_SOURCES = splayO
-#
-#bin_PROGRAMS = miscO
-#miscO_CFLAGS = -fpic $(CFLAGS)
-#miscO_SOURCES = misc.c
-#
-#bin_PROGRAMS = miscCore
-#miscCore_CFLAGS = -O -fpic -shared -lm
-#miscCore_SOURCES = miscO
-#
-#bin_PROGRAMS = dataBitsO
-#dataBitsO_CFLAGS = -fpic $(CFLAGS)
-#dataBitsO_SOURCES = data_bits.c
-#
-#bin_PROGRAMS = dataBitsCore
-#dataBitsCore_CFLAGS = -O -fpic -shared -lm
-#dataBitsCore_SOURCES = dataBitsO
-#
-#bin_PROGRAMS = lcryptoO
-#lcryptoO_CFLAGS = -fpic $(CFLAGS)
-#lcryptoO_SOURCES = lcrypto.c
-#
-#bin_PROGRAMS = lcrypto
-#lcrypto_CFLAGS = -O -fpic -shared
-#lcrypto_SOURCES = lcrypto.c
+LIBS=
+bin_PROGRAMS=splayd jobd splay_core misc_core data_bits_core
+# TODO find a way to dinamically recognize lua version
+splayd_SOURCES        =splayd.c splay_lib.c
+splayd_LDADD          =-llua5.1
+jobd_SOURCES          =jobd.c splay_lib.c
+jobd_LDADD            =-llua5.1
+splay_core_SOURCES    =splay.c
+splay_core_CFLAGS     =-fpic
+splay_core_LDFLAGS    =-shared
+misc_core_SOURCES     =misc.c
+misc_core_CFLAGS      =-fpic
+misc_core_LDFLAGS     =-shared -lm
+data_bits_core_SOURCES=data_bits.c
+data_bits_core_CFLAGS =-fpic
+data_bits_core_LDFLAGS=-shared -lm

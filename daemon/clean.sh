@@ -1,0 +1,24 @@
+#!/bin/bash - 
+#===============================================================================
+#
+#          FILE: clean.sh
+# 
+#         USAGE: ./clean.sh 
+# 
+#   DESCRIPTION: 
+# 
+#       OPTIONS: ---
+#  REQUIREMENTS: ---
+#          BUGS: ---
+#         NOTES: ---
+#        AUTHOR: YOUR NAME (), 
+#  ORGANIZATION: 
+#       CREATED: 29/12/2015 17:15
+#      REVISION:  ---
+#===============================================================================
+
+set -o nounset                              # Treat unset variables as an error
+rm -fr config.log stamp-h1 Makefile config.status configure Makefile.in autom4te.cache/
+rm -fr aclocal.m4 config.h.in config.h depcomp compile install-sh missing 
+cd src/c
+rm -fr Makefile Makefile.in .deps/ *.o splayd jobd splay_core
