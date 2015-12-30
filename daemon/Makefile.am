@@ -1,1 +1,1 @@
-SUBDIRS = src/c
+SUBDIRS=src/c src/c/luacrypto src/c/lbase64 src/c/lua-cjson

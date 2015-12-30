@@ -8,8 +8,8 @@
 
 #include <string.h>
 
-#include "lua.h"
-#include "lauxlib.h"
+#include <lua5.1/lua.h>
+#include <lua5.1/lauxlib.h>
 
 #define MYNAME		"base64"
 #define MYVERSION	MYNAME " library for " LUA_VERSION " / Aug 2012"
