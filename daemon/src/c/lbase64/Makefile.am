@@ -1,4 +1,3 @@
-LIBS=
 if luabase64
   bin_PROGRAMS   =lbase64.so
   lbase64_so_SOURCES=lbase64.c

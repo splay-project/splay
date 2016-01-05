@@ -10,45 +10,95 @@ AC_CHECK_PROG([HAVE_LUA], [lua], [true], [false])
 if test x$HAVE_LUA = xtrue ; then
   AC_MSG_CHECKING([Lua is installed])
 else
-  AC_MSG_CHECKING([Lua is not installed. Splay-deamon requires lua, please\
-    install it after the built])
+  AC_MSG_CHECKING([Lua is not installed. Splay-deamon requires having the interpreter Lua\
+  installed on your system, please, once you have finished with the compilation of\
+  splay-daemon install Lua.])
 fi
 
 AC_CHECK_PROG([HAVE_OPENSSL], [openssl], [true], [false])
 if test x$HAVE_OPENSSL = xtrue ; then
   AC_MSG_CHECKING([OpenSsl is installed])
 else
-  AC_MSG_ERROR([OpenSsl is not installed. Splay-deamon requires OpenSsl\
-    to be built, please install OpenSsl and do ./configure again])
+  AC_MSG_ERROR([OpenSsl is not installed. Splay-deamon requires OpenSsl to be compiled, \
+  please, install OpenSsl and do ./configure again.])
 fi
 
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h 'netinet/in.h' stdlib.h\
-  string.h sys/socket.h unistd.h])
-AC_CHECK_HEADERS(['lua5.1/lua.h' 'lua5.1/lualub.h' 'lua5.1/luaxlib.h'])
-
 AC_TYPE_SIZE_T
-AC_SEARCH_LIBS(lua_close, ['lua5.1' 'lua5.2'],
-  [
-   #AC_CHECK_HEADERS(['lua5.1/lua.h' 'lua5.1/lualub.h' 'lua5.1/luaxlib.h'])
-  ],
-  [AC_MSG_ERROR([liblua is not installed])])
-AC_SEARCH_LIBS(SSL_accept, [ssl],
-  [],
-  [AC_MSG_ERROR([libssl is not installed])])
-AC_SEARCH_LIBS(DSA_new, [crypto],
-  [],
-  [AC_MSG_ERROR([libcrypto is not installed])])
-
-AC_ARG_ENABLE([luabase64],
-  AS_HELP_STRING([--enable-luabase64],[Compile base64 library for Lua5.2]),
-  [case "${enableval}" in\
-     yes) luabase64=true ;;\
-     no)  luabase64=false ;;\
-     *) AC_MSG_ERROR([You must type yes OR no in value for --enable-luabase64]) ;;\
-   esac],
-  [compile_luabase64=false])
-AM_CONDITIONAL([luabase64],[test x$luabase64 = xtrue])
-
 AC_FUNC_REALLOC
+#TODO complete this macro (with the argument inlcudes at the 4th position) for
+#having full portability in Darwin and Windows. Most of the work must be done
+#for windows. NOTE: take into accoun Valerio's comment about the lack of
+#compatibility in Windowns.
+AC_CHECK_HEADERS(["arpa/inet.h" "fcntl.h" "netinet/in.h" "stdlib.h" "string.h"\
+"sys/socket.h" "unistd.h"])
+
+AC_CHECK_HEADERS(["lua5.1/lua.h"], [
+  AC_DEFINE(HAVE_LUA_51, 1, [liblua-dev in its version 5.1 was found])], [
+  AC_CHECK_HEADERS(["lua5.2/lua.h"], [
+    AC_DEFINE(HAVE_LUA_52, 1, [liblua-dev in its version 5.2 was found])], [
+      AC_MSG_CHECKING([Headers files of Lua were not found, you must do ./configure\
+      with the flag --enable-lua-headers=/dir/to/lua/headers specifying the path\
+      where the headers of Lua are located.])
+  ])
+])
+
+AC_SEARCH_LIBS(lua_close, [lua5.1], [], [
+  AC_MSG_CHECKING([liblua5.1 is not installed, looking for another version...])
+  AC_SEARCH_LIBS(lua_close, [lua5.2], [], [
+    AC_MSG_CHECKING([liblua5.2 is not install neither, you must do ./configure with the\
+    flag --enable-lua-library=/dir/to/lua/library specifying the path where the files of\
+    liblua (tipically, files with the extension .so) are located.])
+  ])
+])
+
+AC_SEARCH_LIBS(SSL_accept, [ssl], [], [
+  AC_MSG_CHECKING([LibOpenssl is not installed, you must do ./configure with the flag\
+  --enable-openssl-library=/dir/to/openssl/library specifying the path where the files of\
+  LibOpenssl are located (tipically, files with the extension .so).])
+])
+
+AC_SEARCH_LIBS(DSA_new, [crypto], [], [
+  AC_MSG_CHECKING([LibCrypto is not installed, you must do ./configure with the flag\
+  --enable-crypto-library=/dir/to/crypto/library specifying the path where the files of\
+  LibCrypto are located (tipically, files with the extension .so).])
+])
+
+AC_ARG_WITH([luabase64], AS_HELP_STRING([--with-luabase64], [Compile base64 library for Lua5.2]))
+AS_IF([test "x$with_luabase64" = "xyes"], [have_luabase64=yes], [have_luabase64=no])
+AM_CONDITIONAL([luabase64],[test "x$have_luabase64" = "xyes"])
+
+AC_ARG_ENABLE([lua-headers],
+  AS_HELP_STRING([--enable-lua-headers=Dir], [Directory where Lua headers are located, by\
+  default this argument is empty]),
+  [LUA_HEADERS="${enableval}"],
+  [LUA_HEADERS=]
+)
+AC_SUBST([LUA_HEADERS])
+
+AC_ARG_ENABLE([lua-library],
+  AS_HELP_STRING([--enable-lua-library=Dir], [Directory where the Lua library is located, by\
+  default this argument is empty]),
+  [LUA_LIBRARY="${enableval}"],
+  [LUA_LIBRARY=]
+)
+AC_SUBST([LUA_LIBRARY])
+
+
+AC_ARG_ENABLE([openssl-library],
+  AS_HELP_STRING([--enable-openssl-library=Dir], [Directory where the OpenSsl library is located,\
+  by default this argument is empty]),
+  [OPENSSL_LIBRARY="${enableval}"],
+  [OPENSSL_LIBRARY=]
+)
+AC_SUBST([OPENSSL_LIBRARY])
+
+AC_ARG_ENABLE([crypto-library],
+  AS_HELP_STRING([--enable-crypto-library=Dir], [Directory where the Crypto library is located,\
+  by default this argument is empty]),
+  [CRYPTO_LIBRARY="${enableval}"],
+  [CRYPTO_LIBRARY=]
+)
+AC_SUBST([CRYPTO_LIBRARY])
+
 AC_OUTPUT(Makefile src/c/Makefile src/c/luacrypto/Makefile\
-          src/c/lbase64/Makefile src/c/lua-cjson/Makefile)
+            src/c/lbase64/Makefile src/c/lua-cjson/Makefile)

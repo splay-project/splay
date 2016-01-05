@@ -1,7 +1,7 @@
 LIBS=
 bin_PROGRAMS=splayd jobd splay_core.so misc_core.so data_bits_core.so
-# TODO find a way to dinamically recognize lua version
 splayd_SOURCES           =splayd.c splay_lib.c
+splayd_CPPFLAGS          =-I$(LUA_HEADERS)
 splayd_LDADD             =-llua5.1
 jobd_SOURCES             =jobd.c splay_lib.c
 jobd_LDADD               =-llua5.1
