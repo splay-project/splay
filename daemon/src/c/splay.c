@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
-#include <time.h>
+#include <sys/time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -36,13 +36,13 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lualib.h>
-#include <lua5.1/lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 #include "splay.h"
 
-static const luaL_reg sp_funcs[] =
+static const luaL_Reg sp_funcs[] =
 {
 	{"sleep", sp_sleep},
 	{"msleep", sp_msleep}, /* JV added */

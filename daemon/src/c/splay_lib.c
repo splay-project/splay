@@ -35,16 +35,43 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lualib.h>
-#include <lua5.1/lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 #include "splay_lib.h"
 
 int mem = 0;
 int max_mem = 0;
 
-static const luaL_reg splayd[] =
+
+/*
+** these libs are loaded by lua.c and are readily available to any Lua
+** program. Copied from: http://www.lua.org/source/5.2/linit.c.html#luaL_openlibs
+*/
+static const luaL_Reg loadedlibs[] = {
+  {"_G", luaopen_base},
+  {LUA_LOADLIBNAME, luaopen_package},
+  {LUA_COLIBNAME, luaopen_coroutine},
+  {LUA_TABLIBNAME, luaopen_table},
+  {LUA_IOLIBNAME, luaopen_io},
+  {LUA_OSLIBNAME, luaopen_os},
+  {LUA_STRLIBNAME, luaopen_string},
+  {LUA_BITLIBNAME, luaopen_bit32},
+  {LUA_MATHLIBNAME, luaopen_math},
+  {LUA_DBLIBNAME, luaopen_debug},
+  {NULL, NULL}
+};
+/*
+** these libs are preloaded and must be required before used
+** http://www.lua.org/source/5.2/linit.c.html#luaL_openlibs
+*/
+static const luaL_Reg preloadedlibs[] = {
+  {NULL, NULL}
+};
+
+
+static const luaL_Reg splayd[] =
 {
     {"set_max_mem", sp_set_max_mem},
     {NULL, NULL}
@@ -126,19 +153,37 @@ void registerlib(lua_State *L, const char *name, lua_CFunction f) {
 lua_State *new_lua()
 {
 	lua_State *L = lua_newstate(my_alloc, NULL);
-/*    lua_atpanic(L, my_panic);*/
-
-
-	/* PiL2 p. 292 */
-	lua_cpcall(L, luaopen_base, NULL);
-	lua_cpcall(L, luaopen_package, NULL);
-	registerlib(L, "io", luaopen_io);
-	registerlib(L, "os", luaopen_os);
-	registerlib(L, "table", luaopen_table);
-	registerlib(L, "string", luaopen_string);
-	registerlib(L, "math", luaopen_math);
-	registerlib(L, "debug", luaopen_debug);
-
+	/*lua_atpanic(L, my_panic);*/
+	
+	
+	/*lua_pushcfunction(L, luaopen_base);            */
+    /*lua_pcall(L,1,0,0);                            */
+	/*lua_pushcfunction(L, luaopen_package);         */
+    /*lua_pcall(L,1,0,0);                            */
+	/*                                               */
+	/*registerlib(L, "io", luaopen_io);              */
+	/*registerlib(L, "os", luaopen_os);              */
+	/*registerlib(L, "table", luaopen_table);        */
+	/*registerlib(L, "string", luaopen_string);      */
+	/*registerlib(L, "math", luaopen_math);          */
+	/*registerlib(L, "debug", luaopen_debug);        */
+	
+	
+	const luaL_Reg *lib;
+	/* call open functions from 'loadedlibs' and set results to global table */
+	for (lib = loadedlibs; lib->func; lib++) {
+	  luaL_requiref(L, lib->name, lib->func, 1);
+	  lua_pop(L, 1);  /* remove lib */
+	}
+	/* add open functions from 'preloadedlibs' into 'package.preload' table */
+	luaL_getsubtable(L, LUA_REGISTRYINDEX, "_PRELOAD");
+	for (lib = preloadedlibs; lib->func; lib++) {
+	  lua_pushcfunction(L, lib->func);
+	  lua_setfield(L, -2, lib->name);
+	}
+	lua_pop(L, 1);  /* remove _PRELOAD table */
+	
+	
 	luaL_openlib(L, "splayd", splayd, 0);
 
 	return L;

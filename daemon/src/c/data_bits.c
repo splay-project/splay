@@ -25,15 +25,16 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lualib.h>
-#include <lua5.1/lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 #include "data_bits.h"
 
@@ -41,7 +42,7 @@
 #define unset_bit(o, v) ((o)[(v) / 8] &= (255 ^ (1 << ((v) % 8))))
 #define get_bit(o, v) (((o)[(v) / 8] & (1 << ((v) % 8))) ? 1 : 0)
 
-static const luaL_reg misc_funcs[] =
+static const luaL_Reg misc_funcs[] =
 {
 	{"dnot", not},
 	{"dor", or},

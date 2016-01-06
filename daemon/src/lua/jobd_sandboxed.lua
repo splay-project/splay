@@ -33,7 +33,7 @@ require"string"
 require"io"
 
 require"splay"
-require"json"
+json=require"cjson"
 gettimeofday=splay.gettimeofday
 do
 	local p = print
@@ -76,6 +76,17 @@ if not job then
 	print("Invalid job file format.")
 	os.exit()
 end
+if job.network.list and type(job.network.list) == "string" then
+    local fh = io.open(job.network.list)
+    if not fh then
+        print("Error reading network list data")
+        os.exit()
+    end
+    local jnl_string = fh:read("*a")
+    fh:close()
+    job.network.list = json.decode(jnl_string)
+end
+
 
 if job.topology then
 	local t_f=io.open(job.topology)
@@ -236,10 +247,7 @@ local native_from_job = nil
 if job.lib_name ~= nil and job.lib_name ~= "" then
 	native_from_job = string.sub(job.lib_name,0,(#(job.lib_name) -3))
 	print("Using native lib: ",native_from_job,job.lib_version)
---else
---	print("no lib to add")
 end
-
 
 sandbox.protect_env({
 		io = job.disk, -- settings for restricted_io
@@ -308,11 +316,6 @@ else
 	print("   > passed")
 end
 print()
-
--- display env (for testing)
---for i, j in pairs(_G) do
---	print(i, j)
---end
 
 splay_code_function, err = loadstring(job.code, "job code")
 job.code = nil -- to free some memory

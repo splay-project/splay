@@ -34,7 +34,8 @@ require"mime"
 require"ltn12"
 
 -- LuaSec
-require"ssl"
+require"ssl.core"
+require"ssl.context"
 
 -- Luacrypto
 require"crypto"

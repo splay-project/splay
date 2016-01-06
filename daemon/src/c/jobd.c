@@ -38,9 +38,9 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lualib.h>
-#include <lua5.1/lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 #include "jobd.h"
 #include "splay.h"
@@ -48,7 +48,7 @@
 
 
 /*
- * For futur use, we could maybe control memory of loaded shared libraries
+ * For future use, we could maybe control memory of loaded shared libraries
  * throught these interceptors
  *
  * The  Unix98 standard requires malloc(), calloc(), and realloc() to set errno

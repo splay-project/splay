@@ -28,22 +28,25 @@
 #include <string.h>
 #include <limits.h>
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lualib.h>
-#include <lua5.1/lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 #include "misc.h"
 
-static const luaL_reg misc_funcs[] =
+static const luaL_Reg misc_funcs[] =
 {
     {"time", misc_time},
     {NULL, NULL}
 };
 
+/*
+* Open the misc_core library
+*/
 LUA_API int luaopen_splay_misc_core(lua_State *L)
 {
     luaL_openlib(L, MISC_LIBNAME, misc_funcs, 0);
-    return 0;
+    return 1;
 }
 
 int misc_time(lua_State *L)
