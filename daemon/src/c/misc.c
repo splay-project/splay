@@ -20,6 +20,7 @@
  */
 /* Misc functions */
 
+#include <config.h>
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
@@ -28,9 +29,15 @@
 #include <string.h>
 #include <limits.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lualib.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lualib.h>
+  #include <lauxlib.h>
+#endif
 
 #include "misc.h"
 

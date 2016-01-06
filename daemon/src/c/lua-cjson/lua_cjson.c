@@ -36,12 +36,19 @@
  *       difficult to know object/array sizes ahead of time.
  */
 
+#include <config.h>
 #include <assert.h>
 #include <string.h>
 #include <math.h>
 #include <limits.h>
-#include <lua5.1/lua.h>
-#include <lua5.1/lauxlib.h>
+
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lauxlib.h>
+#endif
 
 #include "strbuf.h"
 #include "fpconv.h"

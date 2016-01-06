@@ -6,10 +6,16 @@
 * This code is hereby placed in the public domain.
 */
 
+#include <config.h>
 #include <string.h>
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lauxlib.h>
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lauxlib.h>
+#endif
 
 #define MYNAME		"base64"
 #define MYVERSION	MYNAME " library for " LUA_VERSION " / Aug 2012"

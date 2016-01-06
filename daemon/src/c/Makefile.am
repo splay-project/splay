@@ -11,6 +11,7 @@ misc_core_so_LDFLAGS     =-shared -lm
 data_bits_core_so_SOURCES=data_bits.c
 data_bits_core_so_CFLAGS =-fpic
 data_bits_core_so_LDFLAGS=-shared -lm
+
 if lua_headers
   splayd_CPPFLAGS           =-I$(LUA_HEADERS)
   jobd_CPPFLAGS             =-I$(LUA_HEADERS)
@@ -18,10 +19,11 @@ if lua_headers
   misc_core_so_CPPFLAGS     =-I$(LUA_HEADERS)
   data_bits_core_so_CPPFLAGS=-I$(LUA_HEADERS)
 endif
+
 if lua_lib
-  splayd_LDADD              =-L$(LUA_LIBRARY) -llua5.1
-  jobd_LDADD                =-L$(LUA_LIBRARY) -llua5.1
+  splayd_LDADD              =-L$(LUA_LIBRARY) -llua5.2
+  jobd_LDADD                =-L$(LUA_LIBRARY) -llua5.2
 else
-  splayd_LDADD              =-llua5.1
-  jobd_LDADD                =-llua5.1
+  splayd_LDADD              =-llua5.2
+  jobd_LDADD                =-llua5.2
 endif

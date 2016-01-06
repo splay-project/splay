@@ -32,23 +32,23 @@ AC_FUNC_REALLOC
 AC_CHECK_HEADERS(["arpa/inet.h" "fcntl.h" "netinet/in.h" "stdlib.h" "string.h" \
 "sys/socket.h" "unistd.h"])
 
-AC_CHECK_HEADERS(["lua5.1/lua.h"], [
-  AC_DEFINE(HAVE_LUA_51, 1, [liblua-dev in its version 5.1 was found])], [
-  AC_CHECK_HEADERS(["lua5.2/lua.h"], [
-    AC_DEFINE(HAVE_LUA_52, 1, [liblua-dev in its version 5.2 was found])], [
-      AC_MSG_CHECKING([Headers files of Lua were not found, you must do ./configure\
-      with the flag --enable-lua-headers=/dir/to/lua/headers specifying the path\
-      where the headers of Lua are located.])
-  ])
+AC_CHECK_HEADERS(["lua5.2/lua.h"], [
+  AC_DEFINE(HAVE_LUA_52, 1, [liblua-dev in its version 5.2 was found])], [
+#  AC_CHECK_HEADERS(["lua5.2/lua.h"], [
+#    AC_DEFINE(HAVE_LUA_52, 1, [liblua-dev in its version 5.2 was found])], [
+  AC_MSG_CHECKING([Headers files of Lua were not found, you must do ./configure\
+    with the flag --enable-lua-headers=/dir/to/lua/headers specifying the path\
+    where the headers of Lua are located.])
+#  ])
 ])
 
-AC_SEARCH_LIBS(lua_close, [lua5.1], [], [
-  AC_MSG_CHECKING([liblua5.1 is not installed, looking for another version...])
-  AC_SEARCH_LIBS(lua_close, [lua5.2], [], [
-    AC_MSG_CHECKING([liblua5.2 is not install neither, you must do ./configure with the\
-    flag --enable-lua-library=/dir/to/lua/library specifying the path where the files of\
-    liblua (tipically, files with the extension .so) are located.])
-  ])
+AC_SEARCH_LIBS(lua_close, [lua5.2], [], [
+#  AC_MSG_CHECKING([liblua5.1 is not installed, looking for another version...])
+#  AC_SEARCH_LIBS(lua_close, [lua5.2], [], [
+  AC_MSG_CHECKING([liblua5.2 is not install neither, you must do ./configure with the\
+  flag --enable-lua-library=/dir/to/lua/library specifying the path where the files of\
+  liblua (tipically, files with the extension .so) are located.])
+#  ])
 ])
 
 AC_SEARCH_LIBS(SSL_accept, [ssl], [], [

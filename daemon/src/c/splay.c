@@ -20,6 +20,7 @@
  */
 /* An Lua loadable module providing low level splay C functions. */
 
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,9 +37,15 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lualib.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lualib.h>
+  #include <lauxlib.h>
+#endif
 
 #include "splay.h"
 

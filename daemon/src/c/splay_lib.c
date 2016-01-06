@@ -22,6 +22,7 @@
  * Functions used by splayd (deamon main executable).
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,9 +36,15 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lualib.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lualib.h>
+  #include <lauxlib.h>
+#endif
 
 #include "splay_lib.h"
 

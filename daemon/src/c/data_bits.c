@@ -22,6 +22,7 @@
  * For operations on integers, luabits is better.
  */
 
+#include <config.h>
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
@@ -32,9 +33,15 @@
 #include <limits.h>
 #include <ctype.h>
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lualib.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lualib.h>
+  #include <lauxlib.h>
+#endif
 
 #include "data_bits.h"
 

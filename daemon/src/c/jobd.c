@@ -23,6 +23,7 @@
  */
 #define _GNU_SOURCE
 
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -38,9 +39,15 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#if HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lualib.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lualib.h>
+  #include <lauxlib.h>
+#endif
 
 #include "jobd.h"
 #include "splay.h"

@@ -3,14 +3,21 @@
 ** See Copyright Notice in license.html
 */
 
+#include <config.h>
 #include <string.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
-#include <lua5.1/lua.h>
-#include <lua5.1/lauxlib.h>
+#ifdef HAVE_LUA_52
+  #include <lua5.2/lua.h>
+  #include <lua5.2/lauxlib.h>
+#else
+  #include <lua.h>
+  #include <lauxlib.h>
+#endif
+
 #if ! defined (LUA_VERSION_NUM) || LUA_VERSION_NUM < 501
 #include "compat-5.1.h"
 #endif
