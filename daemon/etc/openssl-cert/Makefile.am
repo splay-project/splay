@@ -1,3 +1,4 @@
+dist_data_DATA=client.cnf root.cnf
 all: cert
 cert:
 	openssl req -newkey rsa:1024 -sha1 -keyout rootkey.pem -out rootreq.pem \

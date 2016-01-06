@@ -1,6 +1,7 @@
+dist_data_DATA=README
 LIBS=
 bin_PROGRAMS=crypto.so
-crypto_so_SOURCES =lcrypto.c
+crypto_so_SOURCES =lcrypto.c lcrypto.h
 crypto_so_CFLAGS  =-fpic
 crypto_so_LDFLAGS =-shared
 if lua_headers
