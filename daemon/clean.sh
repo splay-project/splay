@@ -27,3 +27,5 @@ for subDir in src/c src/c/lbase64 src/c/lua-cjson src/c/luacrypto ; do
   rm -fr Makefile Makefile.in .deps/ *.o *.so
   cd $here
 done
+cd etc/openssl-cert
+rm -fr Makefile *.pem *.srl

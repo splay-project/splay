@@ -103,5 +103,5 @@ AC_ARG_ENABLE([crypto-library],
 AM_CONDITIONAL([crypto_lib], [test "x$have_crypto_lib" = "xyes"])
 AC_SUBST([CRYPTO_LIBRARY])
 
-AC_OUTPUT(Makefile src/c/Makefile src/c/luacrypto/Makefile\
-            src/c/lbase64/Makefile src/c/lua-cjson/Makefile)
+AC_OUTPUT(Makefile src/c/Makefile src/c/luacrypto/Makefile \
+  src/c/lbase64/Makefile src/c/lua-cjson/Makefile etc/openssl-cert/Makefile)
