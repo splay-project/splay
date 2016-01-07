@@ -8,5 +8,5 @@ if lua_headers
   cjson_so_CPPFLAGS=-I$(LUA_HEADERS)
 endif
 
-cjson_so_CFLAGS  =-fpic
-cjson_so_LDFLAGS =-shared
+cjson_so_CFLAGS  =$(cflags)
+cjson_so_LDFLAGS =-shared $(linker_flags)

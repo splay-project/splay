@@ -7,6 +7,6 @@ if lua_headers
   lbase64_so_CPPFLAGS=-I$(LUA_HEADERS)
 endif
 
-  lbase64_so_CFLAGS  =-fpic
-  lbase64_so_LDFLAGS =-shared
+  lbase64_so_CFLAGS  =$(cflags)
+  lbase64_so_LDFLAGS =-shared $(linker_flags)
 endif

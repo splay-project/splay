@@ -6,6 +6,26 @@ AM_CONFIG_HEADER(config.h)
 CPPFLAGS='-I../../include'
 AC_PROG_CC
 
+AC_CANONICAL_HOST
+case $host_os in
+  darwin*)
+    cflags="-fno-common -dynamiclib -undefined dynamic_lookup"
+    linker_flags="-ldl"
+    llua="-llua"
+    ;;
+  linux*)
+    cflags="-fpic"
+    linker_flags=
+    llua="-llua5.2"
+    ;;
+  *)
+    AC_MSG_ERROR([Your platform is not supported])
+    ;;
+esac
+AC_SUBST([linker_flags])
+AC_SUBST([llua])
+AC_SUBST([cflags])
+
 AC_CHECK_PROG([HAVE_LUA], [lua], [true], [false])
 if test x$HAVE_LUA = xtrue ; then
   AC_MSG_CHECKING([Lua is installed])
@@ -32,22 +52,48 @@ AC_FUNC_REALLOC
 AC_CHECK_HEADERS(["arpa/inet.h" "fcntl.h" "netinet/in.h" "stdlib.h" "string.h" \
 "sys/socket.h" "unistd.h"])
 
+AC_ARG_ENABLE([lua-headers],
+  AS_HELP_STRING([--enable-lua-headers=Dir], [Directory where Lua headers are located, by\
+  default this argument is empty]),
+  [LUA_HEADERS="${enableval}"; have_lua_headers=yes],
+  [have_lua_headers=no]
+)
+AM_CONDITIONAL([lua_headers], [test "x$have_lua_headers" = "xyes"])
+AC_SUBST([LUA_HEADERS])
+
 AC_CHECK_HEADERS(["lua5.2/lua.h"], [
   AC_DEFINE(HAVE_LUA_52, 1, [liblua-dev in its version 5.2 was found])], [
 #  AC_CHECK_HEADERS(["lua5.2/lua.h"], [
 #    AC_DEFINE(HAVE_LUA_52, 1, [liblua-dev in its version 5.2 was found])], [
-  AC_MSG_CHECKING([Headers files of Lua were not found, you must do ./configure\
-    with the flag --enable-lua-headers=/dir/to/lua/headers specifying the path\
-    where the headers of Lua are located.])
+  if test x$have_lua_headers = xno ; then
+    AC_MSG_CHECKING([Headers files of Lua were not found, you must do ./configure with the\
+    flag --enable-lua-headers=/dir/to/lua/headers specifying the path where the headers of\
+    Lua are located.])
+  else
+    AC_MSG_CHECKING([Directory of Lua headers was set by the user])
+  fi
 #  ])
 ])
+
+AC_ARG_ENABLE([lua-library],
+  AS_HELP_STRING([--enable-lua-library=Dir], [Directory where the Lua library is located, by\
+  default this argument is empty]),
+  [LUA_LIBRARY="${enableval}"; have_lua_lib=yes],
+  [have_lua_lib=no]
+)
+AM_CONDITIONAL([lua_lib], [test "x$have_lua_lib" = "xyes"])
+AC_SUBST([LUA_LIBRARY])
 
 AC_SEARCH_LIBS(lua_close, [lua5.2], [], [
 #  AC_MSG_CHECKING([liblua5.1 is not installed, looking for another version...])
 #  AC_SEARCH_LIBS(lua_close, [lua5.2], [], [
-  AC_MSG_CHECKING([liblua5.2 is not install neither, you must do ./configure with the\
-  flag --enable-lua-library=/dir/to/lua/library specifying the path where the files of\
-  liblua (tipically, files with the extension .so) are located.])
+  if test x$have_lua_lib = xno ; then
+    AC_MSG_CHECKING([liblua5.2 is not install neither, you must do ./configure with the\
+    flag --enable-lua-library=/dir/to/lua/library specifying the path where the files of\
+    liblua (tipically, files with the extension .so) are located.])
+  else
+    AC_MSG_CHECKING([Lualib directory was set by the user])
+  fi
 #  ])
 ])
 
@@ -67,23 +113,7 @@ AC_ARG_WITH([luabase64], AS_HELP_STRING([--with-luabase64], [Compile base64 libr
 AS_IF([test "x$with_luabase64" = "xyes"], [have_luabase64=yes], [have_luabase64=no])
 AM_CONDITIONAL([luabase64],[test "x$have_luabase64" = "xyes"])
 
-AC_ARG_ENABLE([lua-headers],
-  AS_HELP_STRING([--enable-lua-headers=Dir], [Directory where Lua headers are located, by\
-  default this argument is empty]),
-  [LUA_HEADERS="${enableval}"; have_lua_headers=yes],
-  [have_lua_headers=no]
-)
-AM_CONDITIONAL([lua_headers], [test "x$have_lua_headers" = "xyes"])
-AC_SUBST([LUA_HEADERS])
 
-AC_ARG_ENABLE([lua-library],
-  AS_HELP_STRING([--enable-lua-library=Dir], [Directory where the Lua library is located, by\
-  default this argument is empty]),
-  [LUA_LIBRARY="${enableval}"; have_lua_lib=yes],
-  [have_lua_lib=no]
-)
-AM_CONDITIONAL([lua_lib], [test "x$have_lua_lib" = "xyes"])
-AC_SUBST([LUA_LIBRARY])
 
 AC_ARG_ENABLE([openssl-library],
   AS_HELP_STRING([--enable-openssl-library=Dir], [Directory where the OpenSsl library is located,\

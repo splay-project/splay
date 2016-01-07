@@ -2,8 +2,8 @@ dist_data_DATA=README
 LIBS=
 bin_PROGRAMS=crypto.so
 crypto_so_SOURCES =lcrypto.c lcrypto.h
-crypto_so_CFLAGS  =-fpic
-crypto_so_LDFLAGS =-shared
+crypto_so_CFLAGS  =$(cflags)
+crypto_so_LDFLAGS =-shared $(linker_flags)
 if lua_headers
   crypto_so_CPPFLAGS=-I$(LUA_HEADERS)
 endif
