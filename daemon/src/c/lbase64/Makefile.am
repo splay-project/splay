@@ -1,4 +1,4 @@
-dist_data_DATA=test.lua
+#dist_data_DATA=test.lua
 if luabase64
   bin_PROGRAMS       =lbase64.so
   lbase64_so_SOURCES =lbase64.c
