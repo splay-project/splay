@@ -18,8 +18,8 @@
 #===============================================================================
 
 set -o nounset                              # Treat unset variables as an error
-rm -fr config.log stamp-h1 Makefile config.status configure Makefile.in autom4te.cache/
-rm -fr aclocal.m4 config.h.in config.h depcomp compile install-sh missing 
+rm -fr config.* stamp-h1 Makefile configure Makefile.in autom4te.cache/
+rm -fr aclocal.m4 depcomp compile install-sh missing 
 here=`pwd`
 rm -fr src/c/splayd src/c/jobd
 for subDir in src/c src/c/lbase64 src/c/lua-cjson src/c/luacrypto ; do

@@ -5,7 +5,8 @@ AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 CPPFLAGS='-I../../include'
 AC_PROG_CC
-
+prefix=$prefix/$PACKAGE_NAME
+AC_SUBST([prefix])
 AC_CANONICAL_HOST
 case $host_os in
   darwin*)
@@ -113,8 +114,6 @@ AC_ARG_WITH([luabase64], AS_HELP_STRING([--with-luabase64], [Compile base64 libr
 AS_IF([test "x$with_luabase64" = "xyes"], [have_luabase64=yes], [have_luabase64=no])
 AM_CONDITIONAL([luabase64],[test "x$have_luabase64" = "xyes"])
 
-
-
 AC_ARG_ENABLE([openssl-library],
   AS_HELP_STRING([--enable-openssl-library=Dir], [Directory where the OpenSsl library is located,\
   by default this argument is empty]),
@@ -133,5 +132,5 @@ AC_ARG_ENABLE([crypto-library],
 AM_CONDITIONAL([crypto_lib], [test "x$have_crypto_lib" = "xyes"])
 AC_SUBST([CRYPTO_LIBRARY])
 
-AC_OUTPUT(Makefile src/c/Makefile src/c/luacrypto/Makefile \
-  src/c/lbase64/Makefile src/c/lua-cjson/Makefile etc/openssl-cert/Makefile)
+AC_OUTPUT(src/c/Makefile src/c/luacrypto/Makefile src/c/lbase64/Makefile src/c/lua-cjson/Makefile \
+          etc/openssl-cert/Makefile Makefile)

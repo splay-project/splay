@@ -1,4 +1,7 @@
-#dist_data_DATA=test.lua
+LIBS=
+install_datadir=$(prefix)/share/lbase64
+install_data_DATA=README test.lua
+dist_data_DATA=README test.lua
 if luabase64
   bin_PROGRAMS       =lbase64.so
   lbase64_so_SOURCES =lbase64.c

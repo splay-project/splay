@@ -1,4 +1,3 @@
-#dist_data_DATA=README
 LIBS=
 bin_PROGRAMS=crypto.so
 crypto_so_SOURCES =lcrypto.c lcrypto.h

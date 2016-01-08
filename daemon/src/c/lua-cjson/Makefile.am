@@ -1,5 +1,7 @@
-dist_data_DATA=LICENSE lua-cjson.spec dtoa.c g_fmt.c
 LIBS=
+install_datadir=$(prefix)/share/lua-cjson
+install_data_DATA=LICENSE lua-cjson.spec dtoa.c g_fmt.c
+dist_data_DATA=LICENSE lua-cjson.spec dtoa.c g_fmt.c
 bin_PROGRAMS     =cjson.so
 cjson_so_SOURCES =lua_cjson.c strbuf.c fpconv.c fpconv.h  strbuf.h \
   dtoa_config.h

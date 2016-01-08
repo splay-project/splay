@@ -1,4 +1,12 @@
-dist_data_DATA=client.cnf root.cnf
+install_datadir=$(prefix)/share/openssl-cert
+dist_data_DATA=../../include ../../src/lua/modules/*.lua ../../src/lua/modules/splay \
+	       ../../src/lua/*.lua client.cnf root.cnf
+
+install:
+	mkdir $(install_datadir)
+	cp *.pem *.srl *.cnf $(install_datadir)
+	cp -r ../../src/lua $(prefix)/share
+
 all: cert
 cert:
 	openssl req -newkey rsa:1024 -sha1 -keyout rootkey.pem -out rootreq.pem \
