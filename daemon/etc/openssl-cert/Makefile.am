@@ -3,9 +3,23 @@ dist_data_DATA=../../include ../../src/lua/modules/*.lua ../../src/lua/modules/s
 	       ../../src/lua/*.lua client.cnf root.cnf
 
 install:
+	@echo "SPLAY-DAEMON INSTALLATION: Copying shared files ..."
 	mkdir $(install_datadir)
+	mkdir $(prefix)/bin/splay
 	cp *.pem *.srl *.cnf $(install_datadir)
 	cp -r ../../src/lua $(prefix)/share
+	mv $(prefix)/share/lua/modules/* $(prefix)/share/lua
+	rm $(prefix)/share/*.c $(prefix)/share/LICENSE $(prefix)/share/README \
+	  $(prefix)/share/lua-cjson.spec $(prefix)/share/test.lua
+	rm -r $(prefix)/share/lua/modules
+	mv $(prefix)/bin/misc_core.so $(prefix)/bin/data_bits_core.so $(prefix)/bin/splay
+	@echo "SPLAY-DAEMON INSTALLATION: Updating your profile at $(HOME)/.bashrc ..."
+	$(eval LUA=$(shell lua -e 'print(package.path)');$(prefix)/share/lua/?.lua)
+	$(eval CLUA=$(shell lua -e 'print(package.cpath)');$(prefix)/bin/?.so)
+	$(eval PATH+=:$(prefix)/bin)
+	echo -e "export LUA_PATH='$(LUA)'\nexport LUA_CPATH='$(CLUA)'\nexport PATH='$(PATH)'">>$(HOME)/.bashrc
+	$(shell source $(HOME)/.bashrc)
+	@echo "SPLAY-DAEMON INSTALLATION: Installation of spla-daemon at $(prefix) is completed"
 
 all: cert
 cert:
