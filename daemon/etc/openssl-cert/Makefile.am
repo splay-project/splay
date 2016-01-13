@@ -17,8 +17,8 @@ install:
 	$(eval LUA=$(shell lua -e 'print(package.path)');$(prefix)/share/lua/?.lua)
 	$(eval CLUA=$(shell lua -e 'print(package.cpath)');$(prefix)/bin/?.so)
 	$(eval PATH+=:$(prefix)/bin)
-	echo -e "export LUA_PATH='$(LUA)'\nexport LUA_CPATH='$(CLUA)'\nexport PATH='$(PATH)'">>$(HOME)/.bashrc
-	$(shell source $(HOME)/.bashrc)
+	echo -e "export LUA_PATH='$(LUA)'\nexport LUA_CPATH='$(CLUA)'\nexport PATH='$(PATH)'">>$(HOME)/$(user_prof)
+	$(shell source $(HOME)/$(user_prof))
 	@echo "SPLAY-DAEMON INSTALLATION: Installation of spla-daemon at $(prefix) is completed"
 
 all: cert

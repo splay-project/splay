@@ -13,11 +13,13 @@ case $host_os in
     cflags="-fno-common -dynamiclib -undefined dynamic_lookup"
     linker_flags="-ldl"
     llua="-llua"
+    user_prof=".profile"
     ;;
   linux*)
     cflags="-fpic"
     linker_flags=
     llua="-llua5.2"
+    user_prof=".bashrc"
     ;;
   *)
     AC_MSG_ERROR([Your platform is not supported])
@@ -26,6 +28,7 @@ esac
 AC_SUBST([linker_flags])
 AC_SUBST([llua])
 AC_SUBST([cflags])
+AC_SUBST([user_prof])
 
 AC_CHECK_PROG([HAVE_LUA], [lua], [true], [false])
 if test x$HAVE_LUA = xtrue ; then
