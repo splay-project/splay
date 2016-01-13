@@ -13,7 +13,7 @@ case $host_os in
     cflags="-fno-common -dynamiclib -undefined dynamic_lookup"
     linker_flags="-ldl"
     llua="-llua"
-    user_prof=".profile"
+    user_prof=".bash_profile"
     ;;
   linux*)
     cflags="-fpic"
