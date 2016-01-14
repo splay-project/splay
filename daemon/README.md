@@ -5,13 +5,13 @@ Some dependencies are required before the compilation and installation of Splay 
 
 ##GNU-Linux Based Systems
 
-###Ubuntu Vivid Vervet (15.04)
+###Ubuntu in its versions: 14.04 and 15.04
 Install these prerequisites via Ubuntu's package manager:
 
-```sudo apt-get install lua5.2 liblua5.2 liblua5.2-dev lua-socket lua-sec openssl```
+```sudo apt-get install lua5.2 liblua5.2 liblua5.2-dev libssl-dev lua-socket lua-sec openssl```
 
 
-##OS X: Lion (10.7), El Capitan (10.11)
+##OS X in its versions: 10.7 (Lion), 10.10 (Yosemite) and 10.11 (El Capitan)
 Firstly, you must have [Xcode](http://developer.apple.com/xcode/) and [Homebrew](http://brew.sh/) installed in your system. Homebrew's installation is done through the next command:
 
 ```ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"```
