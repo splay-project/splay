@@ -25,9 +25,7 @@ Secondly, Splay Daemon prerequisites are installed via Homebrew's and Lua's pack
 1. ```sudo luarocks-5.2 install luasocket```
 
 #Compilation and Installation
-The last tarball of Splay Daemon is located on the ```dist``` directory, please, extract the distribution as follows:
-
-```cd dist```
+The last tarball of Splay Daemon ready to download is located [here](https://github.com/splay-project/splay/blob/autoconfig/daemon/dist/splay-daemon-1.0.tar.gz?raw=true). Once the file is downloaded, decompress the taball as follows:
 
 ```tar xof splay-daemon-1.0.tar.gz```
 
