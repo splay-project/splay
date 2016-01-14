@@ -5,6 +5,10 @@ Some dependencies are required before the compilation and installation of Splay 
 
 ##GNU-Linux Based Systems
 
+###Debian in its versions: 8.2
+
+```sudo apt-get install gcc make lua5.2 liblua5.2 liblua5.2-dev libssl-dev lua-socket lua-sec openssl```
+
 ###Ubuntu in its versions: 14.04 and 15.04
 Install these prerequisites via Ubuntu's package manager:
 
