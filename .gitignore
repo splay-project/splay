@@ -1,3 +1,5 @@
 src/external_libs/lua-5.1.4/src/*.o
 logs/
 src/rpc_client/.*.session_id
+daemon/dist/*
+!daemon/dist/*.tar.gz

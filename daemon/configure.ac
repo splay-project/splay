@@ -5,6 +5,9 @@ AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 CPPFLAGS='-I../../include'
 AC_PROG_CC
+if test x$prefix == xNONE ; then
+  prefix=$HOME
+fi
 prefix=$prefix/$PACKAGE_NAME
 AC_SUBST([prefix])
 AC_CANONICAL_HOST

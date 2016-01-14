@@ -25,4 +25,67 @@ Secondly, Splay Daemon prerequisites are installed via Homebrew's and Lua's pack
 1. ```sudo luarocks-5.2 install luasocket```
 
 #Compilation and Installation
-Download the latest distribution of Splay Daemon [here](https://github.com/splay-project/splay/blob/autoconfig/daemon/dist/splay-daemon-1.0.tar.gz)
+The last tarball of Splay Daemon is located on the ```dist``` directory, please, extract the distribution as follows:
+
+```cd dist```
+
+```tar xof splay-daemon-1.0.tar.gz```
+
+In ```splay-daemon-1.0``` you will find the script ```configure``` to help ```make``` with the compilation, installation and test of Splay Deamon. Depending on your system, the ```configure``` script must be launch as follows:
+
+- GNU-Linux: ```./configure --with-luabase64```
+- OS X: ```./configure --with-luabase64 --enable-lua-headers=/usr/local/include --enable-lua-library=/usr/local/lib```
+
+By default Splay Daemon is installed on your ```$HOME``` directory, if you want to change the installation directory just add the option ```--prefix=/here/your/installation/directory``` when you launch the ```configure``` script.
+
+Now you compile Splay Daemon typing the command ```make``` and install it with ```make install```. To test your installation just type ```make test_splay-daemon```, you will see an output as follows:
+
+```...```
+
+```------------- start testing installation -------------```
+
+```------------- end testing installation -------------```
+
+```If there is no error messages, all the required libraries are ```
+
+```installed and found on this system.```
+
+##Additional options in ```configure```
+Splay Daemon uses [GNU Autotools](http://www.gnu.org/software/autoconf/autoconf.html) to be built, apart from the options that the script ```configure``` has by default, the next options were added:
+
+```Optional Features:```
+
+```...```
+
+```--enable-lua-headers=Dir```
+
+- ```Directory where Lua headers are located, by default```
+
+- ```this argument is empty```
+
+```--enable-lua-library=Dir```
+
+- ```Directory where the Lua library is located, by```
+
+- ```default this argument is empty```
+
+```--enable-openssl-library=Dir```
+
+- ```Directory where the OpenSsl library is located, by```
+
+- ```default this argument is empty```
+
+
+```--enable-crypto-library=Dir```
+
+- ```Directory where the Crypto library is located, by```
+
+- ```default this argument is empty```
+
+```Optional Packages:```
+
+```...```
+
+- ```--with-luabase64        Compile base64 library for Lua5.2```
+
+If you have installed the headers files of Lua and the libraries of Lua, Openssl or Crypto in a different location, you have to add (with the right directories) the last options when you run ```configure``` .
