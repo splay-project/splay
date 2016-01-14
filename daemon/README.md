@@ -49,7 +49,8 @@ installed and found on this system
 ##Additional options in ```configure```
 Splay Daemon uses [GNU Autotools](http://www.gnu.org/software/autoconf/autoconf.html) to be built, apart from the options that the script ```configure``` has by default, the next options were added:
 
-```Optional Features:
+```
+Optional Features:
 --enable-lua-headers=Dir
 Directory where Lua headers are located, by default
 this argument is empty
@@ -64,6 +65,7 @@ Directory where the Crypto library is located, by
 default this argument is empty
 Optional Packages:
 --with-luabase64
-Compile base64 library for Lua5.2```
+Compile base64 library for Lua5.2
+```
 
 If you have installed the headers files of Lua and the libraries of Lua, Openssl or Crypto in a different location, you have to add (with the right directories) the last options when you run ```configure``` .
