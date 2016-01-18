@@ -1,0 +1,21 @@
+splaycontroller:
+  image: vschiavoni/splaycontroller:v3
+  ports:
+   - "11000:11010"
+   - 2222
+  entrypoint: /splaycontroller-entrypoint.sh
+  container_name: controller
+splayd:
+  image: vschiavoni/splaydeamons:v7
+  links: 
+    - splaycontroller
+  stdin_open: true
+  tty: true
+  entrypoint: /splaydaemons-entrypoint.sh
+splaycli:
+  image: vschiavoni/splaycli:v2
+  links:
+    - splaycontroller
+  stdin_open: true
+  tty: true
+  container_name: cli

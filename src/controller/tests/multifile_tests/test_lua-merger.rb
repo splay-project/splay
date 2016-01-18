@@ -1,6 +1,11 @@
+<<<<<<< HEAD:src/controller/tests/multifile_tests/test_lua-merger.rb
 require "minitest/autorun"
 #require 'lua-merger.rb'
 require File.expand_path(File.join(File.dirname(__FILE__), '../../cli-server/lua-merger.rb'))
+=======
+require '../cli-server/lua-merger.rb'
+require "test/unit"
+>>>>>>> master:src/controller/unit_tests/tc_lua-merger.rb
 require 'tmpdir' 
 require 'tempfile'
 
@@ -124,6 +129,15 @@ def test_variables
 	out_file = File.open(File.expand_path(File.join(File.dirname(__FILE__), "chunk-variables.out")), "r")
 	expected_output = out_file.read
 	assert_equal(expected_output, output, "Variables test failed!")
+end
+
+def test_merge_with_comments
+	tar_file = File.open("lua-test.tar.gz","rb")
+	content = tar_file.read
+	encoded_content = Base64.encode64(content)
+	ret = Hash.new
+	output, ret = LuaMerger.new.merge_lua_files(encoded_content, ret)
+  out_file = File.open("merge_with_comments.out", "r")
 end
 
 end

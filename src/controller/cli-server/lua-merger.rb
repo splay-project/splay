@@ -168,9 +168,13 @@ class LuaMerger
 			while (line = file_handler.gets)
 			
 				#remove all comments from the code
-				if line.include? '--' then
-					position = line.index("--")
-					line = line[0..position]
+				if line.include? "--" then
+          position = line.index("--")
+          if position == 0 then
+            line = "\n"
+          elsif
+            line = line[0..(position-1)]+"\n"
+          end
 				end
 
 				trim_line = String.new(line)
@@ -302,7 +306,7 @@ class LuaMerger
 
 				if (parser_is_in_function == false and trim_line.include? '=' and /^[ \t]*local/.match(trim_line) == nil) then
 					position = trim_line.index("=")
-					vars_line = trim_line(0..position-1)
+					vars_line = trim_line[0..position-1]
 				
 					vars = vars_line.split(',')
 					vars.each { |var|
