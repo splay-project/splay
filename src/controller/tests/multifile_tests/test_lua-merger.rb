@@ -1,11 +1,6 @@
-<<<<<<< HEAD:src/controller/tests/multifile_tests/test_lua-merger.rb
 require "minitest/autorun"
 #require 'lua-merger.rb'
 require File.expand_path(File.join(File.dirname(__FILE__), '../../cli-server/lua-merger.rb'))
-=======
-require '../cli-server/lua-merger.rb'
-require "test/unit"
->>>>>>> master:src/controller/unit_tests/tc_lua-merger.rb
 require 'tmpdir' 
 require 'tempfile'
 
