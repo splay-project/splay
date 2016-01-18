@@ -72,7 +72,7 @@ class JobdTrace < Jobd
 	# We are just restarted, no threads to apply the trace, we need to kill
 	# each running jobs
 	def self.init()
-		$db.select_all "SELECT * FROM jobs WHERE
+		$db.fetch "SELECT * FROM jobs WHERE
 				scheduler='#{@@scheduler}' AND status='RUNNING'" do |job|
 			kill_job(job, "controller restart, trace job aborted")
 		end

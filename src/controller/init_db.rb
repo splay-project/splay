@@ -28,18 +28,18 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 def drop_db(db)
-	db.do("DROP TABLE IF EXISTS splayds")
-	db.do("DROP TABLE IF EXISTS splayd_availabilities")
-	db.do("DROP TABLE IF EXISTS jobs")
-	db.do("DROP TABLE IF EXISTS job_mandatory_splayds")
-  db.do("DROP TABLE IF EXISTS job_designated_splayds")
-	db.do("DROP TABLE IF EXISTS splayd_jobs")
-	db.do("DROP TABLE IF EXISTS splayd_selections")
-	db.do("DROP TABLE IF EXISTS blacklist_hosts")
-	db.do("DROP TABLE IF EXISTS actions")
-	db.do("DROP TABLE IF EXISTS locks")
-  db.do("DROP TABLE IF EXISTS libs")
-  db.do("DROP TABLE IF EXISTS splayd_libs")
+  db.drop_table?(:splayds)
+  db.drop_table?(:splayd_availabilities)
+  db.drop_table?(:jobs)
+  db.drop_table?(:job_mandatory_splayds)
+  db.drop_table?(:job_designated_splayds)
+  db.drop_table?(:splayd_jobs)
+  db.drop_table?(:splayd_selections)
+  db.drop_table?(:blacklist_hosts)
+  db.drop_table?(:actions)
+  db.drop_table?(:locks)
+  db.drop_table?(:libs)    
+  db.drop_table?(:splayd_libs)
 end
 ## latitude DECIMAL(10,6)  DEFAULT '46.9931',
 ## longitude DECIMAL(10,6) DEFAULT '6.93',
@@ -263,7 +263,9 @@ def init_db(db)
 
 end
 
-db = DBUtils::get_new
-drop_db(db)
-init_db(db)
-db.disconnect
+if __FILE__ == $0
+  db = DBUtils::get_new_mysql_sequel
+  drop_db(db)
+  init_db(db)
+  db.disconnect
+end

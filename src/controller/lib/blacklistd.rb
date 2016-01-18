@@ -36,7 +36,7 @@ class Blacklistd
 				if SplayControllerConfig::PublicIP
 					new_bl << SplayControllerConfig::PublicIP
 				end
-				$db.select_all "SELECT host FROM blacklist_hosts" do |row|
+				$db.fetch "SELECT host FROM blacklist_hosts" do |row|
 					new_bl << row[0]
 				end
 

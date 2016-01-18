@@ -42,7 +42,7 @@ class DistributedLock
 	end
 
 	def self.get(name)
-		if not @@db then @@db = DBUtils.get_new end
+		if not @@db then @@db = DBUtils.get_new_mysql_sequel end
 		ok = false
 		while not ok
 			@@mutex.synchronize do
@@ -50,7 +50,7 @@ class DistributedLock
 			# BEGIN and COMMIT
 			#$dbt.transaction do |dbt|
 				@@db.do "BEGIN"
-				locks = @@db.select_one("SELECT * FROM locks
+				locks = @@db.fetch("SELECT * FROM locks
 							WHERE id='1' FOR UPDATE")
 				if locks[name]
 					if locks[name] == 0

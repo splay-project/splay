@@ -24,11 +24,11 @@ class SplayControllerConfig
 	CTLVersion = 1.3
 
 	SQL_TYPE = DBConfig::SQL_TYPE
-	SQL_DB =  DBConfig::SQL_DB
+	SQL_DB   = DBConfig::SQL_DB
 	SQL_HOST = DBConfig::SQL_HOST
 	SQL_USER = DBConfig::SQL_USER
 	SQL_PASS = DBConfig::SQL_PASS
-
+  SQL_PORT = DBConfig::SQL_PORT
 	SSL = true 
 	Production = false # Put true in prod, remove some tests to permit local testing.
 	AutoAddSplayds = true # In production must be false

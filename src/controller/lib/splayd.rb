@@ -1,532 +1,5 @@
-## Splay Controller ### v1.3 ###
-## Copyright 2006-2011
-## http://www.splay-project.org
-## 
-## 
-## 
-## This file is part of Splay.
-## 
-## Splayd is free software: you can redistribute it and/or modify 
-## it under the terms of the GNU General Public License as published 
-## by the Free Software Foundation, either version 3 of the License, 
-## or (at your option) any later version.
-## 
-## Splayd is distributed in the hope that it will be useful,but 
-## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-## See the GNU General Public License for more details.
-## 
-## You should have received a copy of the GNU General Public License
-## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
-
-
-$dbt = DBUtils.get_new
+$dbt = DBUtils.get_new_mysql_sequel
 # $new_dbt = DBUtils.get_new_mysql
-
-class SplaydServer
-
-	@@ssl = SplayControllerConfig::SSL
-	@@splayd_threads = {}
-	def self.threads() return @@splayd_threads end
-	def self.threads=(threads) @@splayd_threads = threads end
-
-	def initialize(port = nil)
-		@port = port || SplayControllerConfig::SplaydPort
-	end
-
-	def run
-		return Thread.new() do
-			main
-		end
-	end
-
-	def main
-		begin
-			server = TCPServer.new(@port)
-			server.setsockopt(Socket::SOL_SOCKET,Socket::SO_REUSEADDR, true)
-
-			if @@ssl
-				# SSL key and cert
-				key = OpenSSL::PKey::RSA.new 512
-				cert = OpenSSL::X509::Certificate.new
-				cert.not_before = Time.now
-				cert.not_after = Time.now + 3600
-				cert.public_key = key.public_key
-				cert.sign(key, OpenSSL::Digest::SHA1.new)
-
-				# SSL context
-				ctx = OpenSSL::SSL::SSLContext.new
-				ctx.key = key
-				ctx.cert = cert
-
-				server = OpenSSL::SSL::SSLServer.new(server, ctx)
-
-				$log.info("Waiting for splayds on port (SSL): " + @port.to_s)
-			else
-				$log.info("Waiting for splayds on port: " + @port.to_s)
-			end
-		rescue => e
-			$log.fatal(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
-			return
-		end
-
-		# Protect accept() For example, a bad SSL negociation makes accept()
-		# to raise an exception. Can protect against that and a DOS.
-		begin
-			loop do
-				so = server.accept
-				tmpSocket = LLenc.new(so)
-				splaydProtocol = tmpSocket.read()
-				$log.debug(splaydProtocol)
-				if splaydProtocol == "standard" then
-				  SplaydProtocol.new(so).run
-				elsif splaydProtocol == "grid" then
-				  SplaydGridProtocol.new(so).run
-				end
-			end
-		rescue => e
-			$log.error(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
-			sleep 1
-			retry
-		end
-	end
-end
-
-class SplaydProtocol
-	
-	class RegisterError < StandardError; end
-	class ProtocolError < StandardError; end
-
-	@@sleep_time = SplayControllerConfig::SPSleepTime
-	@@ping_interval = SplayControllerConfig::SPPingInterval
-	@@socket_timeout = SplayControllerConfig::SPSocketTimeout
-	@@logd_ip = SplayControllerConfig::LogdIP
-	@@logd_port = SplayControllerConfig::LogdPort
-	@@log_max_size = SplayControllerConfig::LogMaxSize
-	@@num_logd = SplayControllerConfig::NumLogd
-	@@localize = SplayControllerConfig::Localize
-	@@nat_gateway_ip = SplayControllerConfig::NATGatewayIP
-
-	@splayd = nil
-	@ip = nil
-	@so_ori = nil
-	@so = nil
-
-	def initialize(so)
-		@ip = so.peeraddr[3]
-		@so_ori = so
-		@so = LLenc.new(so)
-		@so.set_timeout(@@socket_timeout)
-	end
-
-	def run
-		return Thread.new do
-			begin
-				auth
-				main
-			rescue DBI::Error => e
-				$log.fatal(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
-			rescue => e
-				# "normal" situation
-				$log.warn(e.class.to_s + ": " + e.to_s)
-			ensure
-				# When the thread is killed, this part is NOT threaded !
-				if @splayd
-					$log.info("Thread of splayd (#{@splayd}) will end now.")
-				else
-					$log.info("Thread of splayd (ip: #{@ip}) will end now.")
-				end
-
-				if @splayd
-					SplaydServer.threads.delete(@splayd.id)
-				end
-				
-				begin; @so_ori.close; rescue; end
-			end
-		end
-	end
-
-	def refused(msg)
-		@so.write "REFUSED"
-		@so.write msg
-		raise RegisterError, msg
-	end
-    # 
-  	def pre_auth
-  	end
-  
- 	def auth_update_lib
-  	end
-	# Initialize splayd connection, authenticate, session, ...
-	def auth
-		$log.debug("A splayd (#{@ip}) try to connect.")
-
-		if @so.read != "KEY" then raise ProtocolError, "KEY" end
-		key = addslashes(@so.read)
-		session = addslashes(@so.read)
-
-		ok = true
-		@splayd = Splayd.new(key)
-
-		if not @splayd.id or @splayd.row['status'] == "DELETED"
-			refused "That splayd doesn't exist: #{key}"
-		end
-
-		if @@nat_gateway_ip and @ip == @@nat_gateway_ip
-			if key =~ /NAT_([^_]*)_.*/ or key =~ /NAT_(.*)/
-				$log.info("#{@splayd}: IP change (NAT) from #{@ip} to #{$1}")
-				@ip = $1
-			else
-				$log.info("#{@splayd}: IP of NAT gateway without replacement.")
-			end
-		end
-
-    ## This restriction is way too restrictive, and it makes impossible
-    ## to deploy several splayds on the same phisical machine, a typical
-    ## scenario in cluster deployments.
-		##if not @splayd.ip_check(@ip)
-		##	refused "Your IP is already used by another splayd."
-		##end
-
-		if not @splayd.check_and_set_preavailable
-			refused "Your splayd is already connected. " +
-				 "Try to kill an existing process or wait " +
-				 "2 minutes and retry."
-		end
-
-		# From here if there is not an external error (socket or db problem), the
-		# splayd will be accepted.
-
-		old_ip = @splayd.row['ip']
-		begin
-			SplaydServer.threads[@splayd.id] = Thread.current
-
-			# update ip if needed
-			if @ip != old_ip
-				@splayd.update("ip", @ip)
-			end
-
-			# check if we can restore the session or not
-			if session != @splayd.row['session'] or @ip != old_ip
-				same = false
-				@splayd.reset # (change session too)
-			else
-				same = true
-			end
-
-      		# Implemented only in JobdGrid as of now
-      		auth_update_lib()
-
-			@so.write "OK"
-			@so.write @splayd.row['session']
-
-			if same
-				$log.info("#{@splayd}: Session OK")
-			else
-				@so.write "INFOS"
-				@so.write @ip
-				if @so.read != "OK" then raise ProtocolError, "INFOS not OK" end
-				infos = @so.read # no addslashes (json)
-				
-				@splayd.insert_splayd_infos(infos)
-				@splayd.update_splayd_infos()
-
-				bl = Splayd.blacklist
-				@so.write "BLACKLIST"
-				@so.write bl.to_json
-				if @so.read != "OK" then raise ProtocolError, "BLACKLIST not OK" end
-
-				logv = {}
-				logv['ip'] = @@logd_ip
-				logv['port'] = @@logd_port + rand(@@num_logd)
-				logv['max_size'] = @@log_max_size
-				@so.write "LOG"
-				@so.write logv.to_json
-				if @so.read != "OK" then raise ProtocolError, "LOG not OK" end
-				$log.info("#{@splayd}: Log port: #{logv['port']}")
-			end
-			$log.info("#{@splayd}: Auth OK")
-			@splayd.available
-		rescue => e
-			# restore previous status (REGISTER, UNAVAILABLE or RESET)
-			@splayd.update("status", @splayd.row['status'])
-			raise e
-		end
-
-		if @ip != old_ip and @@localize
-			$log.info("#{@splayd}: Localization")
-			@splayd.localize
-		end
-
-		# TODO Invariant check @splayd.row must be == to a new fetch of infos
-	end
-
-	def main
-		begin
-			last_contact = @splayd.last_contact
-			running = true
-			while running
-				action = @splayd.next_action
-
-				if not action
-					if Time.now.to_i - last_contact > @@ping_interval
-						# "Inlining PING" Avoid 2 DB operations
-						@so.write "PING"
-						if @so.read != "OK" then raise ProtocolError, "PING not OK" end
-						last_contact = @splayd.last_contact
-					end
-					sleep(rand(@@sleep_time * 2 * 100).to_f / 100)
-				else
-
-					$log.debug("#{@splayd}: Action #{action['command']}")
-
-					start_time = Time.now.to_f
-					@so.write action['command']
-					if action['data']
-						if action['command'] == 'LIST' and action['position']
-							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
-						end
-						@so.write action['data']
-					end
-					reply_code = @so.read
-					if reply_code == "OK"
-						if action['command'] == "REGISTER"
-							port = addslashes(@so.read)
-							reply_data = port
-						end
-						if action['command'] == "STATUS"
-							reply_data = @so.read # no addslashes (json)
-						end
-						if action['command'] == "LOADAVG"
-							reply_data = addslashes(@so.read)
-						end
-						if action['command'] == "HALT" or action['command'] == "KILL"
-							running = false
-						end
-					end
-					reply_time = Time.now.to_f - start_time
-
-
-
-					# We tolerate some errors because one command
-					# can be sent twice if there is a controller failure
-					# juste after the send. But REGISTER can not have an
-					# error because we don't re-send it, we send an
-					# FREE then REGISTER again to avoid that.
-
-					# All the @db.s_j_* functions are replayable.
-
-					if action['command'] == "REGISTER"
-						if reply_code == "OK"
-							# Update the job slot from RESERVED to WAITING
-							@splayd.s_j_register(action['job_id'])
-							@splayd.s_sel_reply(action['job_id'], reply_data, reply_time)
-						else
-							raise ProtocolError, "REGISTER not OK: #{reply_code}"
-						end
-					end
-
-					if action['command'] == "START"
-						if reply_code == "OK" or reply_code == "RUNNING"
-							@splayd.s_j_start(action['job_id'])
-						else
-							raise ProtocolError, "START not OK: #{reply_code}"
-						end
-					end
-
-					if action['command'] == "STOP"
-						if reply_code == "OK" or reply_code == "NOT_RUNNING"
-							@splayd.s_j_stop(action['job_id'])
-						else
-							raise ProtocolError, "STOP not OK: #{reply_code}"
-						end
-					end
-
-					if action['command'] == "FREE"
-						@splayd.s_j_free(action['job_id'])
-					end
-
-					if action['command'] == "STATUS"
-						@splayd.s_j_status(reply_data)
-					end
-
-					if action['command'] == "LOADAVG"
-						@splayd.parse_loadavg(reply_data)
-					end
-
-					# We will remove the action here so, if the
-					# controller crash between the reply and here, we
-					# will do (or redo) the proper DB things.
-					@splayd.remove_action(action)
-
-					last_contact = @splayd.last_contact
-				end
-			end
-		ensure
-			@splayd.unavailable
-			@splayd.action_failure
-		end
-	end
-end
-
-# TODO
-# This class may appear in its own file or not.
-# Passing the protocol as an argument in SplaydServerß could allow 
-# better reusability
-class SplaydGridProtocol < SplaydProtocol
-  
-  def auth_update_lib
-    #$log.info( "auth_update_lib")
-    in_table = @so.read # sent through json
-    $log.debug(in_table)
-    in_table = JSON.parse(in_table)
-    #$log.info("receive library list:")
-    
-    out_table = []
-    #UPDATE  libs that exist on the splayds
-    # LIST ALL SHA1
-    old_libs = []
-    # DELETE ALL AND ADD OLD BUT VALID AND  THE NEW LIBS INTO THE TABLE splayd_libs
-    $db.do("DELETE FROM splayd_libs WHERE splayd_id='#{@splayd.row['id']}'")
-    
-    in_table.each do |lib_pair|
-      tmp_lib = $db.select_one("SELECT * FROM libs WHERE lib_sha1='#{lib_pair['sha1']}'")
-      if tmp_lib then
-        $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{tmp_lib['id']}' ")
-      else
-        old_libs.push(lib_pair)
-      end
-    end
-    
-    old_libs_json = JSON.unparse(old_libs)
-    @so.write old_libs_json
-    if @so.read != "OK" then raise ProtocolError, "UPDATE LIB NOT OK" end
-  end
-  
-  def main
-		begin
-			last_contact = @splayd.last_contact
-			running = true
-			while running
-				action = @splayd.next_action
-
-				if not action
-					if Time.now.to_i - last_contact > @@ping_interval
-						# "Inlining PING" Avoid 2 DB operations
-						@so.write "PING"
-						if @so.read != "OK" then raise ProtocolError, "PING not OK" end
-						last_contact = @splayd.last_contact
-					end
-					sleep(rand(@@sleep_time * 2 * 100).to_f / 100)
-				else
-					lib_id = nil
-					start_time = Time.now.to_f
-					@so.write action['command']
-					if action['data']
-						if action['command'] == 'LIST' and action['position']
-							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
-						elsif action['command'] == "REGISTER"
-							job = action['data']
-							job = JSON.parse(job)
-							if job['lib_name' ] && job['lib_name'] != ""
-								lib = $db.select_one("SELECT * FROM splayd_libs, libs WHERE splayd_libs.lib_id=libs.id AND splayd_libs.splayd_id=#{@splayd.row['id']} 
-	                                      AND libs.lib_name='#{job['lib_name']}' AND libs.lib_version='#{job['lib_version']}'")
-	                			if not lib #$log.debug("Send the lib to the splayd and add it in splayd_libs #{@splayd.row['architecture']} AND lib_os=#{@splayd['os']}")
-	                  				lib = $db.select_one("SELECT * FROM libs WHERE lib_name='#{job['lib_name']}' AND lib_version='#{job['lib_version']}' 
-	                                        AND lib_arch='#{@splayd.row['architecture']}' AND lib_os='#{@splayd.row['os']}'")
-	                  				job['lib_code'] = lib['lib_blob']
-	                				job['lib_sha1'] = lib['lib_sha1']
-	                				lib_id = lib['id']
-	                			end
-	                			job['lib_sha1'] = lib['lib_sha1']
-	                			job = job.to_json
-	                			action['data'] = job
-	              			end
-						end
-						@so.write action['data']
-					end
-					reply_code = @so.read
-					if reply_code == "OK"
-						if action['command'] == "REGISTER"
-						  if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
-							port = addslashes(@so.read)
-							reply_data = port
-						end
-						if action['command'] == "STATUS"
-							reply_data = @so.read # no addslashes (json)
-						end
-						if action['command'] == "LOADAVG"
-							reply_data = addslashes(@so.read)
-						end
-						if action['command'] == "HALT" or action['command'] == "KILL"
-							running = false
-						end
-					end
-					reply_time = Time.now.to_f - start_time
-
-
-
-					# We tolerate some errors because one command
-					# can be sent twice if there is a controller failure
-					# juste after the send. But REGISTER can not have an
-					# error because we don't re-send it, we send an
-					# FREE then REGISTER again to avoid that.
-
-					# All the @db.s_j_* functions are replayable.
-
-					if action['command'] == "REGISTER"
-						if reply_code == "OK"
-							# Update the job slot from RESERVED to WAITING
-							@splayd.s_j_register(action['job_id'])
-							@splayd.s_sel_reply(action['job_id'], reply_data, reply_time)
-						else
-							raise ProtocolError, "REGISTER not OK: #{reply_code}"
-						end
-					end
-
-					if action['command'] == "START"
-						if reply_code == "OK" or reply_code == "RUNNING"
-							@splayd.s_j_start(action['job_id'])
-						else
-							raise ProtocolError, "START not OK: #{reply_code}"
-						end
-					end
-
-					if action['command'] == "STOP"
-						if reply_code == "OK" or reply_code == "NOT_RUNNING"
-							@splayd.s_j_stop(action['job_id'])
-						else
-							raise ProtocolError, "STOP not OK: #{reply_code}"
-						end
-					end
-
-					if action['command'] == "FREE"
-						@splayd.s_j_free(action['job_id'])
-					end
-
-					if action['command'] == "STATUS"
-						@splayd.s_j_status(reply_data)
-					end
-
-					if action['command'] == "LOADAVG"
-						@splayd.parse_loadavg(reply_data)
-					end
-
-					# We will remove the action here so, if the
-					# controller crash between the reply and here, we
-					# will do (or redo) the proper DB things.
-					@splayd.remove_action(action)
-
-					last_contact = @splayd.last_contact
-				end
-			end
-		ensure
-			@splayd.unavailable
-			@splayd.action_failure
-		end
-	end
-end
-
 
 class Splayd
 
@@ -536,31 +9,36 @@ class Splayd
 	@@transaction_mutex = Mutex.new
 	@@unseen_timeout = 3600
 	@@auto_add = SplayControllerConfig::AutoAddSplayds
-
+  
+  @row = nil #a pointer to the row in the database for this splayd
+  
 	def initialize(id)
-		@row = $db.select_one "SELECT * FROM splayds WHERE id='#{id}'"
-		if not @row
-			@row = $db.select_one "SELECT * FROM splayds WHERE `key`='#{id}'"
+    @row = $db[:splayds].first(:id=>id)
+	  if not @row
+			@row = $db[:splayds].first(:key=>id)
 		end
-		if not @row and @@auto_add
-			$log.info "Splayd #{id} Auto-added"
-			$db.do "INSERT INTO splayds SET `key`='#{id}'"
-			@row = $db.select_one "SELECT * FROM splayds WHERE `key`='#{id}'"
+    if not @row and @@auto_add
+			$db[:splayds].insert(:key=>id)
+			@row = $db[:splayds].where(:key=>id)
 		end
-		if @row then @id = @row['id'] end
-	end
+		if @row then
+       @id = @row.get(:id)
+     end
+    $log.debug("Splayd #{id} initialized")
+ 	end
 
 	def self.init
-		$db.do "UPDATE splayds
-				SET status='UNAVAILABLE'
-				WHERE
-				status='AVAILABLE' or status='PREAVAILABLE'"
+    $db[:splayds].where{status=='AVAILABLE' || status=='PREAVAILABLE'}.update(:status=>'UNAVAILABLE')
+	  #$db.do "UPDATE splayds
+		#		SET status='UNAVAILABLE'
+		#		WHERE
+		#		status='AVAILABLE' or status='PREAVAILABLE'"
 		Splayd.reset_actions
 		Splayd.reset_unseen
 	end
 
 	def self.reset_unseen
-		$db.select_all "SELECT * FROM splayds WHERE
+		$db.fetch "SELECT * FROM splayds WHERE
 				last_contact_time<'#{Time.now.to_i - @@unseen_timeout}' AND
 				(status='AVAILABLE' OR
 				status='UNAVAILABLE' OR
@@ -578,10 +56,10 @@ class Splayd
 		# When the controller start, if some actions where send but still not
 		# replied, we will never receive the reply so we set the action to the
 		# FAILURE status.
-		$db.do "UPDATE actions SET status='FAILURE' WHERE status='SENDING'"
-
+		#$db.do "UPDATE actions SET status='FAILURE' WHERE status='SENDING'"
+    $db[:actions].where(:status=>'SENDING').update(:status=>'FAILURE')
 		# Uncomplete actions, jobd should put the again.
-		$db.do "DELETE FROM actions WHERE status='TEMP'"
+		$db[:actions].where(:status=>'TEMP').delete #$db.do "DELETE FROM actions WHERE status='TEMP'"
 	end
 
 	def self.gen_session
@@ -589,7 +67,7 @@ class Splayd
 	end
 	
 	def self.has_job(splayd_id, job_id)
-		sj = $db.select_one "SELECT * FROM splayd_jobs
+		sj = $db.fetch "SELECT * FROM splayd_jobs
 				WHERE splayd_jobs.splayd_id='#{splayd_id}' AND
 				splayd_jobs.job_id='#{job_id}'"
 		if sj then return true else return false end
@@ -625,7 +103,7 @@ class Splayd
 
 	def self.blacklist
 		hosts = []
-		$db.select_all "SELECT host FROM blacklist_hosts" do |row|
+		$db[:blacklist_hosts].select(:host) do |row| #.select_all "SELECT host FROM blacklist_hosts"
 			hosts << row[0]
 		end
 		return hosts
@@ -633,7 +111,7 @@ class Splayd
 
 	def self.localize_all
 		return Thread.new do
-			$db.select_all "SELECT id FROM splayds" do |s|
+			$db[:splayds].select(:id) do |s| #.select_all "SELECT id FROM splayds"
 				splayd = Splayd.new(s['id'])
 				splayd.localize
 			end
@@ -642,39 +120,36 @@ class Splayd
 
 	def to_s
 		if @row['name'] and @row['ip']
-			return "#{@id} (#{@row['name']}, #{@row['ip']})"
+			return "#{@id} (#{@row.get(:name)}, #{@row.get(:ip)})"
 		elsif @row['ip']
-			return "#{@id} (#{@row['ip']})"
+			return "#{@id} (#{@row.get(:ip)})"
 		else
 			return "#{@id}"
 		end
 	end
 
 	def check_and_set_preavailable
-		r = false
+  	r = false
 		# to protect the $dbt object while in use.
 		@@transaction_mutex.synchronize do
-			#$dbt.transaction do |dbt|
-			$dbt.do "BEGIN"
-				status = ($dbt.select_one "SELECT status FROM splayds
-						  WHERE id='#{@id}' FOR UPDATE")['status']
-				if status == 'REGISTERED' or status == 'UNAVAILABLE' or status == 'RESET' then
+			$dbt.transaction do
+        status= $dbt[:splayds].where(:id=>@id).get(:status)
+       	if status == 'REGISTERED' or status == 'UNAVAILABLE' or status == 'RESET' then
 					$dbt.do "UPDATE splayds SET
 							status='PREAVAILABLE'
 							WHERE id ='#{@id}'"
 					r = true
 				end
-			$dbt.do "COMMIT"
-			#end
+			end # COMMIT issued only here
 		end
 		return r
 	end
 
 	# Check that this IP is not used by another splayd.
 	def ip_check ip
-		if ip == "127.0.0.1" or ip=="::ffff:127.0.0.1" or not $db.select_one "SELECT * FROM splayds WHERE
+		if ip == "127.0.0.1" or ip=="::ffff:127.0.0.1" or not $db.fetch "SELECT * FROM splayds WHERE
 				ip='#{ip}' AND
-				`key`!='#{@row['key']}' AND
+				`key`!='#{@row.get(:key)}' AND
 				(status='AVAILABLE' OR status='UNAVAILABLE' OR status='PREAVAILABLE')"
 			true
 		else
@@ -690,8 +165,7 @@ class Splayd
 		else
 			infos['status']['endianness'] = "big"
 		end
-
-		# We don't update ip, key, session and localization infomrations here
+   	# We don't update ip, key, session and localization infomrations here
 		$db.do "UPDATE splayds SET
 				name='#{addslashes(infos['settings']['name'])}',
 				version='#{addslashes(infos['status']['version'])}',
@@ -720,16 +194,16 @@ class Splayd
 	end
 
 	def update_splayd_infos
-		@row = $db.select_one "SELECT * FROM splayds WHERE id='#{@id}'"
+		@row = $db[:splayds].first(:id=>@id)
 	end
 
 	def localize
-		if @row['ip'] and
-				not @row['ip'] == "127.0.0.1" and
-				not @row['ip'] =~ /192\.168\..*/ and
-				not @row['ip'] =~ /10\.0\..*/
+		if @row.get(:ip) and
+				not @row.get(:ip) == "127.0.0.1" and
+				not @row.get(:ip) =~ /192\.168\..*/ and
+				not @row.get(:ip) =~ /10\.0\..*/
 
-			$log.debug("Trying to localize: #{@row['ip']}")
+			$log.debug("Trying to localize: #{@row.get(:ip)}")
 			begin
 				hostname = ""
 				begin
@@ -841,6 +315,7 @@ class Splayd
 	def next_action
 		action = $db.select_one "SELECT * FROM actions WHERE
 				splayd_id='#{@id}' ORDER BY id LIMIT 1"
+		$log.debug("next action to do: #{action}")
 		if action 
 			if action['status'] == 'TEMP'
 				$log.info("INCOMPLETE ACTION: #{action['command']} " +

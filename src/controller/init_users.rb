@@ -27,7 +27,7 @@
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
 
 def drop_db(db)
-	db.do("DROP TABLE IF EXISTS users")
+	db.drop_table?(:users)
 end
 
 def init_db(db)
@@ -45,16 +45,16 @@ def init_db(db)
 		demo int(11) default '1'
 		);")
 	time_now = Time.new().strftime("%Y-%m-%d %T")
-	$db.do("INSERT INTO users SET 
+	db.do("INSERT INTO users SET 
 		login='admin', 
 		crypted_password='d033e22ae348aeb5660fc2140aec35850c4da997', 
 		created_at='#{time_now}', 
 		admin=1, 
 		demo=0")
-
 end
-
-db = DBUtils::get_new
-drop_db(db)
-init_db(db)
-db.disconnect
+if __FILE__ == $0 then
+  db = DBUtils::get_new_mysql_sequel
+  drop_db(db)
+  init_db(db)
+  db.disconnect
+end

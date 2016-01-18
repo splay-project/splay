@@ -2,7 +2,7 @@
 
 <h1>Submit a new Splay Job</h1>
 
-<% form_tag({:action => 'create'}, {:multipart => true}, :html=> {:id => 'myform'}) do %>
+<% form_tag('/job/create/myform', {:multipart => true, :id => 'myform'}) do %>
   <%= render :partial => 'form' %>
   <%= submit_tag "Create" %>
 <% end %>

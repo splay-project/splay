@@ -25,7 +25,7 @@ class SplayController < ApplicationController
 
   def self.mode
     # local | network | planetlab | ground | live
-    "planetlab"
+    "ground"
   end
 
   def self.localization

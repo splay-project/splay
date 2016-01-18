@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#L_PATH=/usr/share/lua/5.1
-#L_CPATH=/usr/lib/lua/5.1
-L_PATH="$HOME/local/lualibs/lib"
-L_CPATH="$HOME/local/lualibs/clib"
+L_PATH=/usr/share/lua/5.2
+L_CPATH=/usr/lib/splayd
+#L_PATH="$HOME/local/lualibs/lib"
+#L_CPATH="$HOME/local/lualibs/clib"
 
 if [[ $L_PATH == "" ]]; then
 	echo "L_PATH not set, set it (LUA_PATH)."

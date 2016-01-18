@@ -66,7 +66,7 @@ class LogdServer
 				# check)
 
 				# TODO make a static function in Splayd.
-				splayd = $db.select_one "SELECT id FROM splayds WHERE
+				splayd = $db.fetch "SELECT id FROM splayds WHERE
 						(status='AVAILABLE' OR status='UNAVAILABLE') AND
 						ip='#{ip}'"
 
@@ -140,7 +140,7 @@ class Logd
 				splayd_session = @so.gets.chop
 
 				if @@nat_gateway_ip and ip == @@nat_gateway_ip
-					job = $db.select_one "SELECT
+					job = $db.fetch "SELECT
 							jobs.id, splayds.id AS splayd_id, splayds.ip AS splayd_ip
 							FROM splayds, splayd_selections, jobs WHERE
 							jobs.ref='#{job_ref}' AND
@@ -150,7 +150,7 @@ class Logd
 							splayd_selections.splayd_id=splayds.id"
 				else
 					# We verify that the job exists and runs on a splayd that have this IP.
-					job = $db.select_one "SELECT
+					job = $db.fetch "SELECT
 							jobs.id, splayds.id AS splayd_id, splayds.ip AS splayd_ip
 							FROM splayds, splayd_selections, jobs WHERE
 							jobs.ref='#{job_ref}' AND
