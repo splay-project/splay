@@ -121,7 +121,7 @@ function _M.table_keyset(t)
 	return s
 end
 
---[[ Concatenate 2 tables (dupplicate elements) ]]--
+--[[ Concatenate 2 tables (duplicate elements) ]]--
 -- DEPRECATED
 function _M.table_concat(t1, t2)
 	if not t1 and not t2 then return {} end
