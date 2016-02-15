@@ -20,8 +20,7 @@
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'topology_parser')) ## parse xml and and build topology map 
-#require File.expand_path(File.join(File.dirname(__FILE__), 'json')) ## to encode the topology map
-require"json" #using gem 'json' 
+require"json" 
 class Jobd
 
 	@@threads = {} # to kill
@@ -90,80 +89,63 @@ class Jobd
 	# A fast created json string with the node position or with the futur
 	# "to be replaced parameter" _POSITION_
 	def self.my_json(list)
-		out = '{"ref":"' + list['ref'] + '"'
-
-		if not list['position']
-			out += ',"position":"_POSITION_"'
+    start=Time.now
+    j = Hash.new
+    j["ref"]=list['ref']
+    if not list['position']
+      j["position"]="_POSITION_"
 		else
-			out += ',"position":' + list['position'].to_s
+      j["position"]=list['position']
 		end
 
 		if list['type']
-			out += ',"type":"' + list['type'].to_s + '"'
+      j["type"]=list['type']
 		else
-			out += ',"type":"head"'
+      j["type"]="head"			
 		end
 
-		nodes = ""
+    nodes=Array.new
 		list['nodes'].each do |n|
-			nodes = nodes + '{"ip":"' + n['ip'].to_s + '","port":' +
-					n['port'].to_s + '},'
-		end
-		if nodes.size > 0
-			nodes = nodes[0, nodes.length - 1]
-			out += ',"nodes":[' + nodes + ']'
-		else
-			out += ',"nodes":[]'
-		end
-
-		# If there is a timeline (trace_alt type of job)
+      nd=Hash.new
+      nd["ip"]=n['ip']
+      nd["port"]=n['port']      
+      nodes.push(nd)
+ 		end		
+    j["nodes"]=nodes
+    
+		# If there is a timeline (--trace_alt type of job)
 		if list['timeline']
-			# starts the JSON string for "timeline"
-			timelines = ',"timeline":['
+      all_timelines = Array.new
 			# for each of the lines in the timeline (chronologically sorted)
 			list['timeline'].sort_by { |k, v| k }.each do |list_timeline|
 				# t (time) is the time of the event
 				t = list_timeline[0]
 				# tl (timeline) has a list of nodes that are ON at that time
-				tl = list_timeline[1]
-				# initializes nodes as an empty string
-				nodes = ""
-				# for each node on the list tl
-				tl.each do |n|
-					# add the node to the JSON string
-					nodes = nodes + n.to_s + ','
-				end
-				# if there are nodes
-				if nodes.size > 0
-					# cut the final "," before adding the string
-					nodes = nodes[0, nodes.length - 1]
-				end
-				# add the string into the main "timeline" string
-				timelines = timelines + '{"time":' + t.to_s + ',"nodes":[' + nodes + ']},'
+				tl = list_timeline[1]        
+        tt=Hash.new
+        tt["time"]=t
+        tt["nodes"]=tl
+        all_timelines.push(tt)
 			end
-			# add the "timeline" string to the JSON out string
-			out += timelines[0, timelines.length - 1] + ']'
-		end
+      j["timeline"]=all_timelines
 
-		# If there is a "my_timeline" table (table that describes only the timeline of the node)
-		if list['my_timeline']
-			# initializes the string
-			my_timeline = ',"my_timeline":['
-			# for each element in "my_timeline"
+		end
+    # "my_timeline" describes only the timeline of the node
+		if list['my_timeline']			
+			my_timeline_events=Array.new
 			list['my_timeline'].each do |mtl|
-				# add it to the string
-				my_timeline = my_timeline + mtl.to_s + ','
+        my_timeline_events.push(mtl)
 			end
-			# add "my_timeline" to the JSON out string
-			out += my_timeline[0, my_timeline.length - 1] + ']'
+      j["my_timeline"]=my_timeline_events
 		end
-    if list['topology'] ##present if added in the raw_list function
-          out+=',"topology":'+JSON.unparse(list['topology'])
-        end
-		out += '}'
-		if not JSON.parse(out) then
-			$log.info("Some error occurred while parsing JSON-encoded job: \n #{out}")
-		end
+    if list['topology'] ##splaynet
+      j["topology"]=list['topology']
+    end
+   	out = JSON.unparse(j) #this is where the serialization happens
+	  #do not check for validity, can be costly
+		#if not JSON.parse(out) then
+		#	$log.info("Some error occurred while parsing JSON-encoded job: \n #{out}")
+		#end
 		return out
 	end
 
