@@ -18,21 +18,22 @@ require 'sequel'
 require 'mysql2'
 
 class DBUtils
-    
-	def self.get_new_mysql_sequel
-		if $log then
+  def self.get_new_mysql_sequel
+    if $log then
       $log.info("New DB connection (Sequel+MySQL)")
     end
-		db = Sequel.connect("mysql://#{SplayControllerConfig::SQL_USER}:#{SplayControllerConfig::SQL_PASS}@#{SplayControllerConfig::SQL_HOST}:#{SplayControllerConfig::SQL_PORT}/#{SplayControllerConfig::SQL_DB}")
-		#db.autocommit(false) -- not supported by Sequel adapter for mysql ?
+    url = "mysql://#{SplayControllerConfig::SQL_USER}:#{SplayControllerConfig::SQL_PASS}@" +
+      "#{SplayControllerConfig::SQL_HOST}:#{SplayControllerConfig::SQL_PORT}/#{SplayControllerConfig::SQL_DB}"
+    db = Sequel.connect(url)
+    #db.autocommit(false) -- not supported by Sequel adapter for mysql ?
     class << db 
       alias :do :run
     end		
-		return db
-	end
+    return db
+  end
   
   def self.get_new_sqlite
-		$log.info("New DB connection (Sequel + InMemory SQLite)")    
+    $log.info("New DB connection (Sequel + InMemory SQLite)")    
     db = Sequel.sqlite
     return db
   end

@@ -30,8 +30,8 @@ require File.expand_path(File.join(File.dirname(__FILE__), '../lib/common'))
 #require '../lib/common.rb'
 #library required for hashing
 require 'digest/sha1'
-require 'lua-merger.rb'
-
+#require 'lua-merger.rb'
+require File.expand_path(File.join(File.dirname(__FILE__), 'lua-merger.rb'))
 #Main class
 class Ctrl_api
 	#function get_log: triggered when a "GET LOG" message is received, returns the corresponding log file as a string

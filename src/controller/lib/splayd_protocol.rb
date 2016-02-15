@@ -34,9 +34,11 @@ class SplaydProtocol
 				auth
 				main
 			rescue DBI::Error => e
+                                $log.info(e.backtrace)
 				$log.fatal(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
 			rescue => e
 				# "normal" situation
+                                $log.info(e.backtrace)
 				$log.warn(e.class.to_s + ": " + e.to_s)
 			ensure
 				# When the thread is killed, this part is NOT threaded !
@@ -72,14 +74,13 @@ class SplaydProtocol
    	if @so.read != "KEY" then raise ProtocolError, "KEY" end
 		key = addslashes(@so.read)
 		session = addslashes(@so.read)
-    p "#{key} #{session}"
 		ok = true
+
 		@splayd = Splayd.new(key)
-    p "New splayd created: #{@splayd}"
-		if not @row[:id] or @row[:status] == "DELETED"
+                $log.info("New splayd created: #{@splayd}")
+		if not @splayd.row[:id] or @splayd.row[:status] == "DELETED"
 			refused "That splayd doesn't exist or was deleted: #{key}"
 		end
-
 		if @@nat_gateway_ip and @ip == @@nat_gateway_ip
 			if key =~ /NAT_([^_]*)_.*/ or key =~ /NAT_(.*)/
 				$log.info("#{@splayd}: IP change (NAT) from #{@ip} to #{$1}")
@@ -88,27 +89,25 @@ class SplaydProtocol
 				$log.info("#{@splayd[:id]}: IP of NAT gateway without replacement.")
 			end
 		end
-    
-		if not @splayd.check_and_set_preavailable
-			refused "Your splayd is already connected. " +
-				 "Try to kill an existing process or wait " +
-				 "2 minutes and retry."
-		end
-    
+		#if not @splayd.check_and_set_preavailable
+		#	refused "Your splayd is already connected. " +
+		#		 "Try to kill an existing process or wait " +
+		#		 "2 minutes and retry."
+		#end
 		# From here if there is not an external error (socket or db problem), the
 		# splayd will be accepted.
 
-		old_ip = @row[:ip]
+		old_ip = @splayd.row[:ip]
 		begin
 			SplaydServer.threads[@id] = Thread.current
 
 			# update ip if needed
 			if @ip != old_ip
-				@splayd.update(:ip=>@ip)
+				@splayd.update('ip', @ip)
 			end
 
 			# check if we can restore the session or not
-			if session != @splayd[:session] or @ip != old_ip
+			if session != @splayd.row[:session] or @ip != old_ip
 				same = false
 				@splayd.reset # (change session too)
 			else
@@ -119,7 +118,7 @@ class SplaydProtocol
       auth_update_lib()
 
 			@so.write "OK"
-			@so.write @splayd[:session]
+			@so.write @splayd.row[:session]
 
 			if same
 				$log.info("#{@splayd}: Session OK")
@@ -163,6 +162,7 @@ class SplaydProtocol
 	end
 
 	def main
+          $log.info('DOING MAIN!!!')
 		begin
 			last_contact = @splayd.last_contact
 			running = true

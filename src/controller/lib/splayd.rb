@@ -9,22 +9,22 @@ class Splayd
 	@@transaction_mutex = Mutex.new
 	@@unseen_timeout = 3600
 	@@auto_add = SplayControllerConfig::AutoAddSplayds
-  
-  @row = nil #a pointer to the row in the database for this splayd
+        @row = nil #a pointer to the row in the database for this splayd
   
 	def initialize(id)
-    @row = $db[:splayds].first(:id=>id)
+          @row = $db[:splayds].first(:id=>id)
+
 	  if not @row
-			@row = $db[:splayds].first(:key=>id)
-		end
-    if not @row and @@auto_add
-			$db[:splayds].insert(:key=>id)
-			@row = $db[:splayds].where(:key=>id)
-		end
-		if @row then
-       @id = @row.get(:id)
-     end
-    $log.debug("Splayd #{id} initialized")
+            @row = $db[:splayds].first(:key=>id)
+	  end
+          if not @row and @@auto_add
+	    $db[:splayds].insert(:key=>id)
+	    @row = $db[:splayds].where(:key=>id)
+	  end
+	  if @row then
+            @id = @row[:id]
+          end
+          $log.info("Splayd #{@id} initialized")
  	end
 
 	def self.init
@@ -129,18 +129,16 @@ class Splayd
 	end
 
 	def check_and_set_preavailable
-  	r = false
-		# to protect the $dbt object while in use.
-		@@transaction_mutex.synchronize do
-			$dbt.transaction do
-        status= $dbt[:splayds].where(:id=>@id).get(:status)
-       	if status == 'REGISTERED' or status == 'UNAVAILABLE' or status == 'RESET' then
-					$dbt.do "UPDATE splayds SET
-							status='PREAVAILABLE'
-							WHERE id ='#{@id}'"
-					r = true
-				end
-			end # COMMIT issued only here
+          r = false
+          # to protect the $dbt object while in use.
+	  @@transaction_mutex.synchronize do
+	  $dbt.transaction do
+          status= $dbt[:splayds].where(:id=>@id).get(:status)
+       	  if status == 'REGISTERED' or status == 'UNAVAILABLE' or status == 'RESET' then
+	    $dbt.do "UPDATE splayds SET status='PREAVAILABLE' WHERE id ='#{@id}'"
+	    r = true
+          end
+	end # COMMIT issued only here
 		end
 		return r
 	end
@@ -290,30 +288,28 @@ class Splayd
 
 	# Restore actions in failure state.
 	def restore_actions
-		$db.select_all "SELECT * FROM actions WHERE
-				status='FAILURE' AND
-				splayd_id='#{@id}'" do |action|
-
-			if action['command'] == 'REGISTER'
-				# We should put the FREE-REGISTER at the same place
-				# where REGISTER was. But, no other register action concerning
-				# this splayd and this job can exists (because registering is
-				# split into states), so, if we remove the REGISTER, we can safely
-				# add the FREE-REGISTER commands at the top of the
-				# actions.
-				job = $db.select_one "SELECT ref FROM jobs WHERE id='#{action['job_id']}'"
-				$db.do "DELETE FROM actions WHERE id='#{action['id']}'"
-				Splayd.add_action(action['splayd_id'], action['job_id'], 'FREE', job['ref'])
-				Splayd.add_action(action['splayd_id'], action['job_id'], 'REGISTER', addslashes(job['code']))
-			else
-				$db.do "UPDATE actions SET status='WAITING' WHERE id='#{action['id']}'"
-			end
-		end
+          $log.info($db)
+          $db.do "SELECT * FROM actions WHERE status='FAILURE' AND splayd_id='#{@id}'" do |action|
+          if action['command'] == 'REGISTER'
+	    # We should put the FREE-REGISTER at the same place
+	    # where REGISTER was. But, no other register action concerning
+	    # this splayd and this job can exists (because registering is
+	    # split into states), so, if we remove the REGISTER, we can safely
+	    # add the FREE-REGISTER commands at the top of the
+	    # actions.
+	    job = $db.select_one "SELECT ref FROM jobs WHERE id='#{action['job_id']}'"
+	    $db.do "DELETE FROM actions WHERE id='#{action['id']}'"
+	    Splayd.add_action(action['splayd_id'], action['job_id'], 'FREE', job['ref'])
+	    Splayd.add_action(action['splayd_id'], action['job_id'], 'REGISTER', addslashes(job['code']))
+	  else
+	    $db.do "UPDATE actions SET status='WAITING' WHERE id='#{action['id']}'"
+	  end
 	end
+end
 
 	# Return the next WAITING action and set status to SENDING.
 	def next_action
-		action = $db.select_one "SELECT * FROM actions WHERE
+		action = $db.do "SELECT * FROM actions WHERE
 				splayd_id='#{@id}' ORDER BY id LIMIT 1"
 		$log.debug("next action to do: #{action}")
 		if action 
