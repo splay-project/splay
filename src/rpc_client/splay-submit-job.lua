@@ -413,7 +413,7 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 	-- local lib_hash = nil
 	if lib_filename then
 		local body = json.encode({
-			method = "ctrl_api.test_lib_exists",
+			method = "test_lib_exists",
 			params = {lib_filename, lib_version, session_id}
 		})
 		local response = http.request(cli_server_url, body)
@@ -459,7 +459,7 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 	end
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.submit_job",
+		method = "submit_job",
 		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job, topology}
 	})
 

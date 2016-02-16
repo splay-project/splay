@@ -104,7 +104,7 @@ function send_start_session(username, password, cli_server_url)
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.start_session",
+		method = "start_session",
 		params = {username, hashed_password}
 	})
 	--print("JSON_ENCODED:",body)

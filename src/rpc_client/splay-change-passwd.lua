@@ -115,13 +115,14 @@ function send_change_passwd(username, current_password, new_password, cli_server
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.change_passwd",
+		method = "change_passwd",
 		params = {username, hashed_currentpassword, hashed_newpassword}
 	})
 
 
 	--prints that it is sending the message
-	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
+	print(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
+        print(body)
 
 	--sends the command as a POST
 	local response = http.request(cli_server_url, body)
@@ -154,7 +155,7 @@ add_usage_options()
 
 parse_arguments()
 
-print_line(NORMAL, "")
+--prinit(NORMAL, "")
 
 check_min_arg()
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 ## Splay Controller ### v1.3 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
@@ -18,7 +19,6 @@
 
 # Lightweight JSON-RPC over HTTP Service for SPLAY controller in Ruby
 # Created by Valerio Schiavoni
-
 require 'webrick'
 require 'json'
 require File.expand_path(File.join(File.dirname(__FILE__), 'controller-api'))
@@ -26,17 +26,13 @@ class SplayCtrlApiBroker < WEBrick::HTTPServlet::AbstractServlet
   @@ctrl_api = Ctrl_api.new
   def do_POST(request, response)
     json_request=JSON.parse(request.body)
-    method=json_request['method'].split( '.' )[1] 
+    method=json_request['method'] 
     params=json_request['params']
     begin
-      if  params !=nil then
-        if params.size < 1
-          result = @@ctrl_api.send(method)                   
-        else
-          result = @@ctrl_api.send(method,*params)
-        end
+      if params.size == 0
+        result = @@ctrl_api.send(method)                   
       else
-        result = @@ctrl_api.send(method)
+        result = @@ctrl_api.send(method, *params)
       end
       error = nil
     rescue

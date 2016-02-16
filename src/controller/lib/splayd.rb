@@ -38,7 +38,7 @@ class Splayd
 	end
 
 	def self.reset_unseen
-		$db.fetch "SELECT * FROM splayds WHERE
+		$db.do "SELECT * FROM splayds WHERE
 				last_contact_time<'#{Time.now.to_i - @@unseen_timeout}' AND
 				(status='AVAILABLE' OR
 				status='UNAVAILABLE' OR

@@ -76,7 +76,7 @@ function send_list_splayds(cli_server_url, session_id)
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.list_splayds",
+		method = "list_splayds",
 		params = {session_id}
 	})
 

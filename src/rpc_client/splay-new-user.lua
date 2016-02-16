@@ -1,4 +1,5 @@
 #!/usr/bin/env lua
+
 --[[
        Splay Client Commands ### v1.4 ###
        Copyright 2006-2011
@@ -126,7 +127,7 @@ function send_new_user(username, password, cli_server_url,admin_username, admin_
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.new_user",
+		method = "new_user",
 		params = {username, hashed_password, admin_username, admin_hashedpassword}
 	})
 
