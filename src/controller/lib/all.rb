@@ -36,7 +36,7 @@ require File.expand_path(File.join(dir, 'statusd'))
 require File.expand_path(File.join(dir, 'blacklistd'))
 require File.expand_path(File.join(dir, 'loadavgd'))
 
-$db = DBUtils.get_new_mysql_sequel
+#$db = DBUtils.get_new_mysql_sequel
 #TODO Why two access to the DB ?
 #$dbt = DBUtils.get_new_mysql_sequel
 

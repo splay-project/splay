@@ -66,9 +66,9 @@ class LogdServer
 				# check)
 
 				# TODO make a static function in Splayd.
-				splayd = $db.fetch "SELECT id FROM splayds WHERE
+				splayd = $db["SELECT id FROM splayds WHERE
 						(status='AVAILABLE' OR status='UNAVAILABLE') AND
-						ip='#{ip}'"
+						ip='#{ip}'"]
 
 				if splayd or (@@nat_gateway_ip and ip == @@nat_gateway_ip)
 					Logd.new(socket).run
@@ -97,14 +97,14 @@ class Logd
 
   def prefix_ctrl(job)
       ts = Time.now
-      pfix = ts.strftime("%Y-%m-%d %H:%M:%S") << ".#{ts.usec} " << "(#{job['splayd_id']}) "            
+      pfix = ts.strftime("%Y-%m-%d %H:%M:%S") << ".#{ts.usec} " << "(#{job[:splayd_id]}) "            
   		return pfix
   end
   
   def prefix(job,ts=nil)
   		#t = Time.now
   		if ts==nil then ts=Time.now end
-      pfix = ts.strftime("%Y-%m-%d %H:%M:%S") << ".#{ts.usec} " << "(#{job['splayd_id']}) "            
+      pfix = ts.strftime("%Y-%m-%d %H:%M:%S") << ".#{ts.usec} " << "(#{job[:splayd_id]}) "            
   		return pfix
   end
 	
@@ -140,17 +140,17 @@ class Logd
 				splayd_session = @so.gets.chop
 
 				if @@nat_gateway_ip and ip == @@nat_gateway_ip
-					job = $db.fetch "SELECT
+					job = $db["SELECT
 							jobs.id, splayds.id AS splayd_id, splayds.ip AS splayd_ip
 							FROM splayds, splayd_selections, jobs WHERE
 							jobs.ref='#{job_ref}' AND
 							jobs.status='RUNNING' AND
 							splayds.session='#{splayd_session}' AND
 							splayd_selections.job_id=jobs.id AND
-							splayd_selections.splayd_id=splayds.id"
+							splayd_selections.splayd_id=splayds.id"]
 				else
 					# We verify that the job exists and runs on a splayd that have this IP.
-					job = $db.fetch "SELECT
+					job = $db["SELECT
 							jobs.id, splayds.id AS splayd_id, splayds.ip AS splayd_ip
 							FROM splayds, splayd_selections, jobs WHERE
 							jobs.ref='#{job_ref}' AND
@@ -158,7 +158,7 @@ class Logd
 							splayds.ip='#{ip}' AND
 							splayds.session='#{splayd_session}' AND
 							splayd_selections.job_id=jobs.id AND
-							splayd_selections.splayd_id=splayds.id"
+							splayd_selections.splayd_id=splayds.id"]
 				end
         
         
@@ -174,14 +174,14 @@ class Logd
         t= jobd_localtime.split(".")
         jt=Time.at(t[0].to_i,t[1].to_i)        
         difftime = ctrl_time - jt
-        $log.info("Splayd (#{job['splayd_id']}) remote-time before job: #{jt.strftime("%H:%M:%S")}.#{jt.usec.to_s} DIFF: #{difftime} RTT: #{rtt}")
+        $log.info("Splayd (#{job[:splayd_id]}) remote-time before job: #{jt.strftime("%H:%M:%S")}.#{jt.usec.to_s} DIFF: #{difftime} RTT: #{rtt}")
         
          adjust_ts(jt,difftime,rtt)
         $log.debug("Logd retrieved job ref #{job_ref}")
 				if job
 					# TODO replace
 					#@so.set_timeout(24 * 3600)
-					fname = "#{@@log_dir}/#{job['id']}"
+					fname = "#{@@log_dir}/#{job[:id]}"
 					count = 0
           last_ts=nil
 					begin

@@ -51,18 +51,18 @@ class LLenc
 		end
 	end
 
-	def write datas
+	def write(datas)
 		_log ">>> #{datas}"
-		
 		Timeout::timeout(@write_timeout, StandardError) do
-			@socket.write(datas.length.to_s + "\n" + datas)
+		  if datas
+		    @socket.write(datas.length.to_s + "\n" + datas)
+                  end
 		end
 	end
 
 	def read(max = nil)
 
 		Timeout::timeout(@read_timeout, StandardError) do
-
 			length = @socket.readline.to_i
 			if max and length > max
 				raise LLencError, "data too long (#{dl} > #{max})"

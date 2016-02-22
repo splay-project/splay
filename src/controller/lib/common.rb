@@ -58,7 +58,6 @@ if SplayControllerConfig::Localize
 end
 
 $db = DBUtils.get_new_mysql_sequel
-# $new_db = DBUtils.get_new_mysql
 
 BasicSocket.do_not_reverse_lookup = true
 $DEBUG = false

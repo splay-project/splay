@@ -32,9 +32,9 @@ class DBUtils
     return db
   end
   
-  def self.get_new_sqlite
-    $log.info("New DB connection (Sequel + InMemory SQLite)")    
-    db = Sequel.sqlite
-    return db
-  end
+#  def self.get_new_sqlite
+#    $log.info("New DB connection (Sequel + InMemory SQLite)")    
+#    db = Sequel.sqlite
+#    return db
+#  end
 end

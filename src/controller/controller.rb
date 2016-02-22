@@ -19,7 +19,8 @@ puts "Splay Controller is licensed under GPL v3, see COPYING"
 puts
 
 Splayd.init
-$db.do "UPDATE locks SET job_reservation='0' WHERE id ='1'"
+$db.from(:locks).where('id = ?', '1').update(:job_reservation => '0')
+#do "UPDATE locks SET job_reservation='0' WHERE id ='1'"
 
 # Daemons
 LogdServer.new.run

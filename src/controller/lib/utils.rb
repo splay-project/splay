@@ -122,40 +122,43 @@ def only_code(lines)
 end
 
 def watch(job)
-	j = {}
-	j['status'] = "LOCAL"
-	old_status = "LOCAL"
-	while j['status'] != "ENDED" and
-		j['status'] != "NO_RESSOURCES" and
-		j['status'] != "REGISTER_TIMEOUT" and
-		j['status'] != "KILLED" and
-		j['status'] != "RUNNING"
-
-		sleep(1)
-		j = $db.select_one "SELECT * FROM jobs WHERE ref='#{job['ref']}'"
-		if j['status'] != old_status
-			puts j['status']
-			if j['status'] == "RUNNING"
-				$db.select_all "SELECT * FROM splayd_selections WHERE job_id='#{j['id']}'
-						AND selected='TRUE'" do |ms|
-					m = $db.select_one "SELECT * FROM splayds WHERE id='#{ms['splayd_id']}'"
-					if j['network_nb_ports'] > 0
-						puts "    #{m['id']} #{m['name']} #{m['ip']} #{ms['port']} - #{ms['port'] +
-								j['network_nb_ports'] - 1}"
-					else
-						puts "    #{m['id']} #{m['name']} #{m['ip']} no ports"
-					end
-				end
-			end
-			if j['status'] == "NO_RESSOURCES"
-				puts j['status_msg']
-			end
-			puts "Task  ID: #{job['id']}  REF: #{job['ref']}"
-			puts
-		end
-		old_status = j['status']
-	end
-	puts job['id']
+  j = {}
+  j[:status] = "LOCAL"
+  old_status = "LOCAL"
+  while j[:status] != "ENDED" and
+  	j[:status] != "NO_RESSOURCES" and
+  	j[:status] != "REGISTER_TIMEOUT" and
+  	j[:status] != "KILLED" and
+  	j[:status] != "RUNNING"
+  
+  	sleep(1)
+  	j = $db.from(:jobs).where('ref = ?', job[:ref]).first
+        #select_one "SELECT * FROM jobs WHERE ref='#{job['ref']}'"
+  	if j[:status] != old_status
+  		puts j[:status]
+  		if j[:status] == "RUNNING"
+  		  $db.from(:splayd_selections).where("job_id = ? AND selected = 'TRUE'", j[:id]).each do |ms|
+                    #select_all "SELECT * FROM splayd_selections WHERE job_id='#{j['id']}'
+  		    #		AND selected='TRUE'" do |ms|
+  	            m = $db.from(:splayds).where('id = ?', ms[:splayd_id]).first
+                    #select_one "SELECT * FROM splayds WHERE id='#{ms['splayd_id']}'"
+  	            if j[:network_nb_ports] > 0
+  	            	puts "    #{m[:id]} #{m[:name]} #{m[:ip]} #{ms[:port]} - #{ms[:port] +
+  	            			j['network_nb_ports'] - 1}"
+  	            else
+  	            	puts "    #{m[:id]} #{m[:name]} #{m[:ip]} no ports"
+  	            end
+  		  end
+  		end
+  		if j[:status] == "NO_RESSOURCES"
+  			puts j[:status_msg]
+  		end
+  		puts "Task  ID: #{job[:id]}  REF: #{job[:ref]}"
+  		puts
+  	end
+  	old_status = j[:status]
+  end
+  puts job[:id]
 end
 
 def command_line_to_code(file_name, arg_pos)

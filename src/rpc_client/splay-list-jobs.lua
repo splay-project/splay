@@ -76,7 +76,7 @@ function send_list_jobs(cli_server_url, session_id)
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.list_jobs",
+		method = "list_jobs",
 		params = {session_id}
 	})
 

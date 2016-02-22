@@ -77,7 +77,7 @@ class SplaydProtocol
 		ok = true
 
 		@splayd = Splayd.new(key)
-                $log.info("New splayd created: #{@splayd}")
+                $log.info("New splayd created, its ID:  #{@splayd.row[:id]}")
 		if not @splayd.row[:id] or @splayd.row[:status] == "DELETED"
 			refused "That splayd doesn't exist or was deleted: #{key}"
 		end
@@ -118,7 +118,11 @@ class SplaydProtocol
       auth_update_lib()
 
 			@so.write "OK"
-			@so.write @splayd.row[:session]
+                        if @splayd.row[:session]
+			  @so.write @splayd.row[:session]
+                        else
+                          @so.write "NULL"
+                        end
 
 			if same
 				$log.info("#{@splayd}: Session OK")
@@ -149,7 +153,7 @@ class SplaydProtocol
 			@splayd.available
 		rescue => e
 			# restore previous status (REGISTER, UNAVAILABLE or RESET)
-			@splayd.update("status", @splayd.row['status'])
+                        @splayd.update("status", @splayd.row[:status])
 			raise e
 		end
 

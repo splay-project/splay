@@ -33,18 +33,18 @@ class Statusd
 			$log.info(">>> Splay Controller Status Daemon")
 			while sleep(@@status_interval)
 				# We add status action for splayds where some jobs are running OR waiting
-				$db.fetch "SELECT DISTINCT splayd_id FROM splayd_jobs
-						WHERE status='RUNNING' OR status='WAITING'" do |m_s|
+				$db["SELECT DISTINCT splayd_id FROM splayd_jobs
+						WHERE status='RUNNING' OR status='WAITING'"].each do |m_s|
 
 					# If we have not already a pending command.
-					action = $db.fetch "SELECT * FROM actions WHERE
-							splayd_id='#{m_s['splayd_id']}' AND
-							command='STATUS'"
+					action = $db["SELECT * FROM actions WHERE
+							splayd_id='#{m_s[:splayd_id]}' AND
+							command='STATUS'"]
 
 					if not action
-						$db.do "INSERT INTO actions SET
-								splayd_id='#{m_s['splayd_id']}',
-								command='STATUS'"
+						$db["INSERT INTO actions SET
+								splayd_id='#{m_s[:splayd_id]}',
+								command='STATUS'"]
 					end
 				end
 			end

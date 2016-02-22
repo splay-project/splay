@@ -31,10 +31,10 @@ class Loadavgd
 		begin
 			$log.info(">>> Splay Controller Loadavg Daemon")
 			while sleep(@@loadavg_interval)
-				$db.fetch "SELECT id FROM splayds WHERE status='AVAILABLE'" do |splayd|
-					$db.do "INSERT INTO actions SET
-							splayd_id='#{splayd['id']}',
-							command='LOADAVG'"
+				$db["SELECT id FROM splayds WHERE status='AVAILABLE'"].each do |splayd|
+					$db["INSERT INTO actions SET
+							splayd_id='#{splayd[:id]}',
+							command='LOADAVG'"]
 				end
 			end
 		rescue => e
