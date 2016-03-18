@@ -22,7 +22,7 @@
 
 dir = File.dirname(__FILE__)
 
-require File.expand_path(File.join(dir, 'common'))
+#require File.expand_path(File.join(dir, 'common'))
 
 require File.expand_path(File.join(dir, 'splayd_server'))
 require File.expand_path(File.join(dir, 'logd'))

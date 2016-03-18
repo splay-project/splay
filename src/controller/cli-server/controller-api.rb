@@ -429,7 +429,7 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
       	# 3. it was rejected because of the lack of resources 
       	other_job_splayds = $db.from(:splayd_selections).where("job_id = ? AND selected='TRUE'", other_job_id)
 #other_job_splayds = $db.do("SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'")
-        other_job_status = $db.from(:jobs).where("id = ? AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES'", other_job_id)[:status]
+        other_job_status = $db.from(:jobs).where("id = ? AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')", other_job_id)[:status]
         #other_job_status = $db.do("SELECT status FROM jobs WHERE id='#{other_job_id}' AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')")
 	if (other_job_status != nil && other_job_splayds == nil) then
           $db.from(:job_designated_splayds).insert(:job_id => job_id, :other_job_status => other_job_status)
@@ -442,10 +442,10 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
           #$db.do "UPDATE jobs SET nb_splayds='#{other_job_nb_splayds}' WHERE id='#{job_id}'"
           # find the splayds used by the other job
           #q_jds = ""
-          $db.from(:splayd_selections).where('job_id = ?', other_job_id).each do |jds|
+          $db.from(:splayd_selections).where("job_id = ? AND selected='TRUE'", other_job_id).each do |jds|
             #.do "SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'" 
             #q_jds = q_jds + "('#{job_id}','#{jds['splayd_id']}'),"
-            $db.from(:job_designated_splayds).insert(:job_id => job_id,:splayd_id => jds[:splayd_id])
+            $db[:job_designated_splayds].insert(jds[:splayd_id])
         end
         #q_jds = q_jds[0, q_jds.length - 1]
         #$db.do "INSERT INTO job_designated_splayds (job_id,splayd_id) VALUES #{q_jds}"

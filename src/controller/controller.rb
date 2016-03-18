@@ -20,6 +20,10 @@ puts
 
 Splayd.init
 $db.from(:locks).where('id = ?', '1').update(:job_reservation => '0')
+# XXX This two calls are valid to query
+#p $db.from(:locks)[:id => 1]
+#p $db.from(:locks).where('id = ?', '1').first
+
 #do "UPDATE locks SET job_reservation='0' WHERE id ='1'"
 
 # Daemons

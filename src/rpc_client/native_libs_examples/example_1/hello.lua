@@ -26,7 +26,8 @@ require"splay.base"
 hello=require "hello"
 
 function main()
-	hello.hello()
+  print('Hello['..job.position..']')
+--	hello.hello()
 end                                                                                                                                   
                                                                                                                                                                                     
 events.thread(main)                                                                                                                                                          

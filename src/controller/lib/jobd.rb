@@ -34,6 +34,7 @@ class Jobd
 	@@log_dir = SplayControllerConfig::LogDir
 
 	def self.run
+          $log.info('Doing main() at Jobd')
 		return Thread.new do
 			main
 		end
@@ -451,36 +452,32 @@ class Jobd
 		return countries
 	end
 
-	def self.select_splayds(job)
-          c_splayd = nil
-          
-          # Cache at the first call
-          if not c_splayd
-          	c_splayd = {}
-          	c_splayd['nb_nodes'] = {}
-          	c_splayd['max_number'] = {}
-          
-          	# Do not take only AVAILABLE splayds here because new ones can become
-          	# AVAILABLE before the next filters.
-          	$db.from(:splayds).each do |m|
-                    #select_all "SELECT id, max_number FROM splayds" do |m|
-          		c_splayd['max_number'][m[:id]] = m[:max_number]
-          		c_splayd['nb_nodes'][m[:id]] = 0
-	  end
-	  $db["SELECT splayd_id, COUNT(job_id) as nb_nodes FROM splayd_jobs GROUP BY splayd_id"].each do |ms|
-                        #select_all "SELECT splayd_id, COUNT(job_id) as nb_nodes
-			#		FROM splayd_jobs
-			#		GROUP BY splayd_id" do |ms|
-				c_splayd['nb_nodes'][ms[:splayd_id]] = ms[:nb_nodes]
-			end
-		end
-
-		status_msg = ""
-		normal_ok = true
-
-		# To select the splayds that have the lowest percentage of occupation
-		occupation = {}
-    	filter_query=create_filter_query(job)
+  def self.select_splayds(job)
+    c_splayd = nil
+    # Cache at the first call
+    if not c_splayd
+      c_splayd = {}
+      c_splayd['nb_nodes'] = {}
+      c_splayd['max_number'] = {}
+      # Do not take only AVAILABLE splayds here because new ones can become
+      # AVAILABLE before the next filters.
+      $db.from(:splayds).each do |m|
+        #select_all "SELECT id, max_number FROM splayds" do |m|
+        c_splayd['max_number'][m[:id]] = m[:max_number]
+        c_splayd['nb_nodes'][m[:id]] = 0
+      end
+      $db["SELECT splayd_id, COUNT(job_id) as nb_nodes FROM splayd_jobs GROUP BY splayd_id"].each do |ms|
+        #select_all "SELECT splayd_id, COUNT(job_id) as nb_nodes
+        #		FROM splayd_jobs
+        #		GROUP BY splayd_id" do |ms|
+        c_splayd['nb_nodes'][ms[:splayd_id]] = ms[:nb_nodes]
+      end
+    end
+    status_msg = ""
+    normal_ok = true
+    # To select the splayds that have the lowest percentage of occupation
+    occupation = {}
+    filter_query=create_filter_query(job)
 		$db[filter_query].each do |m|
 			if m[:network_send_speed] / c_splayd['max_number'][m[:id]] >=
 					job[:network_send_speed] and
@@ -564,42 +561,41 @@ class Jobd
 		return c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, false
 	end
 
-	# Splayds selection for JobdStandard and JobdTrace
-	def self.status_local_common(job)
-
-		c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, do_next = self.select_splayds(job)
-		if do_next == true
-			return c_splayd, occupation, 0, nil, true
-		end
-
-		# Queue scheduled jobs
-		time_now = Time.new().strftime("%Y-%m-%d %T")
-		if job[:scheduled_at] && job[:scheduled_at].strftime("%Y-%m-%d %T") > time_now
-			set_job_status(job[:id], 'QUEUED', status_msg)
-			return c_splayd, occupation, 0, nil, true
-		end
-
-		if(not normal_ok or not designated_ok) and not no_resources
-			if job[:strict] == "FALSE"
-				set_job_status(job[:id], 'QUEUED', status_msg)
-				return c_splayd, occupation, 0, nil, true
-			else
-				status_msg = "Cannot be submitted immediately: " + 
-					"Not enough splayds found with the requested resources " + 
-					"(only #{occupation.size} instead of #{job[:nb_splayds]}) \n"
-				set_job_status(job[:id], 'NO_RESSOURCES', status_msg)
-				return c_splayd, occupation, 0, nil, true
-			end
-		end
-
-		# We will send the job !
-		new_job = create_job_json(job)
-		# We choose more splayds (if possible) than needed, to keep the best ones
-		factor = job[:factor].to_f
-		nb_selected_splayds = (job[:nb_splayds] * factor).ceil
-
-		return c_splayd, occupation, nb_selected_splayds, new_job, false
-	end
+# Splayds selection for JobdStandard and JobdTrace
+  def self.status_local_common(job)
+    c_splayd, occupation, status_msg, normal_ok, mandatory_ok, designated_ok, no_resources, do_next = self.select_splayds(job)
+    if do_next == true
+    	return c_splayd, occupation, 0, nil, true
+    end
+    
+    # Queue scheduled jobs
+    time_now = Time.new().strftime("%Y-%m-%d %T")
+    if job[:scheduled_at] && job[:scheduled_at].strftime("%Y-%m-%d %T") > time_now
+    	set_job_status(job[:id], 'QUEUED', status_msg)
+    	return c_splayd, occupation, 0, nil, true
+    end
+    
+    if(not normal_ok or not designated_ok) and not no_resources
+    	if job[:strict] == "FALSE"
+    		set_job_status(job[:id], 'QUEUED', status_msg)
+    		return c_splayd, occupation, 0, nil, true
+    	else
+    		status_msg = "Cannot be submitted immediately: " + 
+    			"Not enough splayds found with the requested resources " + 
+    			"(only #{occupation.size} instead of #{job[:nb_splayds]}) \n"
+    		set_job_status(job[:id], 'NO_RESSOURCES', status_msg)
+    		return c_splayd, occupation, 0, nil, true
+    	end
+    end
+    
+    # We will send the job !
+    new_job = create_job_json(job)
+    # We choose more splayds (if possible) than needed, to keep the best ones
+    factor = job[:factor].to_f
+    nb_selected_splayds = (job[:nb_splayds] * factor).ceil
+    
+    return c_splayd, occupation, nb_selected_splayds, new_job, false
+  end
 
 	def self.status_registering_common(job)
 		if Time.now.to_i > job[:status_time] + @@register_timeout then

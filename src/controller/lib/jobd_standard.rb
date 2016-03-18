@@ -34,12 +34,13 @@ class JobdStandard < Jobd
 
 # LOCAL => REGISTERING|NO RESSOURCES|QUEUED
 def self.status_local
+  $log.info('Doing: status_local')
   @@dlock_jr.get
   c_splayd = nil
-  $db.from(:jobs).where("scheduler = ? AND status='LOCAL'", get_scheduler).each do |job|
+  $db.from(:jobs).where("scheduler = 'standard' AND status='LOCAL'").each do |job|
+    $log.info('Loop in of query')
   #select_all "SELECT * FROM jobs WHERE
-  #		scheduler='#{get_scheduler}' AND status='LOCAL'" do |job|
-  
+  #		scheduler='#{get_scheduler}' AND status='LOCAL'" do |job| 
   	# Splayds selection
   	c_splayd, occupation, nb_selected_splayds, new_job, do_next = status_local_common(job)
   
@@ -91,6 +92,7 @@ def self.status_local
 
 		set_job_status(job[:id], 'REGISTERING')
 	end
+        $log.info('End of status_local()')
 	@@dlock_jr.release
 end
 

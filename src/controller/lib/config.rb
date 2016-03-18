@@ -30,7 +30,7 @@ class SplayControllerConfig
 	SQL_PASS = DBConfig::SQL_PASS
   SQL_PORT = DBConfig::SQL_PORT
 	SSL = true 
-	Production = true # Put true in prod, remove some tests to permit local testing.
+	Production = false # Put true in prod, remove some tests to permit local testing.
 	AutoAddSplayds = true # In production must be false
 
 	# Permit to detect when a node is comming from a NAT gateway and restore his

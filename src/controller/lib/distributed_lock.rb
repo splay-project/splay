@@ -25,59 +25,54 @@ require 'thread'
 # instance, even if it's not the most efficient way in that case).
 class DistributedLock
 
-	@@mutex = Mutex.new
-	@@db = nil
+@@mutex = Mutex.new
+@@db = nil
 
-	def initialize(name)
-		@name = name
-		@lock = false
-	end
+def initialize(name)
+  @name = name
+  @lock = false
+end
 
-	def get()
-		return DistributedLock::get(@name)
-	end
+def get() return DistributedLock::get(@name) end
 
-	def release()
-		return DistributedLock::release(@name)
-	end
+def release() return DistributedLock::release(@name) end
         
-        #NOTE name is always the string: "job_reservation" which is the column name at the table locks
-	def self.get(name)
-		if not @@db then @@db = DBUtils.get_new_mysql_sequel end
-		ok = false
-		while not ok
-                  @@mutex.synchronize do
-                    # TO TEST (transaction) or watch code, must be a Mutex like mine... +
-                    # BEGIN and COMMIT
-                    #$dbt.transaction do |dbt|
-                    #@@db.do "BEGIN"
-                    @@db.transaction do
-                      locks = @@db.from(:locks).where('id = ?', '1').first
-                      #fetch("SELECT * FROM locks
-                      #			WHERE id='1' FOR UPDATE")
-                      if locks[:job_reservation]
-                      	if locks[:job_reservation] == 0
-                      		@@db.from(:locks).where('id = ?', '1').update(:job_reservation => '1')
-                                #do "UPDATE locks SET #{name}='1' WHERE id ='1'"
-                      		ok = true
-                      	end
-                      else
-                      	$log.error("Trying to get a non existant lock: #{name}")
-                      	ok = true
-                      end
-                    end
-                    #@@db.do "COMMIT"
-		  end
-		end
-	end
+def self.get(name)
+  if not @@db then @@db = DBUtils.get_new_mysql_sequel end
+  ok = false
+  while not ok
+    @@mutex.synchronize do
+      # TO TEST (transaction) or watch code, must be a Mutex like mine... +
+      # BEGIN and COMMIT
+      #$dbt.transaction do |dbt|
+      #@@db.do "BEGIN"
+      @@db.transaction do
+        locks = @@db.from(:locks).where('id = ?', '1').first
+        #fetch("SELECT * FROM locks
+        #			WHERE id='1' FOR UPDATE")
+        if locks[name.to_sym] then
+          if locks[name.to_sym] == 0 then
+            @@db.from(:locks).where('id = ?', '1').update(name.to_sym => '1')
+            ok = true
+          end
+          #do "UPDATE locks SET #{name}='1' WHERE id ='1'"
+        else
+          $log.error("Trying to get a non existant lock: #{name}")
+          ok = true
+        end
+      end
+      #@@db.do "COMMIT"
+    end
+  end
+end
 
-        #NOTE name is always the string: "job_reservation" which is the column name at the table locks
-	def self.release(name)
-		@@mutex.synchronize do
-			#@@db.do "BEGIN"
-			@@db.from(:locks).where('id = ?', '1').update(:job_reservation => '1')
-                        #"UPDATE locks SET #{name}='0' WHERE id ='1'"
-			#@@db.do "COMMIT"
-		end
-	end
+def self.release(name)
+  @@mutex.synchronize do
+    #@@db.do "BEGIN"
+    @@db.from(:locks).where('id = ?', '1').update(name.to_sym => '0')
+      #"UPDATE locks SET #{name}='0' WHERE id ='1'"
+    #@@db.do "COMMIT"
+  end
+end
+
 end

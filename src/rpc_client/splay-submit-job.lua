@@ -462,7 +462,7 @@ function send_submit_job(name, description, code_filename, lib_filename, lib_ver
 		method = "submit_job",
 		params = {name, description, code, lib_filename, lib_version, nb_splayds, churn_trace, options, session_id, scheduled_at, strict, trace_alt, queue_timeout, multiple_code_files, designated_splayds_string, splayds_as_job, topology}
 	})
-
+        print(body)
 	--prints that it is sending the message
 	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
