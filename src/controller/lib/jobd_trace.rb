@@ -72,8 +72,7 @@ class JobdTrace < Jobd
 	# We are just restarted, no threads to apply the trace, we need to kill
 	# each running jobs
 	def self.init()
-		$db.fetch "SELECT * FROM jobs WHERE
-				scheduler='#{@@scheduler}' AND status='RUNNING'" do |job|
+		$db["SELECT * FROM jobs WHERE scheduler='#{@@scheduler}' AND status='RUNNING'"].each do |job|
 			kill_job(job, "controller restart, trace job aborted")
 		end
 	end
@@ -81,21 +80,21 @@ class JobdTrace < Jobd
 	def self.start_trace(job, trace_number, list)
 		$log.info("TRACE #{job['id']}: start #{trace_number}")
 					
-		s_s = $db.select_one "SELECT * FROM splayd_selections
+		s_s = $db["SELECT * FROM splayd_selections
 				WHERE
 				job_id='#{job['id']}' AND
-				trace_number='#{trace_number}'"
-		s = Splayd.new(s_s['splayd_id'])
+				trace_number='#{trace_number}'"].first
+		s = Splayd.new(s_s[:splayd_id])
 
-		$db.do "UPDATE splayd_selections SET
+		$db["UPDATE splayd_selections SET
 				trace_status='RUNNING'
 				WHERE
 				job_id='#{job['id']}' AND
-				splayd_id='#{s.id}'"
+				splayd_id='#{s.id}'"]
 
 		# If the splayd cannot be repaired the trace will stay on it but we
 		# will do nothing.
-		if s_s['reset'] == 'FALSE'
+		if s_s[:reset] == 'FALSE'
 			if s.row['status'] != 'AVAILABLE'
 				$log.info("TRACE #{job['id']}: start SENT (even if #{s.id} is not available)")
 			end
@@ -109,21 +108,21 @@ class JobdTrace < Jobd
 	def self.stop_trace(job, trace_number)
 		$log.info("TRACE #{job['id']}: stop #{trace_number}")
 
-		s_s = $db.select_one "SELECT * FROM splayd_selections
+		s_s = $db["SELECT * FROM splayd_selections
 				WHERE
 				job_id='#{job['id']}' AND
-				trace_number='#{trace_number}'"
-		if s_s['trace_status'] == 'RUNNING'
-			s = Splayd.new(s_s['splayd_id'])
-			$db.do "UPDATE splayd_selections SET
+				trace_number='#{trace_number}'"]
+		if s_s[:trace_status] == 'RUNNING'
+			s = Splayd.new(s_s[:splayd_id])
+			$db["UPDATE splayd_selections SET
 					trace_status='WAITING'
 					WHERE
 					job_id='#{job['id']}' AND
-					splayd_id='#{s.id}'"
+					splayd_id='#{s.id}'"]
 
 			# Stop is called before repair (even after we need this check, see
 			# start_trace()), so the node has maybe reset during the run.
-			if s_s['reset'] == 'FALSE'
+			if s_s[:reset] == 'FALSE'
 				if s.row['status'] != 'AVAILABLE'
 					$log.info("TRACE #{job['id']}: stop SENT (even if #{s.id} is not available)")
 				end
@@ -138,13 +137,13 @@ class JobdTrace < Jobd
 	def self.replace_failed(job)
 
 		# Replace all nodes non AVAILABLE or RESET
-		$db.select_all "SELECT * FROM splayds, splayd_selections
+		$db["SELECT * FROM splayds, splayd_selections
 				WHERE
 				splayd_selections.job_id='#{job['id']}' AND
 				splayd_selections.trace_number IS NOT NULL AND
 				splayds.id=splayd_selections.splayd_id AND
 				(splayds.status!='AVAILABLE' OR
-				splayd_selections.reset='TRUE')" do |old|
+				splayd_selections.reset='TRUE')"].each do |old|
 			repair(job, old)
 		end
 	end
@@ -152,7 +151,7 @@ class JobdTrace < Jobd
 	def self.repair(job, old)
 		$log.warn("TRACE #{job['id']}: splayd #{old['splayd_id']} has failed.")
 
-		new = $db.select_one "SELECT * FROM splayds, splayd_selections
+		new = $db["SELECT * FROM splayds, splayd_selections
 				WHERE
 				splayd_selections.job_id='#{job['id']}' AND
 				splayd_selections.trace_number IS NULL AND
@@ -160,7 +159,7 @@ class JobdTrace < Jobd
 				splayd_selections.reset='FALSE' AND
 				splayds.id = splayd_selections.splayd_id AND
 				splayds.status='AVAILABLE'
-				ORDER BY reply_time"
+				ORDER BY reply_time"]
 
 		if not new
 			$log.error("TRACE #{job['id']}: repair FAILED, no free splayds.")
@@ -170,48 +169,48 @@ class JobdTrace < Jobd
 		trace_number = old['trace_number']
 		stop_trace(job, trace_number)
 
-		$db.do "UPDATE splayd_selections SET
+		$db["UPDATE splayd_selections SET
 				trace_number=NULL
 				WHERE
 				job_id='#{job['id']}' AND
-				splayd_id='#{old['splayd_id']}'"
+				splayd_id='#{old['splayd_id']}'"]
 
-		$db.do "UPDATE splayd_selections SET
+		$db["UPDATE splayd_selections SET
 				trace_number='#{trace_number}'
 				WHERE
 				job_id='#{job['id']}' AND
-				splayd_id='#{new['splayd_id']}'"
+				splayd_id='#{new[:splayd_id]}'"]
 
 		if old['trace_status'] == 'RUNNING'
-			$db.do "UPDATE splayd_selections SET
+			$db["UPDATE splayd_selections SET
 					trace_status='RUNNING'
 					WHERE
 					job_id='#{job['id']}' AND
-					splayd_id='#{new['splayd_id']}'"
+					splayd_id='#{new[:splayd_id]}'"]
 
 			# create the new list of running nodes
 			list = running_list(job)
 
-			Splayd::add_action(new['splayd_id'], job['id'], 'LIST', list)
-			Splayd::add_action(new['splayd_id'], job['id'], 'START', job['ref'])
+			Splayd::add_action(new[:splayd_id], job['id'], 'LIST', list)
+			Splayd::add_action(new[:splayd_id], job['id'], 'START', job['ref'])
 		end
 		$log.info("TRACE #{job['id']}: repair OK: " +
-				"#{new['splayd_id']} replace #{old['splayd_id']}")
+				"#{new[:splayd_id]} replace #{old['splayd_id']}")
 	end
 
 	# Return the scheduling description as an array
 	def self.get_scheduling(job)
-		job = $db.select_one "SELECT scheduler_description FROM
-				jobs WHERE id='#{job['id']}'"
-		return job['scheduler_description'].split("\n")
+		job = $db["SELECT scheduler_description FROM
+				jobs WHERE id='#{job['id']}'"].first
+		return job[:scheduler_description].split("\n")
 	end
 
 	# create the new list of running nodes (this list must be done after
 	# all reparations)
 	def self.running_list(job)
 		# Splayds already in the job
-		splayds = $db.select_all "SELECT * FROM splayd_selections WHERE
-				job_id='#{job['id']}' AND trace_status='RUNNING'"
+		splayds = $db["SELECT * FROM splayd_selections WHERE
+				job_id='#{job['id']}' AND trace_status='RUNNING'"]
 		
 		# head list
 		r_list = raw_list(job, splayds, job['list_size'])
@@ -319,15 +318,15 @@ class JobdTrace < Jobd
 
         			# signal that trace ended
 				q_act = ""
-				$db.select_all "SELECT splayd_id FROM splayd_selections
+				$db["SELECT splayd_id FROM splayd_selections
 						WHERE
-						job_id='#{job['id']}'" do |splayd_id|
-
+						job_id='#{job['id']}'"].each do |splayd_id|
+                                        # XXX Possible bug with splayd_id !!!
 					q_act = q_act + "('#{splayd_id}','#{job['id']}','TRACE_END','#{job['ref']}','WAITING'),"
 				end
 				q_act = q_act[0, q_act.length - 1]
 
-				$db.do "INSERT INTO actions (splayd_id, job_id, command, data, status) VALUES #{q_act}"
+				$db["INSERT INTO actions (splayd_id, job_id, command, data, status) VALUES #{q_act}"]
 
 				while true do
 					sleep(30)
@@ -346,9 +345,9 @@ class JobdTrace < Jobd
 
 		c_splayd = nil
 
-		$db.select_all "SELECT * FROM jobs WHERE
+		$db["SELECT * FROM jobs WHERE
 				scheduler='#{@@scheduler}' AND
-				status='LOCAL' AND die_free='FALSE'" do |job|
+				status='LOCAL' AND die_free='FALSE'"].each do |job|
 
 			# Splayds selection
 			c_splayd, occupation, nb_selected_splayds, new_job, do_next = Jobd.status_local_common(job)	
@@ -365,9 +364,9 @@ class JobdTrace < Jobd
 			count = 0
 			occupation.sort {|a, b| a[1] <=> b[1]}
 			occupation.each do |splayd_id, occ|
-				q_sel = q_sel + "('#{splayd_id}','#{job['id']}', 'TRUE'),"
-				q_job = q_job + "('#{splayd_id}','#{job['id']}','RESERVED'),"
-				q_act = q_act + "('#{splayd_id}','#{job['id']}','REGISTER', 'TEMP'),"
+				q_sel = q_sel + "('#{splayd_id}','#{job[:id]}', 'TRUE'),"
+				q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
+				q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
 	
 				# We update the cache
 				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
@@ -376,13 +375,14 @@ class JobdTrace < Jobd
 				if count >= nb_selected_splayds then break end
 			end
 
-			$db.select_all "SELECT * FROM job_mandatory_splayds
-					WHERE job_id='#{job['id']}'" do |mm|
+			$db["SELECT * FROM job_mandatory_splayds
+					WHERE job_id='#{job[:id]}'"].each do |mm|
 
-				splay_id = mm['splayd_id'] # bug?
-				q_sel = q_sel + "('#{splayd_id}','#{job['id']}', 'TRUE'),"
-				q_job = q_job + "('#{splayd_id}','#{job['id']}','RESERVED'),"
-				q_act = q_act + "('#{splayd_id}','#{job['id']}','REGISTER', 'TEMP'),"
+				splay_id = mm[:splayd_id]
+                                # bug?
+				q_sel = q_sel + "('#{splayd_id}','#{job[:id]}', 'TRUE'),"
+				q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
+				q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
 
 				# We update the cache
 				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
@@ -392,12 +392,11 @@ class JobdTrace < Jobd
 			q_act = q_act[0, q_act.length - 1]
 			# In trace jobs, all are selected and kept, but only those that have
 			# replied will be used.
-			$db.do "INSERT INTO splayd_selections (splayd_id, job_id, selected) VALUES #{q_sel}"
-			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"
-
-			$db.do "INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"
-			$db.do "UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
-					WHERE job_id='#{job['id']}' AND command='REGISTER' AND status='TEMP'"
+			$db["INSERT INTO splayd_selections (splayd_id, job_id, selected) VALUES #{q_sel}"]
+			$db["INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"]
+			$db["INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"]
+			$db["UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
+					WHERE job_id='#{job['id']}' AND command='REGISTER' AND status='TEMP'"]
 
 
 			set_job_status(job['id'], 'REGISTERING')
@@ -408,9 +407,7 @@ class JobdTrace < Jobd
 	# REGISTERING => REGISTERING_TIMEOUT|RUNNING
 	# NOTE don't apply mandatory in this step
 	def self.status_registering
-		$db.select_all "SELECT * FROM jobs WHERE
-				scheduler='#{@@scheduler}' AND status='REGISTERING'" do |job|
-
+		$db["SELECT * FROM jobs WHERE scheduler='#{@@scheduler}' AND status='REGISTERING'"].each do |job|
 			# We will not use
 			# selected='TRUE' 
 			# in splayd_selections, all splayds will be kept. The possible ones will
@@ -421,11 +418,11 @@ class JobdTrace < Jobd
 			scheduling = get_scheduling(job)
 
 			possible_splayds = []
-			$db.select_all "SELECT splayd_id FROM splayd_selections WHERE
-					job_id='#{job['id']}' AND
+			$db["SELECT splayd_id FROM splayd_selections WHERE
+					job_id='#{job[:id]}' AND
 					replied='TRUE'
-					ORDER BY reply_time LIMIT #{scheduling.size}" do |m|
-				possible_splayds << m['splayd_id']
+					ORDER BY reply_time LIMIT #{scheduling.size}"].each do |m|
+				possible_splayds << m[:splayd_id]
 			end
 
 			# check if enough splayds have responded at least one for each trace
@@ -433,41 +430,41 @@ class JobdTrace < Jobd
 
 				trace_number = 0
 				possible_splayds.each do |splayd_id|
-					$db.do("UPDATE splayd_selections SET
+					$db["UPDATE splayd_selections SET
 							trace_number='#{trace_number += 1}'
 							WHERE
 							splayd_id='#{splayd_id}' AND
-							job_id='#{job['id']}'")
+							job_id='#{job[:id]}'"]
 				end
 
 				start_nodes = start_nodes_list(scheduling)
 
 				start_nodes.each do |trace_number|
-					$log.debug("TRACE #{job['id']}: initial #{trace_number}")
-					$db.do("UPDATE splayd_selections SET
+					$log.debug("TRACE #{job[:id]}: initial #{trace_number}")
+					$db["UPDATE splayd_selections SET
 							trace_status='RUNNING'
 							WHERE
 							trace_number='#{trace_number}' AND
-							job_id='#{job['id']}'")
+							job_id='#{job[:id]}'"]
 				end
 
 				if start_nodes.size > 0
 					send_all_list(job, "SELECT * FROM splayd_selections WHERE
-							job_id='#{job['id']}' AND trace_status='RUNNING'")
+							job_id='#{job[:id]}' AND trace_status='RUNNING'")
 				end
 
 				# We change it before sending the START commands because it
 				# seems more consistant... We had problem with first jobs
 				# begining to log before the status change was done and refused
 				# by the log server.
-				set_job_status(job['id'], 'RUNNING')
+				set_job_status(job[:id], 'RUNNING')
 
 				# Create a symlink to the log dir
-				File.symlink("#{@@log_dir}/#{job['id']}", "#{@@link_log_dir}/#{job['ref']}.txt")
+				File.symlink("#{@@log_dir}/#{job[:id]}", "#{@@link_log_dir}/#{job[:ref]}.txt")
 
 				if start_nodes.size > 0
 					send_start(job, "SELECT * FROM splayd_selections WHERE
-							job_id='#{job['id']}' AND trace_status='RUNNING'")
+							job_id='#{job[:id]}' AND trace_status='RUNNING'")
 				end
 				
 				thread(job)
@@ -479,13 +476,12 @@ class JobdTrace < Jobd
 	
 	# RUNNING => ENDED
 	def self.status_running
-		$db.select_all "SELECT * FROM jobs WHERE
-				scheduler='#{@@scheduler}' AND status='RUNNING'" do |job|
+		$db["SELECT * FROM jobs WHERE scheduler='#{@@scheduler}' AND status='RUNNING'"].each do |job|
 			# TODO error msg...
 			
-			if not $db.select_one "SELECT * FROM splayd_jobs
-				WHERE job_id='#{job['id']}' AND status!='RESERVED'"
-				set_job_status(job['id'], 'ENDED')
+			if not $db["SELECT * FROM splayd_jobs
+				WHERE job_id='#{job[:id]}' AND status!='RESERVED'"]
+				set_job_status(job[:id], 'ENDED')
 			end
 		end
 	end
@@ -495,9 +491,9 @@ class JobdTrace < Jobd
 
 		c_splayd = nil
 
-		$db.select_all "SELECT * FROM jobs WHERE
+		$db["SELECT * FROM jobs WHERE
 				scheduler='#{@@scheduler}' AND status='QUEUED' 
-				AND (scheduled_at is NULL OR scheduled_at<NOW()) AND die_free='FALSE'" do |job|
+				AND (scheduled_at is NULL OR scheduled_at<NOW()) AND die_free='FALSE'"].each do |job|
 
 			# Splayds selection
 			c_splayd, occupation, nb_selected_splayds, new_job, do_next = Jobd.status_queued_common(job)	
@@ -514,9 +510,9 @@ class JobdTrace < Jobd
 			count = 0
 			occupation.sort {|a, b| a[1] <=> b[1]}
 			occupation.each do |splayd_id, occ|
-				q_sel = q_sel + "('#{splayd_id}','#{job['id']}', 'TRUE'),"
-				q_job = q_job + "('#{splayd_id}','#{job['id']}','RESERVED'),"
-				q_act = q_act + "('#{splayd_id}','#{job['id']}','REGISTER', 'TEMP'),"
+				q_sel = q_sel + "('#{splayd_id}','#{job[:id]}', 'TRUE'),"
+				q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
+				q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
 	
 				# We update the cache
 				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
@@ -525,13 +521,12 @@ class JobdTrace < Jobd
 				if count >= nb_selected_splayds then break end
 			end
 
-			$db.select_all "SELECT * FROM job_mandatory_splayds
-					WHERE job_id='#{job['id']}'" do |mm|
+			$db["SELECT * FROM job_mandatory_splayds WHERE job_id='#{job['id']}'"].each do |mm|
 
-				splay_id = mm['splayd_id'] # bug?
-				q_sel = q_sel + "('#{splayd_id}','#{job['id']}', 'TRUE'),"
-				q_job = q_job + "('#{splayd_id}','#{job['id']}','RESERVED'),"
-				q_act = q_act + "('#{splayd_id}','#{job['id']}','REGISTER', 'TEMP'),"
+				splay_id = mm[:splayd_id] # bug?
+				q_sel = q_sel + "('#{splayd_id}','#{job[:id]}', 'TRUE'),"
+				q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
+				q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
 
 				# We update the cache
 				c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
@@ -541,15 +536,14 @@ class JobdTrace < Jobd
 			q_act = q_act[0, q_act.length - 1]
 			# In trace jobs, all are selected and kept, but only those that have
 			# replied will be used.
-			$db.do "INSERT INTO splayd_selections (splayd_id, job_id, selected) VALUES #{q_sel}"
-			$db.do "INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"
+			$db["INSERT INTO splayd_selections (splayd_id, job_id, selected) VALUES #{q_sel}"]
+			$db["INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"]
+			$db["INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"]
+			$db["UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
+					WHERE job_id='#{job[:id]}' AND command='REGISTER' AND status='TEMP'"]
 
-			$db.do "INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"
-			$db.do "UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
-					WHERE job_id='#{job['id']}' AND command='REGISTER' AND status='TEMP'"
 
-
-			set_job_status(job['id'], 'REGISTERING')
+			set_job_status(job[:id], 'REGISTERING')
 		end
 		@@dlock_jr.release
 	end
@@ -567,25 +561,25 @@ class JobdTrace < Jobd
 	def self.command
 		# NOTE splayd_jobs table is cleaned directly by splayd when it apply the
 		# unregister command (or reset)
-		$db.select_all "SELECT * FROM jobs WHERE scheduler='#{@@scheduler}' AND
-				command IS NOT NULL" do |job|
-			if job['command'] =~ /kill|KILL/
+		$db["SELECT * FROM jobs WHERE scheduler='#{@@scheduler}' AND
+				command IS NOT NULL"].each do |job|
+			if job[:command] =~ /kill|KILL/
 				kill_job(job, "user kill")
 			else
-				msg = "Not understood command: #{job['command']}"
-				$db.do "UPDATE jobs SET command_msg='#{msg}' WHERE id='#{job['id']}'"
+				msg = "Not understood command: #{job[:command]}"
+				$db["UPDATE jobs SET command_msg='#{msg}' WHERE id='#{job[:id]}'"]
 			end
-			$db.do "UPDATE jobs SET command='' WHERE id='#{job['id']}'"
+			$db["UPDATE jobs SET command='' WHERE id='#{job[:id]}'"]
 		end
 	end
 
 	# KILL AT
 	def self.kill_max_time
-		$db.select_all "SELECT * FROM jobs WHERE
+		$db["SELECT * FROM jobs WHERE
 				scheduler='#{@@scheduler}' AND
 				status='RUNNING' AND
 				max_time IS NOT NULL AND
-				status_time + max_time < #{Time.now.to_i}" do |job|
+				status_time + max_time < #{Time.now.to_i}"].each do |job|
 			kill_job(job, "max execution time")
 		end
 	end

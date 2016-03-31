@@ -214,7 +214,7 @@ end
 
 			# Mandatory filter
 			mandatory_filter = ''
-			$db["SELECT * FROM job_mandatory_splayds WHERE job_id='#{job[:id]}'"].do do |mm|
+			$db["SELECT * FROM job_mandatory_splayds WHERE job_id='#{job[:id]}'"].each do |mm|
 				mandatory_filter += " AND splayd_id!=#{mm[:splayd_id]} "
 			end
 
@@ -268,7 +268,7 @@ end
 				$db["SELECT * FROM splayd_selections WHERE
 						job_id='#{job[:id]}' AND
 						selected='FALSE'"].each do |m_s|
-					q_act = q_act + "('#{m_s['splayd_id']}','#{job[:id]}','FREE', '#{job[:ref]}'),"
+					q_act = q_act + "('#{m_s[:splayd_id]}','#{job[:id]}','FREE', '#{job[:ref]}'),"
 				end
 				if q_act != ""
 				  q_act = q_act[0, q_act.length - 1]

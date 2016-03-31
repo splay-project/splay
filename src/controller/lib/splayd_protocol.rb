@@ -166,7 +166,6 @@ class SplaydProtocol
 	end
 
 	def main
-          $log.info('DOING MAIN!!!')
 		begin
 			last_contact = @splayd.last_contact
 			running = true
@@ -182,30 +181,29 @@ class SplaydProtocol
 					end
 					sleep(rand(@@sleep_time * 2 * 100).to_f / 100)
 				else
-
-					$log.debug("#{@splayd}: Action #{action['command']}")
-
+					$log.info("#{@splayd}: Action: #{action[:command]}")
 					start_time = Time.now.to_f
-					@so.write action['command']
-					if action['data']
-						if action['command'] == 'LIST' and action['position']
-							action['data'] = action['data'].sub(/_POSITION_/, action['position'].to_s)
+					@so.write action[:command]
+					if action[:data]
+						if action[:command] == 'LIST' and action[:position]
+							action[:data] = action[:data].sub(/_POSITION_/, action[:position].to_s)
 						end
-						@so.write action['data']
+						@so.write action[:data]
 					end
 					reply_code = @so.read
+                                        $log.info("Answer #{reply_code}")
 					if reply_code == "OK"
-						if action['command'] == "REGISTER"
+						if action[:command] == "REGISTER"
 							port = addslashes(@so.read)
 							reply_data = port
 						end
-						if action['command'] == "STATUS"
+						if action[:command] == "STATUS"
 							reply_data = @so.read # no addslashes (json)
 						end
-						if action['command'] == "LOADAVG"
+						if action[:command] == "LOADAVG"
 							reply_data = addslashes(@so.read)
 						end
-						if action['command'] == "HALT" or action['command'] == "KILL"
+						if action[:command] == "HALT" or action[:command] == "KILL"
 							running = false
 						end
 					end
@@ -221,41 +219,41 @@ class SplaydProtocol
 
 					# All the @db.s_j_* functions are replayable.
 
-					if action['command'] == "REGISTER"
+					if action[:command] == "REGISTER"
 						if reply_code == "OK"
 							# Update the job slot from RESERVED to WAITING
-							@splayd.s_j_register(action['job_id'])
-							@splayd.s_sel_reply(action['job_id'], reply_data, reply_time)
+							@splayd.s_j_register(action[:job_id])
+							@splayd.s_sel_reply( action[:job_id], reply_data, reply_time)
 						else
 							raise ProtocolError, "REGISTER not OK: #{reply_code}"
 						end
 					end
 
-					if action['command'] == "START"
+					if action[:command] == "START"
 						if reply_code == "OK" or reply_code == "RUNNING"
-							@splayd.s_j_start(action['job_id'])
+							@splayd.s_j_start(action[:job_id])
 						else
 							raise ProtocolError, "START not OK: #{reply_code}"
 						end
 					end
 
-					if action['command'] == "STOP"
+					if action[:command] == "STOP"
 						if reply_code == "OK" or reply_code == "NOT_RUNNING"
-							@splayd.s_j_stop(action['job_id'])
+							@splayd.s_j_stop(action[:job_id])
 						else
 							raise ProtocolError, "STOP not OK: #{reply_code}"
 						end
 					end
 
-					if action['command'] == "FREE"
-						@splayd.s_j_free(action['job_id'])
+					if action[:command] == "FREE"
+						@splayd.s_j_free(action[:job_id])
 					end
 
-					if action['command'] == "STATUS"
+					if action[:command] == "STATUS"
 						@splayd.s_j_status(reply_data)
 					end
 
-					if action['command'] == "LOADAVG"
+					if action[:command] == "LOADAVG"
 						@splayd.parse_loadavg(reply_data)
 					end
 

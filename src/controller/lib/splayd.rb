@@ -23,7 +23,7 @@ class Splayd
     if @row then
       @id = @row[:id]
     end
-    $log.info("Splayd with ID #{id} initialized")
+    $log.info("Splayd with ID #{@id} initialized")
   end
   
   def self.init
@@ -65,7 +65,7 @@ class Splayd
   end
   	
   def self.has_job(splayd_id, job_id)
-    sj = $db.from(:splayd_jobs).where('splayd_id = ? AND job_id = ?', splayd_id, job_id)
+    sj = $db.from(:splayd_jobs).where('splayd_id = ? AND job_id = ?', splayd_id, job_id).first
     #.fetch "SELECT * FROM splayd_jobs
     #		WHERE splayd_jobs.splayd_id='#{splayd_id}' AND
     #		splayd_jobs.job_id='#{job_id}'"
@@ -78,7 +78,7 @@ class Splayd
   # have no consequences (other than a little DB space) because when the splayd
   # comes back from a reset state, it will be reset() and the commands deleted.
   def self.add_action(splayd_id, job_id, command, data = '')
-    $db.from(:actions).insert(:splayd_id => splayd_id,:job_id => job_id,:command=>command, :data=>addslashes(data))
+    $db.from(:actions).insert(:splayd_id => splayd_id, :job_id => job_id, :command => command, :data => addslashes(data))
     # .do "INSERT INTO actions SET
     # 		splayd_id='#{splayd_id}',
     # 		job_id='#{job_id}',
@@ -105,7 +105,7 @@ class Splayd
     hosts = []
     $db.from(:blacklist_hosts).each do |row|
     #[:blacklist_hosts].select(:host) do |row| #.select_all "SELECT host FROM blacklist_hosts"
-    	hosts << row[0]
+    	hosts << row[:id]
     end
     return hosts
   end
@@ -135,6 +135,8 @@ class Splayd
     @@transaction_mutex.synchronize do
       $db.transaction do
         status = $db.from(:splayds).where('id = ?', @id)[:status]
+        puts "STATUS"
+        puts status
         #[:splayds].where(:id=>@id).get(:status)
           if status == 'REGISTERED' or status == 'UNAVAILABLE' or status == 'RESET' then
             $db.from(:splayds).where('id = ?', @id).update(:status =>'PREAVAILABLE')
@@ -148,7 +150,7 @@ class Splayd
 
   # Check that this IP is not used by another splayd.
   def ip_check ip
-    query = $db.from(:splayds).where("ip = ? AND key != ? AND (status='AVAILABLE' OR status='UNAVAILABLE' OR status='PREAVAILABLE')", ip, @row[:key])
+    query = $db.from(:splayds).where("ip = ? AND key != ? AND (status='AVAILABLE' OR status='UNAVAILABLE' OR status='PREAVAILABLE')", ip, @row[:key]).first
     if ip == "127.0.0.1" or ip=="::ffff:127.0.0.1" or not query
       #$db.fetch "SELECT * FROM splayds WHERE
       #ip='#{ip}' AND
@@ -225,13 +227,13 @@ class Splayd
     if @row[:ip] and not @row[:ip] == "127.0.0.1" and not @row[:ip] =~ /192\.168\..*/ and 
       not @row[:ip] =~ /10\.0\..*/
 
-      $log.debug("Trying to localize: #{@row.get(:ip)}")
+      $log.debug("Trying to localize: #{@row[:ip]}")
       begin
     	hostname = ""
     	begin
-    	  Timeout::timeout(10, StandardError) do hostname = Resolv::getname(@row['ip']) end
+    	  Timeout::timeout(10, StandardError) do hostname = Resolv::getname(@row[:ip]) end
     	rescue
-    	  $log.warn("Timeout resolving hostname of IP: #{@row['ip']}")
+    	  $log.warn("Timeout resolving hostname of IP: #{@row[:ip]}")
     	end
     	loc = Localization.get(@row[:ip])
     	$log.info("#{@id} #{@row[:ip]} #{hostname} " + "#{loc.country_code2.downcase} #{loc.city_name}")
@@ -251,23 +253,24 @@ class Splayd
         #WHERE id='#{@id}'"
         rescue => e
           puts e
-    	  $log.error("Impossible localization of #{@row['ip']}")
+    	  $log.error("Impossible localization of #{@row[:ip]}")
       end
     end
   end
 
   def remove_action action
-    $db.from(:actions).where('id = ?', action['id']).delete
+    $db.from(:actions).where('id = ?', action[:id]).delete
     #.do "DELETE FROM actions WHERE id='#{action['id']}'"
   end
 
   def update(field, value)
-    $db.from(:splayds).where('id = ?', @id).update("#{field}" => value)
+    $db.from(:splayds).where('id = ?', @id).update(field.to_sym => value)
     #do "UPDATE splayds SET #{field}='#{value}' WHERE id='#{@id[:id]}'"
-    @row["#{field}"] = value
+    @row[field.to_sym] = value
   end
 
   def kill
+    puts "When kill is called check ID type: #{@id}"
     if SplaydServer.threads[@id]
       SplaydServer.threads.delete(@id).kill
     end
@@ -351,7 +354,7 @@ class Splayd
         # split into states), so, if we remove the REGISTER, we can safely
         # add the FREE-REGISTER commands at the top of the
         # actions.
-        job = $db.from(:jobs).where('id = ?', action[:job_id])[:ref].first
+        job = $db.from(:jobs).where('id = ?', action[:job_id]).first
         #.select_one "SELECT ref FROM jobs WHERE id='#{action['job_id']}'"
         $db.from(:actions).where('id = ?', action[:id]).delete
         #do "DELETE FROM actions WHERE id='#{action['id']}'"
@@ -366,26 +369,26 @@ class Splayd
 
   # Return the next WAITING action and set status to SENDING.
   def next_action
-        action = $db["SELECT * FROM actions WHERE splayd_id='#{@id}' ORDER BY id"]
-  	$log.debug("next action to do: #{action}")
-  	if action 
-  		if action[:status] == 'TEMP'
-  			$log.info("INCOMPLETE ACTION: #{action[:command]} " +
-  						"(splayd: #{@id}, job: #{action[:job_id]})")
-  		end
-  		if action[:status] == 'WAITING'
-  		  $db.from(:actions).where('id = ?', action[:id]).update(:status => 'SENDING')
-                    #do "UPDATE actions SET
-  		  #		status='SENDING'
-  		  #		WHERE id='#{action['id']}'"
-  		  return action
-  		end
-  	end
+    resu = nil
+    $db["SELECT * FROM actions WHERE splayd_id='#{@id}' ORDER BY id"].each do |action|
+      $log.info("next action to do: #{action[:id]} - #{action[:command]}")
+      if action[:status] == 'TEMP'
+      	$log.info("INCOMPLETE ACTION: #{action[:command]} " + "(splayd: #{@id}, job: #{action[:job_id]})")
+      end
+      if action[:status] == 'WAITING'
+        $db.from(:actions).where('id = ?', action[:id]).update(:status => 'SENDING')
+          #do "UPDATE actions SET
+        #		status='SENDING'
+        #		WHERE id='#{action['id']}'"
+        resu = action
+        break
+      end
+    end
+    return resu
   end
 
   def s_j_register job_id
-    $db.from(:splayd_jobs).where("splayd_id = ? AND job_id = ? AND status='RESERVED'",
-      @id, job_id).update(:status => 'WAITING')
+    $db.from(:splayd_jobs).where("splayd_id = ? AND job_id = ? AND status='RESERVED'", @id, job_id).update(:status => 'WAITING')
   end
 
   def s_j_free job_id
@@ -402,22 +405,23 @@ class Splayd
 
   def s_j_status data
     data = JSON.parse data
+    puts "Data content: #{data}"
     $db.from(:splayd_jobs).where("status != 'RESERVED' AND splayd_id = ?", @id).each do |sj|
       #  select_all "SELECT * FROM splayd_jobs WHERE
       #  		splayd_id='#{@id}' AND
       #  		status!='RESERVED'" do |sj|
-      job = $db.select_one "SELECT ref FROM jobs WHERE id='#{sj[:job_id]}'"
+      job = $db.from(:jobs).where('id = ?', sj[:job_id]).first
       # There is no difference in Lua between Hash and Array, so when it's
       # empty (an Hash), we encoded it like an empy Array.
-      if data['jobs'].class == Hash and data['jobs'][job['ref']]
-      	if data['jobs'][job['ref']]['status'] == "waiting"
+      if data['jobs'].class == Hash and data['jobs'][job[:ref]]
+      	if data['jobs'][job[:ref]]['status'] == "waiting"
             $db.from(:splayd_jobs).where('id = ?', sj[:id]).update(:status => 'WAITING')
             #  do "UPDATE splayd_jobs SET status='WAITING'
             #		WHERE id='#{sj['id']}'"
       	end
       	# NOTE normally no needed because already set to RUNNING when
       	# we send the START command.
-      	if data['jobs'][job['ref']]['status'] == "running"
+      	if data['jobs'][job[:ref]]['status'] == "running"
             $db.from(:splayd_jobs).where('id = ?', sj[:id]).update(:status => 'RUNNING')
             #do "UPDATE splayd_jobs SET status='RUNNING'
             #		WHERE id='#{sj['id']}'"
@@ -455,7 +459,7 @@ class Splayd
   # NOTE then corresponding entry may already have been deleted if the reply
   # comes after the job has finished his registration, but no problem.
   def s_sel_reply(job_id, port, reply_time)
-    $db.from(:splayd_selections).where('splayd_id = ? AND job_id = ?').update(
+    $db.from(:splayd_selections).where('splayd_id = ? AND job_id = ?', @id, job_id).update(
       :replied => 'TRUE', :reply_time => reply_time, :port => port
     )
     #do "UPDATE splayd_selections SET

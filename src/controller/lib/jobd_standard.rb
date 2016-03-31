@@ -34,7 +34,6 @@ class JobdStandard < Jobd
 
 # LOCAL => REGISTERING|NO RESSOURCES|QUEUED
 def self.status_local
-  $log.info('Doing: status_local')
   @@dlock_jr.get
   c_splayd = nil
   $db.from(:jobs).where("scheduler = 'standard' AND status='LOCAL'").each do |job|
@@ -42,64 +41,53 @@ def self.status_local
   #select_all "SELECT * FROM jobs WHERE
   #		scheduler='#{get_scheduler}' AND status='LOCAL'" do |job| 
   	# Splayds selection
-  	c_splayd, occupation, nb_selected_splayds, new_job, do_next = status_local_common(job)
-  
-  	# If this job cannot be submitted immediately, jump to the next one
-  	if do_next == true
-  		next
-  	end	
-  
-  	q_sel = ""
-  	q_job = ""
-  	q_act = ""
-  
-  	count = 0
-  	occupation.sort {|a, b| a[1] <=> b[1]}
-  	occupation.each do |splayd_id, occ|
-  		q_sel = q_sel + "('#{splayd_id}','#{job[:id]}'),"
-  		q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
-  		q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
-  
-  		# We update the cache
-  		c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
-  
-  		count += 1
-  		if count >= nb_selected_splayds then break end
-  	end
-  
-  	$db.from(:job_mandatory_splayds).where('job_id = ?', job[:id]).each do |mm|
-#        select_all "SELECT * FROM job_mandatory_splayds
-#  			WHERE job_id='#{job['id']}'" do |mm|
-  
-  		splay_id = mm[:splayd_id]
-  		q_sel = q_sel + "('#{splayd_id}','#{job[:id]}'),"
-  		q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
-  		q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
-  
-  		# We update the cache
-  		c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
-  	end
-
-		q_sel = q_sel[0, q_sel.length - 1]
-		q_job = q_job[0, q_job.length - 1]
-		q_act = q_act[0, q_act.length - 1]
-		$db["INSERT INTO splayd_selections (splayd_id, job_id) VALUES #{q_sel}"]
-		$db["INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"]
-
-		$db["INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"]
-		$db["UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
-				WHERE job_id='#{job[:id]}' AND command='REGISTER' AND status='TEMP'"]
-
-		set_job_status(job[:id], 'REGISTERING')
-	end
-        $log.info('End of status_local()')
-	@@dlock_jr.release
+    c_splayd, occupation, nb_selected_splayds, new_job, do_next = status_local_common(job)
+    # If this job cannot be submitted immediately, jump to the next one
+    if do_next == true
+      next
+    end	
+    q_sel = ""
+    q_job = ""
+    q_act = ""
+    count = 0
+    occupation.sort {|a, b| a[1] <=> b[1]}
+    occupation.each do |splayd_id, occ|
+      q_sel = q_sel + "('#{splayd_id}','#{job[:id]}'),"
+      q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
+      q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
+      
+      # We update the cache
+      c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
+      count += 1
+      if count >= nb_selected_splayds then break end
+    end
+    $db.from(:job_mandatory_splayds).where('job_id = ?', job[:id]).each do |mm|
+#  select_all "SELECT * FROM job_mandatory_splayds
+# 		WHERE job_id='#{job['id']}'" do |mm|
+      splay_id = mm[:splayd_id]
+      q_sel = q_sel + "('#{splayd_id}','#{job[:id]}'),"
+      q_job = q_job + "('#{splayd_id}','#{job[:id]}','RESERVED'),"
+      q_act = q_act + "('#{splayd_id}','#{job[:id]}','REGISTER', 'TEMP'),"
+      # We update the cache
+      c_splayd['nb_nodes'][splayd_id] = c_splayd['nb_nodes'][splayd_id] + 1
+    end
+    q_sel = q_sel[0, q_sel.length - 1]
+    q_job = q_job[0, q_job.length - 1]
+    q_act = q_act[0, q_act.length - 1]
+    $db.run("INSERT INTO splayd_selections (splayd_id, job_id) VALUES #{q_sel}")
+    $db.run("INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}")
+    $db.run("INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}")
+    $db.run("UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING' 
+        WHERE job_id='#{job[:id]}' AND command='REGISTER' AND status='TEMP'")
+    set_job_status(job[:id], 'REGISTERING')
+  end
+  #$log.info('End of status_local()')
+  @@dlock_jr.release
 end
 
 # REGISTERING => REGISTERING_TIMEOUT|RUNNING
 def self.status_registering
 	$db["SELECT * FROM jobs WHERE scheduler='#{get_scheduler}' AND status='REGISTERING'"].each do |job|
-
 		# Mandatory filter
 		mandatory_filter = ''
 		$db["SELECT * FROM job_mandatory_splayds WHERE job_id='#{job[:id]}'"].each do |mm|
@@ -126,61 +114,55 @@ def self.status_registering
 		# it could advantage splayd near of the controller.
 		selected_splayds = []
 		$db["SELECT splayd_id FROM splayd_selections WHERE
-				job_id='#{job[:id]}' AND
+				job_id=#{job[:id]} AND
 				replied='TRUE'
 				#{mandatory_filter}
-				ORDER BY reply_time LIMIT #{job['nb_splayds']}"].each do |m|
+				ORDER BY reply_time LIMIT #{job[:nb_splayds]}"].each do |m|
 			selected_splayds << m[:splayd_id]
 		end
-
 		# check if enough splayds have responded
-		normal_ok = selected_splayds.size == job[:nb_splayds]
+		normal_ok = selected_splayds.size >= job[:nb_splayds]
 
 		mandatory_ok = true
 
 		$db["SELECT * FROM job_mandatory_splayds WHERE job_id='#{job[:id]}'"].each do |mm|
-			if not $db["SELECT id FROM splayd_selections WHERE
+			if not $db.run("SELECT id FROM splayd_selections WHERE
 					splayd_id='#{mm[:splayd_id]}' AND
 					job_id='#{job[:id]}' AND
-					replied='TRUE'"]
+					replied='TRUE'").first
 				mandatory_ok = false
 				break
 			end
 		end
 		
 		if normal_ok and mandatory_ok
-
 			selected_splayds.each do |splayd_id|
-				$db["UPDATE splayd_selections SET
-						selected='TRUE'
-						WHERE
-						splayd_id='#{splayd_id}' AND
-						job_id='#{job[:id]}'"]
+				$db.run("UPDATE splayd_selections SET
+                                  selected='TRUE'
+				  WHERE splayd_id='#{splayd_id}' AND job_id='#{job[:id]}'")
 			end
 			$db["SELECT * FROM job_mandatory_splayds
 					WHERE job_id='#{job[:id]}'"].each do |mm|
 
-				$db["UPDATE splayd_selections SET
+				$db.run("UPDATE splayd_selections SET
 						selected='TRUE'
 						WHERE
 						splayd_id='#{mm[:splayd_id]}' AND
-						job_id='#{job[:id]}'"]
+						job_id='#{job[:id]}'")
 			end
 
 			# We need to unregister the job on the non selected splayds.
 			q_act = ""
-			$db["SELECT * FROM splayd_selections WHERE
-					job_id='#{job[:id]}' AND
-					selected='FALSE'"].each do |m_s|
+			$db["SELECT * FROM splayd_selections WHERE job_id='#{job[:id]}' AND selected='FALSE'"].each do |m_s|
 				q_act = q_act + "('#{m_s[:splayd_id]}','#{job[:id]}','FREE', '#{job[:ref]}'),"
 			end
 			if q_act != ""
 				q_act = q_act[0, q_act.length - 1]
-				$db["INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}"]
+                                puts "Actions #{q_act}"
+				$db.run("INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}")
 			end
 
-			send_all_list(job, "SELECT * FROM splayd_selections WHERE
-					job_id='#{job['id']}' AND selected='TRUE'")
+			send_all_list(job, "SELECT * FROM splayd_selections WHERE job_id='#{job[:id]}' AND selected='TRUE'")
 
 			# We change it before sending the START commands because it
 			# seems more consistant... We had problem with first jobs
@@ -191,9 +173,7 @@ def self.status_registering
 			# Create a symlink to the log dir
 			File.symlink("#{@@log_dir}/#{job[:id]}", "#{@@link_log_dir}/#{job[:ref]}.txt")
 
-			send_start(job, "SELECT * FROM splayd_selections WHERE
-					job_id='#{job[:id]}' AND selected='TRUE'")
-
+			send_start(job, "SELECT * FROM splayd_selections WHERE job_id='#{job[:id]}' AND selected='TRUE'")
 		else
 			Jobd.status_registering_common(job)
 		end
@@ -202,11 +182,10 @@ end
 
 # RUNNING => ENDED
 def self.status_running
-	$db["SELECT * FROM jobs WHERE
-	  scheduler='#{get_scheduler}' AND status='RUNNING'"].each do |job|
-		if not $db["SELECT * FROM splayd_jobs WHERE job_id='#{job[:id]}' AND status!='RESERVED'"].first
-			set_job_status(job[:id], 'ENDED')
-		end
+	$db["SELECT * FROM jobs WHERE scheduler='#{get_scheduler}' AND status='RUNNING'"].each do |job|
+          $db["SELECT * FROM splayd_jobs WHERE job_id='#{job[:id]}' AND status!='RESERVED'"].each do |tmp|
+	    set_job_status(job[:id], 'ENDED')
+	  end
 	end
 end
 
@@ -260,12 +239,11 @@ def self.status_queued
 		q_sel = q_sel[0, q_sel.length - 1]
 		q_job = q_job[0, q_job.length - 1]
 		q_act = q_act[0, q_act.length - 1]
-		$db["INSERT INTO splayd_selections (splayd_id, job_id) VALUES #{q_sel}"]
-		$db["INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}"]
-
-		$db["INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}"]
-		$db["UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
-				WHERE job_id='#{job[:id]}' AND command='REGISTER' AND status='TEMP'"]
+		$db.run("INSERT INTO splayd_selections (splayd_id, job_id) VALUES #{q_sel}")
+		$db.run("INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}")
+		$db.run("INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}")
+		$db.run("UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
+				WHERE job_id='#{job[:id]}' AND command='REGISTER' AND status='TEMP'")
 
 		set_job_status(job[:id], 'REGISTERING')
 
@@ -286,9 +264,9 @@ def self.command
 			kill_job(job, "user kill")
 		else
 			msg = "Not understood command: #{job['command']}"
-			$db["UPDATE jobs SET command_msg='#{msg}' WHERE id='#{job[:id]}'"]
+			$db.run("UPDATE jobs SET command_msg='#{msg}' WHERE id='#{job[:id]}'")
 		end
-		$db["UPDATE jobs SET command='' WHERE id='#{job[:id]}'"]
+		$db.run("UPDATE jobs SET command='' WHERE id='#{job[:id]}'")
 	end
 end
 

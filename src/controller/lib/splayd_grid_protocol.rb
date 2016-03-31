@@ -14,12 +14,13 @@ class SplaydGridProtocol < SplaydProtocol
     # LIST ALL SHA1
     old_libs = []
     # DELETE ALL AND ADD OLD BUT VALID AND  THE NEW LIBS INTO THE TABLE splayd_libs
-    $db.do("DELETE FROM splayd_libs WHERE splayd_id='#{@splayd.row['id']}'")
+    $db["DELETE FROM splayd_libs WHERE splayd_id='#{@splayd.row['id']}'"]
     
     in_table.each do |lib_pair|
-      tmp_lib = $db[:libs].where(lib_sha1=>"#{lib_pair['sha1']}") #.fetch("SELECT * FROM libs WHERE lib_sha1='#{lib_pair['sha1']}'")
+      tmp_lib = $db.from(:libs).where('lib_sha1 = ?', lib_pair['sha1'])
+      #.fetch("SELECT * FROM libs WHERE lib_sha1='#{lib_pair['sha1']}'")
       if tmp_lib then
-        $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{tmp_lib['id']}' ")
+        $db["INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{tmp_lib[:id]}' "]
       else
         old_libs.push(lib_pair)
       end
@@ -56,16 +57,16 @@ class SplaydGridProtocol < SplaydProtocol
 							job = action['data']
 							job = JSON.parse(job)
 							if job['lib_name' ] && job['lib_name'] != ""
-								lib = $db.fetch("SELECT * FROM splayd_libs, libs WHERE splayd_libs.lib_id=libs.id AND splayd_libs.splayd_id=#{@splayd.row['id']} 
-	                                      AND libs.lib_name='#{job['lib_name']}' AND libs.lib_version='#{job['lib_version']}'")
+								lib = $db["SELECT * FROM splayd_libs, libs WHERE splayd_libs.lib_id=libs.id AND splayd_libs.splayd_id=#{@splayd.row['id']} 
+	                                      AND libs.lib_name='#{job['lib_name']}' AND libs.lib_version='#{job['lib_version']}'"]
 	                			if not lib #$log.debug("Send the lib to the splayd and add it in splayd_libs #{@splayd.row['architecture']} AND lib_os=#{@splayd['os']}")
-	                  				lib = $db.fetch("SELECT * FROM libs WHERE lib_name='#{job['lib_name']}' AND lib_version='#{job['lib_version']}' 
-	                                        AND lib_arch='#{@splayd.row['architecture']}' AND lib_os='#{@splayd.row['os']}'")
-	                  				job['lib_code'] = lib['lib_blob']
-	                				job['lib_sha1'] = lib['lib_sha1']
-	                				lib_id = lib['id']
+	                  				lib = $db["SELECT * FROM libs WHERE lib_name='#{job['lib_name']}' AND lib_version='#{job['lib_version']}' 
+	                                        AND lib_arch='#{@splayd.row['architecture']}' AND lib_os='#{@splayd.row['os']}'"]
+	                  				job['lib_code'] = lib[:lib_blob]
+	                				job['lib_sha1'] = lib[:lib_sha1]
+	                				lib_id = lib[:id]
 	                			end
-	                			job['lib_sha1'] = lib['lib_sha1']
+	                			job['lib_sha1'] = lib[:lib_sha1]
 	                			job = job.to_json
 	                			action['data'] = job
 	              			end
@@ -75,7 +76,7 @@ class SplaydGridProtocol < SplaydProtocol
 					reply_code = @so.read
 					if reply_code == "OK"
 						if action['command'] == "REGISTER"
-						  if lib_id != nil then $db.do("INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'") end
+						  if lib_id != nil then $db["INSERT INTO splayd_libs SET splayd_id='#{@splayd.row['id']}', lib_id='#{lib_id}'"] end
 							port = addslashes(@so.read)
 							reply_data = port
 						end

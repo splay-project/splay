@@ -135,6 +135,7 @@ def watch(job)
   	j = $db.from(:jobs).where('ref = ?', job[:ref]).first
         #select_one "SELECT * FROM jobs WHERE ref='#{job['ref']}'"
   	if j[:status] != old_status
+                puts 'Job status in the DB:'
   		puts j[:status]
   		if j[:status] == "RUNNING"
   		  $db.from(:splayd_selections).where("job_id = ? AND selected = 'TRUE'", j[:id]).each do |ms|
