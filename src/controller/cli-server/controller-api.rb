@@ -399,7 +399,8 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
 	  return ret
 	end
       end
-      options[:code]="#{addslashes(code)}"
+      #options[:code]="#{addslashes(code)}"
+      options[:code]="#{code}"
       options[:topology]="#{topology}"
       job_inserted = $db[:jobs].insert(options)
       raise "Job not inserted" unless job_inserted
@@ -452,14 +453,14 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
       end
     end
     timeout = 30
-    job = $db.from(:jobs)[:ref => ref]
     #job = $db.from(:jobs)[:ref => ref][:jobs].where('ref=?',ref)
     while timeout > 0
-      sleep(1)
-      timeout = timeout - 1
+      job = $db.from(:jobs).where('ref = ?', ref).first
       job_status = job[:status]
+      timeout = timeout - 1
+      #job_status = job[:status]
       p "STATUS: " + job_status
-      if job_status == "RUNNING" then
+      if job_status == "RUNNING" or job_status == "ENDED" then
         ret['ok'] = true
         ret['job_id'] = job[:id]
         ret['ref'] = ref
@@ -477,6 +478,7 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
         ret['ref'] = ref
         return ret
       end
+      sleep(1)
     end
     #if timeout reached 0, ok is false
     ret['ok'] = false
@@ -605,7 +607,7 @@ end
   def start_session(username, hashed_password)
     #initializes the return variable
     ret = Hash.new
-    user = $db.from(:users)[:login => username]
+    user = $db.from(:users).where('login = ?', username)
     if user then
       hashed_password_from_db = user[:crypted_password]
       if (hashed_password == hashed_password_from_db) then
@@ -628,14 +630,14 @@ end
   def new_user(username, hashed_password, admin_username, admin_hashedpassword)
     #initializes the return variable
     ret = Hash.new
-    admin = $db.from(:users)[:login => admin_username]
+    admin = $db.from(:users).where('login = ?', admin_username)
     if admin then
       if admin[:crypted_password] == admin_hashedpassword then
-    	if not ($db.from(:users)[:login => username]) then
+    	if not ($db.from(:users).where('login = ?', username).first) then
     	  time_now = Time.new().strftime("%Y-%m-%d %T")
     	  $db.from(:users).insert(:login => username,:crypted_password => hashed_password,:created_at => time_now)
           ret['ok'] = true
-    	  ret['user_id'] = $db.from(:users)[:login => username][:id]
+    	  ret['user_id'] = $db.from(:users).where('login = ?', username).first[:id]
     	  return ret
     	end
 	ret['ok'] = false
@@ -653,7 +655,7 @@ end
   def list_users(admin_username, admin_hashedpassword)
     #initializes the return variable
     ret = Hash.new
-    admin = $db.from(:users)[:login => admin_username]
+    admin = $db.from(:users).where('login = ?', admin_username)
     if admin then
     	if admin[:crypted_password] == admin_hashedpassword then
     		user_list = Array.new
@@ -677,7 +679,7 @@ end
   def change_passwd(username, hashed_currentpassword, hashed_newpassword)
     #initializes the return variable
     ret = Hash.new
-    user = $db.from(:users)[:login => username]
+    user = $db.from(:users).where('login = ?', username)
     if user then
       hashed_password_from_db = user[:crypted_password]
       if (hashed_currentpassword == hashed_password_from_db) then
@@ -695,11 +697,11 @@ end
 	#administrators can delete users
 	def remove_user(username, admin_username, admin_hashedpassword)
 		ret = Hash.new
-		admin = $db.from(:users)[:login => admin_username]
+		admin = $db.from(:users).where('login = ?', admin_username)
                 #$db.do("SELECT * FROM users WHERE login='#{admin_username}'")
 		if admin then
 			if ((admin[:crypted_password] == admin_hashedpassword) and (admin[:admin] == 1)) then
-				user = $db.from(:users)[:login => username]
+				user = $db.from(:users).where('login = ?', username)
                                 #$db.do("SELECT * FROM users WHERE login='#{username}'")
 				if user then
 					$db.from(:users).where('login = ?', username).delete
@@ -723,7 +725,7 @@ end
   #and returns the corresponding.
   #user ID if the session ID is valid
   def check_session_id(session_id)
-    user = $db.from(:users)[:remember_token => session_id]
+    user = $db.from(:users).where('remember_token = ?', session_id)
     if user then
       expires_at = user[:remember_token_expires_at]
       expires_at_time_format = Time.local(expires_at.year, expires_at.month, expires_at.day,

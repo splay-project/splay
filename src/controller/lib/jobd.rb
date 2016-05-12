@@ -236,7 +236,6 @@ class Jobd
 	# the query.
 	# (query should return values with splayd_id)
 	def self.send_all_list(job, query)
-	  $log.info('CHECKING IF AN STRING VAR IS ACCEPTED TO PERFORM A QUERY')
 	  m_s_s = $db[query]
 	  case job[:list_type]
 	  when 'HEAD' # simple head list of job['list_size'] element
@@ -272,18 +271,17 @@ class Jobd
 
 	# query should return values with splayd_id
 	def self.send_start(job, query)
-	  $log.info('CHECKING IF AN STRING VAR IS ACCEPTED TO PERFORM A QUERY (SEND_START)')
 	  q_act = ""
 	  $db[query].each do |m_s|
 	  	q_act = q_act + "('#{m_s[:splayd_id]}','#{job[:id]}','START', '#{job[:ref]}'),"
 	  end
           if q_act != ""
 	    q_act = q_act[0, q_act.length - 1]
-            puts "ACTIONS"
+            #puts "ACTIONS"
 	    $db.run("INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}")
-            $db.from(:actions).each do |act|
-              puts act
-            end
+            #$db.from(:actions).each do |act|
+            #  puts act
+            #end
           end
 	end
 

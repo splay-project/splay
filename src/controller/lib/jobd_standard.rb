@@ -37,7 +37,6 @@ def self.status_local
   @@dlock_jr.get
   c_splayd = nil
   $db.from(:jobs).where("scheduler = 'standard' AND status='LOCAL'").each do |job|
-    $log.info('Loop in of query')
   #select_all "SELECT * FROM jobs WHERE
   #		scheduler='#{get_scheduler}' AND status='LOCAL'" do |job| 
   	# Splayds selection
@@ -77,7 +76,7 @@ def self.status_local
     $db.run("INSERT INTO splayd_selections (splayd_id, job_id) VALUES #{q_sel}")
     $db.run("INSERT INTO splayd_jobs (splayd_id, job_id, status) VALUES #{q_job}")
     $db.run("INSERT INTO actions (splayd_id, job_id, command, status) VALUES #{q_act}")
-    $db.run("UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING' 
+    $db.run("UPDATE actions SET data='#{addslashes(new_job)}', status='WAITING'
         WHERE job_id='#{job[:id]}' AND command='REGISTER' AND status='TEMP'")
     set_job_status(job[:id], 'REGISTERING')
   end
@@ -158,7 +157,6 @@ def self.status_registering
 			end
 			if q_act != ""
 				q_act = q_act[0, q_act.length - 1]
-                                puts "Actions #{q_act}"
 				$db.run("INSERT INTO actions (splayd_id, job_id, command, data) VALUES #{q_act}")
 			end
 

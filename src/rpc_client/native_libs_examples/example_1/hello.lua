@@ -2,9 +2,7 @@
        Splay Client Commands ### v1.4 ###
        Copyright 2006-2011
        http://www.splay-project.org
-]]
 
---[[
 This file is part of Splay.
 
 Splay is free software: you can redistribute it and/or modify 
@@ -19,18 +17,13 @@ See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Splayd. If not, see <http://www.gnu.org/licenses/>.
-]]
+]]--
 
-require"splay.base"
-
-hello=require "hello"
+require "splay.base"
 
 function main()
   print('Hello['..job.position..']')
---	hello.hello()
-end                                                                                                                                   
-                                                                                                                                                                                    
-events.thread(main)                                                                                                                                                          
-                                                                                                                                                                                    
-events.loop()                                                                                                                                                                       
-                                                                                                                                                                                    
+end
+
+events.thread(main)
+events.run()
