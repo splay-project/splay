@@ -1,6 +1,6 @@
 install_datadir=$(prefix)/share/openssl-cert
 dist_data_DATA=../../include ../../src/lua/modules/*.lua ../../src/lua/modules/splay \
-	       ../../src/lua/*.lua client.cnf root.cnf
+	       ../../src/lua/*.lua client.cnf root.cnf ../../src/bash/*.sh
 
 install:
 	@echo "SPLAY-DAEMON INSTALLATION: Copying shared files ..."
@@ -8,6 +8,7 @@ install:
 	mkdir $(prefix)/bin/splay
 	cp *.pem *.srl *.cnf $(install_datadir)
 	cp -r ../../src/lua $(prefix)/share
+	cp ../../src/bash/*.sh $(prefix)/share
 	mv $(prefix)/share/lua/modules/* $(prefix)/share/lua
 	rm $(prefix)/share/*.c $(prefix)/share/LICENSE $(prefix)/share/README \
 		$(prefix)/share/lua-cjson.spec $(prefix)/share/test.lua

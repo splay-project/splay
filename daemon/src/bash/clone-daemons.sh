@@ -59,15 +59,16 @@ if [[ $ctrPo != [0-9]* ]]; then
   exit 0
 fi
 H=`pwd`
+cp src/bash/launch-daemons.sh src/bash/stop-daemons.sh $dest
 cd $dest
 echo "Copying files to have $clones SplayDaemons..."
 for (( CNTR=1; CNTR<=$clones; CNTR+=1 )); do
   daeN="Daemon$CNTR"
   mkdir $daeN
-  cp $H/share/openssl-cert/*.pem $H/share/lua/jobd.lua $H/share/lua/splayd.lua $H/share/lua/settings.lua $H/bin/jobd $daeN
-  echo "splayd.settings.key =$daen" >>$daeN/share/lua/settings.lua
-  echo "splayd.settings.name=$daen" >>$daeN/share/lua/settings.lua
-  echo "splayd.settings.controller.port=$ctrPo" >>$daeN/share/lua/settings.lua
-  echo "splayd.settings.controller.ip  =$ctrIp" >>$daeN/share/lua/settings.lua
+  cp $H/etc/openssl-cert/*.pem $H/src/lua/jobd.lua $H/src/lua/splayd.lua $H/src/lua/settings.lua $H/src/c/jobd $daeN
+  echo "splayd.settings.key ='$daeN'" >>$daeN/settings.lua
+  echo "splayd.settings.name='$daeN'" >>$daeN/settings.lua
+  echo "splayd.settings.controller.port=$ctrPo" >>$daeN/settings.lua
+  echo "splayd.settings.controller.ip  ='$ctrIp'" >>$daeN/settings.lua
 done
 echo "DONE"

@@ -13,4 +13,4 @@ test_splay-daemon:
 	  lua src/lua/install_check.lua
 
 clone-daemons:
-	sh src/bash/clone-daemons.sh ${ARGS}
+	./src/bash/clone-daemons.sh ${ARGS}
