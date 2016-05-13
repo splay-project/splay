@@ -11,3 +11,6 @@ test_splay-daemon:
 	$(eval PATH=$(PATH):$(prefix)/bin)
 	export LUA_PATH="$(LUA)" LUA_CPATH="$(CLUA)" PATH="$(PATH)" ; \
 	  lua src/lua/install_check.lua
+
+clone-daemons:
+	sh src/bash/clone-daemons.sh ${ARGS}

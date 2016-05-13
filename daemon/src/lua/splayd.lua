@@ -427,7 +427,11 @@ function register(so)
 
 	-- No more INVALID_CODE error
 	-- We will always execute some code (even empty), to create some logs
-	if job.code and job.code == "" then job.code = nil end
+	if job.code and job.code == "" then
+          job.code = nil
+        else
+          job.code = job.code:gsub('\\', '')
+        end
 	if job.script and job.script == "" then job.script = nil end
 	if not job.code and not job.script then
 		job.code = ""
@@ -627,6 +631,7 @@ function n_log(so)
 	--TODO check that the IP is valid, if not refuse it
 	if not splayd.settings.log.ip or type(splayd.settings.log.ip)~="string" then
 		splayd.settings.log.ip = splayd.settings.controller.ip
+		splayd.settings.log.port = splayd.settings.controller.port
 	end
 	assert(so:send("OK"))
 	-- restablish timeout

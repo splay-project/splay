@@ -27,12 +27,12 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
 --[[ DO YOUR SETTINGS CHANGE HERE ]]--
 
-splayd.settings.key = "local" -- received at the registration
+--splayd.settings.key = "local" -- received at the registration
 
-splayd.settings.name = "my name"
+--splayd.settings.name = "my name"
 
-splayd.settings.controller.ip = "localhost"
-splayd.settings.controller.port = 11000
+--splayd.settings.controller.ip = "localhost"
+--splayd.settings.controller.port = 11000
 
 -- Set to "grid" to support native libs
 splayd.settings.protocol = "standard"
@@ -70,5 +70,6 @@ CPU limitations are not enforced by splayd, but you can give a low priority to
 the process using the 'nice' command.
 --]]
 
-print("Edit settings.lua and comment out or remove these 2 lines...")
-os.exit()
+--print("Edit settings.lua and comment out or remove these 2 lines...")
+--os.exit()
+splayd.settings.allow_outrange = true
