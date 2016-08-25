@@ -1,0 +1,4 @@
+create database splay;
+GRANT ALL PRIVILEGES ON splay.* TO 'splay'@'localhost' IDENTIFIED BY 'splay' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO root@'%' IDENTIFIED BY 'splayd' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
