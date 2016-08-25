@@ -25,7 +25,7 @@ class SplaydServer
 
 			if @@ssl
 				# SSL key and cert
-				key = OpenSSL::PKey::RSA.new 512
+				key = OpenSSL::PKey::RSA.new 1024
 				cert = OpenSSL::X509::Certificate.new
 				cert.not_before = Time.now
 				cert.not_after = Time.now + 3600
