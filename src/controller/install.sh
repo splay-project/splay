@@ -26,3 +26,7 @@ sudo gem install openssl dbd-mysql mysql dbi net-ping nokogiri algorithms sequel
 
 echo "Database initialization with mysql, please provide your root password..."
 mysql -u root -p < init.mysql
+
+echo -e "DONE\nCreation of Splay tables..."
+./init_db.rb
+./init_users.rb
