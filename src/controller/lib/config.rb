@@ -18,7 +18,7 @@
 ## 
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
-
+require File.expand_path(File.join(File.dirname(__FILE__), 'db_config'))
 
 class SplayControllerConfig
 	CTLVersion = 1.3
@@ -28,6 +28,7 @@ class SplayControllerConfig
 	SQL_HOST = DBConfig::SQL_HOST
 	SQL_USER = DBConfig::SQL_USER
 	SQL_PASS = DBConfig::SQL_PASS
+
   SQL_PORT = DBConfig::SQL_PORT
 	SSL = true 
 	Production = false # Put true in prod, remove some tests to permit local testing.

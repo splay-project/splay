@@ -15,7 +15,7 @@
 
 
 require 'sequel' 
-require 'mysql2'
+#require 'mysql2'
 
 class DBUtils
   def self.get_new_mysql_sequel

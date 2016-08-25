@@ -27,6 +27,7 @@
 #require 'lib/all'
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'lib/all'))
+require File.expand_path(File.join(File.dirname(__FILE__), 'lib/dbutils'))
 
 def drop_db(db)
   db.drop_table?(:splayds)

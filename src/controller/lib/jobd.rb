@@ -20,6 +20,9 @@
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
 require File.expand_path(File.join(File.dirname(__FILE__), 'topology_parser')) ## parse xml and and build topology map 
+
+require File.expand_path(File.join(File.dirname(__FILE__), 'jobd'))
+require File.expand_path(File.join(File.dirname(__FILE__), 'distributed_lock'))
 require"json" 
 class Jobd
 

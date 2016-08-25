@@ -1,6 +1,8 @@
 #$db = DBUtils.get_new_mysql_sequel
 # $new_db = DBUtils.get_new_mysql
 
+require File.expand_path(File.join(File.dirname(__FILE__), 'config'))
+
 class Splayd
 
   attr_accessor :row
