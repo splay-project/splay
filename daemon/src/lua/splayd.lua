@@ -1269,7 +1269,7 @@ function run()
 			-- TLS/SSL client parameters
 			local params = {
 				mode = "client",
-				protocol = "sslv3",
+				protocol = "sslv23",
 				verify = "none",
 				options = "all",
 				-- Optional if luasec 0.21+
