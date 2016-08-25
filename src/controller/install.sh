@@ -19,8 +19,8 @@
 
 set -o nounset                              # Treat unset variables as an error
 
-sudo apt-get install ruby mysql-server ruby2.3-dev libmysqld-dev
+#sudo apt-get install ruby mysql-server ruby2.3-dev libmysqld-dev
 
-sudo gem install openssl dbd-mysql mysql dbi net-ping nokogiri algorithms sequel
+#sudo gem install openssl dbd-mysql mysql dbi net-ping nokogiri algorithms sequel
 
-
+mysql -u root -p < init.mysql
