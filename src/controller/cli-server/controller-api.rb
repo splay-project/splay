@@ -47,7 +47,7 @@ class Ctrl_api
     	#user_id is taken from the field 'id' from variable user
     	user_id = user['id']
     	#if the user is admin (can see all the jobs) or the job belongs to her
-    	v = $db.from(:jobs).where('id = ? AND user_id = ?', job_id, user_id )
+    	v = $db.from(:jobs).where('id = ? AND user_id = ?', job_id, user_id ).first
         if ($bd.from(:jobs)[:id => job_id] and user['admin'] == 1) or v then
           #if (($db.do("SELECT * FROM jobs WHERE id=#{job_id}") and (user['admin'] == 1)) 
           #or ($db.do("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
@@ -96,7 +96,7 @@ class Ctrl_api
           #user_id is taken from the field 'id' from variable user
           user_id = user['id']
           #job is the record that matches the job_id
-          job = $db.from(:jobs).where('id = ?', job_id)
+          job = $db.from(:jobs).where('id = ?', job_id).first
           #job = $db.do("SELECT * FROM jobs WHERE id=#{job_id}")
           #if job exists
           if job then
@@ -144,7 +144,7 @@ class Ctrl_api
     	user_id = user['id']
     	#if the user is admin (can see all the jobs) or the job belongs to her
     	#if ((user['admin'] == 1) or ($db.do("SELECT * FROM jobs WHERE id=#{job_id} AND user_id=#{user_id}"))) then
-    	if user['admin'] == 1 or $db.from(:jobs).where('id = ? AND user_id = ?', job_id, user_id) then
+    	if user['admin'] == 1 or $db.from(:jobs).where('id = ? AND user_id = ?', job_id, user_id).first then
     		#writes KILL in the field 'command' of table 'jobs'; the contoller takes this command as an order
     		#to kill the job
     		$db.from(:jobs).where('id = ?', job_id).update(:command => 'KILL')
@@ -177,7 +177,7 @@ if SplayControllerConfig::AllowNativeLibs
   	ret = Hash.new
   	user = check_session_id(session_id)
   	if user then 
-  	  existing_lib = $db.from(:libs).where('lib_name = ? AND lib_version = ? AND lib_sha1 = ?',lib_filename,lib_version,lib_sha1)
+  	  existing_lib = $db.from(:libs).where('lib_name = ? AND lib_version = ? AND lib_sha1 = ?',lib_filename,lib_version,lib_sha1).first
         #$db.do("SELECT * FROM libs WHERE lib_name='#{lib_filename}'
         #AND lib_version='#{lib_version}' AND lib_sha1='#{lib_sha1}'")
   	if existing_lib then
@@ -201,14 +201,14 @@ if SplayControllerConfig::AllowNativeLibs
     #but there might be one that we want to update with the same name.
     ret = Hash.new
     #puts "writing lib : #{lib_name}, V= #{lib_version}, os=#{lib_os}, arch=#{lib_arch}"
-    admin = $db.from(:users)[:login => admin_username]
+    admin = $db.from(:users).where("login = ?", admin_username).first
     $db.do("SELECT * FROM users WHERE login='#{admin_username}'")
     if admin then
       if admin[:crypted_password] == admin_hashedpassword then
-        existing_lib=$db.from(:libs).where('lib_name = ? AND lib_os = ? AND lib_arch = ?',lib_name,lib_os,lib_arch)
+        existing_lib=$db.from(:libs).where('lib_name = ? AND lib_os = ? AND lib_arch = ?',lib_name,lib_os,lib_arch).first
       #$db.do("SELECT * FROM libs WHERE lib_name='#{lib_name}' AND lib_os='#{lib_os}' AND lib_arch='#{lib_arch}'")
     	if existing_lib then
-          $db.from(:libs).where('id = ?', existing_lib[:id]).update(:lib_version => lib_version, :lib_sha1 => lib_sha1, :lib_blob => addslashes(lib_code))
+          $db.from(:libs).where('id = ?', existing_lib[:id]).update(:lib_version => lib_version, :lib_sha1 => lib_sha1, :lib_blob => addslashes(lib_code)).first
           #$db.do("UPDATE libs SET lib_version='#{lib_version}', 
           #lib_sha1='#{lib_sha1}', lib_blob='#{addslashes(lib_code)}' WHERE id='#{existing_lib['id']}'")
     	  ret['ok'] = true
@@ -236,7 +236,7 @@ if SplayControllerConfig::AllowNativeLibs
   	user = check_session_id(session_id)
   	if user then
   	# TODO parse a string to determine the range of versions the users provides as compatibles
-  		a_lib = $db.from(:libs).where('lib_name = ? AND lib_version = ?', lib_filename, lib_version)
+  		a_lib = $db.from(:libs).where('lib_name = ? AND lib_version = ?', lib_filename, lib_version).first
                 #$db.do("SELECT * FROM libs WHERE lib_name='#{lib_filename}' AND lib_version='#{lib_version}'")
   		if a_lib then
   			ret['ok'] = true
@@ -295,7 +295,7 @@ if SplayControllerConfig::AllowNativeLibs
                  admin_username,admin_hashedpassword)
     ret = Hash.new
     user = check_session_id(session_id)
-    admin = $db.from(:users)[:login => admin_username]
+    admin = $db.from(:users).where("login = ?", admin_username).first
     #.do("SELECT * FROM users WHERE login='#{admin_username}'")
     if admin then
       if admin[:crypted_password] == admin_hashedpassword then
@@ -407,7 +407,7 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
       #designated splayds
       if designated_splayds_string != "" then
       	#eliminate white spaces
-      	job_id = $db.from(:jobs)[:ref => ref][:id]
+      	job_id = $db.from(:jobs).where("ref = ?", ref).first[:id]
       	designated_splayds_string.delete(' ')
       	#prepare query
       	#q_jds = ""
@@ -428,7 +428,7 @@ def submit_job(name, description, code, lib_filename, lib_version, nb_splayds, c
       	# 1. was killed before execution (and splayds booking)
       	# 2. is currently queued 
       	# 3. it was rejected because of the lack of resources 
-      	other_job_splayds = $db.from(:splayd_selections).where("job_id = ? AND selected='TRUE'", other_job_id)
+      	other_job_splayds = $db.from(:splayd_selections).where("job_id = ? AND selected='TRUE'", other_job_id).first
 #other_job_splayds = $db.do("SELECT * FROM splayd_selections WHERE job_id='#{other_job_id}' AND selected='TRUE'")
         other_job_status = $db.from(:jobs).where("id = ? AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')", other_job_id)[:status]
         #other_job_status = $db.do("SELECT status FROM jobs WHERE id='#{other_job_id}' AND (status='KILLED' OR status='QUEUED' OR status='NO_RESSOURCES')")
@@ -504,7 +504,7 @@ end
     	#user_id is taken from the field 'id' from variable user
     	user_id = user['id']
     	#if the user is admin (can see all the jobs) or the job belongs to her
-    	if user['admin'] == 1 or $db.from(:jobs).where('id = ? AND user_id = ?', job_id, user_id) then
+    	if user['admin'] == 1 or $db.from(:jobs).where('id = ? AND user_id = ?', job_id, user_id).first then
           host_list = Array.new
           $db.from(:splayd_selections).where("job_id = ? AND selected='TRUE'", job_id).each do |ms|
           	m = $db.from(:splayds)[:id => ms[:splayd_id]]
@@ -607,7 +607,7 @@ end
   def start_session(username, hashed_password)
     #initializes the return variable
     ret = Hash.new
-    user = $db.from(:users).where('login = ?', username)
+    user = $db.from(:users).where('login = ?', username).first
     if user then
       hashed_password_from_db = user[:crypted_password]
       if (hashed_password == hashed_password_from_db) then
@@ -630,7 +630,7 @@ end
   def new_user(username, hashed_password, admin_username, admin_hashedpassword)
     #initializes the return variable
     ret = Hash.new
-    admin = $db.from(:users).where('login = ?', admin_username)
+    admin = $db.from(:users).where('login = ?', admin_username).first
     if admin then
       if admin[:crypted_password] == admin_hashedpassword then
     	if not ($db.from(:users).where('login = ?', username).first) then
@@ -655,7 +655,7 @@ end
   def list_users(admin_username, admin_hashedpassword)
     #initializes the return variable
     ret = Hash.new
-    admin = $db.from(:users).where('login = ?', admin_username)
+    admin = $db.from(:users).where('login = ?', admin_username).first
     if admin then
     	if admin[:crypted_password] == admin_hashedpassword then
     		user_list = Array.new
@@ -679,7 +679,7 @@ end
   def change_passwd(username, hashed_currentpassword, hashed_newpassword)
     #initializes the return variable
     ret = Hash.new
-    user = $db.from(:users).where('login = ?', username)
+    user = $db.from(:users).where('login = ?', username).first
     if user then
       hashed_password_from_db = user[:crypted_password]
       if (hashed_currentpassword == hashed_password_from_db) then
@@ -697,11 +697,11 @@ end
 	#administrators can delete users
 	def remove_user(username, admin_username, admin_hashedpassword)
 		ret = Hash.new
-		admin = $db.from(:users).where('login = ?', admin_username)
+		admin = $db.from(:users).where('login = ?', admin_username).first
                 #$db.do("SELECT * FROM users WHERE login='#{admin_username}'")
 		if admin then
 			if ((admin[:crypted_password] == admin_hashedpassword) and (admin[:admin] == 1)) then
-				user = $db.from(:users).where('login = ?', username)
+				user = $db.from(:users).where('login = ?', username).first
                                 #$db.do("SELECT * FROM users WHERE login='#{username}'")
 				if user then
 					$db.from(:users).where('login = ?', username).delete
@@ -725,7 +725,7 @@ end
   #and returns the corresponding.
   #user ID if the session ID is valid
   def check_session_id(session_id)
-    user = $db.from(:users).where('remember_token = ?', session_id)
+    user = $db.from(:users).where('remember_token = ?', session_id).first
     if user then
       expires_at = user[:remember_token_expires_at]
       expires_at_time_format = Time.local(expires_at.year, expires_at.month, expires_at.day,

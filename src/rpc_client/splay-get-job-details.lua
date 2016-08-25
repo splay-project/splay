@@ -84,7 +84,7 @@ function send_get_job_details(job_id, cli_server_url, session_id)
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.get_job_details",
+		method = "get_job_details",
 		params = {job_id, session_id}
 	})
 

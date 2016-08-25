@@ -115,7 +115,7 @@ function send_remove_user(username, cli_server_url,admin_username, admin_passwor
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.remove_user",
+		method = "remove_user",
 		params = {username, admin_username, admin_hashedpassword}
 	})
 

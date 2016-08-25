@@ -101,7 +101,7 @@ function send_list_users(cli_server_url, admin_username, admin_password)
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.list_users",
+		method = "list_users",
 		params = {admin_username, admin_hashedpassword}
 	})
 

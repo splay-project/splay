@@ -86,7 +86,7 @@ function send_remove_lib(cli_server_url, lib_name, session_id, admin_username, a
 	local admin_hashedpassword = sha1(admin_password)
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.remove_lib",
+		method = "remove_lib",
 		params = {lib_name, lib_version, lib_arch, lib_os, lib_sha1, session_id,admin_username, admin_hashedpassword}
 	})
 	

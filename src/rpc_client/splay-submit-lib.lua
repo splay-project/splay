@@ -132,7 +132,7 @@ function send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, 
 
 	print_line(NORMAL,"LIB_NAME= "..lib_filename,"OS= "..lib_os,"ARCH= "..lib_arch,"version= "..lib_version, "SHA1= "..lib_hash)
 	local body = json.encode({
-		method = "ctrl_api.pre_submit_lib",
+		method = "pre_submit_lib",
 		params = {lib_filename, lib_hash, lib_version, session_id}
 	})
 	
@@ -153,7 +153,7 @@ function send_submit_lib(lib_filename, lib_os, lib_arch, lib_version, lib_blob, 
 		-- do upload the lib
 		lib_blob = base64.encode(lib_blob)
 		local body = json.encode({
-			method = "ctrl_api.submit_lib",
+			method = "submit_lib",
 			params = {lib_filename, lib_version, lib_os, lib_arch, lib_hash, lib_blob, session_id, admin_username, hashed_password}
 		})
 		local response = http.request(cli_server_url, body)

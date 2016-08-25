@@ -84,7 +84,7 @@ function send_kill_job(job_id, cli_server_url, session_id)
 
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.kill_job",
+		method = "kill_job",
 		params = {job_id, session_id}
 	})
 

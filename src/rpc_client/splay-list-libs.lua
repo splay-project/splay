@@ -63,7 +63,7 @@ function send_list_libs(cli_server_url, lib_name, session_id)
 	print("LIB NAME = "..lib_name)
 	--prepares the body of the message
 	local body = json.encode({
-		method = "ctrl_api.list_libs",
+		method = "list_libs",
 		params = {lib_name, session_id}
 	})
 	

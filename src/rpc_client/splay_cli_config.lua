@@ -22,7 +22,7 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 ]]
 
 config = {
-	cli_server_url	= "http://130.125.11.234:2222/splay-ctrl-api",
+	cli_server_url	= "http://127.0.0.1:2222/splay-ctrl-api",
 	username	= "admin",
 	password	= "admin"
 	}

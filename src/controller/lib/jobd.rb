@@ -296,7 +296,7 @@ class Jobd
 		end
 
 		distance_filter = ""
-		if job[:distance] and job['latitude'] and job[:longitude]
+		if job[:distance] and job[:latitude] and job[:longitude]
 			distance_filter =
 					" AND longitude IS NOT NULL AND latitude IS NOT NULL AND
 				DEGREES(
@@ -481,7 +481,9 @@ class Jobd
     # To select the splayds that have the lowest percentage of occupation
     occupation = {}
     filter_query=create_filter_query(job)
-    $db[filter_query.to_s].each do |m|
+
+    $db[filter_query].each do |m|
+
       if m[:network_send_speed] / c_splayd['max_number'][m[:id]] >= job[:network_send_speed] and
         m[:network_receive_speed] / c_splayd['max_number'][m[:id]] >= job[:network_receive_speed]
       	if c_splayd['nb_nodes'][m[:id]] < c_splayd['max_number'][m[:id]]
