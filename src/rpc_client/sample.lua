@@ -28,14 +28,14 @@ require"splay.base"
 
 -- RPC library
 rpc = require"splay.rpc"
-local log                = require"splay.log"
-local l_o                = log.new(3, "[school]")
+--local log                = require"splay.log"
+--local l_o                = log.new(3, "[school]")
 
 -- accept incoming RPCs
 rpc.server(job.me.port)
 
 function call_me(position)
-	l_o:print("I received an RPC from node "..position)
+	print("I received an RPC from node "..position)
 end
 
 -- our main function
@@ -43,11 +43,11 @@ function SPLAYschool()
 	-- print bootstrap information about local node
 	local nodes = job.get_live_nodes() --OR the old form: job.nodes
 	for k,v in pairs(job) do
-		l_o:print(k,v)
+          print(k, " :: ", v)
 	end
-	l_o:print("I'm "..job.me.ip..":"..job.me.port)
-	l_o:print("My position in the list is: "..job.position)
-	l_o:print("List type is '"..job.list_type.."' with "..#nodes.." nodes")
+	print("I'm "..job.me.ip..":"..job.me.port)
+	print("My position in the list is: "..job.position)
+	print("List type is '"..job.list_type.."' with "..#nodes.." nodes")
 
 	-- wait for all nodes to be started (conservative)
 	events.sleep(5)
@@ -56,7 +56,7 @@ function SPLAYschool()
 	rpc.call(nodes[1], {"call_me", job.position})
 
 	-- you can also spawn new threads (here with an anonymous function)
-	events.thread(function() l_o:print("Bye bye") end)
+	events.thread(function() print("Bye bye") end)
 
 	-- wait for messages from other nodes
 	events.sleep(5)
