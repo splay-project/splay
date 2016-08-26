@@ -3,3 +3,5 @@ logs/
 src/rpc_client/.*.session_id
 daemon/dist/*
 !daemon/dist/*.tar.gz
+src/controller/ControllerRb.log
+src/controller/cli-server/CliServerRb.log
