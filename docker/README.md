@@ -18,6 +18,3 @@ Need more nodes ? No problem ! Use docker-compose to scale the testbed as much a
 ```bash
 docker-compose scale splayd=20
 ```
-
-See a complete screencast:
-[![asciicast](https://asciinema.org/a/31856.png)](https://asciinema.org/a/31856)
