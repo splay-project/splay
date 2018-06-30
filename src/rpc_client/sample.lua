@@ -7,14 +7,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -39,7 +39,7 @@ end
 -- our main function
 function SPLAYschool()
 	-- print bootstrap information about local node
-	local nodes = job.nodes()
+	local nodes = job.nodes
 	log:print("I'm "..job.me.ip..":"..job.me.port)
 	log:print("My position in the list is: "..job.position)
 	log:print("List type is '"..job.list_type.."' with "..#nodes.." nodes")
