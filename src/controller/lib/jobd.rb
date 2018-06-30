@@ -1,4 +1,4 @@
-## Splay Controller ### v1.1 ###
+## Splay Controller ### v1.0.7 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
 ## 
@@ -46,8 +46,7 @@ class Jobd
 				status_running
 				kill_max_time
 				command
-        			status_queued
-      end
+			end
 		rescue => e
 			$log.fatal(e.class.to_s + ": " + e.to_s + "\n" + e.backtrace.join("\n"))
 		end
@@ -64,9 +63,6 @@ class Jobd
 
 	def self.status_running
 	end
-
- 	def self.status_queued
-  	end
 
 	def self.kill_max_time
 	end
@@ -296,7 +292,7 @@ class Jobd
 			hostmasks_filter = " AND (ip LIKE '#{hm_t}' OR hostname LIKE '#{hm_t}') "
 		end
 
-    		resources_filter = "AND (splayds.status='AVAILABLE') AND
+		resources_filter = "AND splayds.status='AVAILABLE' AND
 					max_mem >= '#{job['max_mem']}' AND
 					disk_max_size >= '#{job['disk_max_size']}' AND
 					disk_max_files >= '#{job['disk_max_files']}' AND

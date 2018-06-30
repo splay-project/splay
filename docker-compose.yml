@@ -12,6 +12,7 @@ services:
   controller:
     build:
       context: ./src/controller
+      dockerfile: controller.dockerfile
     container_name: splay_controller
     depends_on: ["db"]
     command: ["./deploy_controller.sh"]
