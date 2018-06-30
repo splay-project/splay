@@ -1,10 +1,5 @@
 #!/bin/bash
 
-#L_PATH=/usr/share/lua/5.1
-#L_CPATH=/usr/lib/lua/5.1
-L_PATH="$HOME/lualibs/lualib"
-L_CPATH="$HOME/lualibs/lualibc"
-
 if [[ $L_PATH == "" ]]; then
 	echo "L_PATH not set, set it (LUA_PATH)."
 	exit
@@ -21,23 +16,9 @@ echo "of the other modules (that can already be installed in your system), see"
 echo "INSTALL."
 echo
 echo "You need to have already compiled splayd. If not see INSTALL."
-echo
-echo "Are you ready ? (y/n)"
-read ready
-if [[ $ready != "y" ]]; then
-	exit
-fi
 
 echo "Lua libraries will go in $L_PATH."
 echo "Lua C libraries will go in $L_CPATH."
-echo "Is this correct ? (y/n)"
-read correct
-if [[ $correct != "y" ]]; then
-	echo "Aborting installation, edit this file to fix good values."
-	exit
-fi
-echo
-
 echo "Installing Splay Lua libraries."
 
 mkdir -p $L_PATH
@@ -55,8 +36,5 @@ cp splay_core.so $L_CPATH/
 cp luacrypto/crypto.so $L_CPATH/crypto.so
 cp misc_core.so $L_CPATH/splay/
 cp data_bits_core.so $L_CPATH/splay/
-
-echo
-echo
 
 lua install_check.lua
