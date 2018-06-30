@@ -1,0 +1,28 @@
+version: "2.1"
+
+services:
+  db:
+    image: mysql:5.5
+    container_name: splay_db
+    environment:
+      MYSQL_ROOT_PASSWORD: "splay"
+      MYSQL_DATABASE: "splay"
+      MYSQL_USER: "splay"
+      MYSQL_PASSWORD: "splay"
+  controller:
+    build:
+      context: ./src/controller
+    container_name: splay_controller
+    depends_on: ["db"]
+    command: ["./deploy_controller.sh"]
+  web_server:
+    build:
+      context: ./controller
+    container_name: splay_web_server
+    ports: ["2222:2222"]
+    depends_on: ["controller"]
+    command: ["./deploy_web_server.sh"]
+  daemon:
+    build:
+      context: ./daemon
+    depends_on: ["controller"]
