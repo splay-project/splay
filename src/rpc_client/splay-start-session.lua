@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 --[[
-       Splay Client Commands ### v1.2 ###
+       Splay Client Commands ### v1.4 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -51,9 +51,16 @@ function parse_arguments()
 		--if argument is "-h" or "--help"
 		if arg[i] == "--help" or arg[i] == "-h" then
 			--prints a short explanation of what the program does
-			print("send \"START SESSION\" command to the SPLAY CLI server; starts a session linked to a key, so the user need not type username-password at every command\n")
+			print_line(QUIET, "send \"START SESSION\" command to the SPLAY CLI server; starts a session linked to a key, so the user need not type username-password at every command\n")
 			--prints the usage
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-u"
 		elseif arg[i] == "-u" then
 			i = i + 1
@@ -90,54 +97,41 @@ end
 --function send_start_session: sends a "START SESSION" command to the SPLAY CLI server
 function send_start_session(username, password, cli_server_url)
 	--prints the arguments
-	print("USERNAME       = "..username)
-	print("CLI SERVER URL = "..cli_server_url)
-	
+	print_username("USERNAME       ", username)
+	print_cli_server()
+
 	local hashed_password = sha1(password)
-	
+
 	--prepares the body of the message
 	local body = json.encode({
 		method = "ctrl_api.start_session",
 		params = {username, hashed_password}
 	})
-	
+
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
-	local response = http.request(cli_server_url, body)
+	local response = http.request(cli_server_url.."/start_session", body)
 
 	--if there is a response
 	if check_response(response) then
 		local json_response = json.decode(response)
-		print("Session started:")
-		print("SESSION_ID = "..json_response.result.session_id)
-		print("EXPIRES_AT = "..json_response.result.expires_at.."\n")
+		print_line(NORMAL, "Session started:")
+		print_line(NORMAL, "SESSION_ID = "..json_response.result.session_id)
+		print_line(NORMAL, "EXPIRES_AT = "..json_response.result.expires_at.."\n")
 		local hashed_cli_server_url = sha1(cli_server_url)
 		local session_file = io.open("."..hashed_cli_server_url..".session_id","w")
 		session_file:write(json_response.result.session_id)
 		session_file:close()
 	end
-	
+
 end
 
 
 --MAIN FUNCTION:
 --initializes the variables
-username = nil
-password = nil
-cli_server_url = nil
-
-cli_server_url_from_conf_file = nil
-username_from_conf_file = nil
-password_from_conf_file = nil
-
-cli_server_as_ip_addr = false
-min_arg_ok = false
-
 command_name = "splay-start-session"
-usage_options = {}
-other_mandatory_args = ""
 
 --maximum HTTP payload size is 10MB (overriding the max 2KB set in library socket.lua)
 socket.BLOCKSIZE = 10000000
@@ -151,9 +145,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

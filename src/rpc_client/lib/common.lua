@@ -1,3 +1,43 @@
+--common variables
+
+--print modes
+QUIET = 1
+NORMAL = 2
+VERBOSE = 3
+--used by splay-new-user, -list-users
+admin_username = nil
+admin_password = nil
+--used by -new-user, -change-password, -start-session
+username = nil
+--used by -new-user, -start-session
+password = nil
+--used by all user/password oriented commands
+username_from_conf_file = nil
+password_from_conf_file = nil
+username_taken_from_conf = false
+--used by -get-log, -get-job-code
+output_filename = nil
+--used by all session oriented commands
+session_id = nil
+--used by all job related commands
+job_id = nil
+--used by all commands
+cli_server_url = nil
+cli_server_url_from_conf_file = nil
+cli_server_taken_from_conf = false
+cli_server_as_ip_addr = false
+min_arg_ok = false
+other_mandatory_args = ""
+usage_options = {}
+print_mode = NORMAL
+
+--function print_line:
+function print_line(mode, str_to_print)
+	if print_mode >= mode then
+		print(str_to_print)
+	end
+end
+
 --function load_config: loads the config file
 function load_config()
 	local config_file = loadfile("splay_cli_config.lua")
@@ -10,22 +50,49 @@ end
 
 --function print_usage: shows the usage and exits
 function print_usage()
-	print("Usage: lua "..command_name..".lua [OPTION] "..other_mandatory_args.."CLI_SERVER_URL\n")
-	print("Mandatory arguments to long options are mandatory for short options too.")
+	print_line(QUIET, "Usage: lua "..command_name..".lua [OPTION] "..other_mandatory_args.."CLI_SERVER_URL\n")
+	print_line(QUIET, "Mandatory arguments to long options are mandatory for short options too.")
 	for i,v in ipairs(usage_options) do
-		print(v)
+		print_line(QUIET, v)
 	end
-	print("-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
-	print("\t\t\t\tis automatically completed as http://A.B.C.D:2222/json-rpc (default config for rpc_server)")
-	print("-h, --help\t\t\tdisplays this help and exit\n")
+	print_line(QUIET, "-i, --cli_server_as_ip_addr\tthe URL of the CLI server is entered as an IP address and it")
+	print_line(QUIET, "\t\t\t\tis automatically completed as http://A.B.C.D:2222/splay-ctrl-api")
+	print_line(QUIET, "\t\t\t\t(default config for the CLI server)")
+	print_line(QUIET, "-q, --quiet\t\t\tquiet mode, displays only basic information")
+	print_line(QUIET, "-v, --verbose\t\t\tverbose mode, displays detailed information")
+	print_line(QUIET, "-h, --help\t\t\tdisplays this help and exit\n")
 	os.exit()
+end
+
+--function print_cli_server: prints the CLI server URL
+function print_cli_server(number_of_spaces)
+	local spaces_between = " "
+	if number_of_spaces then
+		for i=2,number_of_spaces do
+			spaces_between = spaces_between.." "
+		end
+	end
+	if cli_server_taken_from_conf then
+		print_line(VERBOSE, "CLI SERVER URL"..spaces_between.."= "..cli_server_url.." (from splay_cli_config.lua)")
+	else
+		print_line(VERBOSE, "CLI SERVER URL"..spaces_between.."= "..cli_server_url)
+	end
+end
+
+--function print_username: prints the username
+function print_username(username_as_str, username_as_var)
+	if username_taken_from_conf then
+		print_line(VERBOSE, username_as_str.."= "..username_as_var.." (from splay_cli_config.lua)")
+	else
+		print_line(VERBOSE, username_as_str.."= "..username_as_var)
+	end
 end
 
 function check_min_arg()
 	--if min_arg_ok is false (the required arguments were not filled)
 	if not min_arg_ok then
 		--prints an error message
-		print("missing arguments\n")
+		print("ERROR: missing arguments\n")
 		--prints the usage
 		print_usage()
 	end
@@ -37,12 +104,14 @@ function check_cli_server()
 		--if cli_server_as_ip_addr is true
 		if cli_server_as_ip_addr then
 			--the URL is completed with the default port and page
-			cli_server_url = "http://"..cli_server_url..":2222/json-rpc"
+			cli_server_url = "http://"..cli_server_url..":2222/splay-ctrl-api"
 		end
 	--if no SPLAY CLI was passed as argument
 	else
 		--prints a message
-		print("No SPLAY CLI server URL specified. Using SPLAY CLI server URL from the configuration file...\n")
+		--print("No SPLAY CLI server URL specified. Using SPLAY CLI server URL from the configuration file...\n")
+		--makes cli_server_taken_from_conf true
+		cli_server_taken_from_conf = true
 		--takes the CLI server from the config file
 		cli_server_url = cli_server_url_from_conf_file
 	end
@@ -50,7 +119,7 @@ function check_cli_server()
 	--if the URL does not start with the string "http://"
 	if not string.match(cli_server_url,"^http://") then
 		--prints an error message
-		print("Invalid URL:"..cli_server_url.."\nA valid URL must have the following syntax: \"http://webserver[:port][/page]\"\nExamples of valid URLs:\n\thttp://127.0.0.1/\n\thttp://some.website.com/json-rpc\n\thttp://10.0.0.1:2222/\n")
+		print("ERROR: Invalid URL:"..cli_server_url.."\nA valid URL must have the following syntax: \"http://webserver[:port][/page]\"\nExamples of valid URLs:\n\thttp://127.0.0.1/\n\thttp://some.website.com/json-rpc\n\thttp://10.0.0.1:2222/\n")
 		--exits
 		os.exit()
 	end
@@ -61,8 +130,8 @@ function check_username(checked_username, username_type)
 	if not checked_username then
 		--if a username was specified on the configuration file
 		if (username_type == "Username" or username_type == "Administrator's username") and username_from_conf_file then
-			--prints a message
-			print(username_type.." taken from the configuration file...\n")
+			--makes username_taken_from_conf true
+			username_taken_from_conf = true
 			checked_username = username_from_conf_file
 		--if not
 		else
@@ -80,7 +149,7 @@ function check_password(checked_password, password_type)
 		--if a password was specified on the configuration file
 		if (password_type == "Password" or password_type == "Current password" or password_type == "Administrator's password") and password_from_conf_file then
 			--prints a message
-			print(password_type.." taken from the configuration file...\n")
+			print_line(VERBOSE, password_type.." taken from the configuration file...\n")
 			checked_password = password_from_conf_file
 		--if not
 		else
@@ -113,7 +182,7 @@ function check_session_id()
 		session_id_file:close()
 	else
 		--prints an error message
-		print("At the moment, there is no active session for SPLAY CLI server: "..cli_server_url.."\n\nPlease start a session with splay-start-session before attempting a command.\n")
+		print("ERROR: At the moment, there is no active session for SPLAY CLI server: "..cli_server_url.."\n\nPlease start a session with splay-start-session before attempting a command.\n")
 		--exits
 		os.exit()
 	end
@@ -121,18 +190,20 @@ end
 
 function check_response(response)
 	if response then
+		--prints the actual json string
+		print_line(VERBOSE, "\nJSON String received:\n"..response.."\n")
 		local json_response = json.decode(response)
 		if json_response.result then
 			if json_response.result.ok == true then
 				--prints the result
-				print("Response from "..cli_server_url..":")
+				print_line(VERBOSE, "Response from "..cli_server_url..":")
 				return true
 			else
 				print("Response from "..cli_server_url..":")
 				if json_response.result.error then
-					print("Error: "..json_response.result.error.."\n")
+					print("ERROR: "..json_response.result.error.."\n")
 				else
-					print("Error\n")
+					print("ERROR\n")
 				end
 			end
 		else
@@ -148,3 +219,4 @@ function check_response(response)
 	end
 	return false
 end
+

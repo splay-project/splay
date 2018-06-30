@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 --[[
-       Splay Client Commands ### v1.2 ###
+       Splay Client Commands ### v1.4 ###
        Copyright 2006-2011
        http://www.splay-project.org
 ]]
@@ -8,14 +8,14 @@
 --[[
 This file is part of Splay.
 
-Splay is free software: you can redistribute it and/or modify 
-it under the terms of the GNU General Public License as published 
-by the Free Software Foundation, either version 3 of the License, 
+Splay is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published
+by the Free Software Foundation, either version 3 of the License,
 or (at your option) any later version.
 
-Splay is distributed in the hope that it will be useful,but 
+Splay is distributed in the hope that it will be useful,but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -52,9 +52,16 @@ function parse_arguments()
 		--if argument is "-h" or "--help"
 		if arg[i] == "--help" or arg[i] == "-h" then
 			--prints a short explanation of what the program does
-			print("send \"REMOVE USER\" command to the SPLAY CLI server; removes a user (only for Administrators)")
+			print_line(QUIET, "send \"REMOVE USER\" command to the SPLAY CLI server; removes a user (only for Administrators)")
 			--prints the usage
 			print_usage()
+		--if argument is "-q" or "--quiet"
+		elseif arg[i] == "--quiet" or arg[i] == "-q" then
+			--the print mode is "quiet"
+			print_mode = QUIET
+		elseif arg[i] == "--verbose" or arg[i] == "-v" then
+			--the print mode is "verbose"
+			print_mode = VERBOSE
 		--if argument is "-U"
 		elseif arg[i] == "-U" then
 			i = i + 1
@@ -94,16 +101,16 @@ function parse_arguments()
 			min_arg_ok = true
 		end
 		i = i + 1
-	end	
+	end
 end
 
 --function send_remove_user: sends a "REMOVE USER" command to the SPLAY CLI server
 function send_remove_user(username, cli_server_url,admin_username, admin_password)
 	--prints the arguments
-	print("ADMIN USERNAME      = "..admin_username)
-	print("USERNAME TO REMOVE  = "..username)
-	print("CLI SERVER URL      = "..cli_server_url)
-	
+	print_username("ADMIN USERNAME      ", admin_username)
+	print_line(VERBOSE, "USERNAME TO REMOVE  = "..username)
+	print_cli_server(6)
+
 	local admin_hashedpassword = sha1(admin_password)
 
 	--prepares the body of the message
@@ -113,15 +120,15 @@ function send_remove_user(username, cli_server_url,admin_username, admin_passwor
 	})
 
 	--prints that it is sending the message
-	print("\nSending command to "..cli_server_url.."...\n")
+	print_line(VERBOSE, "\nSending command to "..cli_server_url.."...\n")
 
 	--sends the command as a POST
-	local response = http.request(cli_server_url, body)
+	local response = http.request(cli_server_url.."/remove_user", body)
 
 	if check_response(response) then
-		print("User removed\n")
+		print_line(NORMAL, "User removed\n")
 	end
-	
+
 end
 
 
@@ -134,9 +141,11 @@ cli_server_url = nil
 
 cli_server_url_from_conf_file = nil
 username_from_conf_file = nil
-password_from_conf_file = nil
 
 cli_server_as_ip_addr = false
+cli_server_taken_from_conf = false
+username_taken_from_conf = false
+password_taken_from_conf = false
 min_arg_ok = false
 
 command_name = "splay-change-passwd"
@@ -155,9 +164,9 @@ end
 
 add_usage_options()
 
-print()
-
 parse_arguments()
+
+print_line(NORMAL, "")
 
 check_min_arg()
 

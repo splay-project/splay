@@ -15,6 +15,10 @@ services:
     container_name: splay_controller
     depends_on: ["db"]
     command: ["./deploy_controller.sh"]
+  daemon:
+    build:
+      context: ./src/daemon
+    depends_on: ["controller"]
   web_server:
     build:
       context: ./src/controller
@@ -23,7 +27,8 @@ services:
     ports: ["2222:2222"]
     depends_on: ["controller"]
     command: ["./deploy_web_server.sh"]
-  daemon:
+  terminal:
     build:
-      context: ./src/daemon
-    depends_on: ["controller"]
+      context: ./src/rpc_client
+    container_name: splay_terminal
+    depends_on: ["web_server"]
