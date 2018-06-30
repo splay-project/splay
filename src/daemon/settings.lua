@@ -29,9 +29,9 @@ along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
 splayd.settings.key = "local" -- received at the registration
 
-splayd.settings.name = "my name"
+splayd.settings.name = "SPLAY_DAEMON_NAME"
 
-splayd.settings.controller.ip = "localhost"
+splayd.settings.controller.ip = "splay_controller"
 splayd.settings.controller.port = 11000
 
 -- all sizes are in bytes
@@ -66,6 +66,3 @@ limitations you have choosed in network.send_speed and network.receive_speed.
 CPU limitations are not enforced by splayd, but you can give a low priority to
 the process using the 'nice' command.
 --]]
-
-print("Edit settings.lua and comment out or remove these 2 lines...")
-os.exit()

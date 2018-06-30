@@ -1,5 +1,4 @@
 version: "2.1"
-
 services:
   db:
     image: mysql:5.5
@@ -18,12 +17,13 @@ services:
     command: ["./deploy_controller.sh"]
   web_server:
     build:
-      context: ./controller
+      context: ./src/controller
+      dockerfile: web_server.dockerfile
     container_name: splay_web_server
     ports: ["2222:2222"]
     depends_on: ["controller"]
     command: ["./deploy_web_server.sh"]
   daemon:
     build:
-      context: ./daemon
+      context: ./src/daemon
     depends_on: ["controller"]

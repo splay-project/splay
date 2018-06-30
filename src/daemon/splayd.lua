@@ -962,7 +962,7 @@ if not splayd then splayd = {} end
 
 -- In production MUST BE true (enforce all the limitations, apply the strict
 -- behavior), your security is only guaranted when this is set to true.
-production = true
+production = false
 
 --[[ SETTINGS (if not in production mode) ]]--
 
