@@ -15,7 +15,8 @@ run apt-get update && \
 env L_PATH  "/usr/splay/lib/lua"
 env L_CPATH "/usr/splay/lib/c"
 
-add *.* .
+add *.* ./
+add Makefile .
 add luacrypto ./luacrypto
 add modules ./modules
 add deploy.sh .
@@ -26,7 +27,6 @@ run \
   export LUA_CPATH=$(lua -e 'print(package.cpath)') ; \
   export LUA_CPATH="${LUA_CPATH};/usr/splay/lib/c/?.so" ; \
   echo "${LUA_PATH}\n\n${LUA_CPATH}" ; \
-  make all ; \
-  ./install.sh
+  make all && ./install.sh
 
 cmd ["./deploy.sh"]
