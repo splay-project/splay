@@ -1,23 +1,23 @@
 #!/usr/bin/env ruby
 
-## Splay Controller ### v1.1 ###
+## Splay Controller ### v1.0.7 ###
 ## Copyright 2006-2011
 ## http://www.splay-project.org
-## 
-## 
-## 
+##
+##
+##
 ## This file is part of Splay.
-## 
-## Splayd is free software: you can redistribute it and/or modify 
-## it under the terms of the GNU General Public License as published 
-## by the Free Software Foundation, either version 3 of the License, 
+##
+## Splayd is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License,
 ## or (at your option) any later version.
-## 
-## Splayd is distributed in the hope that it will be useful,but 
+##
+## Splayd is distributed in the hope that it will be useful,but
 ## WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ## See the GNU General Public License for more details.
-## 
+##
 ## You should have received a copy of the GNU General Public License
 ## along with Splayd. If not, see <http://www.gnu.org/licenses/>.
 
@@ -38,7 +38,7 @@ def drop_db(db)
 	db.do("DROP TABLE IF EXISTS locks")
 end
 
-def init_db(db) 
+def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS splayds (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 
@@ -82,7 +82,7 @@ def init_db(db)
 			last_contact_time INT,
 			INDEX ip (ip),
 			INDEX `key` (`key`)
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("CREATE TABLE IF NOT EXISTS splayd_availabilities (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -97,9 +97,7 @@ def init_db(db)
 			ref VARCHAR(255) NOT NULL,
 			user_id INT NOT NULL,
 			created_at datetime default NULL,
-                        scheduled_at datetime default NULL,
-                        strict ENUM('TRUE','FALSE') DEFAULT 'FALSE',
-			
+
 			name VARCHAR(255),
 			description VARCHAR(255),
 
@@ -130,7 +128,7 @@ def init_db(db)
 			min_uptime INT NOT NULL DEFAULT '0',
 			hostmasks VARCHAR(255),
 			max_time INT DEFAULT '10000',
-			
+
 			die_free ENUM('TRUE','FALSE') DEFAULT 'TRUE',
 			keep_files ENUM('TRUE','FALSE') DEFAULT 'FALSE',
 
@@ -143,7 +141,7 @@ def init_db(db)
 			command VARCHAR(255),
 			command_msg TEXT,
 
-			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED','QUEUED') DEFAULT 'LOCAL',
+			status ENUM('LOCAL','REGISTERING','RUNNING', 'ENDED','NO_RESSOURCES','REGISTER_TIMEOUT','KILLED') DEFAULT 'LOCAL',
 			status_time INT NOT NULL,
 			status_msg TEXT,
 
@@ -208,7 +206,7 @@ def init_db(db)
 	db.do("CREATE TABLE IF NOT EXISTS locks (
 			id INT NOT NULL,
 			job_reservation INT NOT NULL DEFAULT '0'
-			) type=innodb")
+			) engine=innodb")
 
 	db.do("INSERT INTO locks SET
 			id='1',
@@ -226,7 +224,7 @@ def init_db(db)
 			remember_token_expires_at datetime default NULL,
 			admin int(11) default '0',
 			demo int(11) default '1'
-			);") 
+			);")
 
 end
 
